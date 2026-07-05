@@ -12,8 +12,9 @@ import { LOCATIONS } from "./data/locations.js";
       build swaps in a true vector map (D3-geo + world-atlas TopoJSON, or Leaflet).
     - Landmarks are simple hand-drawn icons, not real photographs. The real build
       slots in freely-licensed photos (Wikimedia Commons / Unsplash / public domain).
-    - Ten locations, hard-coded. The real build loads a larger data file + REST Countries.
-  Everything runs in-memory (no storage), single file, no external calls.
+    - Ten sample locations in src/data/locations.js. The real build grows that
+      data file (and may pull from REST Countries) without touching this component.
+  Everything runs in-memory (no storage), no external calls.
 */
 
 // ---- Palette (airmail / vintage travel poster; deliberately not the cream+terracotta default) ----
