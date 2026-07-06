@@ -86,10 +86,10 @@
 //   have a photo. Two judgment calls worth knowing: Cape Town's greeting is
 //   Xhosa "Molo" (South Africa has 12 official languages; English also works),
 //   and Kilimanjaro/Tanzania uses "Jambo" (the friendly visitor greeting;
-//   locals also say "Habari"). Dubai (Burj Khalifa) was researched but LEFT OUT:
-//   the UAE has no freedom of panorama and the tower's design is still under
-//   copyright, so no close-up photo can be confirmed free. Add it only with a
-//   skyline shot (tower incidental) or an alternative Gulf landmark.
+//   locals also say "Habari"). Dubai is included as "The Dubai skyline" using a
+//   WIDE panorama (not a Burj Khalifa close-up): the UAE has no freedom of
+//   panorama and the Burj's design is copyrighted, so only a skyline where the
+//   tower is incidental can be freely licensed. 50 landmarks total.
 //
 // ICON KEYS (valid values for `icon`): "eiffel", "clocktower", "pyramid",
 //   "lion", "fuji", "wall", "taj", "liberty", "christ", "opera". Any other
@@ -614,4 +614,17 @@ export const LOCATIONS = [
       credit: "Prosper Phissoo", license: "CC BY-SA 4.0", licenseUrl: "https://creativecommons.org/licenses/by-sa/4.0/",
       source: "https://commons.wikimedia.org/wiki/File:The_view_of_mountain_Kilimanjaro_from_Moshi_town_in_Tanzania.jpg" },
     greeting: { text: "Jambo", language: "Swahili", pronunciation: "JAM-boh" } },
+  { id: "dubai", city: "Dubai", country: "United Arab Emirates", flag: "🇦🇪", continent: "Asia",
+    x: 235.1, y: 64.9,
+    subject: "The Dubai skyline", icon: "",
+    easy: "In ASIA, photograph the forest of glass skyscrapers along the coast of Dubai, in the United Arab Emirates.",
+    hard: "A skyline of glittering towers rises straight from the desert beside a warm gulf.",
+    fact: "Dubai is the largest city in the United Arab Emirates; once a small pearl-diving and trading port, it grew into a skyline of skyscrapers in only a few decades.",
+    photo: { src: "https://commons.wikimedia.org/wiki/Special:FilePath/Dubai_2012_%E2%80%93_West_Dubai_panorama.jpg?width=800",
+      credit: "Michiel2005", license: "CC BY 2.0", licenseUrl: "https://creativecommons.org/licenses/by/2.0/",
+      source: "https://commons.wikimedia.org/wiki/File:Dubai_2012_%E2%80%93_West_Dubai_panorama.jpg" },
+    // Wide West-Dubai / Marina panorama on purpose: the Burj Khalifa's design is
+    // copyrighted and the UAE has no freedom of panorama, so the subject here is
+    // the skyline as a whole (Burj incidental), which is free to reuse.
+    greeting: { text: "السلام عليكم (As-salamu alaykum)", language: "Arabic", pronunciation: "as-sa-LAAM a-LAY-kum" } },
 ];
