@@ -138,27 +138,33 @@ const modePlan = (key) => {
 const SHOT_COST = 0.5;
 
 const BY_ID = Object.fromEntries(LOCATIONS.map((l) => [l.id, l]));
-const CONTINENTS = ["North America", "South America", "Europe", "Africa", "Asia", "Oceania"];
+const CONTINENT_ORDER = ["North America", "South America", "Europe", "Africa", "Asia", "Oceania", "Antarctica"];
+// Only offer continents that actually have locations, so a continent added to the
+// data later (e.g. Antarctica) lights up automatically once it has content.
+const CONTINENTS = CONTINENT_ORDER.filter((c) => LOCATIONS.some((l) => l.continent === c));
 
-// Per-continent zoom box (SVG viewBox) + centroid, derived from that continent's
-// locations so every target and its decoys fit when the map zooms in.
+// Per-continent zoom box (SVG viewBox), derived from that continent's locations.
+// It is a SQUARE so it fills the square map frame with no distortion, sized to
+// contain every location on the continent (plus breathing room) and centred on
+// them. For a wide, scattered continent (Oceania, Antarctica) the square can spill
+// past the map edges into open ocean — that's fine, the frame just shows more sea.
 const CONTINENT_META = (() => {
   const meta = {};
   for (const c of CONTINENTS) {
     const locs = LOCATIONS.filter((l) => l.continent === c);
     const xs = locs.map((l) => l.x), ys = locs.map((l) => l.y);
     const minX = Math.min(...xs), maxX = Math.max(...xs), minY = Math.min(...ys), maxY = Math.max(...ys);
-    const padX = Math.max(14, (maxX - minX) * 0.2), padY = Math.max(14, (maxY - minY) * 0.2);
-    const x = Math.max(0, minX - padX), y = Math.max(0, minY - padY);
-    const w = Math.min(360 - x, maxX - minX + 2 * padX), h = Math.min(180 - y, maxY - minY + 2 * padY);
-    meta[c] = { box: { x, y, w, h }, cx: (minX + maxX) / 2, cy: (minY + maxY) / 2 };
+    const cx = (minX + maxX) / 2, cy = (minY + maxY) / 2;
+    const side = Math.min(360, Math.max(40, Math.max(maxX - minX, maxY - minY) * 1.35));
+    meta[c] = { box: { x: cx - side / 2, y: cy - side / 2, w: side, h: side }, cx, cy };
   }
   return meta;
 })();
 
 // Where each continent's button sits on the world map and where the plane flies
 // to (hand-placed so Oceania lands on Australia rather than the mid-Pacific
-// centroid of its scattered islands). Coords in world map units (x 0..360, y 0..180).
+// centroid of its scattered islands, and Antarctica sits along the bottom edge).
+// Coords in world-map units (x 0..360, y 0..180).
 const CONTINENT_PIN = {
   "North America": { x: 72, y: 46 },
   "South America": { x: 122, y: 116 },
@@ -166,6 +172,7 @@ const CONTINENT_PIN = {
   "Africa": { x: 199, y: 92 },
   "Asia": { x: 291, y: 55 },
   "Oceania": { x: 326, y: 122 },
+  "Antarctica": { x: 180, y: 171 },
 };
 
 // Keep decoy pins from stacking, scaled to whatever continent box is on screen.
@@ -707,7 +714,11 @@ export default function ShutterbugWorld() {
   const clue = mode.clue === "easy" ? target.easy : target.hard;
   const inCity = phase === "city";
   const box = inCity && pickedContinent ? CONTINENT_META[pickedContinent].box : { x: 0, y: 0, w: 360, h: 180 };
-  const u = box.w / 360; // unit scale keeps pins/labels a steady on-screen size as the map zooms in
+  // The map always fills a SQUARE frame (preserveAspectRatio="none"): the world map
+  // is stretched to fill it; each continent box is already square so it fills
+  // cleanly. Pins are ellipses whose radii scale with the box (rx∝box.w, ry∝box.h),
+  // so they stay perfectly ROUND and a steady on-screen size at every zoom level.
+  const pinR = (k) => ({ rx: k * box.w, ry: k * box.h });
   const busy = !!flying || !!pending || days <= 0;
   return (
     <Frame>
@@ -777,8 +788,8 @@ export default function ShutterbugWorld() {
 
         {/* Map */}
         <div style={{ flex: "2 1 520px", minWidth: 400 }}>
-          <div style={{ position: "relative", borderRadius: 10, overflow: "hidden", border: `2px solid ${INK}`, boxShadow: "0 6px 0 rgba(16,38,46,0.15)" }}>
-            <svg viewBox={`${box.x} ${box.y} ${box.w} ${box.h}`} style={{ width: "100%", display: "block", background: OCEAN }}>
+          <div style={{ position: "relative", aspectRatio: "1 / 1", maxWidth: 620, marginInline: "auto", borderRadius: 10, overflow: "hidden", border: `2px solid ${INK}`, boxShadow: "0 6px 0 rgba(16,38,46,0.15)" }}>
+            <svg viewBox={`${box.x} ${box.y} ${box.w} ${box.h}`} preserveAspectRatio="none" style={{ width: "100%", height: "100%", display: "block", background: OCEAN }}>
               <defs>
                 <pattern id="sea" width="360" height="180" patternUnits="userSpaceOnUse">
                   <rect width="360" height="180" fill={OCEAN} />
@@ -796,8 +807,8 @@ export default function ShutterbugWorld() {
               {/* departure city marker on the world map (continent phase) */}
               {!inCity && currentLoc && (
                 <g>
-                  <circle cx={currentLoc.x} cy={currentLoc.y} r="3" fill={CORAL} stroke={INK} strokeWidth="0.7" />
-                  <circle cx={currentLoc.x} cy={currentLoc.y} r="5" fill="none" stroke={CORAL} strokeWidth="0.8" className="sbw-ping" />
+                  <ellipse cx={currentLoc.x} cy={currentLoc.y} {...pinR(0.008)} fill={CORAL} stroke={INK} strokeWidth="1" vectorEffect="non-scaling-stroke" />
+                  <ellipse cx={currentLoc.x} cy={currentLoc.y} {...pinR(0.014)} fill="none" stroke={CORAL} strokeWidth="1" vectorEffect="non-scaling-stroke" className="sbw-ping" />
                 </g>
               )}
 
@@ -806,7 +817,8 @@ export default function ShutterbugWorld() {
                 <g className="sbw-plane-group">
                   <line x1={flying.fromX} y1={flying.fromY} x2={flying.toX} y2={flying.toY} stroke={CORAL} strokeWidth="1" strokeDasharray="3 3" opacity="0.8" />
                   <g style={{ animation: "sbw-fly 0.85s ease-in-out forwards", offsetPath: `path('M${flying.fromX} ${flying.fromY} L${flying.toX} ${flying.toY}')` }}>
-                    <text fontSize="9" fill={CORAL}>✈</text>
+                    {/* scale(1 0.5) cancels the world map's 2x vertical stretch so the plane isn't squished tall */}
+                    <text fontSize="9" fill={CORAL} transform="scale(1 0.5)">✈</text>
                   </g>
                 </g>
               )}
@@ -823,10 +835,10 @@ export default function ShutterbugWorld() {
                      onClick={() => photographCity(id)}
                      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); photographCity(id); } }}
                      style={{ cursor: busy ? "default" : "pointer" }}>
-                    <circle cx={l.x} cy={l.y} r={6 * u} fill="transparent" />
-                    <circle cx={l.x} cy={l.y} r={(isCurrent ? 3.6 : 2.8) * u} fill={isCurrent ? CORAL : GOLD} stroke={INK} strokeWidth={0.7 * u} />
-                    {isCurrent && <circle cx={l.x} cy={l.y} r={5 * u} fill="none" stroke={CORAL} strokeWidth={0.8 * u} className="sbw-ping" />}
-                    <text className="sbw-label" x={l.x + 4 * u} y={l.y - 4 * u} fontSize={6 * u} fontFamily="ui-monospace, monospace" fill={INK} style={{ paintOrder: "stroke", stroke: PAPER, strokeWidth: 1.4 * u }}>{l.city}</text>
+                    <ellipse cx={l.x} cy={l.y} {...pinR(0.017)} fill="transparent" />
+                    <ellipse cx={l.x} cy={l.y} {...pinR(isCurrent ? 0.0115 : 0.009)} fill={isCurrent ? CORAL : GOLD} stroke={INK} strokeWidth="1" vectorEffect="non-scaling-stroke" />
+                    {isCurrent && <ellipse cx={l.x} cy={l.y} {...pinR(0.015)} fill="none" stroke={CORAL} strokeWidth="1" vectorEffect="non-scaling-stroke" className="sbw-ping" />}
+                    <text className="sbw-label" x={l.x + 0.012 * box.w} y={l.y - 0.012 * box.h} fontSize={0.02 * box.h} fontFamily="ui-monospace, monospace" fill={INK} style={{ paintOrder: "stroke", stroke: PAPER, strokeWidth: 0.006 * box.h }}>{l.city}</text>
                   </g>
                 );
               })}
@@ -871,10 +883,10 @@ export default function ShutterbugWorld() {
 
       <style>{`
         .sbw-pin{ outline: none; }
-        .sbw-pin circle:nth-child(2){ transition: r .12s ease; }
-        .sbw-pin:hover circle:nth-child(2){ r: 4; }
+        .sbw-pin ellipse:nth-child(2){ transition: transform .12s ease; transform-box: fill-box; transform-origin: center; }
+        .sbw-pin:hover ellipse:nth-child(2){ transform: scale(1.45); }
         /* Visible keyboard-focus state on the pin dot. */
-        .sbw-pin:focus-visible circle:nth-child(2){ r: 4; stroke: ${CORAL}; stroke-width: 1.6; }
+        .sbw-pin:focus-visible ellipse:nth-child(2){ transform: scale(1.45); stroke: ${CORAL}; stroke-width: 2; }
         /* Smart labels: hidden until the pin is hovered or keyboard-focused;
            the current city and Easy mode keep their labels always on. */
         .sbw-pin--hide .sbw-label{ opacity: 0; transition: opacity .12s ease; }
