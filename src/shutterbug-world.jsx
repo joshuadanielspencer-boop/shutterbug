@@ -93,20 +93,49 @@ function PhotoCredit({ photo, style }) {
   );
 }
 
-const rankFor = (score) => {
-  if (score >= 550) return { title: "Pulitzer-Winning Photojournalist", note: "Flawless work in the field." };
-  if (score >= 400) return { title: "Senior Photojournalist", note: "Sharp eye, sharp instincts." };
-  if (score >= 250) return { title: "Staff Photographer", note: "Solid, dependable coverage." };
-  if (score >= 100) return { title: "Field Intern", note: "You got the shots that counted." };
+// ---- Difficulty tiers. Each game shows `options` city pins on the map, of ----
+// ---- which `assignments` are the real targets; the rest are decoys. Points ----
+// ---- per photo are HIGHER on Easy (younger players) than Hard, on purpose. ----
+// ---- `labels`: "all" = every city named; "smart" = names hidden until you  ----
+// ---- hover/focus a pin (plus the city you're in). `clue`: which clue text.  ----
+const MODES = {
+  easy:   { label: "Easy",   assignments: 3, options: 9,  daysPer: 3, points: 150, labels: "all",   clue: "easy",
+            blurb: "For new explorers: the clue names the continent, every city is labelled, few decoy cities, and plenty of travel days." },
+  medium: { label: "Medium", assignments: 5, options: 15, daysPer: 3, points: 125, labels: "smart", clue: "hard",
+            blurb: "A step up: cryptic clues, city names hidden until you hover or focus a pin, and more decoy cities to sort through." },
+  hard:   { label: "Hard",   assignments: 7, options: 21, daysPer: 2, points: 100, labels: "smart", clue: "hard",
+            blurb: "For seasoned globe-trotters: cryptic clues, no free labels, the most decoy cities, and the fewest travel days." },
+};
+const MODE_ORDER = ["easy", "medium", "hard"];
+
+// How many pins/targets a mode actually uses given the available locations.
+const modePlan = (key) => {
+  const m = MODES[key];
+  const options = Math.min(m.options, LOCATIONS.length);
+  const assignments = Math.min(m.assignments, options);
+  return { ...m, options, assignments };
+};
+
+// The best score a game could reach: every photo landed, and every travel day
+// beyond the minimum (one flight per assignment) banked as leftover-day bonus.
+const maxScoreFor = (nAssign, mode) => nAssign * mode.points + nAssign * (mode.daysPer - 1) * 50;
+
+// Rank on the FRACTION of the achievable max, so a perfect Easy run and a
+// perfect Hard run both earn the top title regardless of raw points.
+const rankFor = (pct) => {
+  if (pct >= 0.9) return { title: "Pulitzer-Winning Photojournalist", note: "Flawless work in the field." };
+  if (pct >= 0.7) return { title: "Senior Photojournalist", note: "Sharp eye, sharp instincts." };
+  if (pct >= 0.5) return { title: "Staff Photographer", note: "Solid, dependable coverage." };
+  if (pct >= 0.25) return { title: "Field Intern", note: "You got the shots that counted." };
   return { title: "Trainee", note: "Read the editor's clues more closely next time." };
 };
 
 export default function ShutterbugWorld() {
   const [screen, setScreen] = useState("start"); // start | play | end
   const [difficulty, setDifficulty] = useState("easy");
-  const [count, setCount] = useState(3);
 
-  const [assignments, setAssignments] = useState([]); // array of location ids
+  const [assignments, setAssignments] = useState([]); // target location ids (the photos to file)
+  const [visible, setVisible] = useState([]); // location ids shown as pins (targets + decoys)
   const [step, setStep] = useState(0);
   const [current, setCurrent] = useState(null); // current location id (null = at airport)
   const [days, setDays] = useState(0);
@@ -126,11 +155,16 @@ export default function ShutterbugWorld() {
   const currentLoc = current ? loc(current) : null;
 
   function startGame() {
-    const shuffled = [...LOCATIONS].sort(() => Math.random() - 0.5).slice(0, count);
-    setAssignments(shuffled.map((l) => l.id));
+    const mode = modePlan(difficulty);
+    // Pick the pins shown this game, then draw the targets from among them so
+    // every assignment is reachable on the map; the rest are random decoys.
+    const shown = [...LOCATIONS].sort(() => Math.random() - 0.5).slice(0, mode.options);
+    const targets = [...shown].sort(() => Math.random() - 0.5).slice(0, mode.assignments);
+    setVisible(shown.map((l) => l.id));
+    setAssignments(targets.map((l) => l.id));
     setStep(0);
     setCurrent(null);
-    setDays(difficulty === "easy" ? count * 3 : count * 2);
+    setDays(mode.assignments * mode.daysPer);
     setScore(0);
     setAlbum([]);
     setMsg({ type: "info", text: "Wire received from your editor. Read the clue, then fly." });
@@ -156,7 +190,7 @@ export default function ShutterbugWorld() {
   function takePhoto() {
     if (!currentLoc || flying) return;
     if (currentLoc.id === target.id) {
-      const gain = difficulty === "easy" ? 100 : 150;
+      const gain = MODES[difficulty].points;
       const nextAlbum = [...album, { id: target.id, subject: target.subject, flag: target.flag, city: target.city, country: target.country, fact: target.fact, icon: target.icon, photo: target.photo }];
       setAlbum(nextAlbum);
       const done = step + 1 >= assignments.length;
@@ -194,22 +228,26 @@ export default function ShutterbugWorld() {
             Every correct shot teaches a bit of world geography.
           </p>
 
-          <div style={{ display: "flex", gap: 18, justifyContent: "center", flexWrap: "wrap", marginTop: 24 }}>
+          <div style={{ marginTop: 24 }}>
             <Field label="Difficulty">
-              <Toggle options={[["easy", "Easy"], ["hard", "Hard"]]} value={difficulty} onChange={setDifficulty} />
-              <p style={{ fontSize: 12, color: INK, opacity: 0.6, margin: "8px 2px 0", maxWidth: 220 }}>
-                {difficulty === "easy" ? "Continent named in the clue, city labels shown, more days." : "Cryptic clues, hidden city labels, fewer days."}
-              </p>
-            </Field>
-            <Field label="Assignments">
-              <Toggle options={[[3, "3"], [5, "5"]]} value={count} onChange={setCount} />
-              <p style={{ fontSize: 12, color: INK, opacity: 0.6, margin: "8px 2px 0", maxWidth: 200 }}>How many photos to complete the trip.</p>
+              <Toggle options={MODE_ORDER.map((k) => [k, MODES[k].label])} value={difficulty} onChange={setDifficulty} />
+              {(() => {
+                const p = modePlan(difficulty);
+                return (
+                  <>
+                    <p style={{ fontSize: 13, color: INK, opacity: 0.75, margin: "10px auto 0", maxWidth: 440, lineHeight: 1.5 }}>{MODES[difficulty].blurb}</p>
+                    <p style={{ fontFamily: "ui-monospace, monospace", fontSize: 12, color: CORAL, margin: "8px 0 0", letterSpacing: "0.04em" }}>
+                      {p.assignments} assignment{p.assignments === 1 ? "" : "s"} · {p.options} cities on the map · {p.assignments * p.daysPer} travel days
+                    </p>
+                  </>
+                );
+              })()}
             </Field>
           </div>
 
           <button onClick={startGame} style={primaryBtn}>Begin the assignment ✈</button>
           <p style={{ fontSize: 11, color: INK, opacity: 0.5, marginTop: 18, lineHeight: 1.5 }}>
-            Real map (Natural Earth) · freely-licensed landmark photos · 10 sample locations
+            Real map (Natural Earth) · freely-licensed landmark photos · {LOCATIONS.length} locations to explore
           </p>
         </div>
       </Frame>
@@ -217,13 +255,17 @@ export default function ShutterbugWorld() {
   }
 
   if (screen === "end") {
-    const r = rankFor(score);
+    const mode = MODES[difficulty];
+    const maxScore = maxScoreFor(assignments.length, mode);
+    const pct = maxScore > 0 ? score / maxScore : 0;
+    const r = rankFor(pct);
     return (
       <Frame>
         <div style={{ maxWidth: 640, margin: "0 auto", textAlign: "center" }}>
           <Stamp>Roll Developed</Stamp>
           <h2 style={{ fontFamily: "ui-sans-serif, system-ui", fontWeight: 900, letterSpacing: "0.08em", fontSize: 30, color: INK, margin: "10px 0 4px" }}>{album.length} / {assignments.length} shots filed</h2>
           <p style={{ fontFamily: "ui-monospace, monospace", fontSize: 22, color: CORAL, fontWeight: 700, margin: "6px 0" }}>{score} pts</p>
+          <p style={{ fontFamily: "ui-monospace, monospace", fontSize: 12, color: INK, opacity: 0.6, margin: "0 0 6px", letterSpacing: "0.06em" }}>{mode.label} · {Math.round(pct * 100)}% of a perfect run</p>
           <p style={{ color: INK, fontWeight: 700, marginTop: 6 }}>{r.title}</p>
           <p style={{ color: INK, opacity: 0.7, marginTop: 2 }}>{r.note}</p>
 
@@ -238,7 +280,9 @@ export default function ShutterbugWorld() {
   }
 
   // play screen
-  const clue = difficulty === "easy" ? target.easy : target.hard;
+  const mode = MODES[difficulty];
+  const clue = mode.clue === "easy" ? target.easy : target.hard;
+  const smallPins = visible.length > 12;
   return (
     <Frame>
       <div style={{ display: "flex", gap: 16, alignItems: "flex-start", flexWrap: "wrap" }}>
@@ -329,32 +373,48 @@ export default function ShutterbugWorld() {
                 </g>
               )}
 
-              {/* city pins */}
-              {LOCATIONS.map((l) => {
-                const isCurrent = l.id === current;
-                const showLabel = difficulty === "easy" || isCurrent;
+              {/* city pins — the visible options (targets + decoys) */}
+              {visible.map((id) => {
+                const l = loc(id);
+                const isCurrent = id === current;
+                const alwaysLabel = mode.labels === "all" || isCurrent;
+                const disabled = !!flying || days <= 0;
+                const r = isCurrent ? 3.2 : (smallPins ? 1.9 : 2.4);
                 return (
-                  <g key={l.id} className="sbw-pin" onClick={() => travelTo(l.id)} style={{ cursor: flying || days <= 0 ? "default" : "pointer" }}>
+                  <g key={id} className={`sbw-pin${alwaysLabel ? "" : " sbw-pin--hide"}`}
+                     role="button" tabIndex={disabled ? -1 : 0}
+                     aria-label={`Fly to ${l.city}, ${l.country}`}
+                     onClick={() => travelTo(id)}
+                     onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); travelTo(id); } }}
+                     style={{ cursor: disabled ? "default" : "pointer" }}>
                     <circle cx={l.x} cy={l.y} r="5.5" fill="transparent" />
-                    <circle cx={l.x} cy={l.y} r={isCurrent ? 3.2 : 2.4} fill={isCurrent ? CORAL : GOLD} stroke={INK} strokeWidth="0.7" />
+                    <circle cx={l.x} cy={l.y} r={r} fill={isCurrent ? CORAL : GOLD} stroke={INK} strokeWidth="0.7" />
                     {isCurrent && <circle cx={l.x} cy={l.y} r="5" fill="none" stroke={CORAL} strokeWidth="0.8" className="sbw-ping" />}
-                    {showLabel && (
-                      <text x={l.x + 4} y={l.y - 4} fontSize="6" fontFamily="ui-monospace, monospace" fill={INK} style={{ paintOrder: "stroke", stroke: PAPER, strokeWidth: 1.4 }}>{l.city}</text>
-                    )}
+                    <text className="sbw-label" x={l.x + 4} y={l.y - 4} fontSize="6" fontFamily="ui-monospace, monospace" fill={INK} style={{ paintOrder: "stroke", stroke: PAPER, strokeWidth: 1.4 }}>{l.city}</text>
                   </g>
                 );
               })}
             </svg>
           </div>
           <p style={{ fontSize: 11, color: INK, opacity: 0.55, marginTop: 8, fontFamily: "ui-monospace, monospace", letterSpacing: "0.06em" }}>
-            {difficulty === "hard" ? "City names hidden — read the clue and reason it out." : "Gold = a city you can fly to.  Coral = where you are now."}
+            {mode.labels === "all" ? "Gold = a city you can fly to.  Coral = where you are now." : "City names hidden — hover or tab to a pin to peek. Read the clue and reason it out."}
           </p>
         </div>
       </div>
 
       <style>{`
+        .sbw-pin{ outline: none; }
         .sbw-pin circle:nth-child(2){ transition: r .12s ease; }
         .sbw-pin:hover circle:nth-child(2){ r: 4; }
+        /* Visible keyboard-focus state on the pin dot. */
+        .sbw-pin:focus-visible circle:nth-child(2){ r: 4; stroke: ${CORAL}; stroke-width: 1.6; }
+        /* Smart labels: hidden until the pin is hovered or keyboard-focused;
+           the current city and Easy mode keep their labels always on. */
+        .sbw-pin--hide .sbw-label{ opacity: 0; transition: opacity .12s ease; }
+        .sbw-pin--hide:hover .sbw-label,
+        .sbw-pin--hide:focus .sbw-label,
+        .sbw-pin--hide:focus-within .sbw-label,
+        .sbw-pin--hide:focus-visible .sbw-label{ opacity: 1; }
         .sbw-ping{ transform-box: fill-box; transform-origin: center; animation: sbw-ping 1.6s ease-out infinite; }
         @keyframes sbw-ping{ 0%{ transform: scale(0.6); opacity:.9 } 100%{ transform: scale(1.9); opacity:0 } }
         @keyframes sbw-fly{ 0%{ offset-distance: 0% } 100%{ offset-distance: 100% } }
