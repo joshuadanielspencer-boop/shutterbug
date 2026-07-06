@@ -264,6 +264,7 @@ export default function ShutterbugWorld() {
   const [score, setScore] = useState(0);
   const [album, setAlbum] = useState([]); // collected {id, subject, flag, fact}
   const [visitedIds, setVisitedIds] = useState([]); // cities flown to this game
+  const [awaitingFlight, setAwaitingFlight] = useState(false); // assignment filed; still at last city, waiting to fly on
   const [msg, setMsg] = useState(null); // {type, text}
   const [flying, setFlying] = useState(null); // {fromX, fromY, toX, toY}
   const [revealed, setRevealed] = useState(false); // has the current city's photo been shot?
@@ -328,6 +329,7 @@ export default function ShutterbugWorld() {
     setAlbum([]);
     setVisitedIds([]);
     setRevealed(false);
+    setAwaitingFlight(false);
     setLastResult(null);
     setPending(null);
     setElapsedMs(0);
@@ -344,8 +346,8 @@ export default function ShutterbugWorld() {
     setPending(null);
     if (kind === "correct") {
       setStep((n) => n + 1);
-      setCurrent(null);   // leave the old city so the just-taken photo clears
-      setRevealed(false);
+      setRevealed(false);      // clear the photo just taken...
+      setAwaitingFlight(true); // ...but stay put so the next flight departs from here
       setMsg({ type: "info", text: "New assignment! Read the editor's clue and fly to the next city." });
     } else if (kind === "win" || kind === "lose") {
       setScreen("end");
@@ -380,6 +382,7 @@ export default function ShutterbugWorld() {
       setCurrent(id);
       setDays(nd);
       setRevealed(false); // a fresh city — nothing shot yet
+      setAwaitingFlight(false); // arrived; you can shoot here now
       setVisitedIds((v) => (v.includes(id) ? v : [...v, id]));
       setFlying(null);
       if (nd <= 0) {
@@ -398,7 +401,7 @@ export default function ShutterbugWorld() {
   }
 
   function takePhoto() {
-    if (!currentLoc || flying || revealed || days <= 0 || pending) return;
+    if (!currentLoc || flying || revealed || days <= 0 || pending || awaitingFlight) return;
     sfx("shutter");
     if (!prefersReduced) setFlashKey((k) => k + 1);
     setRevealed(true); // reveal the photo now that the shutter fired
@@ -507,24 +510,10 @@ export default function ShutterbugWorld() {
           <div style={{ marginTop: 22 }}>
             <Field label="Difficulty">
               <Toggle options={MODE_ORDER.map((k) => [k, MODES[k].label])} value={difficulty} onChange={setDifficulty} />
-              {(() => {
-                const p = modePlan(difficulty);
-                return (
-                  <>
-                    <p style={{ fontSize: 13, color: INK, opacity: 0.75, margin: "10px auto 0", maxWidth: 440, lineHeight: 1.5 }}>{MODES[difficulty].blurb}</p>
-                    <p style={{ fontFamily: "ui-monospace, monospace", fontSize: 12, color: CORAL, margin: "8px 0 0", letterSpacing: "0.04em" }}>
-                      {p.assignments} assignment{p.assignments === 1 ? "" : "s"} · {p.options} cities on the map · {p.assignments * p.daysPer} travel days
-                    </p>
-                  </>
-                );
-              })()}
             </Field>
           </div>
 
           <button onClick={startGame} style={primaryBtn}>Begin the assignment ✈</button>
-          <p style={{ fontSize: 11, color: INK, opacity: 0.5, marginTop: 18, lineHeight: 1.5 }}>
-            Real map (Natural Earth) · freely-licensed landmark photos · {LOCATIONS.length} locations to explore
-          </p>
         </div>
       </Frame>
     );
@@ -715,7 +704,15 @@ export default function ShutterbugWorld() {
           )}
 
           {/* On-location card */}
-          {currentLoc ? (
+          {currentLoc && awaitingFlight ? (
+            <div style={{ marginTop: 12, background: "#fff", border: `1px solid ${GREEN}`, borderRadius: 8, padding: 16, textAlign: "center" }}>
+              <div style={{ fontSize: 30 }} aria-hidden="true">✅</div>
+              <div style={{ fontWeight: 800, color: GREEN, marginTop: 4 }}>Assignment filed!</div>
+              <div style={{ fontSize: 13, color: INK, opacity: 0.8, marginTop: 6, lineHeight: 1.45 }}>
+                You're still in {currentLoc.flag} {currentLoc.city}. Read the editor's new clue and tap the next city to fly there.
+              </div>
+            </div>
+          ) : currentLoc ? (
             <div style={{ marginTop: 12, background: "#fff", border: `1px solid ${PAPER_LINE}`, borderRadius: 8, padding: 14, textAlign: "center" }}>
               <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.18em", color: INK, opacity: 0.6 }}>YOU ARE HERE</div>
               <div style={{ margin: "8px 0", position: "relative", overflow: "hidden", borderRadius: 4 }}>
