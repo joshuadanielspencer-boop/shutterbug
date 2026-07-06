@@ -1,64 +1,164 @@
+// ===========================================================================
+// SHUTTERBUG — GAME CONTENT (locations)
+//
+// This is the ONE file to edit when adding or correcting places. The game
+// components read from it and render generically, so you can add a location
+// by appending an object to the LOCATIONS array below — no code changes.
+//
 // ---------------------------------------------------------------------------
-// Game content — locations, clues, and geography facts.
-//
-// Per the project rules (see CLAUDE.md): all player-facing game content lives
-// here, never hard-coded into components. Components import from this module.
-//
-// Every `fact` and any foreign-language text MUST be accurate and verifiable
-// against a reliable source before it ships. Do not guess or approximate.
-//
-// Coordinate system: mapX in 0..360 (longitude + 180), mapY in 0..180 (90 - latitude).
+// LOCATION SCHEMA — every field a location object can have
 // ---------------------------------------------------------------------------
+//   id          string   Unique lowercase slug, no spaces (e.g. "paris").
+//                         Used as a React key and to match assignments — must
+//                         be unique across all locations.
+//   city        string   City name shown to the player.
+//   country     string   Country name shown to the player.
+//   flag        string   Emoji flag for the country (e.g. "🇫🇷"). Optional
+//                         but nice; shown next to the city name.
+//   continent   string   One of: "Africa", "Asia", "Europe",
+//                         "North America", "South America", "Oceania",
+//                         "Antarctica". Named aloud in the EASY clue.
+//
+//   COORDINATES (position of the city pin on the stylized world map)
+//   x           number   0..360  = longitude + 180  (0 = 180°W, 360 = 180°E).
+//   y           number   0..180  = 90 − latitude    (0 = North Pole, 180 = South).
+//                         Tip: x ≈ longitude + 180, y ≈ 90 − latitude.
+//
+//   subject     string   What the editor asks you to photograph
+//                         (e.g. "The Eiffel Tower").
+//   icon        string   Which hand-drawn placeholder drawing to show. Must be
+//                         one of the known keys (see ICON KEYS below). Used only
+//                         when `photo` is null.
+//
+//   CLUES
+//   easy        string   Beginner clue. Names the CONTINENT out loud.
+//   hard        string   Cryptic clue. No continent, no city name.
+//
+//   fact        string   The geography fact taught on a correct shot. MUST be
+//                         accurate and verifiable against a reliable source
+//                         before it ships (see CLAUDE.md, rule 2).
+//
+//   PLACEHOLDERS (leave as null until you have real, checked content)
+//   photo       string | null
+//                         Path/URL to a real, freely-licensed photo of the
+//                         subject (e.g. "/photos/eiffel.jpg"). When null, the
+//                         game falls back to the hand-drawn `icon`. When set,
+//                         the photo is shown instead.
+//   greeting    object | null
+//                         A local-language greeting for this place. MUST be
+//                         accurate and verifiable before it ships (rule 2) —
+//                         keep null until checked. Shape when filled in:
+//                           {
+//                             text: "Bonjour",        // greeting in the local language/script
+//                             language: "French",     // language name, in English
+//                             pronunciation: "bon-ZHOOR" // rough English pronunciation (optional)
+//                           }
+//
+// ICON KEYS (valid values for `icon`): "eiffel", "clocktower", "pyramid",
+//   "lion", "fuji", "wall", "taj", "liberty", "christ", "opera". Any other
+//   value draws a plain box. To add a new drawing, add a `case` in the
+//   Landmark() switch in src/shutterbug-world.jsx (that is art, not content).
+//
+// ---------------------------------------------------------------------------
+// COPY-PASTE TEMPLATE — duplicate this block, fill it in, add it to LOCATIONS
+// ---------------------------------------------------------------------------
+//   {
+//     id: "",            // unique slug, e.g. "lima"
+//     city: "",
+//     country: "",
+//     flag: "",          // emoji flag, e.g. "🇵🇪"
+//     continent: "",     // e.g. "South America"
+//     x: 0,              // longitude + 180  (0..360)
+//     y: 0,              // 90 − latitude    (0..180)
+//     subject: "",       // what to photograph
+//     icon: "",          // an ICON KEY above (used until `photo` is set)
+//     easy: "",          // clue that names the continent
+//     hard: "",          // cryptic clue
+//     fact: "",          // VERIFIED geography fact
+//     photo: null,       // "/photos/xxx.jpg" once you have a licensed photo
+//     greeting: null,    // { text, language, pronunciation } once verified
+//   },
+// ===========================================================================
 
 export const LOCATIONS = [
   { id: "paris", city: "Paris", country: "France", flag: "🇫🇷", continent: "Europe",
-    subject: "The Eiffel Tower", icon: "eiffel", x: 182.4, y: 41.2,
+    x: 182.4, y: 41.2,
+    subject: "The Eiffel Tower", icon: "eiffel",
     easy: "In EUROPE, find the iron lattice tower in the French capital — the City of Light.",
     hard: "A wrought-iron giant, raised for a World's Fair, now marks a city of light.",
-    fact: "The Eiffel Tower (1889) is ~330 m tall and was the world's tallest structure for 41 years. Paris is the capital of France." },
+    fact: "The Eiffel Tower (1889) is ~330 m tall and was the world's tallest structure for 41 years. Paris is the capital of France.",
+    photo: null,
+    greeting: null },
   { id: "london", city: "London", country: "United Kingdom", flag: "🇬🇧", continent: "Europe",
-    subject: "Big Ben", icon: "clocktower", x: 174.0, y: 36.0,
+    x: 174.0, y: 36.0,
+    subject: "Big Ben", icon: "clocktower",
     easy: "In EUROPE, photograph the great clock tower beside the river in the UK capital.",
     hard: "A famous bell tolls the hours above a grey river in a northern capital.",
-    fact: "'Big Ben' is the bell; the tower is the Elizabeth Tower (1859). London is the capital of the United Kingdom." },
+    fact: "'Big Ben' is the bell; the tower is the Elizabeth Tower (1859). London is the capital of the United Kingdom.",
+    photo: null,
+    greeting: null },
   { id: "cairo", city: "Cairo", country: "Egypt", flag: "🇪🇬", continent: "Africa",
-    subject: "The Pyramids of Giza", icon: "pyramid", x: 211.2, y: 60.0,
+    x: 211.2, y: 60.0,
+    subject: "The Pyramids of Giza", icon: "pyramid",
     easy: "In AFRICA, capture the ancient stone tombs beside Egypt's capital, on the Nile.",
     hard: "Four-sided stone tombs of god-kings rise from desert sands beside a great river.",
-    fact: "The Great Pyramid (~2560 BC) is the last surviving Wonder of the Ancient World. Cairo sits on the Nile, the longest river in Africa." },
+    fact: "The Great Pyramid (~2560 BC) is the last surviving Wonder of the Ancient World. Cairo sits on the Nile, the longest river in Africa.",
+    photo: null,
+    greeting: null },
   { id: "nairobi", city: "Nairobi", country: "Kenya", flag: "🇰🇪", continent: "Africa",
-    subject: "A lion on safari", icon: "lion", x: 216.8, y: 91.3,
+    x: 216.8, y: 91.3,
+    subject: "A lion on safari", icon: "lion",
     easy: "In AFRICA, photograph the big cat on the savanna near Kenya's capital.",
     hard: "The 'king of beasts' prowls the East African grasslands.",
-    fact: "Lions live in prides on the African savanna. Nairobi is Kenya's capital and borders a national park." },
+    fact: "Lions live in prides on the African savanna. Nairobi is Kenya's capital and borders a national park.",
+    photo: null,
+    greeting: null },
   { id: "tokyo", city: "Tokyo", country: "Japan", flag: "🇯🇵", continent: "Asia",
-    subject: "Mount Fuji", icon: "fuji", x: 319.7, y: 54.3,
+    x: 319.7, y: 54.3,
+    subject: "Mount Fuji", icon: "fuji",
     easy: "In ASIA, capture the snow-capped volcano southwest of Japan's capital.",
     hard: "A near-perfect snow-topped cone, sacred in an island nation, seen from the world's largest city.",
-    fact: "Mount Fuji (3,776 m) is Japan's highest peak and an active volcano. Tokyo is the most populous metro area on Earth." },
+    fact: "Mount Fuji (3,776 m) is Japan's highest peak and an active volcano. Tokyo is the most populous metro area on Earth.",
+    photo: null,
+    greeting: null },
   { id: "beijing", city: "Beijing", country: "China", flag: "🇨🇳", continent: "Asia",
-    subject: "The Great Wall", icon: "wall", x: 296.4, y: 50.1,
+    x: 296.4, y: 50.1,
+    subject: "The Great Wall", icon: "wall",
     easy: "In ASIA, find the ancient defensive wall winding through hills north of China's capital.",
     hard: "A stone serpent thousands of miles long guards the north of an ancient empire.",
-    fact: "The Great Wall stretches over 21,000 km in total. Beijing is the capital of China, one of the two most populous countries." },
+    fact: "The Great Wall stretches over 21,000 km in total. Beijing is the capital of China, one of the two most populous countries.",
+    photo: null,
+    greeting: null },
   { id: "agra", city: "Agra", country: "India", flag: "🇮🇳", continent: "Asia",
-    subject: "The Taj Mahal", icon: "taj", x: 258.0, y: 62.8,
+    x: 258.0, y: 62.8,
+    subject: "The Taj Mahal", icon: "taj",
     easy: "In ASIA, photograph the white marble tomb built for a queen, in northern India.",
     hard: "A grieving emperor's white-domed marble monument to lost love.",
-    fact: "The Taj Mahal (completed 1653) is a marble mausoleum built by Shah Jahan. It stands in Agra, India." },
+    fact: "The Taj Mahal (completed 1653) is a marble mausoleum built by Shah Jahan. It stands in Agra, India.",
+    photo: null,
+    greeting: null },
   { id: "nyc", city: "New York", country: "United States", flag: "🇺🇸", continent: "North America",
-    subject: "The Statue of Liberty", icon: "liberty", x: 106.0, y: 49.3,
+    x: 106.0, y: 49.3,
+    subject: "The Statue of Liberty", icon: "liberty",
     easy: "In NORTH AMERICA, capture the copper statue in the harbour of the largest US city.",
     hard: "A gift from France: a green-copper figure lifts a torch over a busy harbour.",
-    fact: "The Statue of Liberty (1886) was a gift from France and stands ~93 m from base to torch." },
+    fact: "The Statue of Liberty (1886) was a gift from France and stands ~93 m from base to torch.",
+    photo: null,
+    greeting: null },
   { id: "rio", city: "Rio de Janeiro", country: "Brazil", flag: "🇧🇷", continent: "South America",
-    subject: "Christ the Redeemer", icon: "christ", x: 136.8, y: 112.9,
+    x: 136.8, y: 112.9,
+    subject: "Christ the Redeemer", icon: "christ",
     easy: "In SOUTH AMERICA, photograph the mountaintop statue above Brazil's famous coastal city.",
     hard: "Arms outstretched atop a peak, a stone figure watches a southern bay.",
-    fact: "Christ the Redeemer (1931) is 30 m tall atop Corcovado. Brazil is the largest country in South America." },
+    fact: "Christ the Redeemer (1931) is 30 m tall atop Corcovado. Brazil is the largest country in South America.",
+    photo: null,
+    greeting: null },
   { id: "sydney", city: "Sydney", country: "Australia", flag: "🇦🇺", continent: "Oceania",
-    subject: "The Sydney Opera House", icon: "opera", x: 331.2, y: 123.9,
+    x: 331.2, y: 123.9,
+    subject: "The Sydney Opera House", icon: "opera",
     easy: "In OCEANIA, find the sail-shaped concert hall on the harbour of Australia's largest city.",
     hard: "White shells rise from a southern harbour in a nation that is also a continent.",
-    fact: "The Sydney Opera House (1973) is a UNESCO World Heritage Site. Australia is both a country and a continent." },
+    fact: "The Sydney Opera House (1973) is a UNESCO World Heritage Site. Australia is both a country and a continent.",
+    photo: null,
+    greeting: null },
 ];

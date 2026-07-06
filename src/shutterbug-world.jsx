@@ -59,6 +59,23 @@ function Landmark({ icon, size = 96 }) {
   }
 }
 
+// ---- The photo shown for a subject: a real `photo` if the data has one, ----
+// ---- otherwise the hand-drawn `icon` placeholder. Content decides which.  ----
+function Photo({ photo, icon, alt = "", size = 96 }) {
+  if (photo) {
+    return (
+      <img
+        src={photo}
+        alt={alt}
+        width={size}
+        height={size}
+        style={{ width: size, height: size, objectFit: "cover", display: "block", borderRadius: 4 }}
+      />
+    );
+  }
+  return <Landmark icon={icon} size={size} />;
+}
+
 // ---- Stylized continent polygons (0..360 x, 0..180 y). Approximate, on purpose. ----
 const CONTINENTS = [
   "M40 28 L70 18 L105 20 L125 30 L128 40 L112 44 L118 55 L100 72 L80 78 L62 70 L55 58 L40 52 L30 40 L34 32 Z", // N America
@@ -135,7 +152,7 @@ export default function ShutterbugWorld() {
     if (!currentLoc || flying) return;
     if (currentLoc.id === target.id) {
       const gain = difficulty === "easy" ? 100 : 150;
-      const nextAlbum = [...album, { id: target.id, subject: target.subject, flag: target.flag, city: target.city, country: target.country, fact: target.fact, icon: target.icon }];
+      const nextAlbum = [...album, { id: target.id, subject: target.subject, flag: target.flag, city: target.city, country: target.country, fact: target.fact, icon: target.icon, photo: target.photo }];
       setAlbum(nextAlbum);
       const done = step + 1 >= assignments.length;
       if (done) {
@@ -245,9 +262,16 @@ export default function ShutterbugWorld() {
           {currentLoc ? (
             <div style={{ marginTop: 12, background: "#fff", border: `1px solid ${PAPER_LINE}`, borderRadius: 8, padding: 14, textAlign: "center" }}>
               <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.18em", color: INK, opacity: 0.6 }}>YOU ARE HERE</div>
-              <div style={{ display: "flex", justifyContent: "center", margin: "6px 0" }}><Landmark icon={currentLoc.icon} size={78} /></div>
+              <div style={{ display: "flex", justifyContent: "center", margin: "6px 0" }}><Photo photo={currentLoc.photo} icon={currentLoc.icon} alt={currentLoc.subject} size={78} /></div>
               <div style={{ fontWeight: 700, color: INK }}>{currentLoc.flag} {currentLoc.city}, {currentLoc.country}</div>
               <div style={{ fontSize: 13, color: INK, opacity: 0.7, marginTop: 2 }}>Subject in view: {currentLoc.subject}</div>
+              {currentLoc.greeting?.text && (
+                <div style={{ fontSize: 13, color: OCEAN, marginTop: 6 }}>
+                  <span aria-hidden="true">💬 </span>Local greeting: “{currentLoc.greeting.text}”
+                  {currentLoc.greeting.language ? ` — ${currentLoc.greeting.language}` : ""}
+                  {currentLoc.greeting.pronunciation ? ` (${currentLoc.greeting.pronunciation})` : ""}
+                </div>
+              )}
               <button onClick={takePhoto} disabled={!!flying} style={{ ...cameraBtn, opacity: flying ? 0.5 : 1 }}>📷 Take the photo</button>
             </div>
           ) : (
@@ -263,7 +287,7 @@ export default function ShutterbugWorld() {
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                 {album.map((p) => (
                   <div key={p.id} title={`${p.subject} — ${p.city}`} style={{ width: 46, height: 52, background: "#fff", border: `1px solid ${PAPER_LINE}`, borderRadius: 3, display: "flex", alignItems: "center", justifyContent: "center", transform: "rotate(-3deg)" }}>
-                    <Landmark icon={p.icon} size={34} />
+                    <Photo photo={p.photo} icon={p.icon} alt={p.subject} size={34} />
                   </div>
                 ))}
               </div>
@@ -367,8 +391,8 @@ function Toggle({ options, value, onChange }) {
 function Polaroid({ p }) {
   return (
     <div style={{ width: 168, background: "#fff", border: `1px solid ${PAPER_LINE}`, borderRadius: 3, padding: 8, transform: `rotate(${(p.id.charCodeAt(0) % 5) - 2}deg)`, boxShadow: "0 3px 8px rgba(16,38,46,0.18)" }}>
-      <div style={{ background: PAPER, display: "flex", alignItems: "center", justifyContent: "center", height: 110, borderRadius: 2 }}>
-        <Landmark icon={p.icon} size={82} />
+      <div style={{ background: PAPER, display: "flex", alignItems: "center", justifyContent: "center", height: 110, borderRadius: 2, overflow: "hidden" }}>
+        <Photo photo={p.photo} icon={p.icon} alt={p.subject} size={82} />
       </div>
       <div style={{ fontWeight: 700, color: INK, fontSize: 13, marginTop: 8 }}>{p.flag} {p.subject}</div>
       <div style={{ fontSize: 11, color: INK, opacity: 0.65, lineHeight: 1.35, marginTop: 4 }}>{p.fact}</div>
