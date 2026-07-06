@@ -164,18 +164,48 @@ const CONTINENTS = CONTINENT_ORDER.filter((c) => LOCATIONS.some((l) => l.contine
 // contain every location on the continent (plus breathing room) and centred on
 // them. For a wide, scattered continent (Oceania, Antarctica) the square can spill
 // past the map edges into open ocean — that's fine, the frame just shows more sea.
+// Antarctica is drawn on a south-polar relief image (a square plate), not the
+// equirectangular projection — so it shows the true round continent, not a sliver.
+const ANT_PLATE = 200; // the polar plate is a 200x200 square in its own units
 const CONTINENT_META = (() => {
   const meta = {};
   for (const c of CONTINENTS) {
+    if (c === "Antarctica") { meta[c] = { mode: "polar", box: { x: 0, y: 0, w: ANT_PLATE, h: ANT_PLATE } }; continue; }
+    // Oceania is Pacific-centred: pull its eastern-Pacific points (Hawaiʻi, Bora
+    // Bora, Easter I., x<180) across the antimeridian so the region reads as one
+    // block instead of being split to opposite edges of a world map.
+    const wrap = c === "Oceania";
     const locs = LOCATIONS.filter((l) => l.continent === c);
-    const xs = locs.map((l) => l.x), ys = locs.map((l) => l.y);
+    const xs = locs.map((l) => (wrap && l.x < 180 ? l.x + 360 : l.x)), ys = locs.map((l) => l.y);
     const minX = Math.min(...xs), maxX = Math.max(...xs), minY = Math.min(...ys), maxY = Math.max(...ys);
     const cx = (minX + maxX) / 2, cy = (minY + maxY) / 2;
     const side = Math.min(360, Math.max(40, Math.max(maxX - minX, maxY - minY) * 1.35));
-    meta[c] = { box: { x: cx - side / 2, y: cy - side / 2, w: side, h: side }, cx, cy };
+    meta[c] = { mode: wrap ? "wrap" : "equirect", box: { x: cx - side / 2, y: cy - side / 2, w: side, h: side }, cx, cy };
   }
   return meta;
 })();
+
+// Real lon/lat of each Antarctic subject → a position on the polar relief plate
+// (azimuthal: distance from the centred pole grows with distance from the pole;
+// longitude sets the bearing). ANT_ROT/ANT_DIR orient it to match the image.
+// lon/lat are kept roughly real for bearing/distance, but a few are nudged within
+// their region (Ross Sea / Victoria Land) so the pins don't overlap on the plate.
+const ANT_LONLAT = {
+  vinson: { lon: -85.6, lat: -78.5 },
+  lemaire: { lon: -63.8, lat: -65.1 },
+  southpole: { lon: 0, lat: -89.99 },
+  emperorpenguins: { lon: 150, lat: -71 },
+  dryvalleys: { lon: 130, lat: -75 },
+  erebus: { lon: 167, lat: -77.6 },
+};
+const ANT_ROT = 0, ANT_DIR = 1, ANT_EDGE = 60; // edge latitude of the plate image
+const antPlate = (id) => {
+  const g = ANT_LONLAT[id];
+  if (!g) return { x: ANT_PLATE / 2, y: ANT_PLATE / 2 };
+  const r = ((90 + g.lat) / (90 - ANT_EDGE)) * (ANT_PLATE / 2 * 0.9);
+  const th = (g.lon * ANT_DIR + ANT_ROT) * Math.PI / 180;
+  return { x: ANT_PLATE / 2 + r * Math.sin(th), y: ANT_PLATE / 2 - r * Math.cos(th) };
+};
 
 // Where each continent's button sits on the world map and where the plane flies
 // to (hand-placed so Oceania lands on Australia rather than the mid-Pacific
@@ -739,9 +769,15 @@ export default function ShutterbugWorld() {
   const mode = MODES[difficulty];
   const clue = mode.clue === "easy" ? target.easy : target.hard;
   const inCity = phase === "city";
-  // City step: the square continent box. World step: the whole map, but with blank
-  // margins top and bottom so it isn't stretched all the way to a square.
-  const box = inCity && pickedContinent ? CONTINENT_META[pickedContinent].box : { x: 0, y: -WORLD_PAD, w: 360, h: 180 + 2 * WORLD_PAD };
+  // City step: the square continent box (a topographic relief plate). World step:
+  // the whole map, but with blank margins top/bottom so it isn't stretched to square.
+  const cityMeta = inCity && pickedContinent ? CONTINENT_META[pickedContinent] : null;
+  const plateMode = cityMeta ? cityMeta.mode : "world"; // "equirect" | "wrap" | "polar" | "world"
+  const box = cityMeta ? cityMeta.box : { x: 0, y: -WORLD_PAD, w: 360, h: 180 + 2 * WORLD_PAD };
+  // Where a location's pin sits on the current plate (polar for Antarctica, shifted
+  // across the antimeridian for Pacific-centred Oceania, else the plain map coords).
+  const pinXY = (l) => plateMode === "polar" ? antPlate(l.id)
+    : { x: (plateMode === "wrap" && l.x < 180) ? l.x + 360 : l.x, y: l.y };
   // The map always fills a SQUARE frame (preserveAspectRatio="none"): the world map
   // is stretched to fill it; each continent box is already square so it fills
   // cleanly. Pins are ellipses whose radii scale with the box (rx∝box.w, ry∝box.h),
@@ -818,7 +854,7 @@ export default function ShutterbugWorld() {
         {/* Map */}
         <div style={{ flex: "2 1 520px", minWidth: 400 }}>
           <div style={{ position: "relative", aspectRatio: "1 / 1", maxWidth: 620, marginInline: "auto", borderRadius: 10, overflow: "hidden", border: `2px solid ${INK}`, boxShadow: "0 6px 0 rgba(16,38,46,0.15)" }}>
-            <svg viewBox={`${box.x} ${box.y} ${box.w} ${box.h}`} preserveAspectRatio="none" style={{ width: "100%", height: "100%", display: "block", background: inCity ? OCEAN : PAPER }}>
+            <svg viewBox={`${box.x} ${box.y} ${box.w} ${box.h}`} preserveAspectRatio="none" style={{ width: "100%", height: "100%", display: "block", background: inCity ? "#0b1a2e" : PAPER }}>
               <defs>
                 <pattern id="sea" width="360" height="180" patternUnits="userSpaceOnUse">
                   <rect width="360" height="180" fill={OCEAN} />
@@ -826,19 +862,27 @@ export default function ShutterbugWorld() {
                   {[...Array(13)].map((_, i) => <line key={"v" + i} x1={i * 30} y1="0" x2={i * 30} y2="180" stroke={OCEAN_DEEP} strokeWidth="0.4" />)}
                 </pattern>
               </defs>
-              {/* Ocean fills the map band (0..180). On the world step the viewBox is
-                  taller than the map, so the extra top/bottom shows the blank (paper)
-                  svg background — a gentler stretch than filling the whole square. */}
-              <rect x="0" y="0" width="360" height="180" fill="url(#sea)" />
+              {/* World step: stylised ocean band (0..180) with blank letterbox margins
+                  top/bottom. City step: a topographic relief plate for the chosen
+                  continent — the equirectangular Blue Marble (cropped by the viewBox),
+                  drawn twice for Pacific-centred Oceania, or the south-polar image for
+                  Antarctica so it shows the true round continent. */}
               {inCity ? (
-                <g stroke={LAND_EDGE} strokeWidth="0.25" strokeLinejoin="round">
-                  {WORLD_COUNTRIES.map((c) => (
-                    <path key={c.name} d={c.d} fill={LAND} fillRule="evenodd" vectorEffect="non-scaling-stroke" />
-                  ))}
-                </g>
+                plateMode === "polar" ? (
+                  <image href="/relief-antarctica.jpg" x="0" y="0" width={ANT_PLATE} height={ANT_PLATE} preserveAspectRatio="none" />
+                ) : plateMode === "wrap" ? (
+                  <g>
+                    <image href="/relief-world.jpg" x="0" y="0" width="360" height="180" preserveAspectRatio="none" />
+                    <image href="/relief-world.jpg" x="360" y="0" width="360" height="180" preserveAspectRatio="none" />
+                  </g>
+                ) : (
+                  <image href="/relief-world.jpg" x="0" y="0" width="360" height="180" preserveAspectRatio="none" />
+                )
               ) : (
-                // World step: each continent is one clickable, colour-coded region.
-                CONTINENTS.map((cont) => (
+                <>
+                <rect x="0" y="0" width="360" height="180" fill="url(#sea)" />
+                {/* World step: each continent is one clickable, colour-coded region. */}
+                {CONTINENTS.map((cont) => (
                   <g key={cont} className="sbw-cont" role="button" tabIndex={busy ? -1 : 0}
                      aria-label={`Choose ${cont}`} onClick={() => pickContinent(cont)}
                      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); pickContinent(cont); } }}
@@ -847,7 +891,8 @@ export default function ShutterbugWorld() {
                       <path key={c.name} d={c.d} fill={CONTINENT_COLOR[cont]} fillRule="evenodd" stroke={INK} strokeWidth="0.3" vectorEffect="non-scaling-stroke" />
                     ))}
                   </g>
-                ))
+                ))}
+                </>
               )}
 
               {/* departure city marker on the world map (continent phase) */}
@@ -872,6 +917,7 @@ export default function ShutterbugWorld() {
               {/* city pins (city phase): the target + same-continent decoys */}
               {inCity && cityOptions.map((id) => {
                 const l = loc(id);
+                const { x: px, y: py } = pinXY(l);
                 const isCurrent = id === current;
                 const alwaysLabel = mode.labels === "all" || isCurrent;
                 return (
@@ -881,10 +927,10 @@ export default function ShutterbugWorld() {
                      onClick={() => photographCity(id)}
                      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); photographCity(id); } }}
                      style={{ cursor: busy ? "default" : "pointer" }}>
-                    <ellipse cx={l.x} cy={l.y} {...pinR(0.017)} fill="transparent" />
-                    <ellipse cx={l.x} cy={l.y} {...pinR(isCurrent ? 0.0115 : 0.009)} fill={isCurrent ? CORAL : GOLD} stroke={INK} strokeWidth="1" vectorEffect="non-scaling-stroke" />
-                    {isCurrent && <ellipse cx={l.x} cy={l.y} {...pinR(0.015)} fill="none" stroke={CORAL} strokeWidth="1" vectorEffect="non-scaling-stroke" className="sbw-ping" />}
-                    <text className="sbw-label" x={l.x + 0.012 * box.w} y={l.y - 0.012 * box.h} fontSize={0.02 * box.h} fontFamily="ui-monospace, monospace" fill={INK} style={{ paintOrder: "stroke", stroke: PAPER, strokeWidth: 0.006 * box.h }}>{l.city}</text>
+                    <ellipse cx={px} cy={py} {...pinR(0.017)} fill="transparent" />
+                    <ellipse cx={px} cy={py} {...pinR(isCurrent ? 0.0115 : 0.009)} fill={isCurrent ? CORAL : GOLD} stroke={INK} strokeWidth="1" vectorEffect="non-scaling-stroke" />
+                    {isCurrent && <ellipse cx={px} cy={py} {...pinR(0.015)} fill="none" stroke={CORAL} strokeWidth="1" vectorEffect="non-scaling-stroke" className="sbw-ping" />}
+                    <text className="sbw-label" x={px + 0.012 * box.w} y={py - 0.012 * box.h} fontSize={0.02 * box.h} fontFamily="ui-monospace, monospace" fill={INK} style={{ paintOrder: "stroke", stroke: PAPER, strokeWidth: 0.006 * box.h }}>{l.city}</text>
                   </g>
                 );
               })}
