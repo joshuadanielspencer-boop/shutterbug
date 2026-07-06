@@ -397,6 +397,11 @@ export default function ShutterbugWorld() {
   const mode = MODES[difficulty];
   const clue = mode.clue === "easy" ? target.easy : target.hard;
   const smallPins = visible.length > 12;
+  // Stretch the map taller so cities get vertical breathing room. Land geometry
+  // is scaled vertically; pins are placed at y*VS but drawn with normal radii so
+  // they stay round (not ovals).
+  const MAP_VS = 1.5;
+  const MAP_H = 180 * MAP_VS;
   return (
     <Frame>
       <div style={{ display: "flex", gap: 16, alignItems: "flex-start", flexWrap: "wrap" }}>
@@ -479,26 +484,27 @@ export default function ShutterbugWorld() {
         {/* Map */}
         <div style={{ flex: "2 1 520px", minWidth: 400 }}>
           <div style={{ borderRadius: 10, overflow: "hidden", border: `2px solid ${INK}`, boxShadow: "0 6px 0 rgba(16,38,46,0.15)" }}>
-            <svg viewBox="0 0 360 180" style={{ width: "100%", display: "block", background: OCEAN }}>
+            <svg viewBox={`0 0 360 ${MAP_H}`} style={{ width: "100%", display: "block", background: OCEAN }}>
               <defs>
-                <pattern id="sea" width="360" height="180" patternUnits="userSpaceOnUse">
-                  <rect width="360" height="180" fill={OCEAN} />
-                  {[...Array(9)].map((_, i) => <line key={i} x1="0" y1={i * 20} x2="360" y2={i * 20} stroke={OCEAN_DEEP} strokeWidth="0.4" />)}
-                  {[...Array(13)].map((_, i) => <line key={"v" + i} x1={i * 30} y1="0" x2={i * 30} y2="180" stroke={OCEAN_DEEP} strokeWidth="0.4" />)}
+                <pattern id="sea" width="360" height={MAP_H} patternUnits="userSpaceOnUse">
+                  <rect width="360" height={MAP_H} fill={OCEAN} />
+                  {[...Array(Math.ceil(MAP_H / 30) + 1)].map((_, i) => <line key={i} x1="0" y1={i * 30} x2="360" y2={i * 30} stroke={OCEAN_DEEP} strokeWidth="0.4" />)}
+                  {[...Array(13)].map((_, i) => <line key={"v" + i} x1={i * 30} y1="0" x2={i * 30} y2={MAP_H} stroke={OCEAN_DEEP} strokeWidth="0.4" />)}
                 </pattern>
               </defs>
-              <rect width="360" height="180" fill="url(#sea)" />
-              <g stroke={LAND_EDGE} strokeWidth="0.25" strokeLinejoin="round">
+              <rect width="360" height={MAP_H} fill="url(#sea)" />
+              {/* Land stretched vertically; strokes kept crisp with non-scaling-stroke. */}
+              <g transform={`scale(1 ${MAP_VS})`} stroke={LAND_EDGE} strokeWidth="0.25" strokeLinejoin="round">
                 {WORLD_COUNTRIES.map((c) => (
-                  <path key={c.name} d={c.d} fill={LAND} fillRule="evenodd" />
+                  <path key={c.name} d={c.d} fill={LAND} fillRule="evenodd" vectorEffect="non-scaling-stroke" />
                 ))}
               </g>
 
-              {/* animated flight path */}
+              {/* animated flight path (y scaled to the stretched map) */}
               {flying && (
                 <g className="sbw-plane-group">
-                  <line x1={flying.fromX} y1={flying.fromY} x2={flying.toX} y2={flying.toY} stroke={CORAL} strokeWidth="1" strokeDasharray="3 3" opacity="0.8" />
-                  <g style={{ animation: "sbw-fly 0.85s ease-in-out forwards", offsetPath: `path('M${flying.fromX} ${flying.fromY} L${flying.toX} ${flying.toY}')` }}>
+                  <line x1={flying.fromX} y1={flying.fromY * MAP_VS} x2={flying.toX} y2={flying.toY * MAP_VS} stroke={CORAL} strokeWidth="1" strokeDasharray="3 3" opacity="0.8" />
+                  <g style={{ animation: "sbw-fly 0.85s ease-in-out forwards", offsetPath: `path('M${flying.fromX} ${flying.fromY * MAP_VS} L${flying.toX} ${flying.toY * MAP_VS}')` }}>
                     <text fontSize="9" fill={CORAL}>✈</text>
                   </g>
                 </g>
@@ -511,6 +517,7 @@ export default function ShutterbugWorld() {
                 const alwaysLabel = mode.labels === "all" || isCurrent;
                 const disabled = !!flying || days <= 0;
                 const r = isCurrent ? 3.2 : (smallPins ? 1.9 : 2.4);
+                const cy = l.y * MAP_VS;
                 return (
                   <g key={id} className={`sbw-pin${alwaysLabel ? "" : " sbw-pin--hide"}`}
                      role="button" tabIndex={disabled ? -1 : 0}
@@ -518,10 +525,10 @@ export default function ShutterbugWorld() {
                      onClick={() => travelTo(id)}
                      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); travelTo(id); } }}
                      style={{ cursor: disabled ? "default" : "pointer" }}>
-                    <circle cx={l.x} cy={l.y} r="5.5" fill="transparent" />
-                    <circle cx={l.x} cy={l.y} r={r} fill={isCurrent ? CORAL : GOLD} stroke={INK} strokeWidth="0.7" />
-                    {isCurrent && <circle cx={l.x} cy={l.y} r="5" fill="none" stroke={CORAL} strokeWidth="0.8" className="sbw-ping" />}
-                    <text className="sbw-label" x={l.x + 4} y={l.y - 4} fontSize="6" fontFamily="ui-monospace, monospace" fill={INK} style={{ paintOrder: "stroke", stroke: PAPER, strokeWidth: 1.4 }}>{l.city}</text>
+                    <circle cx={l.x} cy={cy} r="5.5" fill="transparent" />
+                    <circle cx={l.x} cy={cy} r={r} fill={isCurrent ? CORAL : GOLD} stroke={INK} strokeWidth="0.7" />
+                    {isCurrent && <circle cx={l.x} cy={cy} r="5" fill="none" stroke={CORAL} strokeWidth="0.8" className="sbw-ping" />}
+                    <text className="sbw-label" x={l.x + 4} y={cy - 4} fontSize="6" fontFamily="ui-monospace, monospace" fill={INK} style={{ paintOrder: "stroke", stroke: PAPER, strokeWidth: 1.4 }}>{l.city}</text>
                   </g>
                 );
               })}
