@@ -92,11 +92,12 @@ export function deleteProfile(name) {
   write(s);
 }
 
-// Record one finished game against a profile. Returns { isBest, best }.
-export function recordGame(name, { difficulty, score, visitedIds = [], correctIds = [], missedIds = [] }) {
+// Record one finished game against a profile.
+// Returns { isBest, best, isBestTime, bestTime }.
+export function recordGame(name, { difficulty, score, timeMs = 0, won = false, visitedIds = [], correctIds = [], missedIds = [] }) {
   const s = read();
   const p = s.profiles[name];
-  if (!p) return { isBest: false, best: 0 };
+  if (!p) return { isBest: false, best: 0, isBestTime: false, bestTime: 0 };
 
   p.games = (p.games || 0) + 1;
   p.lastPlayed = Date.now();
@@ -104,6 +105,14 @@ export function recordGame(name, { difficulty, score, visitedIds = [], correctId
   const prevBest = p.best[difficulty] || 0;
   const isBest = score > prevBest;
   if (isBest) p.best[difficulty] = score;
+
+  // Best time is only tracked for a fully completed trip (all shots filed).
+  let isBestTime = false;
+  p.bestTime = p.bestTime || {};
+  if (won && timeMs > 0) {
+    const prevT = p.bestTime[difficulty];
+    if (!prevT || timeMs < prevT) { p.bestTime[difficulty] = timeMs; isBestTime = true; }
+  }
 
   p.loc = p.loc || {};
   const bump = (id, field) => {
@@ -117,7 +126,7 @@ export function recordGame(name, { difficulty, score, visitedIds = [], correctId
 
   s.lastProfile = name;
   write(s);
-  return { isBest, best: p.best[difficulty] };
+  return { isBest, best: p.best[difficulty], isBestTime, bestTime: p.bestTime[difficulty] || 0 };
 }
 
 // How strongly to resurface a location for this profile (higher = more often).

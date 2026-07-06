@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from "react";
 import { LOCATIONS } from "./data/locations.js";
 import { WORLD_COUNTRIES } from "./data/worldmap.js";
 import { listProfiles, lastProfileName, getProfile, createProfile, setLastProfile,
-  recordGame, weightedOrder, passportData, storageAvailable } from "./profiles.js";
+  deleteProfile, recordGame, weightedOrder, passportData, storageAvailable } from "./profiles.js";
 
 /*
   SHUTTERBUG — A World Photo Safari  (working vertical slice)
@@ -157,18 +157,34 @@ const rankFor = (pct) => {
   return { title: "Trainee", note: "Read the editor's clues more closely next time." };
 };
 
+// Milliseconds → "m:ss".
+const fmtTime = (ms) => {
+  const s = Math.max(0, Math.round(ms / 1000));
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+};
+
 // ---- Tiny synthesized sound effects (Web Audio) — no files, nothing to      ----
 // ---- license, and no network. The context is created lazily on first use     ----
 // ---- (always inside a click), satisfying browser autoplay rules.             ----
 const SFX = (() => {
   let ctx = null;
+  let master = null;
   const ac = () => {
-    if (typeof window === "undefined") return null;
-    const AC = window.AudioContext || window.webkitAudioContext;
-    if (!AC) return null;
-    if (!ctx) ctx = new AC();
-    if (ctx.state === "suspended") ctx.resume();
-    return ctx;
+    try {
+      if (typeof window === "undefined") return null;
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return null;
+      if (!ctx) {
+        ctx = new AC();
+        master = ctx.createGain();
+        master.gain.value = 0.5; // one master level so overlapping sounds don't clip
+        master.connect(ctx.destination);
+      }
+      if (ctx.state === "suspended") ctx.resume();
+      return ctx;
+    } catch {
+      return null;
+    }
   };
   const noiseBuf = (c, dur) => {
     const n = Math.max(1, Math.floor(c.sampleRate * dur));
@@ -186,40 +202,41 @@ const SFX = (() => {
     g.gain.setValueAtTime(0.0001, t);
     g.gain.exponentialRampToValueAtTime(peak, t + 0.006);
     g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-    src.connect(f); f.connect(g); g.connect(c.destination);
+    src.connect(f); f.connect(g); g.connect(master);
     src.start(t); src.stop(t + dur);
     return { f, g };
   };
+  const tone = (c, t, freq, dur, peak, type = "sine") => {
+    const o = c.createOscillator();
+    const g = c.createGain();
+    o.type = type; o.frequency.value = freq;
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(peak, t + 0.012);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g); g.connect(master);
+    o.start(t); o.stop(t + dur + 0.02);
+  };
+  const notes = (c, list, step, dur, peak, type) => {
+    const t = c.currentTime;
+    list.forEach((f, i) => tone(c, t + i * step, f, dur, peak, type));
+  };
+  // Every effect is wrapped so an audio hiccup can never break gameplay.
+  const safe = (fn) => { try { const c = ac(); if (c) fn(c); } catch { /* ignore */ } };
   return {
     // Camera shutter: two quick noise clicks (mirror up, shutter close).
-    shutter() {
-      const c = ac(); if (!c) return; const t = c.currentTime;
-      burst(c, t, 0.045, "highpass", 1800, 0.32);
-      burst(c, t + 0.06, 0.05, "highpass", 1300, 0.26);
-    },
+    shutter() { safe((c) => { const t = c.currentTime; burst(c, t, 0.045, "highpass", 1800, 0.32); burst(c, t + 0.06, 0.05, "highpass", 1300, 0.26); }); },
     // Airplane fly-by: filtered noise whose band sweeps up then down (~0.8s).
-    plane() {
-      const c = ac(); if (!c) return; const t = c.currentTime;
-      const { f } = burst(c, t, 0.8, "bandpass", 500, 0.11);
-      f.Q.value = 0.9;
-      f.frequency.setValueAtTime(300, t);
-      f.frequency.linearRampToValueAtTime(1150, t + 0.4);
-      f.frequency.linearRampToValueAtTime(380, t + 0.8);
-    },
-    // Success: two soft rising sine blips.
-    ding() {
-      const c = ac(); if (!c) return; const t = c.currentTime;
-      [880, 1320].forEach((freq, i) => {
-        const o = c.createOscillator(); const g = c.createGain();
-        o.type = "sine"; o.frequency.value = freq;
-        const s = t + i * 0.09;
-        g.gain.setValueAtTime(0.0001, s);
-        g.gain.exponentialRampToValueAtTime(0.22, s + 0.01);
-        g.gain.exponentialRampToValueAtTime(0.0001, s + 0.22);
-        o.connect(g); g.connect(c.destination);
-        o.start(s); o.stop(s + 0.24);
-      });
-    },
+    plane() { safe((c) => { const t = c.currentTime; const { f } = burst(c, t, 0.8, "bandpass", 500, 0.11); f.Q.value = 0.9; f.frequency.setValueAtTime(300, t); f.frequency.linearRampToValueAtTime(1150, t + 0.4); f.frequency.linearRampToValueAtTime(380, t + 0.8); }); },
+    // Correct shot: bright rising three-note chime (C–E–G).
+    success() { safe((c) => notes(c, [523.25, 659.25, 783.99], 0.085, 0.22, 0.3, "triangle")); },
+    // Trip complete: a longer four-note fanfare up to the octave.
+    win() { safe((c) => notes(c, [523.25, 659.25, 783.99, 1046.5], 0.11, 0.34, 0.32, "triangle")); },
+    // Wrong subject: low descending two-note buzz.
+    fail() { safe((c) => { const t = c.currentTime; tone(c, t, 196, 0.18, 0.26, "square"); tone(c, t + 0.13, 155.56, 0.3, 0.24, "square"); }); },
+    // Out of days: slow sad descending minor line.
+    lose() { safe((c) => notes(c, [440, 349.23, 261.63], 0.17, 0.42, 0.26, "sine")); },
+    // Passport stamp / new record: quick high sparkle.
+    stamp() { safe((c) => { const t = c.currentTime; tone(c, t, 1568, 0.12, 0.22, "triangle"); tone(c, t + 0.07, 2093, 0.16, 0.2, "triangle"); }); },
   };
 })();
 
@@ -240,14 +257,18 @@ export default function ShutterbugWorld() {
   const [revealed, setRevealed] = useState(false); // has the current city's photo been shot?
   const [flashKey, setFlashKey] = useState(0); // bump to replay the shutter flash
   const [soundOn, setSoundOn] = useState(true);
+  const [pending, setPending] = useState(null); // result popup that pauses play until dismissed
+  const [elapsedMs, setElapsedMs] = useState(0); // final game time, shown on the results screen
 
   // Player profiles (localStorage). profileName === null means "Guest — no saving".
   const [canSave] = useState(() => storageAvailable());
   const [profiles, setProfiles] = useState(() => (canSave ? listProfiles() : []));
   const [profileName, setProfileName] = useState(() => (canSave ? lastProfileName() : null));
   const [newName, setNewName] = useState("");
-  const [lastResult, setLastResult] = useState(null); // {isBest} after a recorded game
+  const [lastResult, setLastResult] = useState(null); // {isBest, isBestTime} after a recorded game
+  const [confirmRemove, setConfirmRemove] = useState(false); // passport delete confirmation
   const recorded = useRef(false);
+  const startRef = useRef(0); // ms timestamp the current game began
   const timer = useRef(null);
   const refreshProfiles = () => setProfiles(listProfiles());
 
@@ -280,10 +301,26 @@ export default function ShutterbugWorld() {
     setVisitedIds([]);
     setRevealed(false);
     setLastResult(null);
+    setPending(null);
+    setElapsedMs(0);
+    startRef.current = Date.now();
     recorded.current = false;
     setMsg({ type: "info", text: "Wire received from your editor. Read the clue, then fly." });
     setFlying(null);
     setScreen("play");
+  }
+
+  // Dismiss the result popup and do what its button promised.
+  function continueFromResult() {
+    const kind = pending?.kind;
+    setPending(null);
+    if (kind === "correct") {
+      setStep((n) => n + 1);
+      setMsg({ type: "info", text: "New wire from the editor — read the clue and fly." });
+    } else if (kind === "win" || kind === "lose") {
+      setScreen("end");
+    }
+    // "wrong" just closes and leaves you in the city to fly on.
   }
 
   // When a game ends, record its outcome once against the active profile.
@@ -293,8 +330,10 @@ export default function ShutterbugWorld() {
       if (profileName) {
         const correctIds = album.map((p) => p.id);
         const missedIds = assignments.filter((id) => !correctIds.includes(id));
-        const res = recordGame(profileName, { difficulty, score, visitedIds, correctIds, missedIds });
+        const won = assignments.length > 0 && correctIds.length === assignments.length;
+        const res = recordGame(profileName, { difficulty, score, timeMs: elapsedMs, won, visitedIds, correctIds, missedIds });
         setLastResult(res);
+        if (res.isBest || res.isBestTime) sfx("stamp");
         refreshProfiles();
       }
     }
@@ -302,7 +341,7 @@ export default function ShutterbugWorld() {
   }, [screen]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function travelTo(id) {
-    if (id === current || flying || days <= 0) return;
+    if (id === current || flying || days <= 0 || pending) return;
     const from = current ? loc(current) : { x: 106, y: 49 }; // depart from NYC hub if at airport
     const to = loc(id);
     sfx("plane");
@@ -314,10 +353,13 @@ export default function ShutterbugWorld() {
       setVisitedIds((v) => (v.includes(id) ? v : [...v, id]));
       setFlying(null);
       if (nd <= 0) {
-        setMsg({ type: "lose", text: `Touched down in ${to.city} ${to.flag} — but your travel days are spent.` });
-        timer.current = setTimeout(() => setScreen("end"), 1100);
+        setElapsedMs(Date.now() - startRef.current);
+        sfx("lose");
+        setPending({ kind: "lose", tone: "bad", emoji: "⏳", title: "Out of travel days!",
+          subtitle: `You landed in ${to.city} ${to.flag}, but the trip's budget is spent.`,
+          buttonLabel: "See my results" });
       } else {
-        setMsg({ type: "info", text: `Arrived in ${to.city}, ${to.country} ${to.flag}` });
+        setMsg({ type: "info", text: `Arrived in ${to.city}, ${to.country} ${to.flag}. Is the editor's subject here?` });
       }
     };
     if (prefersReduced) { finalize(); return; }
@@ -326,37 +368,51 @@ export default function ShutterbugWorld() {
   }
 
   function takePhoto() {
-    if (!currentLoc || flying || revealed || days <= 0) return;
+    if (!currentLoc || flying || revealed || days <= 0 || pending) return;
     sfx("shutter");
     if (!prefersReduced) setFlashKey((k) => k + 1);
     setRevealed(true); // reveal the photo now that the shutter fired
     const d = Math.round((days - SHOT_COST) * 10) / 10; // a shot costs half a day
     setDays(d);
+
     if (currentLoc.id === target.id) {
-      sfx("ding");
       const gain = MODES[difficulty].points;
       setAlbum((a) => [...a, { id: target.id, subject: target.subject, flag: target.flag, city: target.city, country: target.country, fact: target.fact, icon: target.icon, photo: target.photo }]);
       const done = step + 1 >= assignments.length;
       if (done) {
-        const bonus = Math.max(0, d) * 50;
-        setScore((s) => s + gain + Math.round(bonus));
-        setMsg({ type: "win", text: `Perfect shot! +${gain}, plus ${Math.round(bonus)} for ${d} day${d === 1 ? "" : "s"} to spare.` });
-        timer.current = setTimeout(() => setScreen("end"), 1100);
+        const bonus = Math.round(Math.max(0, d) * 50);
+        setScore((s) => s + gain + bonus);
+        setElapsedMs(Date.now() - startRef.current);
+        sfx("win");
+        setPending({ kind: "win", tone: "good", emoji: "🏆", title: "Trip complete!",
+          subtitle: `A perfect shot of ${target.subject}! +${gain}${bonus ? `, plus ${bonus} for ${d} day${d === 1 ? "" : "s"} to spare` : ""}.`,
+          fact: target.fact, buttonLabel: "See my results 📸" });
       } else if (d <= 0) {
         setScore((s) => s + gain);
-        setMsg({ type: "lose", text: `Got the shot (+${gain}) — but that spent your last day. The roll's done.` });
-        timer.current = setTimeout(() => setScreen("end"), 1100);
+        setElapsedMs(Date.now() - startRef.current);
+        sfx("lose");
+        setPending({ kind: "lose", tone: "bad", emoji: "⏳", title: "Got the shot — but out of days!",
+          subtitle: `You filed ${target.subject} (+${gain}), but that spent your last travel day.`,
+          fact: target.fact, buttonLabel: "See my results" });
       } else {
         setScore((s) => s + gain);
-        setStep((n) => n + 1);
-        setMsg({ type: "win", text: `Got it! +${gain}. New wire from the editor — next assignment.` });
+        sfx("success");
+        setPending({ kind: "correct", tone: "good", emoji: "✅", title: "Perfect shot!",
+          subtitle: `You photographed ${target.subject}. +${gain} points!`,
+          fact: target.fact, buttonLabel: "Next assignment ✈" });
       }
     } else {
       if (d <= 0) {
-        setMsg({ type: "lose", text: `That's ${currentLoc.subject}, not what the editor wanted — and you're out of days.` });
-        timer.current = setTimeout(() => setScreen("end"), 1100);
+        setElapsedMs(Date.now() - startRef.current);
+        sfx("lose");
+        setPending({ kind: "lose", tone: "bad", emoji: "⏳", title: "Out of travel days!",
+          subtitle: `That's ${currentLoc.subject}, not what the editor wanted — and the trip's over.`,
+          buttonLabel: "See my results" });
       } else {
-        setMsg({ type: "warn", text: `That's ${currentLoc.subject} — not the assignment. Half a day gone; check the clue and fly on.` });
+        sfx("fail");
+        setPending({ kind: "wrong", tone: "bad", emoji: "❌", title: "Not the assignment",
+          subtitle: `That's ${currentLoc.subject}. The editor wants ${target.subject}. Half a day gone — read the clue and fly on.`,
+          buttonLabel: "Keep looking 🔍" });
       }
     }
   }
@@ -405,7 +461,7 @@ export default function ShutterbugWorld() {
                 </button>
               </form>
               {profileName ? (
-                <button onClick={() => setScreen("passport")}
+                <button onClick={() => { setConfirmRemove(false); setScreen("passport"); }}
                   style={{ marginTop: 10, padding: "7px 16px", borderRadius: 8, border: `1.5px solid ${CORAL}`, background: "transparent", color: CORAL, fontWeight: 700, fontSize: 13, cursor: "pointer" }}>
                   📕 {profileName}'s passport
                 </button>
@@ -453,15 +509,20 @@ export default function ShutterbugWorld() {
         <div style={{ maxWidth: 640, margin: "0 auto", textAlign: "center" }}>
           <Stamp>Roll Developed</Stamp>
           <h2 style={{ fontFamily: "ui-sans-serif, system-ui", fontWeight: 900, letterSpacing: "0.08em", fontSize: 30, color: INK, margin: "10px 0 4px" }}>{album.length} / {assignments.length} shots filed</h2>
-          <p style={{ fontFamily: "ui-monospace, monospace", fontSize: 22, color: CORAL, fontWeight: 700, margin: "6px 0" }}>{score} pts</p>
+          <p style={{ fontFamily: "ui-monospace, monospace", fontSize: 22, color: CORAL, fontWeight: 700, margin: "6px 0" }}>{score} pts · ⏱ {fmtTime(elapsedMs)}</p>
           <p style={{ fontFamily: "ui-monospace, monospace", fontSize: 12, color: INK, opacity: 0.6, margin: "0 0 6px", letterSpacing: "0.06em" }}>{mode.label} · {Math.round(pct * 100)}% of a perfect run</p>
           <p style={{ color: INK, fontWeight: 700, marginTop: 6 }}>{r.title}</p>
           <p style={{ color: INK, opacity: 0.7, marginTop: 2 }}>{r.note}</p>
 
-          {profileName && lastResult?.isBest && (
-            <p style={{ marginTop: 10, display: "inline-block", background: GOLD, color: INK, fontWeight: 800, fontSize: 14, padding: "6px 14px", borderRadius: 20 }}>
-              ★ New personal best for {profileName}!
-            </p>
+          {profileName && (lastResult?.isBest || lastResult?.isBestTime) && (
+            <div style={{ marginTop: 10, display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap" }}>
+              {lastResult.isBest && (
+                <span style={{ background: GOLD, color: INK, fontWeight: 800, fontSize: 14, padding: "6px 14px", borderRadius: 20 }}>★ New best score!</span>
+              )}
+              {lastResult.isBestTime && (
+                <span style={{ background: GREEN, color: "#fff", fontWeight: 800, fontSize: 14, padding: "6px 14px", borderRadius: 20 }}>⏱ New best time!</span>
+              )}
+            </div>
           )}
 
           <div style={{ display: "flex", gap: 14, flexWrap: "wrap", justifyContent: "center", marginTop: 22 }}>
@@ -471,7 +532,7 @@ export default function ShutterbugWorld() {
           <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap", marginTop: 26 }}>
             <button onClick={() => setScreen("start")} style={primaryBtn}>New assignment</button>
             {profileName && (
-              <button onClick={() => setScreen("passport")} style={{ ...primaryBtn, background: "transparent", color: CORAL, border: `2px solid ${CORAL}`, boxShadow: "none" }}>
+              <button onClick={() => { setConfirmRemove(false); setScreen("passport"); }} style={{ ...primaryBtn, background: "transparent", color: CORAL, border: `2px solid ${CORAL}`, boxShadow: "none" }}>
                 📕 View passport
               </button>
             )}
@@ -495,6 +556,7 @@ export default function ShutterbugWorld() {
     }
     const pp = passportData(profile);
     const best = profile.best || {};
+    const bt = profile.bestTime || {};
     return (
       <Frame>
         <div style={{ maxWidth: 840, margin: "0 auto" }}>
@@ -503,7 +565,7 @@ export default function ShutterbugWorld() {
               <Stamp>Passport</Stamp>
               <h2 style={{ fontFamily: "ui-sans-serif, system-ui", fontWeight: 900, fontSize: 28, color: INK, margin: "8px 0 0" }}>🧳 {profile.name}</h2>
             </div>
-            <button onClick={() => setScreen("start")} style={{ padding: "9px 18px", borderRadius: 8, border: `1.5px solid ${INK}`, background: "transparent", color: INK, fontWeight: 700, cursor: "pointer" }}>← Back</button>
+            <button onClick={() => { setConfirmRemove(false); setScreen("start"); }} style={{ padding: "9px 18px", borderRadius: 8, border: `1.5px solid ${INK}`, background: "transparent", color: INK, fontWeight: 700, cursor: "pointer" }}>← Back</button>
           </div>
 
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 16 }}>
@@ -513,6 +575,15 @@ export default function ShutterbugWorld() {
             <StatCard label="Best · Easy" value={best.easy ? String(best.easy) : "—"} />
             <StatCard label="Best · Medium" value={best.medium ? String(best.medium) : "—"} />
             <StatCard label="Best · Hard" value={best.hard ? String(best.hard) : "—"} />
+          </div>
+
+          <div style={{ marginTop: 12, display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+            <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.12em", color: INK, opacity: 0.6 }}>⏱ BEST TIMES</span>
+            {MODE_ORDER.map((k) => (
+              <span key={k} style={{ fontFamily: "ui-monospace, monospace", fontSize: 12, color: INK, background: PAPER, border: `1px solid ${PAPER_LINE}`, borderRadius: 14, padding: "4px 10px" }}>
+                {MODES[k].label}: {bt[k] ? fmtTime(bt[k]) : "—"}
+              </span>
+            ))}
           </div>
 
           <div style={{ marginTop: 14, display: "flex", gap: 8, flexWrap: "wrap" }}>
@@ -543,6 +614,31 @@ export default function ShutterbugWorld() {
               ))}
             </div>
           )}
+
+          {/* Remove traveller — two-step so it can't be clicked by accident. */}
+          <div style={{ marginTop: 28, paddingTop: 16, borderTop: `1px solid ${PAPER_LINE}`, textAlign: "center" }}>
+            {confirmRemove ? (
+              <div>
+                <p style={{ color: INK, fontWeight: 700, margin: "0 0 4px" }}>Remove {profile.name}?</p>
+                <p style={{ color: INK, opacity: 0.7, fontSize: 13, margin: "0 0 12px" }}>This permanently erases {profile.name}'s stamps, scores, and best times. This can't be undone.</p>
+                <div style={{ display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap" }}>
+                  <button onClick={() => { deleteProfile(profile.name); setConfirmRemove(false); setProfileName(null); refreshProfiles(); setScreen("start"); }}
+                    style={{ padding: "10px 18px", borderRadius: 8, border: "none", background: CORAL, color: "#fff", fontWeight: 800, cursor: "pointer", boxShadow: "0 3px 0 #A93A28" }}>
+                    Yes, remove
+                  </button>
+                  <button onClick={() => setConfirmRemove(false)}
+                    style={{ padding: "10px 18px", borderRadius: 8, border: `1.5px solid ${INK}`, background: "transparent", color: INK, fontWeight: 700, cursor: "pointer" }}>
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button onClick={() => setConfirmRemove(true)}
+                style={{ padding: "8px 16px", borderRadius: 8, border: `1.5px solid ${PAPER_LINE}`, background: "transparent", color: INK, opacity: 0.7, fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
+                Remove this traveller…
+              </button>
+            )}
+          </div>
         </div>
       </Frame>
     );
@@ -714,10 +810,14 @@ export default function ShutterbugWorld() {
         /* White shutter flash over the photo when you take a shot. */
         .sbw-flash{ position: absolute; inset: 0; background: #fff; border-radius: 4px; pointer-events: none; opacity: 0; animation: sbw-flash 0.42s ease-out; }
         @keyframes sbw-flash{ 0%{ opacity: 0 } 10%{ opacity: 0.95 } 100%{ opacity: 0 } }
+        /* Result popup pop-in. */
+        .sbw-pop{ animation: sbw-pop 0.22s cubic-bezier(.2,.8,.3,1.2); }
+        @keyframes sbw-pop{ 0%{ transform: scale(0.82); opacity: 0 } 100%{ transform: scale(1); opacity: 1 } }
         @media (prefers-reduced-motion: reduce){
-          .sbw-ping{ animation: none } .sbw-plane-group{ display: none } .sbw-flash{ animation: none; opacity: 0 }
+          .sbw-ping{ animation: none } .sbw-plane-group{ display: none } .sbw-flash{ animation: none; opacity: 0 } .sbw-pop{ animation: none }
         }
       `}</style>
+      {pending && <ResultModal data={pending} onContinue={continueFromResult} reduced={prefersReduced} />}
     </Frame>
   );
 }
@@ -729,6 +829,32 @@ function Frame({ children }) {
       <div style={{ maxWidth: 1080, margin: "0 auto", background: PAPER, borderRadius: 14, padding: 22, border: `1px solid ${PAPER_LINE}`,
         backgroundImage: `repeating-linear-gradient(0deg, transparent, transparent 27px, ${PAPER_LINE}55 27px, ${PAPER_LINE}55 28px)` }}>
         {children}
+      </div>
+    </div>
+  );
+}
+// Big obvious success/failure popup that pauses play until the player clicks on.
+function ResultModal({ data, onContinue, reduced }) {
+  const good = data.tone === "good";
+  const accent = good ? GREEN : CORAL;
+  return (
+    <div role="dialog" aria-modal="true" aria-label={data.title}
+      style={{ position: "fixed", inset: 0, background: "rgba(16,38,46,0.62)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16, zIndex: 50 }}>
+      <div className={reduced ? "" : "sbw-pop"}
+        style={{ background: PAPER, borderRadius: 16, border: `3px solid ${accent}`, boxShadow: "0 14px 44px rgba(0,0,0,0.35)", maxWidth: 420, width: "100%", padding: "26px 22px", textAlign: "center" }}>
+        <div style={{ fontSize: 56, lineHeight: 1 }} aria-hidden="true">{data.emoji}</div>
+        <h2 style={{ fontFamily: "ui-sans-serif, system-ui", fontWeight: 900, fontSize: 26, color: accent, margin: "10px 0 6px" }}>{data.title}</h2>
+        <p style={{ color: INK, fontSize: 15, lineHeight: 1.5, margin: "0 auto", maxWidth: 340 }}>{data.subtitle}</p>
+        {data.fact && (
+          <div style={{ marginTop: 14, background: "#fff", border: `1px dashed ${accent}`, borderRadius: 10, padding: "10px 12px", textAlign: "left" }}>
+            <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 10, letterSpacing: "0.18em", color: accent, marginBottom: 4 }}>📖 DID YOU KNOW?</div>
+            <div style={{ color: INK, fontSize: 13, lineHeight: 1.45 }}>{data.fact}</div>
+          </div>
+        )}
+        <button autoFocus onClick={onContinue}
+          style={{ ...primaryBtn, marginTop: 20, background: accent, boxShadow: `0 4px 0 ${good ? "#2E7A55" : "#A93A28"}` }}>
+          {data.buttonLabel}
+        </button>
       </div>
     </div>
   );
