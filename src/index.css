@@ -11,6 +11,8 @@ body {
 body {
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial,
     sans-serif;
+  /* Sepia base so any overscroll matches the faded-map background. */
+  background: #b09669;
 }
 
 #root {
