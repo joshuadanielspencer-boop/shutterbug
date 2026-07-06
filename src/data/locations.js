@@ -47,12 +47,20 @@
 //   greeting    object | null
 //                         A local-language greeting for this place. MUST be
 //                         accurate and verifiable before it ships (rule 2) —
-//                         keep null until checked. Shape when filled in:
+//                         keep null until checked (see SOURCES below). Shape:
 //                           {
-//                             text: "Bonjour",        // greeting in the local language/script
-//                             language: "French",     // language name, in English
-//                             pronunciation: "bon-ZHOOR" // rough English pronunciation (optional)
+//                             text: "こんにちは (Konnichiwa)", // greeting in native script; add romanization in ( ) for non-Latin scripts
+//                             language: "Japanese",           // language name, in English
+//                             pronunciation: "kon-nee-chee-wah" // rough English "say it like this" (optional, may be null)
 //                           }
+//
+// SOURCES — greetings verified 2026-07-05 against Wikipedia / Wiktionary and
+//   language-dictionary references (e.g. As-salamu_alaykum, Jambo_(greeting),
+//   Namaste on Wikipedia; Cambridge/Wiktionary for bonjour, olá, konnichiwa,
+//   你好). Re-check before relying on them. Kenya: "Jambo" is the common
+//   friendly/visitor greeting for "hello" (native speakers also use "Habari").
+//   Egypt: "Marhaba" = an informal "hello/welcome"; "As-salamu alaykum" is the
+//   more formal alternative. Australia: "G'day" is informal Australian English.
 //
 // ICON KEYS (valid values for `icon`): "eiffel", "clocktower", "pyramid",
 //   "lion", "fuji", "wall", "taj", "liberty", "christ", "opera". Any other
@@ -88,7 +96,7 @@ export const LOCATIONS = [
     hard: "A wrought-iron giant, raised for a World's Fair, now marks a city of light.",
     fact: "The Eiffel Tower (1889) is ~330 m tall and was the world's tallest structure for 41 years. Paris is the capital of France.",
     photo: null,
-    greeting: null },
+    greeting: { text: "Bonjour", language: "French", pronunciation: "bohn-ZHOOR" } },
   { id: "london", city: "London", country: "United Kingdom", flag: "🇬🇧", continent: "Europe",
     x: 174.0, y: 36.0,
     subject: "Big Ben", icon: "clocktower",
@@ -96,7 +104,7 @@ export const LOCATIONS = [
     hard: "A famous bell tolls the hours above a grey river in a northern capital.",
     fact: "'Big Ben' is the bell; the tower is the Elizabeth Tower (1859). London is the capital of the United Kingdom.",
     photo: null,
-    greeting: null },
+    greeting: { text: "Hello", language: "English", pronunciation: null } },
   { id: "cairo", city: "Cairo", country: "Egypt", flag: "🇪🇬", continent: "Africa",
     x: 211.2, y: 60.0,
     subject: "The Pyramids of Giza", icon: "pyramid",
@@ -104,7 +112,7 @@ export const LOCATIONS = [
     hard: "Four-sided stone tombs of god-kings rise from desert sands beside a great river.",
     fact: "The Great Pyramid (~2560 BC) is the last surviving Wonder of the Ancient World. Cairo sits on the Nile, the longest river in Africa.",
     photo: null,
-    greeting: null },
+    greeting: { text: "مرحبا (Marhaba)", language: "Arabic", pronunciation: "MAR-ha-ba" } },
   { id: "nairobi", city: "Nairobi", country: "Kenya", flag: "🇰🇪", continent: "Africa",
     x: 216.8, y: 91.3,
     subject: "A lion on safari", icon: "lion",
@@ -112,7 +120,7 @@ export const LOCATIONS = [
     hard: "The 'king of beasts' prowls the East African grasslands.",
     fact: "Lions live in prides on the African savanna. Nairobi is Kenya's capital and borders a national park.",
     photo: null,
-    greeting: null },
+    greeting: { text: "Jambo", language: "Swahili", pronunciation: "JAM-boh" } },
   { id: "tokyo", city: "Tokyo", country: "Japan", flag: "🇯🇵", continent: "Asia",
     x: 319.7, y: 54.3,
     subject: "Mount Fuji", icon: "fuji",
@@ -120,7 +128,7 @@ export const LOCATIONS = [
     hard: "A near-perfect snow-topped cone, sacred in an island nation, seen from the world's largest city.",
     fact: "Mount Fuji (3,776 m) is Japan's highest peak and an active volcano. Tokyo is the most populous metro area on Earth.",
     photo: null,
-    greeting: null },
+    greeting: { text: "こんにちは (Konnichiwa)", language: "Japanese", pronunciation: "kon-nee-chee-wah" } },
   { id: "beijing", city: "Beijing", country: "China", flag: "🇨🇳", continent: "Asia",
     x: 296.4, y: 50.1,
     subject: "The Great Wall", icon: "wall",
@@ -128,7 +136,7 @@ export const LOCATIONS = [
     hard: "A stone serpent thousands of miles long guards the north of an ancient empire.",
     fact: "The Great Wall stretches over 21,000 km in total. Beijing is the capital of China, one of the two most populous countries.",
     photo: null,
-    greeting: null },
+    greeting: { text: "你好 (Nǐ hǎo)", language: "Mandarin Chinese", pronunciation: "nee-HOW" } },
   { id: "agra", city: "Agra", country: "India", flag: "🇮🇳", continent: "Asia",
     x: 258.0, y: 62.8,
     subject: "The Taj Mahal", icon: "taj",
@@ -136,7 +144,7 @@ export const LOCATIONS = [
     hard: "A grieving emperor's white-domed marble monument to lost love.",
     fact: "The Taj Mahal (completed 1653) is a marble mausoleum built by Shah Jahan. It stands in Agra, India.",
     photo: null,
-    greeting: null },
+    greeting: { text: "नमस्ते (Namaste)", language: "Hindi", pronunciation: "nuh-muh-STAY" } },
   { id: "nyc", city: "New York", country: "United States", flag: "🇺🇸", continent: "North America",
     x: 106.0, y: 49.3,
     subject: "The Statue of Liberty", icon: "liberty",
@@ -144,7 +152,7 @@ export const LOCATIONS = [
     hard: "A gift from France: a green-copper figure lifts a torch over a busy harbour.",
     fact: "The Statue of Liberty (1886) was a gift from France and stands ~93 m from base to torch.",
     photo: null,
-    greeting: null },
+    greeting: { text: "Hello", language: "English", pronunciation: null } },
   { id: "rio", city: "Rio de Janeiro", country: "Brazil", flag: "🇧🇷", continent: "South America",
     x: 136.8, y: 112.9,
     subject: "Christ the Redeemer", icon: "christ",
@@ -152,7 +160,7 @@ export const LOCATIONS = [
     hard: "Arms outstretched atop a peak, a stone figure watches a southern bay.",
     fact: "Christ the Redeemer (1931) is 30 m tall atop Corcovado. Brazil is the largest country in South America.",
     photo: null,
-    greeting: null },
+    greeting: { text: "Olá", language: "Portuguese", pronunciation: "oh-LAH" } },
   { id: "sydney", city: "Sydney", country: "Australia", flag: "🇦🇺", continent: "Oceania",
     x: 331.2, y: 123.9,
     subject: "The Sydney Opera House", icon: "opera",
@@ -160,5 +168,5 @@ export const LOCATIONS = [
     hard: "White shells rise from a southern harbour in a nation that is also a continent.",
     fact: "The Sydney Opera House (1973) is a UNESCO World Heritage Site. Australia is both a country and a continent.",
     photo: null,
-    greeting: null },
+    greeting: { text: "G'day", language: "English (Australian)", pronunciation: "g-DAY" } },
 ];
