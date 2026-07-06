@@ -61,16 +61,16 @@ function Landmark({ icon, size = 96 }) {
 
 // ---- The photo shown for a subject: a real `photo` (object with a `src`) if ----
 // ---- the data has one, otherwise the hand-drawn `icon` placeholder.        ----
-function Photo({ photo, icon, alt = "", size = 96 }) {
+function Photo({ photo, icon, alt = "", size = 96, full = false }) {
   if (photo?.src) {
     return (
       <img
         src={photo.src}
         alt={alt}
-        width={size}
+        width={full ? undefined : size}
         height={size}
         loading="lazy"
-        style={{ width: size, height: size, objectFit: "cover", display: "block", borderRadius: 4 }}
+        style={{ width: full ? "100%" : size, height: size, objectFit: "cover", display: "block", borderRadius: 4 }}
       />
     );
   }
@@ -243,7 +243,7 @@ export default function ShutterbugWorld() {
     <Frame>
       <div style={{ display: "flex", gap: 16, alignItems: "flex-start", flexWrap: "wrap" }}>
         {/* Field journal panel */}
-        <div style={{ flex: "1 1 300px", minWidth: 280 }}>
+        <div style={{ flex: "1 1 340px", minWidth: 300 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
             <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 12, letterSpacing: "0.18em", color: INK, opacity: 0.7 }}>ASSIGNMENT {step + 1}/{assignments.length}</span>
             <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 13, fontWeight: 700, color: days <= 1 ? CORAL : INK }}>◷ {days} day{days === 1 ? "" : "s"} left</span>
@@ -267,7 +267,7 @@ export default function ShutterbugWorld() {
           {currentLoc ? (
             <div style={{ marginTop: 12, background: "#fff", border: `1px solid ${PAPER_LINE}`, borderRadius: 8, padding: 14, textAlign: "center" }}>
               <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.18em", color: INK, opacity: 0.6 }}>YOU ARE HERE</div>
-              <div style={{ display: "flex", justifyContent: "center", margin: "6px 0" }}><Photo photo={currentLoc.photo} icon={currentLoc.icon} alt={currentLoc.subject} size={78} /></div>
+              <div style={{ margin: "8px 0" }}><Photo photo={currentLoc.photo} icon={currentLoc.icon} alt={currentLoc.subject} size={230} full /></div>
               <PhotoCredit photo={currentLoc.photo} style={{ textAlign: "center", marginTop: 0, marginBottom: 4 }} />
               <div style={{ fontWeight: 700, color: INK }}>{currentLoc.flag} {currentLoc.city}, {currentLoc.country}</div>
               <div style={{ fontSize: 13, color: INK, opacity: 0.7, marginTop: 2 }}>Subject in view: {currentLoc.subject}</div>
@@ -302,7 +302,7 @@ export default function ShutterbugWorld() {
         </div>
 
         {/* Map */}
-        <div style={{ flex: "2 1 440px", minWidth: 320 }}>
+        <div style={{ flex: "2 1 520px", minWidth: 400 }}>
           <div style={{ borderRadius: 10, overflow: "hidden", border: `2px solid ${INK}`, boxShadow: "0 6px 0 rgba(16,38,46,0.15)" }}>
             <svg viewBox="0 0 360 180" style={{ width: "100%", display: "block", background: OCEAN }}>
               <defs>
@@ -370,7 +370,7 @@ export default function ShutterbugWorld() {
 function Frame({ children }) {
   return (
     <div style={{ minHeight: "100%", background: OCEAN_DEEP, padding: 18, fontFamily: "ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif" }}>
-      <div style={{ maxWidth: 900, margin: "0 auto", background: PAPER, borderRadius: 14, padding: 22, border: `1px solid ${PAPER_LINE}`,
+      <div style={{ maxWidth: 1080, margin: "0 auto", background: PAPER, borderRadius: 14, padding: 22, border: `1px solid ${PAPER_LINE}`,
         backgroundImage: `repeating-linear-gradient(0deg, transparent, transparent 27px, ${PAPER_LINE}55 27px, ${PAPER_LINE}55 28px)` }}>
         {children}
       </div>
