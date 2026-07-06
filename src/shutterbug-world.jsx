@@ -59,21 +59,38 @@ function Landmark({ icon, size = 96 }) {
   }
 }
 
-// ---- The photo shown for a subject: a real `photo` if the data has one, ----
-// ---- otherwise the hand-drawn `icon` placeholder. Content decides which.  ----
+// ---- The photo shown for a subject: a real `photo` (object with a `src`) if ----
+// ---- the data has one, otherwise the hand-drawn `icon` placeholder.        ----
 function Photo({ photo, icon, alt = "", size = 96 }) {
-  if (photo) {
+  if (photo?.src) {
     return (
       <img
-        src={photo}
+        src={photo.src}
         alt={alt}
         width={size}
         height={size}
+        loading="lazy"
         style={{ width: size, height: size, objectFit: "cover", display: "block", borderRadius: 4 }}
       />
     );
   }
   return <Landmark icon={icon} size={size} />;
+}
+
+// ---- Photo attribution line. Renders only for real photos; the icon ----
+// ---- placeholders need no credit. Links to the source when we have it. ----
+function PhotoCredit({ photo, style }) {
+  if (!photo?.src) return null;
+  const parts = [photo.credit, photo.license].filter(Boolean).join(" · ");
+  const label = parts || "Source";
+  return (
+    <div style={{ fontSize: 10, color: INK, opacity: 0.55, marginTop: 4, lineHeight: 1.3, ...style }}>
+      <span aria-hidden="true">📷 </span>
+      {photo.source ? (
+        <a href={photo.source} target="_blank" rel="noreferrer" style={{ color: OCEAN }}>{label}</a>
+      ) : label}
+    </div>
+  );
 }
 
 // ---- Stylized continent polygons (0..360 x, 0..180 y). Approximate, on purpose. ----
@@ -263,6 +280,7 @@ export default function ShutterbugWorld() {
             <div style={{ marginTop: 12, background: "#fff", border: `1px solid ${PAPER_LINE}`, borderRadius: 8, padding: 14, textAlign: "center" }}>
               <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.18em", color: INK, opacity: 0.6 }}>YOU ARE HERE</div>
               <div style={{ display: "flex", justifyContent: "center", margin: "6px 0" }}><Photo photo={currentLoc.photo} icon={currentLoc.icon} alt={currentLoc.subject} size={78} /></div>
+              <PhotoCredit photo={currentLoc.photo} style={{ textAlign: "center", marginTop: 0, marginBottom: 4 }} />
               <div style={{ fontWeight: 700, color: INK }}>{currentLoc.flag} {currentLoc.city}, {currentLoc.country}</div>
               <div style={{ fontSize: 13, color: INK, opacity: 0.7, marginTop: 2 }}>Subject in view: {currentLoc.subject}</div>
               {currentLoc.greeting?.text && (
@@ -396,6 +414,7 @@ function Polaroid({ p }) {
       </div>
       <div style={{ fontWeight: 700, color: INK, fontSize: 13, marginTop: 8 }}>{p.flag} {p.subject}</div>
       <div style={{ fontSize: 11, color: INK, opacity: 0.65, lineHeight: 1.35, marginTop: 4 }}>{p.fact}</div>
+      <PhotoCredit photo={p.photo} />
     </div>
   );
 }
