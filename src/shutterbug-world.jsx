@@ -115,27 +115,22 @@ function Viewfinder() {
   );
 }
 
-// ---- Difficulty tiers. Each game shows `options` city pins on the map, of ----
-// ---- which `assignments` are the real targets; the rest are decoys. Points ----
-// ---- per photo are HIGHER on Easy (younger players) than Hard, on purpose. ----
-// ---- `labels`: "all" = every city named; "smart" = names hidden until you  ----
-// ---- hover/focus a pin (plus the city you're in). `clue`: which clue text.  ----
+// ---- Difficulty tiers. Each assignment is a two-step drill-down: pick the ----
+// ---- right CONTINENT on the world map, then the right CITY among the target ----
+// ---- plus `cityDecoys` same-continent decoys. `assignments` = how many. ----
+// ---- Points per photo are HIGHER on Easy (younger players). `labels`: "all" ----
+// ---- names every city, "smart" hides names until hover/focus. `clue` picks ----
+// ---- the clue text.
 const MODES = {
-  easy:   { label: "Easy",   assignments: 3, options: 9,  daysPer: 3, points: 150, labels: "all",   clue: "easy",
-            blurb: "For new explorers: the clue names the continent, every city is labelled, few decoy cities, and plenty of travel days." },
-  medium: { label: "Medium", assignments: 5, options: 15, daysPer: 3, points: 125, labels: "smart", clue: "hard",
-            blurb: "A step up: cryptic clues, city names hidden until you hover or focus a pin, and more decoy cities to sort through." },
-  hard:   { label: "Hard",   assignments: 7, options: 21, daysPer: 2, points: 100, labels: "smart", clue: "hard",
-            blurb: "For seasoned globe-trotters: cryptic clues, no free labels, the most decoy cities, and the fewest travel days." },
+  easy:   { label: "Easy",   assignments: 3, cityDecoys: 2, daysPer: 3, points: 150, labels: "all",   clue: "easy" },
+  medium: { label: "Medium", assignments: 5, cityDecoys: 3, daysPer: 3, points: 125, labels: "smart", clue: "hard" },
+  hard:   { label: "Hard",   assignments: 7, cityDecoys: 4, daysPer: 2, points: 100, labels: "smart", clue: "hard" },
 };
 const MODE_ORDER = ["easy", "medium", "hard"];
 
-// How many pins/targets a mode actually uses given the available locations.
 const modePlan = (key) => {
   const m = MODES[key];
-  const options = Math.min(m.options, LOCATIONS.length);
-  const assignments = Math.min(m.assignments, options);
-  return { ...m, options, assignments };
+  return { ...m, assignments: Math.min(m.assignments, LOCATIONS.length) };
 };
 
 // Taking a photo (right or wrong) costs half a travel day, so a snapshot is a
@@ -143,16 +138,44 @@ const modePlan = (key) => {
 const SHOT_COST = 0.5;
 
 const BY_ID = Object.fromEntries(LOCATIONS.map((l) => [l.id, l]));
-// Minimum distance (in map units, with the 1.5x vertical stretch applied) that
-// must separate any two shown pins, so their circles never overlap into an
-// unclickable clump. Verified to still place all 21 Hard-mode pins.
-const PIN_MIN_SEP = 14;
-const pinsFarEnough = (a, chosen) =>
-  chosen.every((b) => {
-    const dx = a.x - b.x;
-    const dy = 1.5 * (a.y - b.y);
-    return dx * dx + dy * dy >= PIN_MIN_SEP * PIN_MIN_SEP;
+const CONTINENTS = ["North America", "South America", "Europe", "Africa", "Asia", "Oceania"];
+
+// Per-continent zoom box (SVG viewBox) + centroid, derived from that continent's
+// locations so every target and its decoys fit when the map zooms in.
+const CONTINENT_META = (() => {
+  const meta = {};
+  for (const c of CONTINENTS) {
+    const locs = LOCATIONS.filter((l) => l.continent === c);
+    const xs = locs.map((l) => l.x), ys = locs.map((l) => l.y);
+    const minX = Math.min(...xs), maxX = Math.max(...xs), minY = Math.min(...ys), maxY = Math.max(...ys);
+    const padX = Math.max(14, (maxX - minX) * 0.2), padY = Math.max(14, (maxY - minY) * 0.2);
+    const x = Math.max(0, minX - padX), y = Math.max(0, minY - padY);
+    const w = Math.min(360 - x, maxX - minX + 2 * padX), h = Math.min(180 - y, maxY - minY + 2 * padY);
+    meta[c] = { box: { x, y, w, h }, cx: (minX + maxX) / 2, cy: (minY + maxY) / 2 };
+  }
+  return meta;
+})();
+
+// Where each continent's button sits on the world map and where the plane flies
+// to (hand-placed so Oceania lands on Australia rather than the mid-Pacific
+// centroid of its scattered islands). Coords in world map units (x 0..360, y 0..180).
+const CONTINENT_PIN = {
+  "North America": { x: 72, y: 46 },
+  "South America": { x: 122, y: 116 },
+  "Europe": { x: 191, y: 38 },
+  "Africa": { x: 199, y: 92 },
+  "Asia": { x: 291, y: 55 },
+  "Oceania": { x: 326, y: 122 },
+};
+
+// Keep decoy pins from stacking, scaled to whatever continent box is on screen.
+const spacedFor = (box) => {
+  const minSep = Math.max(4, box.w * 0.05);
+  return (a, chosen) => chosen.every((b) => {
+    const dx = a.x - b.x, dy = a.y - b.y;
+    return dx * dx + dy * dy >= minSep * minSep;
   });
+};
 
 // The best score a game could reach: every photo landed, and every travel day
 // beyond the minimum banked as bonus. The minimum is one flight (1 day) plus one
@@ -257,14 +280,15 @@ export default function ShutterbugWorld() {
   const [difficulty, setDifficulty] = useState("easy");
 
   const [assignments, setAssignments] = useState([]); // target location ids (the photos to file)
-  const [visible, setVisible] = useState([]); // location ids shown as pins (targets + decoys)
+  const [optionsByStep, setOptionsByStep] = useState([]); // per assignment: [targetId, ...decoyIds] on its continent
+  const [phase, setPhase] = useState("continent"); // "continent" (world map) | "city" (zoomed continent)
+  const [pickedContinent, setPickedContinent] = useState(null); // continent chosen this assignment
   const [step, setStep] = useState(0);
   const [current, setCurrent] = useState(null); // current location id (null = at airport)
   const [days, setDays] = useState(0);
   const [score, setScore] = useState(0);
   const [album, setAlbum] = useState([]); // collected {id, subject, flag, fact}
   const [visitedIds, setVisitedIds] = useState([]); // cities flown to this game
-  const [awaitingFlight, setAwaitingFlight] = useState(false); // assignment filed; still at last city, waiting to fly on
   const [msg, setMsg] = useState(null); // {type, text}
   const [flying, setFlying] = useState(null); // {fromX, fromY, toX, toY}
   const [revealed, setRevealed] = useState(false); // has the current city's photo been shot?
@@ -296,46 +320,47 @@ export default function ShutterbugWorld() {
   const target = assignments.length ? loc(assignments[step]) : null;
   const currentLoc = current ? loc(current) : null;
 
+  const cityOptions = optionsByStep[step] || [];
+
   function startGame() {
     const mode = modePlan(difficulty);
     // Weighted order surfaces the active player's missed/unmastered places more
     // often (a plain shuffle for guests).
     const order = weightedOrder(profileName ? getProfile(profileName) : null).map((id) => BY_ID[id]);
-    // 1) Pick the targets from the weighted order, keeping pins spaced apart.
-    const targets = [];
-    for (const l of order) {
-      if (targets.length >= mode.assignments) break;
-      if (pinsFarEnough(l, targets)) targets.push(l);
-    }
-    const chosen = [...targets];
-    // 2) Every target gets at least one same-continent companion pin, so the
-    // continent named in an Easy clue is never the only pin of its continent.
-    for (const t of targets) {
-      if (chosen.some((l) => l !== t && l.continent === t.continent)) continue;
-      const cand = order.find((l) => l.continent === t.continent && !chosen.includes(l) && pinsFarEnough(l, chosen));
-      if (cand) chosen.push(cand);
-    }
-    // 3) Fill the rest of the map with spaced-out decoys.
-    for (const l of order) {
-      if (chosen.length >= mode.options) break;
-      if (!chosen.includes(l) && pinsFarEnough(l, chosen)) chosen.push(l);
-    }
-    setVisible(chosen.map((l) => l.id));
+    const targets = order.slice(0, mode.assignments);
+    // Each assignment's city choices: the target + cityDecoys same-continent
+    // decoys, spaced for the continent zoom, in random order.
+    const options = targets.map((t) => {
+      const far = spacedFor(CONTINENT_META[t.continent].box);
+      const chosen = [t];
+      const want = mode.cityDecoys + 1;
+      for (const l of order) {
+        if (chosen.length >= want) break;
+        if (l.continent === t.continent && !chosen.includes(l) && far(l, chosen)) chosen.push(l);
+      }
+      for (const l of order) { // relax spacing if the continent is short on room
+        if (chosen.length >= want) break;
+        if (l.continent === t.continent && !chosen.includes(l)) chosen.push(l);
+      }
+      return chosen.map((l) => l.id).sort(() => Math.random() - 0.5);
+    });
     setAssignments(targets.map((l) => l.id));
+    setOptionsByStep(options);
     setStep(0);
+    setPhase("continent");
+    setPickedContinent(null);
     setCurrent(null);
     setDays(mode.assignments * mode.daysPer);
     setScore(0);
     setAlbum([]);
     setVisitedIds([]);
     setRevealed(false);
-    setAwaitingFlight(false);
     setLastResult(null);
     setPending(null);
     setElapsedMs(0);
     startRef.current = Date.now();
     recorded.current = false;
-    setMsg({ type: "info", text: "Wire received from your editor. Read the clue, then fly." });
+    setMsg({ type: "info", text: "Read the editor's clue, then pick the right continent on the map." });
     setFlying(null);
     setScreen("play");
   }
@@ -346,13 +371,17 @@ export default function ShutterbugWorld() {
     setPending(null);
     if (kind === "correct") {
       setStep((n) => n + 1);
-      setRevealed(false);      // clear the photo just taken...
-      setAwaitingFlight(true); // ...but stay put so the next flight departs from here
-      setMsg({ type: "info", text: "New assignment! Read the editor's clue and fly to the next city." });
+      setRevealed(false);          // clear the photo just taken...
+      setPhase("continent");       // ...back to the world map for the next continent
+      setPickedContinent(null);    // current stays = the city just shot, so the next flight departs from there
+      setMsg({ type: "info", text: "New assignment! Read the clue and pick the continent." });
     } else if (kind === "win" || kind === "lose") {
       setScreen("end");
+    } else if (kind === "wrong" && phase === "city") {
+      setCurrent(null);    // clear the wrong shot; back to "pick a city"
+      setRevealed(false);
     }
-    // "wrong" just closes and leaves you in the city to fly on.
+    // wrong continent just closes and leaves you on the world map to try again.
   }
 
   // When a game ends, record its outcome once against the active profile.
@@ -372,43 +401,57 @@ export default function ShutterbugWorld() {
     if (screen === "start") recorded.current = false;
   }, [screen]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  function travelTo(id) {
-    if (id === current || flying || days <= 0 || pending) return;
-    const from = current ? loc(current) : { x: 106, y: 49 }; // depart from NYC hub if at airport
-    const to = loc(id);
-    sfx("plane");
-    const finalize = () => {
-      const nd = Math.round((days - 1) * 10) / 10; // a flight costs one day
-      setCurrent(id);
+  const outOfDays = (subtitle) => {
+    setElapsedMs(Date.now() - startRef.current);
+    sfx("lose");
+    setPending({ kind: "lose", tone: "bad", emoji: "⏳", title: "Out of travel days!", subtitle, buttonLabel: "See my results" });
+  };
+
+  // ---- Continent phase: pick a continent on the world map ----
+  function pickContinent(cont) {
+    if (phase !== "continent" || flying || pending || days <= 0 || !target) return;
+    if (cont === target.continent) {
+      const from = current ? loc(current) : { x: 106, y: 49 }; // first flight departs from a hub
+      const to = CONTINENT_PIN[cont];
+      sfx("plane");
+      const finalize = () => {
+        const nd = Math.round((days - 1) * 10) / 10; // the flight to the continent costs a day
+        setDays(nd);
+        setFlying(null);
+        setPickedContinent(cont);
+        setPhase("city");
+        setCurrent(null);   // arrived on the continent; no city picked yet
+        setRevealed(false);
+        if (nd <= 0) outOfDays(`You reached ${cont}, but the trip's budget is spent.`);
+        else setMsg({ type: "info", text: `Touched down in ${cont}. Now pick the right city.` });
+      };
+      if (prefersReduced) { finalize(); return; }
+      setFlying({ fromX: from.x, fromY: from.y, toX: to.x, toY: to.y });
+      timer.current = setTimeout(finalize, 850);
+    } else {
+      const nd = Math.round((days - 1) * 10) / 10; // a wrong continent is a wasted flight
       setDays(nd);
-      setRevealed(false); // a fresh city — nothing shot yet
-      setAwaitingFlight(false); // arrived; you can shoot here now
-      setVisitedIds((v) => (v.includes(id) ? v : [...v, id]));
-      setFlying(null);
-      if (nd <= 0) {
-        setElapsedMs(Date.now() - startRef.current);
-        sfx("lose");
-        setPending({ kind: "lose", tone: "bad", emoji: "⏳", title: "Out of travel days!",
-          subtitle: `You landed in ${to.city} ${to.flag}, but the trip's budget is spent.`,
-          buttonLabel: "See my results" });
-      } else {
-        setMsg({ type: "info", text: `Arrived in ${to.city}, ${to.country} ${to.flag}. Is the editor's subject here?` });
-      }
-    };
-    if (prefersReduced) { finalize(); return; }
-    setFlying({ fromX: from.x, fromY: from.y, toX: to.x, toY: to.y });
-    timer.current = setTimeout(finalize, 850);
+      sfx("fail");
+      if (nd <= 0) outOfDays(`${cont} wasn't right, and that was your last day.`);
+      else setPending({ kind: "wrong", tone: "bad", emoji: "❌", title: "Not that continent",
+        subtitle: `The editor's subject isn't in ${cont}. A wasted flight cost you a day — read the clue and try again.`,
+        buttonLabel: "Try again" });
+    }
   }
 
-  function takePhoto() {
-    if (!currentLoc || flying || revealed || days <= 0 || pending || awaitingFlight) return;
+  // ---- City phase: click a city on the zoomed continent to photograph it ----
+  function photographCity(id) {
+    if (phase !== "city" || flying || pending || days <= 0) return;
+    const cityLoc = loc(id);
+    setCurrent(id);
+    setVisitedIds((v) => (v.includes(id) ? v : [...v, id]));
     sfx("shutter");
     if (!prefersReduced) setFlashKey((k) => k + 1);
-    setRevealed(true); // reveal the photo now that the shutter fired
+    setRevealed(true);
     const d = Math.round((days - SHOT_COST) * 10) / 10; // a shot costs half a day
     setDays(d);
 
-    if (currentLoc.id === target.id) {
+    if (id === target.id) {
       const gain = MODES[difficulty].points;
       setAlbum((a) => [...a, { id: target.id, subject: target.subject, flag: target.flag, city: target.city, country: target.country, fact: target.fact, icon: target.icon, photo: target.photo }]);
       const done = step + 1 >= assignments.length;
@@ -419,7 +462,7 @@ export default function ShutterbugWorld() {
         sfx("win");
         setPending({ kind: "win", tone: "good", emoji: "🏆", title: "Trip complete!",
           subtitle: `A perfect shot of ${target.subject}! +${gain}${bonus ? `, plus ${bonus} for ${d} day${d === 1 ? "" : "s"} to spare` : ""}.`,
-          fact: target.fact, buttonLabel: "See my results 📸" });
+          fact: target.fact, photo: target.photo, buttonLabel: "See my results 📸" });
       } else if (d <= 0) {
         setScore((s) => s + gain);
         setElapsedMs(Date.now() - startRef.current);
@@ -432,19 +475,14 @@ export default function ShutterbugWorld() {
         sfx("success");
         setPending({ kind: "correct", tone: "good", emoji: "✅", title: "Perfect shot!",
           subtitle: `You photographed ${target.subject}. +${gain} points!`,
-          fact: target.fact, buttonLabel: "Next assignment ✈" });
+          fact: target.fact, photo: target.photo, buttonLabel: "Next assignment ✈" });
       }
     } else {
-      if (d <= 0) {
-        setElapsedMs(Date.now() - startRef.current);
-        sfx("lose");
-        setPending({ kind: "lose", tone: "bad", emoji: "⏳", title: "Out of travel days!",
-          subtitle: `That's ${currentLoc.subject}, not what the editor wanted — and the trip's over.`,
-          buttonLabel: "See my results" });
-      } else {
+      if (d <= 0) outOfDays(`That's ${cityLoc.subject}, not what the editor wanted — and the trip's over.`);
+      else {
         sfx("fail");
         setPending({ kind: "wrong", tone: "bad", emoji: "❌", title: "Not the assignment",
-          subtitle: `That's ${currentLoc.subject}. The editor wants ${target.subject}. Half a day gone — read the clue and fly on.`,
+          subtitle: `That's ${cityLoc.subject}. The editor wants ${target.subject}. Half a day gone — pick another city.`,
           buttonLabel: "Keep looking 🔍" });
       }
     }
@@ -667,12 +705,10 @@ export default function ShutterbugWorld() {
   // play screen
   const mode = MODES[difficulty];
   const clue = mode.clue === "easy" ? target.easy : target.hard;
-  const smallPins = visible.length > 12;
-  // Stretch the map taller so cities get vertical breathing room. Land geometry
-  // is scaled vertically; pins are placed at y*VS but drawn with normal radii so
-  // they stay round (not ovals).
-  const MAP_VS = 1.5;
-  const MAP_H = 180 * MAP_VS;
+  const inCity = phase === "city";
+  const box = inCity && pickedContinent ? CONTINENT_META[pickedContinent].box : { x: 0, y: 0, w: 360, h: 180 };
+  const u = box.w / 360; // unit scale keeps pins/labels a steady on-screen size as the map zooms in
+  const busy = !!flying || !!pending || days <= 0;
   return (
     <Frame>
       <div style={{ display: "flex", gap: 16, alignItems: "flex-start", flexWrap: "wrap" }}>
@@ -703,27 +739,17 @@ export default function ShutterbugWorld() {
             </div>
           )}
 
-          {/* On-location card */}
-          {currentLoc && awaitingFlight ? (
-            <div style={{ marginTop: 12, background: "#fff", border: `1px solid ${GREEN}`, borderRadius: 8, padding: 16, textAlign: "center" }}>
-              <div style={{ fontSize: 30 }} aria-hidden="true">✅</div>
-              <div style={{ fontWeight: 800, color: GREEN, marginTop: 4 }}>Assignment filed!</div>
-              <div style={{ fontSize: 13, color: INK, opacity: 0.8, marginTop: 6, lineHeight: 1.45 }}>
-                You're still in {currentLoc.flag} {currentLoc.city}. Read the editor's new clue and tap the next city to fly there.
-              </div>
-            </div>
-          ) : currentLoc ? (
+          {/* Context card by phase */}
+          {inCity && currentLoc && revealed ? (
             <div style={{ marginTop: 12, background: "#fff", border: `1px solid ${PAPER_LINE}`, borderRadius: 8, padding: 14, textAlign: "center" }}>
-              <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.18em", color: INK, opacity: 0.6 }}>YOU ARE HERE</div>
+              <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.18em", color: INK, opacity: 0.6 }}>YOUR SHOT</div>
               <div style={{ margin: "8px 0", position: "relative", overflow: "hidden", borderRadius: 4 }}>
-                {revealed
-                  ? <Photo photo={currentLoc.photo} icon={currentLoc.icon} alt={currentLoc.subject} size={230} full />
-                  : <Viewfinder />}
+                <Photo photo={currentLoc.photo} icon={currentLoc.icon} alt={currentLoc.subject} size={230} full />
                 {flashKey > 0 && !prefersReduced && <div key={flashKey} className="sbw-flash" />}
               </div>
-              {revealed && <PhotoCredit photo={currentLoc.photo} style={{ textAlign: "center", marginTop: 0, marginBottom: 4 }} />}
+              <PhotoCredit photo={currentLoc.photo} style={{ textAlign: "center", marginTop: 0, marginBottom: 4 }} />
               <div style={{ fontWeight: 700, color: INK }}>{currentLoc.flag} {currentLoc.city}, {currentLoc.country}</div>
-              <div style={{ fontSize: 13, color: INK, opacity: 0.7, marginTop: 2 }}>Subject in view: {currentLoc.subject}</div>
+              <div style={{ fontSize: 13, color: INK, opacity: 0.7, marginTop: 2 }}>{currentLoc.subject}</div>
               {currentLoc.greeting?.text && (
                 <div style={{ fontSize: 13, color: OCEAN, marginTop: 6 }}>
                   <span aria-hidden="true">💬 </span>Local greeting: “{currentLoc.greeting.text}”
@@ -731,77 +757,100 @@ export default function ShutterbugWorld() {
                   {currentLoc.greeting.pronunciation ? ` (${currentLoc.greeting.pronunciation})` : ""}
                 </div>
               )}
-              {revealed ? (
-                <div style={{ marginTop: 12, fontSize: 13, color: INK, opacity: 0.7 }}>Shot filed. Tap another city to fly on.</div>
-              ) : (
-                <button onClick={takePhoto} disabled={!!flying || days <= 0} style={{ ...cameraBtn, opacity: flying || days <= 0 ? 0.5 : 1 }}>
-                  📷 Take the photo <span style={{ fontWeight: 500, opacity: 0.85 }}>· ½ day</span>
-                </button>
-              )}
+            </div>
+          ) : inCity ? (
+            <div style={{ marginTop: 12, background: "#fff", border: `1px dashed ${CORAL}`, borderRadius: 8, padding: 16, textAlign: "center" }}>
+              <div style={{ fontSize: 28 }} aria-hidden="true">📸</div>
+              <div style={{ fontWeight: 800, color: INK, marginTop: 4 }}>You're in {pickedContinent}!</div>
+              <div style={{ fontSize: 13, color: INK, opacity: 0.8, marginTop: 6, lineHeight: 1.45 }}>Click the right city on the map to photograph the editor's subject.</div>
             </div>
           ) : (
-            <div style={{ marginTop: 12, background: "#fff", border: `1px dashed ${PAPER_LINE}`, borderRadius: 8, padding: 14, textAlign: "center", color: INK, opacity: 0.7, fontSize: 14 }}>
-              Tap a city on the map to fly there.
+            <div style={{ marginTop: 12, background: "#fff", border: `1px dashed ${CORAL}`, borderRadius: 8, padding: 16, textAlign: "center" }}>
+              <div style={{ fontSize: 28 }} aria-hidden="true">🌍</div>
+              <div style={{ fontWeight: 800, color: INK, marginTop: 4 }}>Which continent?</div>
+              <div style={{ fontSize: 13, color: INK, opacity: 0.8, marginTop: 6, lineHeight: 1.45 }}>
+                {current ? `Departing ${currentLoc.flag} ${currentLoc.city}. ` : ""}Read the clue, then click the continent it points to.
+              </div>
             </div>
           )}
-
         </div>
 
         {/* Map */}
         <div style={{ flex: "2 1 520px", minWidth: 400 }}>
-          <div style={{ borderRadius: 10, overflow: "hidden", border: `2px solid ${INK}`, boxShadow: "0 6px 0 rgba(16,38,46,0.15)" }}>
-            <svg viewBox={`0 0 360 ${MAP_H}`} style={{ width: "100%", display: "block", background: OCEAN }}>
+          <div style={{ position: "relative", borderRadius: 10, overflow: "hidden", border: `2px solid ${INK}`, boxShadow: "0 6px 0 rgba(16,38,46,0.15)" }}>
+            <svg viewBox={`${box.x} ${box.y} ${box.w} ${box.h}`} style={{ width: "100%", display: "block", background: OCEAN }}>
               <defs>
-                <pattern id="sea" width="360" height={MAP_H} patternUnits="userSpaceOnUse">
-                  <rect width="360" height={MAP_H} fill={OCEAN} />
-                  {[...Array(Math.ceil(MAP_H / 30) + 1)].map((_, i) => <line key={i} x1="0" y1={i * 30} x2="360" y2={i * 30} stroke={OCEAN_DEEP} strokeWidth="0.4" />)}
-                  {[...Array(13)].map((_, i) => <line key={"v" + i} x1={i * 30} y1="0" x2={i * 30} y2={MAP_H} stroke={OCEAN_DEEP} strokeWidth="0.4" />)}
+                <pattern id="sea" width="360" height="180" patternUnits="userSpaceOnUse">
+                  <rect width="360" height="180" fill={OCEAN} />
+                  {[...Array(7)].map((_, i) => <line key={i} x1="0" y1={i * 30} x2="360" y2={i * 30} stroke={OCEAN_DEEP} strokeWidth="0.4" />)}
+                  {[...Array(13)].map((_, i) => <line key={"v" + i} x1={i * 30} y1="0" x2={i * 30} y2="180" stroke={OCEAN_DEEP} strokeWidth="0.4" />)}
                 </pattern>
               </defs>
-              <rect width="360" height={MAP_H} fill="url(#sea)" />
-              {/* Land stretched vertically; strokes kept crisp with non-scaling-stroke. */}
-              <g transform={`scale(1 ${MAP_VS})`} stroke={LAND_EDGE} strokeWidth="0.25" strokeLinejoin="round">
+              <rect x="0" y="0" width="360" height="180" fill="url(#sea)" />
+              <g stroke={LAND_EDGE} strokeWidth="0.25" strokeLinejoin="round">
                 {WORLD_COUNTRIES.map((c) => (
                   <path key={c.name} d={c.d} fill={LAND} fillRule="evenodd" vectorEffect="non-scaling-stroke" />
                 ))}
               </g>
 
-              {/* animated flight path (y scaled to the stretched map) */}
+              {/* departure city marker on the world map (continent phase) */}
+              {!inCity && currentLoc && (
+                <g>
+                  <circle cx={currentLoc.x} cy={currentLoc.y} r="3" fill={CORAL} stroke={INK} strokeWidth="0.7" />
+                  <circle cx={currentLoc.x} cy={currentLoc.y} r="5" fill="none" stroke={CORAL} strokeWidth="0.8" className="sbw-ping" />
+                </g>
+              )}
+
+              {/* flight to the chosen continent */}
               {flying && (
                 <g className="sbw-plane-group">
-                  <line x1={flying.fromX} y1={flying.fromY * MAP_VS} x2={flying.toX} y2={flying.toY * MAP_VS} stroke={CORAL} strokeWidth="1" strokeDasharray="3 3" opacity="0.8" />
-                  <g style={{ animation: "sbw-fly 0.85s ease-in-out forwards", offsetPath: `path('M${flying.fromX} ${flying.fromY * MAP_VS} L${flying.toX} ${flying.toY * MAP_VS}')` }}>
+                  <line x1={flying.fromX} y1={flying.fromY} x2={flying.toX} y2={flying.toY} stroke={CORAL} strokeWidth="1" strokeDasharray="3 3" opacity="0.8" />
+                  <g style={{ animation: "sbw-fly 0.85s ease-in-out forwards", offsetPath: `path('M${flying.fromX} ${flying.fromY} L${flying.toX} ${flying.toY}')` }}>
                     <text fontSize="9" fill={CORAL}>✈</text>
                   </g>
                 </g>
               )}
 
-              {/* city pins — the visible options (targets + decoys) */}
-              {visible.map((id) => {
+              {/* city pins (city phase): the target + same-continent decoys */}
+              {inCity && cityOptions.map((id) => {
                 const l = loc(id);
                 const isCurrent = id === current;
                 const alwaysLabel = mode.labels === "all" || isCurrent;
-                const disabled = !!flying || days <= 0;
-                const r = isCurrent ? 3.2 : (smallPins ? 1.9 : 2.4);
-                const cy = l.y * MAP_VS;
                 return (
                   <g key={id} className={`sbw-pin${alwaysLabel ? "" : " sbw-pin--hide"}`}
-                     role="button" tabIndex={disabled ? -1 : 0}
-                     aria-label={`Fly to ${l.city}, ${l.country}`}
-                     onClick={() => travelTo(id)}
-                     onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); travelTo(id); } }}
-                     style={{ cursor: disabled ? "default" : "pointer" }}>
-                    <circle cx={l.x} cy={cy} r="5.5" fill="transparent" />
-                    <circle cx={l.x} cy={cy} r={r} fill={isCurrent ? CORAL : GOLD} stroke={INK} strokeWidth="0.7" />
-                    {isCurrent && <circle cx={l.x} cy={cy} r="5" fill="none" stroke={CORAL} strokeWidth="0.8" className="sbw-ping" />}
-                    <text className="sbw-label" x={l.x + 4} y={cy - 4} fontSize="6" fontFamily="ui-monospace, monospace" fill={INK} style={{ paintOrder: "stroke", stroke: PAPER, strokeWidth: 1.4 }}>{l.city}</text>
+                     role="button" tabIndex={busy ? -1 : 0}
+                     aria-label={`Photograph ${l.city}, ${l.country}`}
+                     onClick={() => photographCity(id)}
+                     onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); photographCity(id); } }}
+                     style={{ cursor: busy ? "default" : "pointer" }}>
+                    <circle cx={l.x} cy={l.y} r={6 * u} fill="transparent" />
+                    <circle cx={l.x} cy={l.y} r={(isCurrent ? 3.6 : 2.8) * u} fill={isCurrent ? CORAL : GOLD} stroke={INK} strokeWidth={0.7 * u} />
+                    {isCurrent && <circle cx={l.x} cy={l.y} r={5 * u} fill="none" stroke={CORAL} strokeWidth={0.8 * u} className="sbw-ping" />}
+                    <text className="sbw-label" x={l.x + 4 * u} y={l.y - 4 * u} fontSize={6 * u} fontFamily="ui-monospace, monospace" fill={INK} style={{ paintOrder: "stroke", stroke: PAPER, strokeWidth: 1.4 * u }}>{l.city}</text>
                   </g>
                 );
               })}
             </svg>
+
+            {/* continent buttons (continent phase) */}
+            {!inCity && (
+              <div style={{ position: "absolute", inset: 0, pointerEvents: flying ? "none" : "auto" }}>
+                {CONTINENTS.map((c) => {
+                  const p = CONTINENT_PIN[c];
+                  return (
+                    <button key={c} onClick={() => pickContinent(c)} disabled={busy}
+                      style={{ position: "absolute", left: `${p.x / 3.6}%`, top: `${p.y / 1.8}%`, transform: "translate(-50%, -50%)",
+                        padding: "4px 9px", borderRadius: 14, border: `1.5px solid ${INK}`, background: PAPER, color: INK, fontWeight: 800,
+                        fontSize: "clamp(9px, 1.3vw, 12px)", whiteSpace: "nowrap", cursor: busy ? "default" : "pointer", boxShadow: "0 1px 3px rgba(0,0,0,0.28)" }}>
+                      {c}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </div>
           <p style={{ fontSize: 11, color: INK, opacity: 0.55, marginTop: 8, fontFamily: "ui-monospace, monospace", letterSpacing: "0.06em" }}>
-            {mode.labels === "all" ? "Gold = a city you can fly to.  Coral = where you are now." : "City names hidden — hover or tab to a pin to peek. Read the clue and reason it out."}
+            {inCity ? "Click the right city — read the clue and reason it out." : "Click the continent the editor's clue points to."}
           </p>
 
           {/* Album strip — under the map so the layout is symmetric. */}
@@ -960,6 +1009,11 @@ function ResultModal({ data, onContinue, reduced }) {
         style={{ background: PAPER, borderRadius: 16, border: `3px solid ${accent}`, boxShadow: "0 14px 44px rgba(0,0,0,0.35)", maxWidth: 420, width: "100%", padding: "26px 22px", textAlign: "center" }}>
         <div style={{ fontSize: 56, lineHeight: 1 }} aria-hidden="true">{data.emoji}</div>
         <h2 style={{ fontFamily: "ui-sans-serif, system-ui", fontWeight: 900, fontSize: 26, color: accent, margin: "10px 0 6px" }}>{data.title}</h2>
+        {data.photo?.src && (
+          <div style={{ margin: "0 auto 10px", maxWidth: 300, borderRadius: 8, overflow: "hidden", border: `2px solid ${accent}` }}>
+            <img src={data.photo.src} alt="" style={{ width: "100%", height: 150, objectFit: "cover", display: "block" }} />
+          </div>
+        )}
         <p style={{ color: INK, fontSize: 15, lineHeight: 1.5, margin: "0 auto", maxWidth: 340 }}>{data.subtitle}</p>
         {data.fact && (
           <div style={{ marginTop: 14, background: "#fff", border: `1px dashed ${accent}`, borderRadius: 10, padding: "10px 12px", textAlign: "left" }}>
