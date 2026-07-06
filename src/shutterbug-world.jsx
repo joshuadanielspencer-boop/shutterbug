@@ -303,6 +303,8 @@ export default function ShutterbugWorld() {
   const [soundOn, setSoundOn] = useState(true);
   const [pending, setPending] = useState(null); // result popup that pauses play until dismissed
   const [elapsedMs, setElapsedMs] = useState(0); // final game time, shown on the results screen
+  const [liveNow, setLiveNow] = useState(0); // ticks while playing so the on-screen timer updates
+  const [albumView, setAlbumView] = useState(null); // album photo opened into a big popup
 
   // Player profiles (localStorage). profileName === null means "Guest — no saving".
   const [canSave] = useState(() => storageAvailable());
@@ -322,6 +324,14 @@ export default function ShutterbugWorld() {
   const sfx = (name) => { if (soundOn && SFX[name]) SFX[name](); };
 
   useEffect(() => () => timer.current && clearTimeout(timer.current), []);
+
+  // Tick the on-screen play timer once a second (only while actually playing).
+  useEffect(() => {
+    if (screen !== "play") return;
+    setLiveNow(Date.now());
+    const id = setInterval(() => setLiveNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [screen]);
 
   const loc = (id) => LOCATIONS.find((l) => l.id === id);
   const target = assignments.length ? loc(assignments[step]) : null;
@@ -460,7 +470,7 @@ export default function ShutterbugWorld() {
 
     if (id === target.id) {
       const gain = MODES[difficulty].points;
-      setAlbum((a) => [...a, { id: target.id, subject: target.subject, flag: target.flag, city: target.city, country: target.country, fact: target.fact, icon: target.icon, photo: target.photo }]);
+      setAlbum((a) => [...a, { id: target.id, subject: target.subject, flag: target.flag, city: target.city, country: target.country, continent: target.continent, fact: target.fact, icon: target.icon, photo: target.photo, greeting: target.greeting }]);
       const done = step + 1 >= assignments.length;
       if (done) {
         const bonus = Math.round(Math.max(0, d) * 50);
@@ -732,6 +742,7 @@ export default function ShutterbugWorld() {
                 style={{ background: "none", border: "none", cursor: "pointer", fontSize: 15, lineHeight: 1, padding: 2, color: INK, opacity: 0.75 }}>
                 {soundOn ? "🔊" : "🔇"}
               </button>
+              <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 13, fontWeight: 700, color: INK, opacity: 0.75 }} title="Time on this trip">⏱ {fmtTime(Math.max(0, liveNow - startRef.current))}</span>
               <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 13, fontWeight: 700, color: days <= 1 ? CORAL : INK }}>◷ {days} day{days === 1 ? "" : "s"} left</span>
             </div>
           </div>
@@ -868,12 +879,13 @@ export default function ShutterbugWorld() {
           {/* Album strip — under the map so the layout is symmetric. */}
           {album.length > 0 && (
             <div style={{ marginTop: 12 }}>
-              <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.18em", color: INK, opacity: 0.6, marginBottom: 6 }}>ALBUM</div>
+              <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.18em", color: INK, opacity: 0.6, marginBottom: 6 }}>ALBUM <span style={{ opacity: 0.7, letterSpacing: 0 }}>— tap a photo to revisit it</span></div>
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                 {album.map((p) => (
-                  <div key={p.id} title={`${p.subject} — ${p.city}`} style={{ width: 46, height: 52, background: "#fff", border: `1px solid ${PAPER_LINE}`, borderRadius: 3, display: "flex", alignItems: "center", justifyContent: "center", transform: "rotate(-3deg)" }}>
+                  <button key={p.id} onClick={() => setAlbumView(p)} title={`${p.subject} — ${p.city}`} aria-label={`Revisit ${p.subject}, ${p.city}`}
+                    style={{ width: 46, height: 52, background: "#fff", border: `1px solid ${PAPER_LINE}`, borderRadius: 3, padding: 0, display: "flex", alignItems: "center", justifyContent: "center", transform: "rotate(-3deg)", cursor: "pointer" }}>
                     <Photo photo={p.photo} icon={p.icon} alt={p.subject} size={34} />
-                  </div>
+                  </button>
                 ))}
               </div>
             </div>
@@ -908,6 +920,7 @@ export default function ShutterbugWorld() {
         }
       `}</style>
       {pending && <ResultModal data={pending} onContinue={continueFromResult} reduced={prefersReduced} />}
+      {albumView && <LandmarkModal p={albumView} onClose={() => setAlbumView(null)} reduced={prefersReduced} />}
     </Frame>
   );
 }
@@ -1037,6 +1050,47 @@ function ResultModal({ data, onContinue, reduced }) {
           style={{ ...primaryBtn, marginTop: 20, background: accent, boxShadow: `0 4px 0 ${good ? "#2E7A55" : "#A93A28"}` }}>
           {data.buttonLabel}
         </button>
+      </div>
+    </div>
+  );
+}
+// Big popup for an album photo: the full-size shot plus everything the player
+// learned about that landmark. Opened by tapping a thumbnail in the album strip.
+function LandmarkModal({ p, onClose, reduced }) {
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+  return (
+    <div role="dialog" aria-modal="true" aria-label={p.subject} onClick={onClose}
+      style={{ position: "fixed", inset: 0, background: "rgba(16,38,46,0.62)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16, zIndex: 60 }}>
+      <div className={reduced ? "" : "sbw-pop"} onClick={(e) => e.stopPropagation()}
+        style={{ background: PAPER, borderRadius: 16, border: `3px solid ${GOLD}`, boxShadow: "0 14px 44px rgba(0,0,0,0.35)", maxWidth: 460, width: "100%", maxHeight: "90vh", overflowY: "auto", padding: "22px", textAlign: "center", position: "relative" }}>
+        <button onClick={onClose} aria-label="Close" autoFocus
+          style={{ position: "absolute", top: 10, right: 12, background: "none", border: "none", fontSize: 22, lineHeight: 1, cursor: "pointer", color: INK, opacity: 0.6 }}>×</button>
+        <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.2em", color: CORAL, marginBottom: 8 }}>FROM YOUR ALBUM</div>
+        <div style={{ margin: "0 auto 10px", maxWidth: 380, borderRadius: 8, overflow: "hidden", border: `2px solid ${GOLD}` }}>
+          <Photo photo={p.photo} icon={p.icon} alt={p.subject} size={240} full />
+        </div>
+        <PhotoCredit photo={p.photo} style={{ textAlign: "center", marginTop: 0, marginBottom: 8 }} />
+        <h2 style={{ fontFamily: "ui-sans-serif, system-ui", fontWeight: 900, fontSize: 24, color: INK, margin: "4px 0 2px" }}>{p.subject}</h2>
+        <div style={{ fontWeight: 700, color: INK }}>{p.flag} {p.city}, {p.country}</div>
+        {p.continent && <div style={{ fontSize: 12, color: INK, opacity: 0.6, marginTop: 2 }}>{p.continent}</div>}
+        {p.greeting?.text && (
+          <div style={{ fontSize: 14, color: OCEAN, marginTop: 10 }}>
+            <span aria-hidden="true">💬 </span>Local greeting: “{p.greeting.text}”
+            {p.greeting.language ? ` — ${p.greeting.language}` : ""}
+            {p.greeting.pronunciation ? ` (${p.greeting.pronunciation})` : ""}
+          </div>
+        )}
+        {p.fact && (
+          <div style={{ marginTop: 14, background: "#fff", border: `1px dashed ${GOLD}`, borderRadius: 10, padding: "10px 12px", textAlign: "left" }}>
+            <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 10, letterSpacing: "0.18em", color: CORAL, marginBottom: 4 }}>📖 DID YOU KNOW?</div>
+            <div style={{ color: INK, fontSize: 13, lineHeight: 1.45 }}>{p.fact}</div>
+          </div>
+        )}
+        <button onClick={onClose} style={{ ...primaryBtn, marginTop: 18, background: GOLD, color: INK, boxShadow: "0 4px 0 #B87C00" }}>Close</button>
       </div>
     </div>
   );
