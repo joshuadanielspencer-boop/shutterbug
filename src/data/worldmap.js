@@ -192,3 +192,77 @@ export const WORLD_COUNTRIES = [
   { name: "Trinidad and Tobago", d: "M118.3 79.2L118.9 79.1L119.1 79.1L119.1 79.9L118.2 80L118.1 79.9L118.3 79.6L118.3 79.2Z" },
   { name: "S. Sudan", d: "M210.8 86.5L210 85.8L209.7 85.4L209.2 85.6L208.7 85.5L208.4 85.7L208 85.6L207.4 84.8L207.2 84.4L206.5 84.1L206.2 83.5L205.8 83L205.1 82.5L205.1 82.2L204.6 81.8L203.9 81.4L204.2 81.3L204.5 81.1L204.8 80.2L205.1 79.7L205.8 79.6L206 79.9L206.5 80.4L206.8 80.5L207.1 80.4L207.8 80.4L208 80.6L209 80.6L209 80.4L209.5 80.2L209.6 79.9L210 79.7L210.8 80.3L211.4 80.2L211.9 79.5L212.4 78.9L212.3 78.3L212.1 78L212.7 78L212.7 77.8L213.2 77.8L213.1 78.6L213.2 79.3L213.7 79.7L213.8 80L213.8 80.5L214 80.5L214 81.3L213.8 81.6L213.3 81.6L213 82.2L213.6 82.3L214.1 82.8L214.3 83.2L214.7 83.4L215.3 84.5L214.6 85.2L214 85.8L213.4 86.2L212.7 86.2L211.9 86.4L211.2 86.2L210.8 86.5Z" },
 ];
+
+// ===========================================================================
+// COUNTRY → CONTINENT — which continent each country above belongs to, so the
+// world map can colour each continent (see CONTINENT_COLOR in the component) and
+// make it clickable. Transcontinental judgment calls, chosen to match the game's
+// own location tags so "pick the continent" stays consistent for those places:
+//   • Russia → Europe (the game's Russian landmark cities, Moscow & St
+//     Petersburg, are European; its Asian natural sites — Baikal, Kamchatka —
+//     are reachable via the huge red Asian bloc beside them).
+//   • Turkey → Europe (the game's Istanbul is tagged Europe).
+// Caribbean islands and Trinidad are grouped with North America; Greenland with
+// North America; Cyprus with Europe. Every one of the 177 countries is mapped.
+// ===========================================================================
+export const COUNTRY_CONTINENT = {
+  // North America
+  "Bahamas": "North America", "Belize": "North America", "Canada": "North America",
+  "Costa Rica": "North America", "Cuba": "North America", "Dominican Rep.": "North America",
+  "El Salvador": "North America", "Greenland": "North America", "Guatemala": "North America",
+  "Haiti": "North America", "Honduras": "North America", "Jamaica": "North America",
+  "Mexico": "North America", "Nicaragua": "North America", "Panama": "North America",
+  "Puerto Rico": "North America", "Trinidad and Tobago": "North America",
+  "United States of America": "North America",
+  // South America
+  "Argentina": "South America", "Bolivia": "South America", "Brazil": "South America",
+  "Chile": "South America", "Colombia": "South America", "Ecuador": "South America",
+  "Falkland Is.": "South America", "Guyana": "South America", "Paraguay": "South America",
+  "Peru": "South America", "Suriname": "South America", "Uruguay": "South America",
+  "Venezuela": "South America",
+  // Europe
+  "Albania": "Europe", "Austria": "Europe", "Belarus": "Europe", "Belgium": "Europe",
+  "Bosnia and Herz.": "Europe", "Bulgaria": "Europe", "Croatia": "Europe", "Cyprus": "Europe",
+  "Czechia": "Europe", "Denmark": "Europe", "Estonia": "Europe", "Finland": "Europe",
+  "France": "Europe", "Germany": "Europe", "Greece": "Europe", "Hungary": "Europe",
+  "Iceland": "Europe", "Ireland": "Europe", "Italy": "Europe", "Kosovo": "Europe",
+  "Latvia": "Europe", "Lithuania": "Europe", "Luxembourg": "Europe", "Moldova": "Europe",
+  "Montenegro": "Europe", "N. Cyprus": "Europe", "Netherlands": "Europe",
+  "North Macedonia": "Europe", "Norway": "Europe", "Poland": "Europe", "Portugal": "Europe",
+  "Romania": "Europe", "Russia": "Europe", "Serbia": "Europe", "Slovakia": "Europe",
+  "Slovenia": "Europe", "Spain": "Europe", "Sweden": "Europe", "Switzerland": "Europe",
+  "Turkey": "Europe", "Ukraine": "Europe", "United Kingdom": "Europe",
+  // Africa
+  "Algeria": "Africa", "Angola": "Africa", "Benin": "Africa", "Botswana": "Africa",
+  "Burkina Faso": "Africa", "Burundi": "Africa", "Cameroon": "Africa",
+  "Central African Rep.": "Africa", "Chad": "Africa", "Congo": "Africa",
+  "Côte d'Ivoire": "Africa", "Dem. Rep. Congo": "Africa", "Djibouti": "Africa",
+  "Egypt": "Africa", "Eq. Guinea": "Africa", "Eritrea": "Africa", "Ethiopia": "Africa",
+  "Gabon": "Africa", "Gambia": "Africa", "Ghana": "Africa", "Guinea": "Africa",
+  "Guinea-Bissau": "Africa", "Kenya": "Africa", "Lesotho": "Africa", "Liberia": "Africa",
+  "Libya": "Africa", "Madagascar": "Africa", "Malawi": "Africa", "Mali": "Africa",
+  "Mauritania": "Africa", "Morocco": "Africa", "Mozambique": "Africa", "Namibia": "Africa",
+  "Niger": "Africa", "Nigeria": "Africa", "Rwanda": "Africa", "S. Sudan": "Africa",
+  "Senegal": "Africa", "Sierra Leone": "Africa", "Somalia": "Africa", "Somaliland": "Africa",
+  "South Africa": "Africa", "Sudan": "Africa", "Tanzania": "Africa", "Togo": "Africa",
+  "Tunisia": "Africa", "Uganda": "Africa", "W. Sahara": "Africa", "Zambia": "Africa",
+  "Zimbabwe": "Africa", "eSwatini": "Africa",
+  // Asia
+  "Afghanistan": "Asia", "Armenia": "Asia", "Azerbaijan": "Asia", "Bangladesh": "Asia",
+  "Bhutan": "Asia", "Brunei": "Asia", "Cambodia": "Asia", "China": "Asia", "Georgia": "Asia",
+  "India": "Asia", "Indonesia": "Asia", "Iran": "Asia", "Iraq": "Asia", "Israel": "Asia",
+  "Japan": "Asia", "Jordan": "Asia", "Kazakhstan": "Asia", "Kuwait": "Asia",
+  "Kyrgyzstan": "Asia", "Laos": "Asia", "Lebanon": "Asia", "Malaysia": "Asia",
+  "Mongolia": "Asia", "Myanmar": "Asia", "Nepal": "Asia", "North Korea": "Asia",
+  "Oman": "Asia", "Pakistan": "Asia", "Palestine": "Asia", "Philippines": "Asia",
+  "Qatar": "Asia", "Saudi Arabia": "Asia", "South Korea": "Asia", "Sri Lanka": "Asia",
+  "Syria": "Asia", "Taiwan": "Asia", "Tajikistan": "Asia", "Thailand": "Asia",
+  "Timor-Leste": "Asia", "Turkmenistan": "Asia", "United Arab Emirates": "Asia",
+  "Uzbekistan": "Asia", "Vietnam": "Asia", "Yemen": "Asia",
+  // Oceania
+  "Australia": "Oceania", "Fiji": "Oceania", "New Caledonia": "Oceania",
+  "New Zealand": "Oceania", "Papua New Guinea": "Oceania", "Solomon Is.": "Oceania",
+  "Vanuatu": "Oceania",
+  // Antarctica
+  "Antarctica": "Antarctica", "Fr. S. Antarctic Lands": "Antarctica",
+};

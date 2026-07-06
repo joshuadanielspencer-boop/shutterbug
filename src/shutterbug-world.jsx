@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { LOCATIONS } from "./data/locations.js";
-import { WORLD_COUNTRIES } from "./data/worldmap.js";
+import { WORLD_COUNTRIES, COUNTRY_CONTINENT } from "./data/worldmap.js";
 import { listProfiles, lastProfileName, getProfile, createProfile, setLastProfile,
   deleteProfile, recordGame, weightedOrder, passportData, storageAvailable } from "./profiles.js";
 
@@ -138,6 +138,22 @@ const modePlan = (key) => {
 const SHOT_COST = 0.5;
 
 const BY_ID = Object.fromEntries(LOCATIONS.map((l) => [l.id, l]));
+// Each continent gets its own colour on the world map — the player picks a
+// continent by its colour/shape, with no text labels (the easy clue names it,
+// and every clickable region carries an aria-label for screen readers).
+const CONTINENT_COLOR = {
+  "North America": "#3B76C9", // blue
+  "South America": "#4CA362", // green
+  "Africa": "#E39A3E",        // orange
+  "Europe": "#8E6BB0",        // purple
+  "Asia": "#D2564B",          // red
+  "Oceania": "#E9C33F",       // yellow
+  "Antarctica": "#EDEDE6",    // white
+};
+// How much blank margin (world-map units) to letterbox above and below the world
+// map so it fills the square frame less aggressively — a gentler stretch.
+const WORLD_PAD = 40;
+
 const CONTINENT_ORDER = ["North America", "South America", "Europe", "Africa", "Asia", "Oceania", "Antarctica"];
 // Only offer continents that actually have locations, so a continent added to the
 // data later (e.g. Antarctica) lights up automatically once it has content.
@@ -723,7 +739,9 @@ export default function ShutterbugWorld() {
   const mode = MODES[difficulty];
   const clue = mode.clue === "easy" ? target.easy : target.hard;
   const inCity = phase === "city";
-  const box = inCity && pickedContinent ? CONTINENT_META[pickedContinent].box : { x: 0, y: 0, w: 360, h: 180 };
+  // City step: the square continent box. World step: the whole map, but with blank
+  // margins top and bottom so it isn't stretched all the way to a square.
+  const box = inCity && pickedContinent ? CONTINENT_META[pickedContinent].box : { x: 0, y: -WORLD_PAD, w: 360, h: 180 + 2 * WORLD_PAD };
   // The map always fills a SQUARE frame (preserveAspectRatio="none"): the world map
   // is stretched to fill it; each continent box is already square so it fills
   // cleanly. Pins are ellipses whose radii scale with the box (rx∝box.w, ry∝box.h),
@@ -800,7 +818,7 @@ export default function ShutterbugWorld() {
         {/* Map */}
         <div style={{ flex: "2 1 520px", minWidth: 400 }}>
           <div style={{ position: "relative", aspectRatio: "1 / 1", maxWidth: 620, marginInline: "auto", borderRadius: 10, overflow: "hidden", border: `2px solid ${INK}`, boxShadow: "0 6px 0 rgba(16,38,46,0.15)" }}>
-            <svg viewBox={`${box.x} ${box.y} ${box.w} ${box.h}`} preserveAspectRatio="none" style={{ width: "100%", height: "100%", display: "block", background: OCEAN }}>
+            <svg viewBox={`${box.x} ${box.y} ${box.w} ${box.h}`} preserveAspectRatio="none" style={{ width: "100%", height: "100%", display: "block", background: inCity ? OCEAN : PAPER }}>
               <defs>
                 <pattern id="sea" width="360" height="180" patternUnits="userSpaceOnUse">
                   <rect width="360" height="180" fill={OCEAN} />
@@ -808,12 +826,29 @@ export default function ShutterbugWorld() {
                   {[...Array(13)].map((_, i) => <line key={"v" + i} x1={i * 30} y1="0" x2={i * 30} y2="180" stroke={OCEAN_DEEP} strokeWidth="0.4" />)}
                 </pattern>
               </defs>
+              {/* Ocean fills the map band (0..180). On the world step the viewBox is
+                  taller than the map, so the extra top/bottom shows the blank (paper)
+                  svg background — a gentler stretch than filling the whole square. */}
               <rect x="0" y="0" width="360" height="180" fill="url(#sea)" />
-              <g stroke={LAND_EDGE} strokeWidth="0.25" strokeLinejoin="round">
-                {WORLD_COUNTRIES.map((c) => (
-                  <path key={c.name} d={c.d} fill={LAND} fillRule="evenodd" vectorEffect="non-scaling-stroke" />
-                ))}
-              </g>
+              {inCity ? (
+                <g stroke={LAND_EDGE} strokeWidth="0.25" strokeLinejoin="round">
+                  {WORLD_COUNTRIES.map((c) => (
+                    <path key={c.name} d={c.d} fill={LAND} fillRule="evenodd" vectorEffect="non-scaling-stroke" />
+                  ))}
+                </g>
+              ) : (
+                // World step: each continent is one clickable, colour-coded region.
+                CONTINENTS.map((cont) => (
+                  <g key={cont} className="sbw-cont" role="button" tabIndex={busy ? -1 : 0}
+                     aria-label={`Choose ${cont}`} onClick={() => pickContinent(cont)}
+                     onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); pickContinent(cont); } }}
+                     style={{ cursor: busy ? "default" : "pointer" }}>
+                    {WORLD_COUNTRIES.filter((c) => COUNTRY_CONTINENT[c.name] === cont).map((c) => (
+                      <path key={c.name} d={c.d} fill={CONTINENT_COLOR[cont]} fillRule="evenodd" stroke={INK} strokeWidth="0.3" vectorEffect="non-scaling-stroke" />
+                    ))}
+                  </g>
+                ))
+              )}
 
               {/* departure city marker on the world map (continent phase) */}
               {!inCity && currentLoc && (
@@ -828,8 +863,8 @@ export default function ShutterbugWorld() {
                 <g className="sbw-plane-group">
                   <line x1={flying.fromX} y1={flying.fromY} x2={flying.toX} y2={flying.toY} stroke={CORAL} strokeWidth="1" strokeDasharray="3 3" opacity="0.8" />
                   <g style={{ animation: "sbw-fly 0.85s ease-in-out forwards", offsetPath: `path('M${flying.fromX} ${flying.fromY} L${flying.toX} ${flying.toY}')` }}>
-                    {/* scale(1 0.5) cancels the world map's 2x vertical stretch so the plane isn't squished tall */}
-                    <text fontSize="9" fill={CORAL} transform="scale(1 0.5)">✈</text>
+                    {/* scaleY cancels the map's vertical stretch so the plane isn't squished tall */}
+                    <text fontSize="9" fill={CORAL} transform={`scale(1 ${(box.h / box.w).toFixed(3)})`}>✈</text>
                   </g>
                 </g>
               )}
@@ -855,25 +890,9 @@ export default function ShutterbugWorld() {
               })}
             </svg>
 
-            {/* continent buttons (continent phase) */}
-            {!inCity && (
-              <div style={{ position: "absolute", inset: 0, pointerEvents: flying ? "none" : "auto" }}>
-                {CONTINENTS.map((c) => {
-                  const p = CONTINENT_PIN[c];
-                  return (
-                    <button key={c} onClick={() => pickContinent(c)} disabled={busy}
-                      style={{ position: "absolute", left: `${p.x / 3.6}%`, top: `${p.y / 1.8}%`, transform: "translate(-50%, -50%)",
-                        padding: "4px 9px", borderRadius: 14, border: `1.5px solid ${INK}`, background: PAPER, color: INK, fontWeight: 800,
-                        fontSize: "clamp(9px, 1.3vw, 12px)", whiteSpace: "nowrap", cursor: busy ? "default" : "pointer", boxShadow: "0 1px 3px rgba(0,0,0,0.28)" }}>
-                      {c}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
           </div>
           <p style={{ fontSize: 11, color: INK, opacity: 0.55, marginTop: 8, fontFamily: "ui-monospace, monospace", letterSpacing: "0.06em" }}>
-            {inCity ? "Click the right city — read the clue and reason it out." : "Click the continent the editor's clue points to."}
+            {inCity ? "Click the right city — read the clue and reason it out." : "Each continent has its own colour — click the one the clue points to."}
           </p>
 
           {/* Album strip — under the map so the layout is symmetric. */}
@@ -894,6 +913,11 @@ export default function ShutterbugWorld() {
       </div>
 
       <style>{`
+        /* Whole-continent highlight when hovering or keyboard-focusing a region. */
+        .sbw-cont{ outline: none; }
+        .sbw-cont path{ transition: filter .12s ease; }
+        .sbw-cont:hover path,
+        .sbw-cont:focus-visible path{ filter: brightness(1.15) saturate(1.15); stroke-width: 0.8; }
         .sbw-pin{ outline: none; }
         .sbw-pin ellipse:nth-child(2){ transition: transform .12s ease; transform-box: fill-box; transform-origin: center; }
         .sbw-pin:hover ellipse:nth-child(2){ transform: scale(1.45); }
