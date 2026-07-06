@@ -93,6 +93,26 @@ function PhotoCredit({ photo, style }) {
   );
 }
 
+// ---- Camera viewfinder shown before the shutter is pressed (the photo is ----
+// ---- hidden until you shoot). Corner ticks + a prompt, sized like the photo. ----
+function Viewfinder() {
+  const tick = { position: "absolute", width: 18, height: 18, borderColor: GOLD, borderStyle: "solid" };
+  return (
+    <div style={{ height: 230, borderRadius: 4, background: OCEAN_DEEP, position: "relative", display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <div style={{ ...tick, top: 12, left: 12, borderWidth: "2px 0 0 2px" }} />
+      <div style={{ ...tick, top: 12, right: 12, borderWidth: "2px 2px 0 0" }} />
+      <div style={{ ...tick, bottom: 12, left: 12, borderWidth: "0 0 2px 2px" }} />
+      <div style={{ ...tick, bottom: 12, right: 12, borderWidth: "0 2px 2px 0" }} />
+      <div style={{ position: "absolute", width: 22, height: 22, border: `2px solid ${CORAL}`, borderRadius: "50%", opacity: 0.7 }} />
+      <div style={{ textAlign: "center", color: PAPER, padding: "0 16px" }}>
+        <div style={{ fontSize: 34 }} aria-hidden="true">📷</div>
+        <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 10, letterSpacing: "0.22em", opacity: 0.75, marginTop: 6 }}>VIEWFINDER</div>
+        <div style={{ fontSize: 12, opacity: 0.85, marginTop: 4 }}>Press the shutter to take the shot</div>
+      </div>
+    </div>
+  );
+}
+
 // ---- Difficulty tiers. Each game shows `options` city pins on the map, of ----
 // ---- which `assignments` are the real targets; the rest are decoys. Points ----
 // ---- per photo are HIGHER on Easy (younger players) than Hard, on purpose. ----
@@ -116,9 +136,14 @@ const modePlan = (key) => {
   return { ...m, options, assignments };
 };
 
+// Taking a photo (right or wrong) costs half a travel day, so a snapshot is a
+// real decision, not a free guess.
+const SHOT_COST = 0.5;
+
 // The best score a game could reach: every photo landed, and every travel day
-// beyond the minimum (one flight per assignment) banked as leftover-day bonus.
-const maxScoreFor = (nAssign, mode) => nAssign * mode.points + nAssign * (mode.daysPer - 1) * 50;
+// beyond the minimum banked as bonus. The minimum is one flight (1 day) plus one
+// shot (SHOT_COST) per assignment.
+const maxScoreFor = (nAssign, mode) => nAssign * mode.points + nAssign * (mode.daysPer - 1 - SHOT_COST) * 50;
 
 // Rank on the FRACTION of the achievable max, so a perfect Easy run and a
 // perfect Hard run both earn the top title regardless of raw points.
@@ -129,6 +154,72 @@ const rankFor = (pct) => {
   if (pct >= 0.25) return { title: "Field Intern", note: "You got the shots that counted." };
   return { title: "Trainee", note: "Read the editor's clues more closely next time." };
 };
+
+// ---- Tiny synthesized sound effects (Web Audio) — no files, nothing to      ----
+// ---- license, and no network. The context is created lazily on first use     ----
+// ---- (always inside a click), satisfying browser autoplay rules.             ----
+const SFX = (() => {
+  let ctx = null;
+  const ac = () => {
+    if (typeof window === "undefined") return null;
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return null;
+    if (!ctx) ctx = new AC();
+    if (ctx.state === "suspended") ctx.resume();
+    return ctx;
+  };
+  const noiseBuf = (c, dur) => {
+    const n = Math.max(1, Math.floor(c.sampleRate * dur));
+    const b = c.createBuffer(1, n, c.sampleRate);
+    const d = b.getChannelData(0);
+    for (let i = 0; i < n; i++) d[i] = Math.random() * 2 - 1;
+    return b;
+  };
+  const burst = (c, t, dur, type, freq, peak) => {
+    const src = c.createBufferSource();
+    src.buffer = noiseBuf(c, dur);
+    const f = c.createBiquadFilter();
+    f.type = type; f.frequency.value = freq;
+    const g = c.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(peak, t + 0.006);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    src.connect(f); f.connect(g); g.connect(c.destination);
+    src.start(t); src.stop(t + dur);
+    return { f, g };
+  };
+  return {
+    // Camera shutter: two quick noise clicks (mirror up, shutter close).
+    shutter() {
+      const c = ac(); if (!c) return; const t = c.currentTime;
+      burst(c, t, 0.045, "highpass", 1800, 0.32);
+      burst(c, t + 0.06, 0.05, "highpass", 1300, 0.26);
+    },
+    // Airplane fly-by: filtered noise whose band sweeps up then down (~0.8s).
+    plane() {
+      const c = ac(); if (!c) return; const t = c.currentTime;
+      const { f } = burst(c, t, 0.8, "bandpass", 500, 0.11);
+      f.Q.value = 0.9;
+      f.frequency.setValueAtTime(300, t);
+      f.frequency.linearRampToValueAtTime(1150, t + 0.4);
+      f.frequency.linearRampToValueAtTime(380, t + 0.8);
+    },
+    // Success: two soft rising sine blips.
+    ding() {
+      const c = ac(); if (!c) return; const t = c.currentTime;
+      [880, 1320].forEach((freq, i) => {
+        const o = c.createOscillator(); const g = c.createGain();
+        o.type = "sine"; o.frequency.value = freq;
+        const s = t + i * 0.09;
+        g.gain.setValueAtTime(0.0001, s);
+        g.gain.exponentialRampToValueAtTime(0.22, s + 0.01);
+        g.gain.exponentialRampToValueAtTime(0.0001, s + 0.22);
+        o.connect(g); g.connect(c.destination);
+        o.start(s); o.stop(s + 0.24);
+      });
+    },
+  };
+})();
 
 export default function ShutterbugWorld() {
   const [screen, setScreen] = useState("start"); // start | play | end
@@ -143,10 +234,15 @@ export default function ShutterbugWorld() {
   const [album, setAlbum] = useState([]); // collected {id, subject, flag, fact}
   const [msg, setMsg] = useState(null); // {type, text}
   const [flying, setFlying] = useState(null); // {fromX, fromY, toX, toY}
+  const [revealed, setRevealed] = useState(false); // has the current city's photo been shot?
+  const [flashKey, setFlashKey] = useState(0); // bump to replay the shutter flash
+  const [soundOn, setSoundOn] = useState(true);
   const timer = useRef(null);
 
   const prefersReduced = typeof window !== "undefined" && window.matchMedia
     ? window.matchMedia("(prefers-reduced-motion: reduce)").matches : false;
+
+  const sfx = (name) => { if (soundOn && SFX[name]) SFX[name](); };
 
   useEffect(() => () => timer.current && clearTimeout(timer.current), []);
 
@@ -167,6 +263,7 @@ export default function ShutterbugWorld() {
     setDays(mode.assignments * mode.daysPer);
     setScore(0);
     setAlbum([]);
+    setRevealed(false);
     setMsg({ type: "info", text: "Wire received from your editor. Read the clue, then fly." });
     setFlying(null);
     setScreen("play");
@@ -176,11 +273,19 @@ export default function ShutterbugWorld() {
     if (id === current || flying || days <= 0) return;
     const from = current ? loc(current) : { x: 106, y: 49 }; // depart from NYC hub if at airport
     const to = loc(id);
+    sfx("plane");
     const finalize = () => {
+      const nd = Math.round((days - 1) * 10) / 10; // a flight costs one day
       setCurrent(id);
-      setDays((d) => d - 1);
+      setDays(nd);
+      setRevealed(false); // a fresh city — nothing shot yet
       setFlying(null);
-      setMsg({ type: "info", text: `Arrived in ${to.city}, ${to.country} ${to.flag}` });
+      if (nd <= 0) {
+        setMsg({ type: "lose", text: `Touched down in ${to.city} ${to.flag} — but your travel days are spent.` });
+        timer.current = setTimeout(() => setScreen("end"), 1100);
+      } else {
+        setMsg({ type: "info", text: `Arrived in ${to.city}, ${to.country} ${to.flag}` });
+      }
     };
     if (prefersReduced) { finalize(); return; }
     setFlying({ fromX: from.x, fromY: from.y, toX: to.x, toY: to.y });
@@ -188,28 +293,37 @@ export default function ShutterbugWorld() {
   }
 
   function takePhoto() {
-    if (!currentLoc || flying) return;
+    if (!currentLoc || flying || revealed || days <= 0) return;
+    sfx("shutter");
+    if (!prefersReduced) setFlashKey((k) => k + 1);
+    setRevealed(true); // reveal the photo now that the shutter fired
+    const d = Math.round((days - SHOT_COST) * 10) / 10; // a shot costs half a day
+    setDays(d);
     if (currentLoc.id === target.id) {
+      sfx("ding");
       const gain = MODES[difficulty].points;
-      const nextAlbum = [...album, { id: target.id, subject: target.subject, flag: target.flag, city: target.city, country: target.country, fact: target.fact, icon: target.icon, photo: target.photo }];
-      setAlbum(nextAlbum);
+      setAlbum((a) => [...a, { id: target.id, subject: target.subject, flag: target.flag, city: target.city, country: target.country, fact: target.fact, icon: target.icon, photo: target.photo }]);
       const done = step + 1 >= assignments.length;
       if (done) {
-        const bonus = days * 50;
-        setScore((s) => s + gain + bonus);
-        setMsg({ type: "win", text: `Perfect shot! +${gain}, plus ${bonus} for ${days} days to spare.` });
-        timer.current = setTimeout(() => setScreen("end"), 900);
+        const bonus = Math.max(0, d) * 50;
+        setScore((s) => s + gain + Math.round(bonus));
+        setMsg({ type: "win", text: `Perfect shot! +${gain}, plus ${Math.round(bonus)} for ${d} day${d === 1 ? "" : "s"} to spare.` });
+        timer.current = setTimeout(() => setScreen("end"), 1100);
+      } else if (d <= 0) {
+        setScore((s) => s + gain);
+        setMsg({ type: "lose", text: `Got the shot (+${gain}) — but that spent your last day. The roll's done.` });
+        timer.current = setTimeout(() => setScreen("end"), 1100);
       } else {
         setScore((s) => s + gain);
         setStep((n) => n + 1);
         setMsg({ type: "win", text: `Got it! +${gain}. New wire from the editor — next assignment.` });
       }
     } else {
-      if (days <= 0) {
+      if (d <= 0) {
         setMsg({ type: "lose", text: `That's ${currentLoc.subject}, not what the editor wanted — and you're out of days.` });
-        timer.current = setTimeout(() => setScreen("end"), 900);
+        timer.current = setTimeout(() => setScreen("end"), 1100);
       } else {
-        setMsg({ type: "warn", text: `That's ${currentLoc.subject} — not the assignment. Check the clue and fly on.` });
+        setMsg({ type: "warn", text: `That's ${currentLoc.subject} — not the assignment. Half a day gone; check the clue and fly on.` });
       }
     }
   }
@@ -290,7 +404,13 @@ export default function ShutterbugWorld() {
         <div style={{ flex: "1 1 340px", minWidth: 300 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
             <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 12, letterSpacing: "0.18em", color: INK, opacity: 0.7 }}>ASSIGNMENT {step + 1}/{assignments.length}</span>
-            <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 13, fontWeight: 700, color: days <= 1 ? CORAL : INK }}>◷ {days} day{days === 1 ? "" : "s"} left</span>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <button onClick={() => setSoundOn((s) => !s)} aria-label={soundOn ? "Turn sound off" : "Turn sound on"} aria-pressed={soundOn} title={soundOn ? "Sound on" : "Sound off"}
+                style={{ background: "none", border: "none", cursor: "pointer", fontSize: 15, lineHeight: 1, padding: 2, color: INK, opacity: 0.75 }}>
+                {soundOn ? "🔊" : "🔇"}
+              </button>
+              <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 13, fontWeight: 700, color: days <= 1 ? CORAL : INK }}>◷ {days} day{days === 1 ? "" : "s"} left</span>
+            </div>
           </div>
 
           <div style={{ background: PAPER, border: `1px dashed ${CORAL}`, borderRadius: 6, padding: "14px 16px", position: "relative" }}>
@@ -311,8 +431,13 @@ export default function ShutterbugWorld() {
           {currentLoc ? (
             <div style={{ marginTop: 12, background: "#fff", border: `1px solid ${PAPER_LINE}`, borderRadius: 8, padding: 14, textAlign: "center" }}>
               <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.18em", color: INK, opacity: 0.6 }}>YOU ARE HERE</div>
-              <div style={{ margin: "8px 0" }}><Photo photo={currentLoc.photo} icon={currentLoc.icon} alt={currentLoc.subject} size={230} full /></div>
-              <PhotoCredit photo={currentLoc.photo} style={{ textAlign: "center", marginTop: 0, marginBottom: 4 }} />
+              <div style={{ margin: "8px 0", position: "relative", overflow: "hidden", borderRadius: 4 }}>
+                {revealed
+                  ? <Photo photo={currentLoc.photo} icon={currentLoc.icon} alt={currentLoc.subject} size={230} full />
+                  : <Viewfinder />}
+                {flashKey > 0 && !prefersReduced && <div key={flashKey} className="sbw-flash" />}
+              </div>
+              {revealed && <PhotoCredit photo={currentLoc.photo} style={{ textAlign: "center", marginTop: 0, marginBottom: 4 }} />}
               <div style={{ fontWeight: 700, color: INK }}>{currentLoc.flag} {currentLoc.city}, {currentLoc.country}</div>
               <div style={{ fontSize: 13, color: INK, opacity: 0.7, marginTop: 2 }}>Subject in view: {currentLoc.subject}</div>
               {currentLoc.greeting?.text && (
@@ -322,7 +447,13 @@ export default function ShutterbugWorld() {
                   {currentLoc.greeting.pronunciation ? ` (${currentLoc.greeting.pronunciation})` : ""}
                 </div>
               )}
-              <button onClick={takePhoto} disabled={!!flying} style={{ ...cameraBtn, opacity: flying ? 0.5 : 1 }}>📷 Take the photo</button>
+              {revealed ? (
+                <div style={{ marginTop: 12, fontSize: 13, color: INK, opacity: 0.7 }}>Shot filed. Tap another city to fly on.</div>
+              ) : (
+                <button onClick={takePhoto} disabled={!!flying || days <= 0} style={{ ...cameraBtn, opacity: flying || days <= 0 ? 0.5 : 1 }}>
+                  📷 Take the photo <span style={{ fontWeight: 500, opacity: 0.85 }}>· ½ day</span>
+                </button>
+              )}
             </div>
           ) : (
             <div style={{ marginTop: 12, background: "#fff", border: `1px dashed ${PAPER_LINE}`, borderRadius: 8, padding: 14, textAlign: "center", color: INK, opacity: 0.7, fontSize: 14 }}>
@@ -418,8 +549,11 @@ export default function ShutterbugWorld() {
         .sbw-ping{ transform-box: fill-box; transform-origin: center; animation: sbw-ping 1.6s ease-out infinite; }
         @keyframes sbw-ping{ 0%{ transform: scale(0.6); opacity:.9 } 100%{ transform: scale(1.9); opacity:0 } }
         @keyframes sbw-fly{ 0%{ offset-distance: 0% } 100%{ offset-distance: 100% } }
+        /* White shutter flash over the photo when you take a shot. */
+        .sbw-flash{ position: absolute; inset: 0; background: #fff; border-radius: 4px; pointer-events: none; opacity: 0; animation: sbw-flash 0.42s ease-out; }
+        @keyframes sbw-flash{ 0%{ opacity: 0 } 10%{ opacity: 0.95 } 100%{ opacity: 0 } }
         @media (prefers-reduced-motion: reduce){
-          .sbw-ping{ animation: none } .sbw-plane-group{ display: none }
+          .sbw-ping{ animation: none } .sbw-plane-group{ display: none } .sbw-flash{ animation: none; opacity: 0 }
         }
       `}</style>
     </Frame>
