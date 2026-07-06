@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { LOCATIONS } from "./data/locations.js";
+import { WORLD_COUNTRIES } from "./data/worldmap.js";
 
 /*
   SHUTTERBUG — A World Photo Safari  (working vertical slice)
@@ -7,14 +8,13 @@ import { LOCATIONS } from "./data/locations.js";
   Loop: read your editor's clue -> fly to the right city -> photograph the right
   subject before your days run out. Every correct shot teaches a geography fact.
 
-  This is a DEMO base, not the finished game. Deliberate placeholders:
-    - The world map is a STYLIZED vector, not geographically exact. The real
-      build swaps in a true vector map (D3-geo + world-atlas TopoJSON, or Leaflet).
-    - Landmarks are simple hand-drawn icons, not real photographs. The real build
-      slots in freely-licensed photos (Wikimedia Commons / Unsplash / public domain).
-    - Ten sample locations in src/data/locations.js. The real build grows that
-      data file (and may pull from REST Countries) without touching this component.
-  Everything runs in-memory (no storage), no external calls.
+  The world map is a real vector map (Natural Earth country outlines, public
+  domain) in src/data/worldmap.js, drawn in the same lon/lat projection as the
+  city pins so they line up. Landmarks use freely-licensed photos from
+  src/data/locations.js, falling back to hand-drawn icons where a photo is
+  missing. Ten sample locations for now; grow the data file (optionally from
+  REST Countries) without touching this component. Map geometry is bundled as
+  data, so it runs in-memory; only the landmark photos load over the network.
 */
 
 // ---- Palette (airmail / vintage travel poster; deliberately not the cream+terracotta default) ----
@@ -92,18 +92,6 @@ function PhotoCredit({ photo, style }) {
     </div>
   );
 }
-
-// ---- Stylized continent polygons (0..360 x, 0..180 y). Approximate, on purpose. ----
-const CONTINENTS = [
-  "M40 28 L70 18 L105 20 L125 30 L128 40 L112 44 L118 55 L100 72 L80 78 L62 70 L55 58 L40 52 L30 40 L34 32 Z", // N America
-  "M150 15 L170 12 L178 22 L168 34 L152 30 Z", // Greenland
-  "M118 80 L130 82 L142 92 L140 105 L132 122 L122 140 L114 146 L110 128 L116 108 L108 92 L112 84 Z", // S America
-  "M172 30 L188 22 L205 24 L218 30 L214 40 L200 42 L205 50 L190 52 L182 44 L172 42 Z", // Europe
-  "M178 52 L205 50 L222 56 L232 72 L228 92 L214 112 L200 126 L190 120 L186 100 L176 82 L168 66 Z", // Africa
-  "M214 40 L240 28 L280 20 L320 22 L350 30 L358 44 L345 58 L320 70 L300 66 L278 72 L258 66 L238 58 L220 50 Z", // Asia
-  "M256 66 L262 78 L256 86 L251 76 L250 66 Z", // India peninsula
-  "M300 104 L322 100 L334 110 L332 122 L318 130 L302 126 L296 114 Z", // Australia
-];
 
 const rankFor = (score) => {
   if (score >= 550) return { title: "Pulitzer-Winning Photojournalist", note: "Flawless work in the field." };
@@ -221,7 +209,7 @@ export default function ShutterbugWorld() {
 
           <button onClick={startGame} style={primaryBtn}>Begin the assignment ✈</button>
           <p style={{ fontSize: 11, color: INK, opacity: 0.5, marginTop: 18, lineHeight: 1.5 }}>
-            Demo base · stylized map (not exact) · icons stand in for real photos · 10 sample locations
+            Real map (Natural Earth) · freely-licensed landmark photos · 10 sample locations
           </p>
         </div>
       </Frame>
@@ -325,7 +313,11 @@ export default function ShutterbugWorld() {
                 </pattern>
               </defs>
               <rect width="360" height="180" fill="url(#sea)" />
-              {CONTINENTS.map((d, i) => <path key={i} d={d} fill={LAND} stroke={LAND_EDGE} strokeWidth="0.8" strokeLinejoin="round" />)}
+              <g stroke={LAND_EDGE} strokeWidth="0.25" strokeLinejoin="round">
+                {WORLD_COUNTRIES.map((c) => (
+                  <path key={c.name} d={c.d} fill={LAND} fillRule="evenodd" />
+                ))}
+              </g>
 
               {/* animated flight path */}
               {flying && (
