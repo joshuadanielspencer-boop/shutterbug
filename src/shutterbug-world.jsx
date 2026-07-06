@@ -1,6 +1,8 @@
 import React, { useState, useRef, useEffect } from "react";
 import { LOCATIONS } from "./data/locations.js";
 import { WORLD_COUNTRIES } from "./data/worldmap.js";
+import { listProfiles, lastProfileName, getProfile, createProfile, setLastProfile,
+  recordGame, weightedOrder, passportData, storageAvailable } from "./profiles.js";
 
 /*
   SHUTTERBUG — A World Photo Safari  (working vertical slice)
@@ -222,7 +224,7 @@ const SFX = (() => {
 })();
 
 export default function ShutterbugWorld() {
-  const [screen, setScreen] = useState("start"); // start | play | end
+  const [screen, setScreen] = useState("start"); // start | play | end | passport
   const [difficulty, setDifficulty] = useState("easy");
 
   const [assignments, setAssignments] = useState([]); // target location ids (the photos to file)
@@ -232,12 +234,22 @@ export default function ShutterbugWorld() {
   const [days, setDays] = useState(0);
   const [score, setScore] = useState(0);
   const [album, setAlbum] = useState([]); // collected {id, subject, flag, fact}
+  const [visitedIds, setVisitedIds] = useState([]); // cities flown to this game
   const [msg, setMsg] = useState(null); // {type, text}
   const [flying, setFlying] = useState(null); // {fromX, fromY, toX, toY}
   const [revealed, setRevealed] = useState(false); // has the current city's photo been shot?
   const [flashKey, setFlashKey] = useState(0); // bump to replay the shutter flash
   const [soundOn, setSoundOn] = useState(true);
+
+  // Player profiles (localStorage). profileName === null means "Guest — no saving".
+  const [canSave] = useState(() => storageAvailable());
+  const [profiles, setProfiles] = useState(() => (canSave ? listProfiles() : []));
+  const [profileName, setProfileName] = useState(() => (canSave ? lastProfileName() : null));
+  const [newName, setNewName] = useState("");
+  const [lastResult, setLastResult] = useState(null); // {isBest} after a recorded game
+  const recorded = useRef(false);
   const timer = useRef(null);
+  const refreshProfiles = () => setProfiles(listProfiles());
 
   const prefersReduced = typeof window !== "undefined" && window.matchMedia
     ? window.matchMedia("(prefers-reduced-motion: reduce)").matches : false;
@@ -252,22 +264,42 @@ export default function ShutterbugWorld() {
 
   function startGame() {
     const mode = modePlan(difficulty);
-    // Pick the pins shown this game, then draw the targets from among them so
-    // every assignment is reachable on the map; the rest are random decoys.
-    const shown = [...LOCATIONS].sort(() => Math.random() - 0.5).slice(0, mode.options);
-    const targets = [...shown].sort(() => Math.random() - 0.5).slice(0, mode.assignments);
-    setVisible(shown.map((l) => l.id));
-    setAssignments(targets.map((l) => l.id));
+    // Weighted order surfaces the active player's missed/unmastered places more
+    // often (a plain shuffle for guests). The most-weighted become this game's
+    // shown pins; the top of those become the targets, the rest are decoys.
+    const order = weightedOrder(profileName ? getProfile(profileName) : null);
+    const shown = order.slice(0, mode.options);
+    const targets = shown.slice(0, mode.assignments);
+    setVisible(shown);
+    setAssignments(targets);
     setStep(0);
     setCurrent(null);
     setDays(mode.assignments * mode.daysPer);
     setScore(0);
     setAlbum([]);
+    setVisitedIds([]);
     setRevealed(false);
+    setLastResult(null);
+    recorded.current = false;
     setMsg({ type: "info", text: "Wire received from your editor. Read the clue, then fly." });
     setFlying(null);
     setScreen("play");
   }
+
+  // When a game ends, record its outcome once against the active profile.
+  useEffect(() => {
+    if (screen === "end" && !recorded.current) {
+      recorded.current = true;
+      if (profileName) {
+        const correctIds = album.map((p) => p.id);
+        const missedIds = assignments.filter((id) => !correctIds.includes(id));
+        const res = recordGame(profileName, { difficulty, score, visitedIds, correctIds, missedIds });
+        setLastResult(res);
+        refreshProfiles();
+      }
+    }
+    if (screen === "start") recorded.current = false;
+  }, [screen]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function travelTo(id) {
     if (id === current || flying || days <= 0) return;
@@ -279,6 +311,7 @@ export default function ShutterbugWorld() {
       setCurrent(id);
       setDays(nd);
       setRevealed(false); // a fresh city — nothing shot yet
+      setVisitedIds((v) => (v.includes(id) ? v : [...v, id]));
       setFlying(null);
       if (nd <= 0) {
         setMsg({ type: "lose", text: `Touched down in ${to.city} ${to.flag} — but your travel days are spent.` });
@@ -342,7 +375,49 @@ export default function ShutterbugWorld() {
             Every correct shot teaches a bit of world geography.
           </p>
 
-          <div style={{ marginTop: 24 }}>
+          <div style={{ marginTop: 22 }}>
+            <Field label="Traveller">
+              <div style={{ display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap", maxWidth: 460, margin: "0 auto" }}>
+                {profiles.map((p) => {
+                  const active = p.name === profileName;
+                  return (
+                    <button key={p.name} onClick={() => { setProfileName(p.name); setLastProfile(p.name); }} aria-pressed={active}
+                      style={{ padding: "7px 14px", borderRadius: 20, cursor: "pointer", fontWeight: 700, fontSize: 13,
+                        border: `1.5px solid ${INK}`, background: active ? INK : "transparent", color: active ? PAPER : INK }}>
+                      {active ? "🧳 " : ""}{p.name}
+                    </button>
+                  );
+                })}
+                <button onClick={() => { setProfileName(null); setLastProfile(null); }} aria-pressed={profileName === null}
+                  style={{ padding: "7px 14px", borderRadius: 20, cursor: "pointer", fontWeight: 700, fontSize: 13,
+                    border: `1.5px dashed ${INK}`, background: profileName === null ? INK : "transparent", color: profileName === null ? PAPER : INK }}>
+                  Guest
+                </button>
+              </div>
+              <form onSubmit={(e) => { e.preventDefault(); const p = createProfile(newName); if (p) { setProfileName(p.name); setNewName(""); refreshProfiles(); } }}
+                style={{ display: "flex", gap: 8, justifyContent: "center", marginTop: 10, flexWrap: "wrap" }}>
+                <input value={newName} onChange={(e) => setNewName(e.target.value)} maxLength={20} placeholder="New traveller's name" aria-label="New traveller's name"
+                  disabled={!canSave}
+                  style={{ padding: "8px 12px", borderRadius: 8, border: `1.5px solid ${PAPER_LINE}`, fontSize: 14, width: 180, background: "#fff", color: INK }} />
+                <button type="submit" disabled={!newName.trim() || !canSave}
+                  style={{ padding: "8px 14px", borderRadius: 8, border: "none", cursor: newName.trim() && canSave ? "pointer" : "default", fontWeight: 700, fontSize: 14, background: GREEN, color: "#fff", opacity: newName.trim() && canSave ? 1 : 0.5 }}>
+                  ＋ Add
+                </button>
+              </form>
+              {profileName ? (
+                <button onClick={() => setScreen("passport")}
+                  style={{ marginTop: 10, padding: "7px 16px", borderRadius: 8, border: `1.5px solid ${CORAL}`, background: "transparent", color: CORAL, fontWeight: 700, fontSize: 13, cursor: "pointer" }}>
+                  📕 {profileName}'s passport
+                </button>
+              ) : (
+                <p style={{ fontSize: 12, color: INK, opacity: 0.6, margin: "8px 2px 0" }}>
+                  {canSave ? "Guest games aren't saved. Add a name to keep scores and stamps." : "This browser can't save progress, so games won't be recorded."}
+                </p>
+              )}
+            </Field>
+          </div>
+
+          <div style={{ marginTop: 22 }}>
             <Field label="Difficulty">
               <Toggle options={MODE_ORDER.map((k) => [k, MODES[k].label])} value={difficulty} onChange={setDifficulty} />
               {(() => {
@@ -383,11 +458,91 @@ export default function ShutterbugWorld() {
           <p style={{ color: INK, fontWeight: 700, marginTop: 6 }}>{r.title}</p>
           <p style={{ color: INK, opacity: 0.7, marginTop: 2 }}>{r.note}</p>
 
+          {profileName && lastResult?.isBest && (
+            <p style={{ marginTop: 10, display: "inline-block", background: GOLD, color: INK, fontWeight: 800, fontSize: 14, padding: "6px 14px", borderRadius: 20 }}>
+              ★ New personal best for {profileName}!
+            </p>
+          )}
+
           <div style={{ display: "flex", gap: 14, flexWrap: "wrap", justifyContent: "center", marginTop: 22 }}>
             {album.map((p) => (<Polaroid key={p.id} p={p} />))}
           </div>
 
-          <button onClick={() => setScreen("start")} style={{ ...primaryBtn, marginTop: 26 }}>New assignment</button>
+          <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap", marginTop: 26 }}>
+            <button onClick={() => setScreen("start")} style={primaryBtn}>New assignment</button>
+            {profileName && (
+              <button onClick={() => setScreen("passport")} style={{ ...primaryBtn, background: "transparent", color: CORAL, border: `2px solid ${CORAL}`, boxShadow: "none" }}>
+                📕 View passport
+              </button>
+            )}
+          </div>
+        </div>
+      </Frame>
+    );
+  }
+
+  if (screen === "passport") {
+    const profile = getProfile(profileName);
+    if (!profile) {
+      return (
+        <Frame>
+          <div style={{ maxWidth: 620, margin: "0 auto", textAlign: "center" }}>
+            <p style={{ color: INK }}>No traveller selected yet.</p>
+            <button onClick={() => setScreen("start")} style={primaryBtn}>Back to start</button>
+          </div>
+        </Frame>
+      );
+    }
+    const pp = passportData(profile);
+    const best = profile.best || {};
+    return (
+      <Frame>
+        <div style={{ maxWidth: 840, margin: "0 auto" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", flexWrap: "wrap", gap: 10 }}>
+            <div>
+              <Stamp>Passport</Stamp>
+              <h2 style={{ fontFamily: "ui-sans-serif, system-ui", fontWeight: 900, fontSize: 28, color: INK, margin: "8px 0 0" }}>🧳 {profile.name}</h2>
+            </div>
+            <button onClick={() => setScreen("start")} style={{ padding: "9px 18px", borderRadius: 8, border: `1.5px solid ${INK}`, background: "transparent", color: INK, fontWeight: 700, cursor: "pointer" }}>← Back</button>
+          </div>
+
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 16 }}>
+            <StatCard label="Stamps earned" value={`${pp.masteredCount} / ${pp.totalCountries}`} />
+            <StatCard label="Countries visited" value={`${pp.visitedCount}`} />
+            <StatCard label="Trips taken" value={`${profile.games || 0}`} />
+            <StatCard label="Best · Easy" value={best.easy ? String(best.easy) : "—"} />
+            <StatCard label="Best · Medium" value={best.medium ? String(best.medium) : "—"} />
+            <StatCard label="Best · Hard" value={best.hard ? String(best.hard) : "—"} />
+          </div>
+
+          <div style={{ marginTop: 14, display: "flex", gap: 8, flexWrap: "wrap" }}>
+            {Object.entries(pp.continents).sort().map(([k, v]) => (
+              <span key={k} style={{ fontFamily: "ui-monospace, monospace", fontSize: 12, color: INK, background: PAPER, border: `1px solid ${PAPER_LINE}`, borderRadius: 14, padding: "4px 10px" }}>
+                {k}: {v.mastered}/{v.total}
+              </span>
+            ))}
+          </div>
+
+          <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.18em", color: INK, opacity: 0.6, margin: "22px 0 10px" }}>STAMPS</div>
+          {pp.countries.length === 0 ? (
+            <p style={{ color: INK, opacity: 0.7 }}>No stamps yet — fly out and photograph a landmark to earn your first!</p>
+          ) : (
+            <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+              {pp.countries.map((c) => (
+                <div key={c.country} style={{ width: 184, background: "#fff", border: `2px ${c.mastered ? "solid" : "dashed"} ${c.mastered ? CORAL : PAPER_LINE}`, borderRadius: 8, padding: 12, transform: `rotate(${(c.country.charCodeAt(0) % 5) - 2}deg)` }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <span style={{ fontSize: 26 }} aria-hidden="true">{c.flag}</span>
+                    <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 10, letterSpacing: "0.1em", color: c.mastered ? CORAL : INK, opacity: c.mastered ? 1 : 0.55 }}>{c.mastered ? "★ MASTERED" : "✓ VISITED"}</span>
+                  </div>
+                  <div style={{ fontWeight: 800, color: INK, marginTop: 6 }}>{c.country}</div>
+                  <div style={{ fontSize: 11, color: INK, opacity: 0.6 }}>{c.continent}{c.mastered ? ` · ${c.correct} shot${c.correct === 1 ? "" : "s"}` : ""}</div>
+                  {c.mastered && c.facts[0] && (
+                    <div style={{ fontSize: 11, color: INK, opacity: 0.75, lineHeight: 1.35, marginTop: 6 }}>{c.facts[0].fact}</div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </Frame>
     );
@@ -580,6 +735,14 @@ function Frame({ children }) {
 }
 function Stamp({ children }) {
   return <span style={{ display: "inline-block", fontFamily: "ui-monospace, monospace", fontSize: 10, letterSpacing: "0.22em", textTransform: "uppercase", color: CORAL, border: `1.5px solid ${CORAL}`, borderRadius: 4, padding: "3px 8px", transform: "rotate(-2deg)" }}>{children}</span>;
+}
+function StatCard({ label, value }) {
+  return (
+    <div style={{ flex: "1 1 120px", minWidth: 110, background: PAPER, border: `1px solid ${PAPER_LINE}`, borderRadius: 8, padding: "10px 12px", textAlign: "center" }}>
+      <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 20, fontWeight: 800, color: CORAL }}>{value}</div>
+      <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 10, letterSpacing: "0.1em", color: INK, opacity: 0.65, marginTop: 2, textTransform: "uppercase" }}>{label}</div>
+    </div>
+  );
 }
 function Field({ label, children }) {
   return (
