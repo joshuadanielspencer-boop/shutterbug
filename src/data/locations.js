@@ -76,7 +76,8 @@
 //   the Commons API (extmetadata). All are commercially-free (CC BY / CC BY-SA;
 //   attribution shown in-game). Paris uses a DAYTIME Eiffel Tower shot on purpose
 //   (the tower's night lighting is copyrighted in France). Rio (Christ the
-//   Redeemer) is intentionally left without a photo — see the note on that entry.
+//   Redeemer) carries a known copyright caveat kept by owner's decision — see the
+//   note on that entry.
 //
 // ICON KEYS (valid values for `icon`): "eiffel", "clocktower", "pyramid",
 //   "lion", "fuji", "wall", "taj", "liberty", "christ", "opera". Any other
@@ -191,12 +192,15 @@ export const LOCATIONS = [
     easy: "In SOUTH AMERICA, photograph the mountaintop statue above Brazil's famous coastal city.",
     hard: "Arms outstretched atop a peak, a stone figure watches a southern bay.",
     fact: "Christ the Redeemer (1931) is 30 m tall atop Corcovado. Brazil is the largest country in South America.",
-    // photo: LEFT NULL ON PURPOSE — flagged for your decision. Freely-licensed
-    // photos exist (e.g. Arne Müseler, CC BY-SA 3.0 DE), but the statue itself is
-    // still under copyright (sculptor Paul Landowski, d. 1961; ~2032) and Brazil's
-    // freedom of panorama is legally contested, so a photo centering the statue is
-    // not a clear-cut free use. Falls back to the hand-drawn icon until resolved.
-    photo: null,
+    // NOTE: The PHOTO is freely licensed (CC BY-SA 3.0 DE, Arne Müseler), but the
+    // STATUE itself is still under copyright (sculptor Paul Landowski, d. 1961;
+    // ~2032) and Brazil's freedom of panorama is legally contested — so a photo
+    // centering the statue is a known, accepted risk here, not a clear-cut free
+    // use. Kept by owner's decision (2026-07-05). Required attribution: exactly
+    // "Arne Müseler / www.arne-mueseler.com".
+    photo: { src: "https://commons.wikimedia.org/wiki/Special:FilePath/Christ_the_Redeemer_-_Cristo_Redentor_-_2022.jpg?width=800",
+      credit: "Arne Müseler / www.arne-mueseler.com", license: "CC BY-SA 3.0 DE", licenseUrl: "https://creativecommons.org/licenses/by-sa/3.0/de/",
+      source: "https://commons.wikimedia.org/wiki/File:Christ_the_Redeemer_-_Cristo_Redentor_-_2022.jpg" },
     greeting: { text: "Olá", language: "Portuguese", pronunciation: "oh-LAH" } },
   { id: "sydney", city: "Sydney", country: "Australia", flag: "🇦🇺", continent: "Oceania",
     x: 331.2, y: 123.9,
