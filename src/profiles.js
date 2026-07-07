@@ -12,6 +12,7 @@
 // Countries and continents are derived from these on the fly (see passportData).
 // ===========================================================================
 import { LOCATIONS } from "./data/locations.js";
+import { kindOf } from "./data/categories.js";
 
 const KEY = "shutterbug.v1";
 const MAX_NAME = 20;
@@ -164,12 +165,29 @@ export function passportData(profile) {
   }
   const totalCountries = new Set(LOCATIONS.map((l) => l.country)).size;
   const list = Object.values(countries).sort((a, b) => a.country.localeCompare(b.country));
+
+  // Collections: distinct locations photographed correctly per category, and per
+  // family (Human-Made / Natural / Living) — powers the passport Collections grid.
+  const catTotal = {}, catMastered = {}, kinds = {};
+  const mastered = (id) => { const st = profile && profile.loc && profile.loc[id]; return !!(st && st.c > 0); };
+  for (const l of LOCATIONS) {
+    catTotal[l.category] = (catTotal[l.category] || 0) + 1;
+    if (mastered(l.id)) catMastered[l.category] = (catMastered[l.category] || 0) + 1;
+    const k = kindOf(l.category);
+    const kk = kinds[k] || (kinds[k] = { mastered: 0, total: 0 });
+    kk.total += 1;
+    if (mastered(l.id)) kk.mastered += 1;
+  }
+  const collections = Object.keys(catTotal).map((c) => ({ category: c, mastered: catMastered[c] || 0, total: catTotal[c] }));
+
   return {
     countries: list,
     visitedCount: list.filter((c) => c.visited).length,
     masteredCount: list.filter((c) => c.mastered).length,
     totalCountries,
     continents: continentTotals(list),
+    collections,
+    kinds,
   };
 }
 

@@ -3,6 +3,7 @@ import { LOCATIONS } from "./data/locations.js";
 import { WORLD_COUNTRIES, COUNTRY_CONTINENT } from "./data/worldmap.js";
 import { WORLD_COUNTRIES_ROBINSON } from "./data/worldmap-robinson.js";
 import { robinson, eqToRobinson, ROBINSON_W, ROBINSON_H } from "./robinson.js";
+import { CATEGORIES, CATEGORY_ORDER, KIND_META, kindOf } from "./data/categories.js";
 import { listProfiles, lastProfileName, getProfile, createProfile, setLastProfile,
   deleteProfile, recordGame, weightedOrder, passportData, storageAvailable } from "./profiles.js";
 
@@ -541,7 +542,7 @@ export default function ShutterbugWorld() {
 
     if (id === target.id) {
       const gain = MODES[difficulty].points;
-      setAlbum((a) => [...a, { id: target.id, subject: target.subject, flag: target.flag, city: target.city, country: target.country, continent: target.continent, fact: target.fact, icon: target.icon, photo: target.photo, greeting: target.greeting }]);
+      setAlbum((a) => [...a, { id: target.id, subject: target.subject, flag: target.flag, city: target.city, country: target.country, continent: target.continent, category: target.category, fact: target.fact, icon: target.icon, photo: target.photo, greeting: target.greeting }]);
       const done = step + 1 >= assignments.length;
       if (done) {
         const bonus = Math.round(Math.max(0, d) * 50);
@@ -550,7 +551,7 @@ export default function ShutterbugWorld() {
         sfx("win");
         setPending({ kind: "win", tone: "good", emoji: "🏆", title: "Trip complete!",
           subtitle: `A perfect shot of ${target.subject}! +${gain}${bonus ? `, plus ${bonus} for ${d} day${d === 1 ? "" : "s"} to spare` : ""}.`,
-          fact: target.fact, photo: target.photo, buttonLabel: "See my results 📸" });
+          fact: target.fact, photo: target.photo, category: target.category, buttonLabel: "See my results 📸" });
       } else if (d <= 0) {
         setScore((s) => s + gain);
         setElapsedMs(Date.now() - startRef.current);
@@ -563,7 +564,7 @@ export default function ShutterbugWorld() {
         sfx("success");
         setPending({ kind: "correct", tone: "good", emoji: "✅", title: "Perfect shot!",
           subtitle: `You photographed ${target.subject}. +${gain} points!`,
-          fact: target.fact, photo: target.photo, buttonLabel: "Next assignment ✈" });
+          fact: target.fact, photo: target.photo, category: target.category, buttonLabel: "Next assignment ✈" });
       }
     } else {
       if (d <= 0) outOfDays(`That's ${cityLoc.subject}, not what the editor wanted — and the trip's over.`);
@@ -738,6 +739,39 @@ export default function ShutterbugWorld() {
                 {k}: {v.mastered}/{v.total}
               </span>
             ))}
+          </div>
+
+          {/* Collections — one card per subject category, with progress. */}
+          <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.18em", color: INK, opacity: 0.6, margin: "22px 0 10px" }}>COLLECTIONS</div>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 }}>
+            {Object.entries(KIND_META).map(([k, meta]) => {
+              const kk = pp.kinds[k] || { mastered: 0, total: 0 };
+              return (
+                <span key={k} style={{ fontFamily: "ui-monospace, monospace", fontSize: 12, fontWeight: 700, color: INK, background: PAPER, border: `1px solid ${PAPER_LINE}`, borderRadius: 14, padding: "5px 12px" }}>
+                  <span aria-hidden="true">{meta.emoji}</span> {meta.name}: {kk.mastered}/{kk.total}
+                </span>
+              );
+            })}
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))", gap: 10 }}>
+            {CATEGORY_ORDER.map((cat) => {
+              const c = CATEGORIES[cat];
+              const col = pp.collections.find((x) => x.category === cat) || { mastered: 0, total: 0 };
+              const done = col.total > 0 && col.mastered === col.total;
+              const pct = col.total ? Math.round((col.mastered / col.total) * 100) : 0;
+              return (
+                <div key={cat} style={{ background: "#fff", border: `2px solid ${done ? c.color : PAPER_LINE}`, borderRadius: 8, padding: "10px 12px", opacity: col.mastered ? 1 : 0.7 }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 4 }}>
+                    <span style={{ fontWeight: 800, color: INK, fontSize: 13, lineHeight: 1.2 }}><span aria-hidden="true">{c.emoji}</span> {c.name}</span>
+                    {done && <span title="Collection complete!" aria-label="complete" style={{ fontSize: 13 }}>⭐</span>}
+                  </div>
+                  <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 12, color: INK, opacity: 0.7, marginTop: 5 }}>{col.mastered} / {col.total}{done ? "" : ""}</div>
+                  <div style={{ height: 6, background: PAPER, borderRadius: 4, marginTop: 6, overflow: "hidden" }}>
+                    <div style={{ width: `${pct}%`, height: "100%", background: c.color, transition: "width .3s ease" }} />
+                  </div>
+                </div>
+              );
+            })}
           </div>
 
           <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.18em", color: INK, opacity: 0.6, margin: "22px 0 10px" }}>STAMPS</div>
@@ -1129,6 +1163,24 @@ function TravelCollage() {
   );
 }
 // Big obvious success/failure popup that pauses play until the player clicks on.
+// Pick readable text (ink or white) for a coloured pill background.
+const textOn = (hex) => {
+  const n = parseInt(hex.slice(1), 16);
+  return (0.299 * ((n >> 16) & 255) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)) > 150 ? INK : "#fff";
+};
+// Little coloured pill naming a subject's category (🌋 Volcano, 💦 Waterfall…).
+function CategoryBadge({ category, size = "md", style }) {
+  const c = CATEGORIES[category];
+  if (!c) return null;
+  const sm = size === "sm";
+  return (
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 5, background: c.color, color: textOn(c.color),
+      fontWeight: 800, fontSize: sm ? 10 : 12, lineHeight: 1.3, letterSpacing: "0.02em",
+      padding: sm ? "2px 7px" : "3px 10px", borderRadius: 20, whiteSpace: "nowrap", ...style }}>
+      <span aria-hidden="true">{c.emoji}</span>{c.name}
+    </span>
+  );
+}
 function ResultModal({ data, onContinue, reduced }) {
   const good = data.tone === "good";
   const accent = good ? GREEN : CORAL;
@@ -1139,6 +1191,7 @@ function ResultModal({ data, onContinue, reduced }) {
         style={{ background: PAPER, borderRadius: 16, border: `3px solid ${accent}`, boxShadow: "0 14px 44px rgba(0,0,0,0.35)", maxWidth: 420, width: "100%", padding: "26px 22px", textAlign: "center" }}>
         <div style={{ fontSize: 56, lineHeight: 1 }} aria-hidden="true">{data.emoji}</div>
         <h2 style={{ fontFamily: "ui-sans-serif, system-ui", fontWeight: 900, fontSize: 26, color: accent, margin: "10px 0 6px" }}>{data.title}</h2>
+        {data.category && <div style={{ marginBottom: 10 }}><CategoryBadge category={data.category} /></div>}
         {data.photo?.src && (
           <div style={{ margin: "0 auto 10px", maxWidth: 300, borderRadius: 8, overflow: "hidden", border: `2px solid ${accent}` }}>
             <img src={data.photo.src} alt="" style={{ width: "100%", height: 150, objectFit: "cover", display: "block" }} />
@@ -1181,7 +1234,10 @@ function LandmarkModal({ p, onClose, reduced }) {
         <PhotoCredit photo={p.photo} style={{ textAlign: "center", marginTop: 0, marginBottom: 8 }} />
         <h2 style={{ fontFamily: "ui-sans-serif, system-ui", fontWeight: 900, fontSize: 24, color: INK, margin: "4px 0 2px" }}>{p.subject}</h2>
         <div style={{ fontWeight: 700, color: INK }}>{p.flag} {p.city}, {p.country}</div>
-        {p.continent && <div style={{ fontSize: 12, color: INK, opacity: 0.6, marginTop: 2 }}>{p.continent}</div>}
+        <div style={{ marginTop: 8, display: "flex", gap: 6, justifyContent: "center", alignItems: "center", flexWrap: "wrap" }}>
+          {p.category && <CategoryBadge category={p.category} />}
+          {p.continent && <span style={{ fontSize: 12, color: INK, opacity: 0.6 }}>{p.continent}</span>}
+        </div>
         {p.greeting?.text && (
           <div style={{ fontSize: 14, color: OCEAN, marginTop: 10 }}>
             <span aria-hidden="true">💬 </span>Local greeting: “{p.greeting.text}”
@@ -1236,7 +1292,8 @@ function Polaroid({ p }) {
         <Photo photo={p.photo} icon={p.icon} alt={p.subject} size={82} />
       </div>
       <div style={{ fontWeight: 700, color: INK, fontSize: 13, marginTop: 8 }}>{p.flag} {p.subject}</div>
-      <div style={{ fontSize: 11, color: INK, opacity: 0.65, lineHeight: 1.35, marginTop: 4 }}>{p.fact}</div>
+      {p.category && <div style={{ marginTop: 5 }}><CategoryBadge category={p.category} size="sm" /></div>}
+      <div style={{ fontSize: 11, color: INK, opacity: 0.65, lineHeight: 1.35, marginTop: 5 }}>{p.fact}</div>
       <PhotoCredit photo={p.photo} />
     </div>
   );
