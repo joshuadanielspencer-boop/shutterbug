@@ -123,6 +123,22 @@ const modePlan = (key) => {
 // real decision, not a free guess.
 const SHOT_COST = 0.5;
 
+// ---- Grand Tour mode: instead of one assignment at a time, you get a whole ----
+// ---- itinerary of targets across several continents on ONE shared day budget, ----
+// ---- fulfilled in ANY order. Flying to a NEW continent costs FLIGHT_DAYS; ----
+// ---- photographing another target on the continent you're already on is just ----
+// ---- the SHOT_COST — so grouping same-continent targets and planning an ----
+// ---- efficient route saves days. `reqs` = itinerary length; `slack` = spare days. ----
+const FLIGHT_DAYS = 2;
+const TOUR_MODES = {
+  easy:   { reqs: 4, catShare: 0.4, labels: "all",   clue: "easy", points: 150, slack: 3 },
+  medium: { reqs: 5, catShare: 0.5, labels: "smart", clue: "hard", points: 125, slack: 2 },
+  hard:   { reqs: 6, catShare: 0.6, labels: "smart", clue: "hard", points: 100, slack: 1 },
+};
+// Best achievable Grand Tour score: every target filed, plus the day-bonus for the
+// most days a perfectly efficient route could bank (the buffer built into the budget).
+const tourMaxScore = (nReqs, difficulty) => nReqs * TOUR_MODES[difficulty].points + (nReqs + TOUR_MODES[difficulty].slack) * 50;
+
 const BY_ID = Object.fromEntries(LOCATIONS.map((l) => [l.id, l]));
 // Each continent gets its own colour on the world map — the player picks a
 // continent by its colour/shape, with no text labels (the easy clue names it,
@@ -420,6 +436,9 @@ export default function ShutterbugWorld() {
   const [elapsedMs, setElapsedMs] = useState(0); // final game time, shown on the results screen
   const [liveNow, setLiveNow] = useState(0); // ticks while playing so the on-screen timer updates
   const [albumView, setAlbumView] = useState(null); // album photo opened into a big popup
+  const [gameMode, setGameMode] = useState("assignments"); // "assignments" | "tour" (Grand Tour)
+  const [tourReqs, setTourReqs] = useState([]); // Grand Tour itinerary: [{key,kind,continent,category?,targetId?,anchorId,label,done,filedId?}]
+  const [tourOptions, setTourOptions] = useState({}); // Grand Tour: continent -> [city ids to show there]
 
   // Player profiles (localStorage). profileName === null means "Guest — no saving".
   const [canSave] = useState(() => storageAvailable());
@@ -458,7 +477,9 @@ export default function ShutterbugWorld() {
   const target = asg ? loc(isCatAsg ? asg.anchorId : asg.targetId) : null;
   const currentLoc = current ? loc(current) : null;
 
-  const cityOptions = optionsByStep[step] || [];
+  // Which city pins to show on the zoomed continent: the current assignment's
+  // options, or (in Grand Tour) the options for the continent you're standing on.
+  const cityOptions = gameMode === "tour" ? (tourOptions[pickedContinent] || []) : (optionsByStep[step] || []);
 
   function startGame() {
     const mode = modePlan(difficulty);
@@ -526,6 +547,77 @@ export default function ShutterbugWorld() {
     recorded.current = false;
     setMsg({ type: "info", text: "Read the editor's clue, then pick the right continent on the map." });
     setFlying(null);
+    setGameMode("assignments");
+    setScreen("play");
+  }
+
+  // ---- Grand Tour: build an itinerary of targets across continents on one shared ----
+  // ---- day budget, fulfilled in any order. ----
+  function startTour() {
+    const tm = TOUR_MODES[difficulty];
+    const profile = profileName ? getProfile(profileName) : null;
+    const order = weightedOrder(profile).map((id) => BY_ID[id]);
+    const masteredSet = new Set(profile && profile.loc ? Object.keys(profile.loc).filter((id) => profile.loc[id].c > 0) : []);
+
+    // Choose the continents to visit: (reqs-1) distinct, then repeat one — so at
+    // least one continent holds two targets, making route-grouping worthwhile.
+    const distinct = Math.max(1, Math.min(tm.reqs - 1, CONTINENTS.length));
+    const picked = CONTINENTS.slice().sort(() => Math.random() - 0.5).slice(0, distinct);
+    const slots = picked.slice();
+    while (slots.length < tm.reqs) slots.push(picked[Math.floor(Math.random() * picked.length)]);
+    slots.sort(() => Math.random() - 0.5);
+
+    const usedAnchors = new Set(), usedCatCont = new Set(), reqs = [];
+    for (const cont of slots) {
+      const catsHere = CATEGORY_ORDER.filter((c) => CAT_LOCS[c] && CAT_LOCS[c][cont]
+        && CAT_LOCS[c][cont].some((id) => !usedAnchors.has(id)) && !usedCatCont.has(c + "|" + cont));
+      let req = null;
+      if (Math.random() < tm.catShare && catsHere.length) {
+        const category = catsHere[Math.floor(Math.random() * catsHere.length)];
+        const members = CAT_LOCS[category][cont].filter((id) => !usedAnchors.has(id));
+        const fresh = members.filter((id) => !masteredSet.has(id));
+        const anchorId = (fresh.length ? fresh : members)[Math.floor(Math.random() * (fresh.length ? fresh.length : members.length))];
+        usedCatCont.add(category + "|" + cont);
+        req = { kind: "category", continent: cont, category, anchorId, label: `any ${CATEGORIES[category].noun} in ${cont}` };
+      } else {
+        const pick = order.find((l) => l.continent === cont && !usedAnchors.has(l.id))
+          || LOCATIONS.find((l) => l.continent === cont && !usedAnchors.has(l.id));
+        if (!pick) continue;
+        req = { kind: "specific", continent: cont, targetId: pick.id, anchorId: pick.id, label: `${pick.subject} — ${cont}` };
+      }
+      usedAnchors.add(req.anchorId);
+      req.key = "r" + reqs.length; req.done = false;
+      reqs.push(req);
+    }
+
+    // City options per visited continent: every target anchor there + a couple of
+    // spaced decoys, shuffled (so a category target isn't obvious by elimination).
+    const opts = {};
+    const contsUsed = [...new Set(reqs.map((r) => r.continent))];
+    for (const cont of contsUsed) {
+      const anchors = reqs.filter((r) => r.continent === cont).map((r) => BY_ID[r.anchorId]);
+      const far = spacedFor(CONTINENT_META[cont].box);
+      const chosen = [...anchors];
+      const total = Math.max(tm.labels === "all" ? 4 : 5, anchors.length + 2);
+      for (const l of order) { if (chosen.length >= total) break; if (l.continent === cont && !chosen.includes(l) && far(l, chosen)) chosen.push(l); }
+      for (const l of order) { if (chosen.length >= total) break; if (l.continent === cont && !chosen.includes(l)) chosen.push(l); }
+      opts[cont] = chosen.map((l) => l.id).sort(() => Math.random() - 0.5);
+    }
+
+    // Budget: the minimal route (one flight per continent + one shot per target)
+    // plus buffer for wrong guesses and detours.
+    const budget = Math.ceil(FLIGHT_DAYS * contsUsed.length + SHOT_COST * reqs.length + reqs.length + tm.slack);
+
+    setGameMode("tour");
+    setTourReqs(reqs);
+    setTourOptions(opts);
+    setAssignments([]); setOptionsByStep([]); setStep(0);
+    setPhase("continent"); setPickedContinent(null); setCurrent(null);
+    setDays(budget); setScore(0); setAlbum([]); setVisitedIds([]);
+    setRevealed(false); setLastResult(null); setNewBadges([]); setPending(null);
+    setElapsedMs(0); startRef.current = Date.now(); recorded.current = false;
+    setMsg({ type: "info", text: "Plan your route! Fly to a continent, photograph its targets, then fly on." });
+    setFlying(null);
     setScreen("play");
   }
 
@@ -539,10 +631,13 @@ export default function ShutterbugWorld() {
       setPhase("continent");       // ...back to the world map for the next continent
       setPickedContinent(null);    // current stays = the city just shot, so the next flight departs from there
       setMsg({ type: "info", text: "New assignment! Read the clue and pick the continent." });
-    } else if (kind === "win" || kind === "lose") {
+    } else if (kind === "win" || kind === "lose" || kind === "tour-win" || kind === "tour-lose") {
       setScreen("end");
     } else if (kind === "wrong" && phase === "city") {
       setCurrent(null);    // clear the wrong shot; back to "pick a city"
+      setRevealed(false);
+    } else if (kind === "tour-correct" || kind === "tour-wrong") {
+      setCurrent(null);    // stay on THIS continent to shoot its other targets, or fly on
       setRevealed(false);
     }
     // wrong continent just closes and leaves you on the world map to try again.
@@ -555,16 +650,23 @@ export default function ShutterbugWorld() {
       if (profileName) {
         const beforeEarned = new Set(achievements(getProfile(profileName)).filter((a) => a.earned).map((a) => a.id));
         const correctIds = album.map((p) => p.id);
-        // A specific assignment is satisfied if its subject was filed; a category
-        // assignment if any photo of that category on that continent was filed.
         const missedIds = [];
-        for (const a of assignments) {
-          const ok = a.type === "category"
-            ? album.some((p) => p.category === a.category && p.continent === a.continent)
-            : correctIds.includes(a.targetId);
-          if (!ok) missedIds.push(a.type === "category" ? a.anchorId : a.targetId);
+        let won;
+        if (gameMode === "tour") {
+          // Grand Tour: a requirement is met when its checkbox got ticked.
+          for (const r of tourReqs) if (!r.done) missedIds.push(r.anchorId);
+          won = tourReqs.length > 0 && missedIds.length === 0;
+        } else {
+          // A specific assignment is satisfied if its subject was filed; a category
+          // assignment if any photo of that category on that continent was filed.
+          for (const a of assignments) {
+            const ok = a.type === "category"
+              ? album.some((p) => p.category === a.category && p.continent === a.continent)
+              : correctIds.includes(a.targetId);
+            if (!ok) missedIds.push(a.type === "category" ? a.anchorId : a.targetId);
+          }
+          won = assignments.length > 0 && missedIds.length === 0;
         }
-        const won = assignments.length > 0 && missedIds.length === 0;
         const res = recordGame(profileName, { difficulty, score, timeMs: elapsedMs, won, visitedIds, correctIds, missedIds });
         setLastResult(res);
         const earnedNow = achievements(getProfile(profileName)).filter((a) => a.earned && !beforeEarned.has(a.id));
@@ -584,7 +686,29 @@ export default function ShutterbugWorld() {
 
   // ---- Continent phase: pick a continent on the world map ----
   function pickContinent(cont) {
-    if (phase !== "continent" || flying || pending || days <= 0 || !target) return;
+    if (phase !== "continent" || flying || pending || days <= 0) return;
+    if (gameMode === "tour") {
+      // Grand Tour: fly anywhere you like — it just costs a flight. No "wrong
+      // continent"; going somewhere with no targets is simply a wasted trip.
+      const from = current ? loc(current) : (pickedContinent ? CONTINENT_PIN[pickedContinent] : { x: 106, y: 49 });
+      const to = CONTINENT_PIN[cont];
+      sfx("plane");
+      const finalize = () => {
+        const nd = Math.round((days - FLIGHT_DAYS) * 10) / 10;
+        setDays(nd);
+        setFlying(null); setPickedContinent(cont); setPhase("city"); setCurrent(null); setRevealed(false);
+        if (nd <= 0) return outOfDays(`You reached ${cont}, but the trip's budget is spent.`);
+        const here = tourReqs.filter((r) => !r.done && r.continent === cont).length;
+        setMsg(here
+          ? { type: "info", text: `Touched down in ${cont}. ${here} target${here === 1 ? "" : "s"} on your list ${here === 1 ? "is" : "are"} here.` }
+          : { type: "warn", text: `Touched down in ${cont} — but nothing on your list is here. Fly on when ready.` });
+      };
+      if (prefersReduced) { finalize(); return; }
+      setFlying({ fromX: from.x, fromY: from.y, toX: to.x, toY: to.y });
+      timer.current = setTimeout(finalize, 850);
+      return;
+    }
+    if (!target) return;
     if (cont === target.continent) {
       const from = current ? loc(current) : { x: 106, y: 49 }; // first flight departs from a hub
       const to = CONTINENT_PIN[cont];
@@ -617,7 +741,6 @@ export default function ShutterbugWorld() {
   // ---- City phase: click a city on the zoomed continent to photograph it ----
   function photographCity(id) {
     if (phase !== "city" || flying || pending || days <= 0) return;
-    const a = assignments[step];
     const clicked = loc(id);
     setCurrent(id);
     setVisitedIds((v) => (v.includes(id) ? v : [...v, id]));
@@ -627,6 +750,53 @@ export default function ShutterbugWorld() {
     const d = Math.round((days - SHOT_COST) * 10) / 10; // a shot costs half a day
     setDays(d);
 
+    if (gameMode === "tour") {
+      // Does this city tick off a still-pending itinerary requirement here?
+      const idx = tourReqs.findIndex((r) => !r.done && r.continent === clicked.continent
+        && (r.kind === "category" ? clicked.category === r.category : r.targetId === id));
+      if (idx >= 0) {
+        const req = tourReqs[idx];
+        const gain = TOUR_MODES[difficulty].points;
+        const nextReqs = tourReqs.map((r, i) => (i === idx ? { ...r, done: true, filedId: id } : r));
+        setTourReqs(nextReqs);
+        setAlbum((al) => [...al, { id: clicked.id, subject: clicked.subject, flag: clicked.flag, city: clicked.city, country: clicked.country, continent: clicked.continent, category: clicked.category, fact: clicked.fact, icon: clicked.icon, photo: clicked.photo, greeting: clicked.greeting }]);
+        const remaining = nextReqs.filter((r) => !r.done).length;
+        const found = req.kind === "category" ? `You found a ${CATEGORIES[req.category].noun} — ${clicked.subject}!` : `You bagged ${clicked.subject}!`;
+        if (remaining === 0) {
+          const bonus = Math.round(Math.max(0, d) * 50);
+          setScore((s) => s + gain + bonus);
+          setElapsedMs(Date.now() - startRef.current);
+          sfx("win");
+          setPending({ kind: "tour-win", tone: "good", emoji: "🏆", title: "Grand Tour complete!",
+            subtitle: `${found} Every target on your itinerary is filed! +${gain}${bonus ? `, plus ${bonus} for ${d} day${d === 1 ? "" : "s"} to spare` : ""}.`,
+            fact: clicked.fact, photo: clicked.photo, category: clicked.category, buttonLabel: "See my results 📸" });
+        } else if (d <= 0) {
+          setScore((s) => s + gain);
+          setElapsedMs(Date.now() - startRef.current);
+          sfx("lose");
+          setPending({ kind: "tour-lose", tone: "bad", emoji: "⏳", title: "Got it — but out of days!",
+            subtitle: `${found} (+${gain}) — but that was your last travel day, with ${remaining} still on the list.`,
+            fact: clicked.fact, buttonLabel: "See my results" });
+        } else {
+          setScore((s) => s + gain);
+          sfx("success");
+          setPending({ kind: "tour-correct", tone: "good", emoji: "✅", title: "Ticked off the list!",
+            subtitle: `${found} +${gain}. ${remaining} target${remaining === 1 ? "" : "s"} to go — shoot another here or fly on.`,
+            fact: clicked.fact, photo: clicked.photo, category: clicked.category, buttonLabel: "Keep exploring 🗺" });
+        }
+      } else {
+        if (d <= 0) outOfDays(`That's ${clicked.subject}, not on your list — and the trip's over.`);
+        else {
+          sfx("fail");
+          setPending({ kind: "tour-wrong", tone: "bad", emoji: "❌", title: "Not on your list",
+            subtitle: `${clicked.subject} isn't one of your remaining targets here. Half a day gone — check your itinerary.`,
+            buttonLabel: "Keep looking 🔍" });
+        }
+      }
+      return;
+    }
+
+    const a = assignments[step];
     // Win by category for a category mission; by exact subject for a specific one.
     const win = a.type === "category" ? clicked.category === a.category : id === a.targetId;
     if (win) {
@@ -726,12 +896,23 @@ export default function ShutterbugWorld() {
           </div>
 
           <div style={{ marginTop: 22 }}>
+            <Field label="Mode">
+              <Toggle options={[["assignments", "Assignments"], ["tour", "Grand Tour"]]} value={gameMode} onChange={setGameMode} />
+            </Field>
+            <p style={{ fontSize: 12, color: INK, opacity: 0.7, margin: "8px auto 0", maxWidth: 430, lineHeight: 1.45 }}>
+              {gameMode === "tour"
+                ? "Grand Tour: a whole itinerary of targets across continents on one shared day budget — plan an efficient route and photograph them in any order."
+                : "Assignments: one editor's clue at a time — fly to the right place and photograph the right subject before your days run out."}
+            </p>
+          </div>
+
+          <div style={{ marginTop: 22 }}>
             <Field label="Difficulty">
               <Toggle options={MODE_ORDER.map((k) => [k, MODES[k].label])} value={difficulty} onChange={setDifficulty} />
             </Field>
           </div>
 
-          <button onClick={startGame} style={primaryBtn}>Begin the assignment ✈</button>
+          <button onClick={gameMode === "tour" ? startTour : startGame} style={primaryBtn}>{gameMode === "tour" ? "Start the Grand Tour ✈" : "Begin the assignment ✈"}</button>
         </div>
       </Frame>
     );
@@ -739,16 +920,18 @@ export default function ShutterbugWorld() {
 
   if (screen === "end") {
     const mode = MODES[difficulty];
-    const maxScore = maxScoreFor(assignments.length, mode);
+    const isTourEnd = gameMode === "tour";
+    const totalTargets = isTourEnd ? tourReqs.length : assignments.length;
+    const maxScore = isTourEnd ? tourMaxScore(tourReqs.length, difficulty) : maxScoreFor(assignments.length, mode);
     const pct = maxScore > 0 ? score / maxScore : 0;
     const r = rankFor(pct);
     return (
       <Frame>
         <div style={{ maxWidth: 640, margin: "0 auto", textAlign: "center" }}>
           <Stamp>Roll Developed</Stamp>
-          <h2 style={{ fontFamily: "ui-sans-serif, system-ui", fontWeight: 900, letterSpacing: "0.08em", fontSize: 30, color: INK, margin: "10px 0 4px" }}>{album.length} / {assignments.length} shots filed</h2>
+          <h2 style={{ fontFamily: "ui-sans-serif, system-ui", fontWeight: 900, letterSpacing: "0.08em", fontSize: 30, color: INK, margin: "10px 0 4px" }}>{album.length} / {totalTargets} shots filed</h2>
           <p style={{ fontFamily: "ui-monospace, monospace", fontSize: 22, color: CORAL, fontWeight: 700, margin: "6px 0" }}>{score} pts · ⏱ {fmtTime(elapsedMs)}</p>
-          <p style={{ fontFamily: "ui-monospace, monospace", fontSize: 12, color: INK, opacity: 0.6, margin: "0 0 6px", letterSpacing: "0.06em" }}>{mode.label} · {Math.round(pct * 100)}% of a perfect run</p>
+          <p style={{ fontFamily: "ui-monospace, monospace", fontSize: 12, color: INK, opacity: 0.6, margin: "0 0 6px", letterSpacing: "0.06em" }}>{isTourEnd ? "Grand Tour" : mode.label} · {mode.label} · {Math.round(pct * 100)}% of a perfect run</p>
           <p style={{ color: INK, fontWeight: 700, marginTop: 6 }}>{r.title}</p>
           <p style={{ color: INK, opacity: 0.7, marginTop: 2 }}>{r.note}</p>
 
@@ -947,13 +1130,15 @@ export default function ShutterbugWorld() {
 
   // play screen
   const mode = MODES[difficulty];
+  const isTour = gameMode === "tour";
   // The editor's telegram adapts to the mission type: a specific subject, or
   // "any {category} in {continent}" for a category mission (the player chooses).
-  const catMeta = isCatAsg ? CATEGORIES[asg.category] : null;
-  const promptSubject = isCatAsg ? `any ${catMeta.noun}` : (target ? target.subject : "");
-  const clue = isCatAsg
+  // In Grand Tour there's no single clue — the itinerary panel replaces it.
+  const catMeta = (!isTour && isCatAsg) ? CATEGORIES[asg.category] : null;
+  const promptSubject = isTour ? "" : (isCatAsg ? `any ${catMeta.noun}` : (target ? target.subject : ""));
+  const clue = isTour ? "" : (isCatAsg
     ? `In ${asg.continent.toUpperCase()}, find any ${catMeta.noun} and photograph it — you pick which one!`
-    : (mode.clue === "easy" ? target.easy : target.hard);
+    : (target ? (mode.clue === "easy" ? target.easy : target.hard) : ""));
   const inCity = phase === "city";
   // City step: the square continent box (a topographic relief plate). World step:
   // the whole map, but with blank margins top/bottom so it isn't stretched to square.
@@ -976,7 +1161,7 @@ export default function ShutterbugWorld() {
         {/* Field journal panel */}
         <div style={{ flex: "1 1 340px", minWidth: 300 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-            <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 12, letterSpacing: "0.18em", color: INK, opacity: 0.7 }}>ASSIGNMENT {step + 1}/{assignments.length}</span>
+            <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 12, letterSpacing: "0.18em", color: INK, opacity: 0.7 }}>{isTour ? `GRAND TOUR · ${tourReqs.filter((r) => r.done).length}/${tourReqs.length} filed` : `ASSIGNMENT ${step + 1}/${assignments.length}`}</span>
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
               <button onClick={() => setSoundOn((s) => !s)} aria-label={soundOn ? "Turn sound off" : "Turn sound on"} aria-pressed={soundOn} title={soundOn ? "Sound on" : "Sound off"}
                 style={{ background: "none", border: "none", cursor: "pointer", fontSize: 15, lineHeight: 1, padding: 2, color: INK, opacity: 0.75 }}>
@@ -987,11 +1172,15 @@ export default function ShutterbugWorld() {
             </div>
           </div>
 
+          {isTour ? (
+            <Itinerary reqs={tourReqs} here={inCity ? pickedContinent : null} />
+          ) : (
           <div style={{ background: PAPER, border: `1px dashed ${CORAL}`, borderRadius: 6, padding: "14px 16px", position: "relative" }}>
             <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.22em", color: CORAL, marginBottom: 8 }}>✎ TELEGRAM — FROM THE EDITOR</div>
             <p style={{ margin: 0, color: INK, lineHeight: 1.5, fontSize: 15 }}>Bring me a photo of <b>{promptSubject}</b>.{isCatAsg && <> <CategoryBadge category={asg.category} size="sm" style={{ verticalAlign: "middle" }} /></>}</p>
             <p style={{ margin: "8px 0 0", color: INK, opacity: 0.85, lineHeight: 1.5, fontSize: 14, fontStyle: "italic" }}>{clue}</p>
           </div>
+          )}
 
           {msg && (
             <div style={{ marginTop: 12, padding: "10px 12px", borderRadius: 6, fontSize: 14, lineHeight: 1.4,
@@ -1025,14 +1214,24 @@ export default function ShutterbugWorld() {
             <div style={{ marginTop: 12, background: "#fff", border: `1px dashed ${CORAL}`, borderRadius: 8, padding: 16, textAlign: "center" }}>
               <div style={{ fontSize: 28 }} aria-hidden="true">📸</div>
               <div style={{ fontWeight: 800, color: INK, marginTop: 4 }}>You're in {pickedContinent}!</div>
-              <div style={{ fontSize: 13, color: INK, opacity: 0.8, marginTop: 6, lineHeight: 1.45 }}>Click the right city on the map to photograph the editor's subject.</div>
+              <div style={{ fontSize: 13, color: INK, opacity: 0.8, marginTop: 6, lineHeight: 1.45 }}>
+                {isTour ? "Photograph any target on your itinerary that's here, then fly on." : "Click the right city on the map to photograph the editor's subject."}
+              </div>
+              {isTour && (
+                <button onClick={() => { if (!busy) { setPhase("continent"); setRevealed(false); setMsg({ type: "info", text: "Pick the next continent to fly to." }); } }} disabled={busy}
+                  style={{ marginTop: 10, padding: "8px 16px", borderRadius: 8, border: `1.5px solid ${OCEAN}`, background: "transparent", color: OCEAN, fontWeight: 700, fontSize: 13, cursor: busy ? "default" : "pointer" }}>
+                  ✈ Fly to another continent
+                </button>
+              )}
             </div>
           ) : (
             <div style={{ marginTop: 12, background: "#fff", border: `1px dashed ${CORAL}`, borderRadius: 8, padding: 16, textAlign: "center" }}>
               <div style={{ fontSize: 28 }} aria-hidden="true">🌍</div>
-              <div style={{ fontWeight: 800, color: INK, marginTop: 4 }}>Which continent?</div>
+              <div style={{ fontWeight: 800, color: INK, marginTop: 4 }}>{isTour ? "Where to next?" : "Which continent?"}</div>
               <div style={{ fontSize: 13, color: INK, opacity: 0.8, marginTop: 6, lineHeight: 1.45 }}>
-                {current ? `Departing ${currentLoc.flag} ${currentLoc.city}. ` : ""}Read the clue, then click the continent it points to.
+                {isTour
+                  ? `Pick a continent to fly to (costs ${FLIGHT_DAYS} travel days). Group nearby targets to save days!`
+                  : `${current ? `Departing ${currentLoc.flag} ${currentLoc.city}. ` : ""}Read the clue, then click the continent it points to.`}
               </div>
             </div>
           )}
@@ -1135,7 +1334,9 @@ export default function ShutterbugWorld() {
 
           </div>
           <p style={{ fontSize: 11, color: INK, opacity: 0.55, marginTop: 8, fontFamily: "ui-monospace, monospace", letterSpacing: "0.06em" }}>
-            {inCity ? "Click the right city — read the clue and reason it out." : "Each continent has its own colour — click the one the clue points to."}
+            {isTour
+              ? (inCity ? "Click a target on your itinerary that's here." : "Each continent has its own colour — pick where to fly next.")
+              : (inCity ? "Click the right city — read the clue and reason it out." : "Each continent has its own colour — click the one the clue points to.")}
           </p>
 
           {/* Album strip — under the map so the layout is symmetric. */}
@@ -1307,6 +1508,33 @@ function CategoryBadge({ category, size = "md", style }) {
       padding: sm ? "2px 7px" : "3px 10px", borderRadius: 20, whiteSpace: "nowrap", ...style }}>
       <span aria-hidden="true">{c.emoji}</span>{c.name}
     </span>
+  );
+}
+// Grand Tour itinerary: the editor's checklist of targets. Ticks off as you file
+// each one; targets on the continent you're standing on are flagged "here now".
+function Itinerary({ reqs, here }) {
+  const doneN = reqs.filter((r) => r.done).length;
+  return (
+    <div style={{ background: PAPER, border: `1px dashed ${CORAL}`, borderRadius: 6, padding: "14px 16px" }}>
+      <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.22em", color: CORAL, marginBottom: 10 }}>✎ THE EDITOR'S ITINERARY</div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
+        {reqs.map((r) => {
+          const onHere = here && r.continent === here && !r.done;
+          return (
+            <div key={r.key} style={{ display: "flex", alignItems: "flex-start", gap: 8, fontSize: 14, lineHeight: 1.35, color: INK, opacity: r.done ? 0.5 : 1 }}>
+              <span aria-hidden="true" style={{ fontSize: 15 }}>{r.done ? "✅" : onHere ? "📸" : "⬜"}</span>
+              <span>
+                <span style={{ fontWeight: 700, textDecoration: r.done ? "line-through" : "none" }}>{r.label}</span>
+                {onHere && <span style={{ color: CORAL, fontWeight: 800 }}> — here now!</span>}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+      <div style={{ marginTop: 10, fontSize: 12, color: INK, opacity: 0.7, lineHeight: 1.4 }}>
+        {doneN}/{reqs.length} filed · fly between continents; group nearby targets to save days.
+      </div>
+    </div>
   );
 }
 function ResultModal({ data, onContinue, reduced }) {
