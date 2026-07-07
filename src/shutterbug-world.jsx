@@ -5,7 +5,7 @@ import { WORLD_COUNTRIES_ROBINSON } from "./data/worldmap-robinson.js";
 import { robinson, eqToRobinson, ROBINSON_W, ROBINSON_H } from "./robinson.js";
 import { CATEGORIES, CATEGORY_ORDER, KIND_META, kindOf } from "./data/categories.js";
 import { listProfiles, lastProfileName, getProfile, createProfile, setLastProfile,
-  deleteProfile, recordGame, weightedOrder, passportData, storageAvailable } from "./profiles.js";
+  deleteProfile, recordGame, weightedOrder, passportData, achievements, storageAvailable } from "./profiles.js";
 
 /*
   SHUTTERBUG — A World Photo Safari  (working vertical slice)
@@ -405,6 +405,7 @@ export default function ShutterbugWorld() {
   const [profileName, setProfileName] = useState(() => (canSave ? lastProfileName() : null));
   const [newName, setNewName] = useState("");
   const [lastResult, setLastResult] = useState(null); // {isBest, isBestTime} after a recorded game
+  const [newBadges, setNewBadges] = useState([]); // achievements newly earned this game
   const [confirmRemove, setConfirmRemove] = useState(false); // passport delete confirmation
   const recorded = useRef(false);
   const startRef = useRef(0); // ms timestamp the current game began
@@ -496,6 +497,7 @@ export default function ShutterbugWorld() {
     setVisitedIds([]);
     setRevealed(false);
     setLastResult(null);
+    setNewBadges([]);
     setPending(null);
     setElapsedMs(0);
     startRef.current = Date.now();
@@ -529,6 +531,7 @@ export default function ShutterbugWorld() {
     if (screen === "end" && !recorded.current) {
       recorded.current = true;
       if (profileName) {
+        const beforeEarned = new Set(achievements(getProfile(profileName)).filter((a) => a.earned).map((a) => a.id));
         const correctIds = album.map((p) => p.id);
         // A specific assignment is satisfied if its subject was filed; a category
         // assignment if any photo of that category on that continent was filed.
@@ -542,7 +545,9 @@ export default function ShutterbugWorld() {
         const won = assignments.length > 0 && missedIds.length === 0;
         const res = recordGame(profileName, { difficulty, score, timeMs: elapsedMs, won, visitedIds, correctIds, missedIds });
         setLastResult(res);
-        if (res.isBest || res.isBestTime) sfx("stamp");
+        const earnedNow = achievements(getProfile(profileName)).filter((a) => a.earned && !beforeEarned.has(a.id));
+        setNewBadges(earnedNow);
+        if (res.isBest || res.isBestTime || earnedNow.length) sfx("stamp");
         refreshProfiles();
       }
     }
@@ -736,8 +741,21 @@ export default function ShutterbugWorld() {
             </div>
           )}
 
+          {profileName && newBadges.length > 0 && (
+            <div style={{ marginTop: 12 }}>
+              <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.18em", color: CORAL, marginBottom: 6 }}>🏅 ACHIEVEMENT{newBadges.length > 1 ? "S" : ""} UNLOCKED!</div>
+              <div style={{ display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap" }}>
+                {newBadges.map((b) => (
+                  <span key={b.id} style={{ background: INK, color: PAPER, fontWeight: 800, fontSize: 14, padding: "7px 14px", borderRadius: 20 }}>
+                    <span aria-hidden="true">{b.emoji}</span> {b.name}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div style={{ display: "flex", gap: 14, flexWrap: "wrap", justifyContent: "center", marginTop: 22 }}>
-            {album.map((p) => (<Polaroid key={p.id} p={p} />))}
+            {album.map((p, i) => (<Polaroid key={`${p.id}-${i}`} p={p} />))}
           </div>
 
           <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap", marginTop: 26 }}>
@@ -768,6 +786,8 @@ export default function ShutterbugWorld() {
     const pp = passportData(profile);
     const best = profile.best || {};
     const bt = profile.bestTime || {};
+    const badges = achievements(profile);
+    const earnedBadges = badges.filter((b) => b.earned).length;
     return (
       <Frame>
         <div style={{ maxWidth: 840, margin: "0 auto" }}>
@@ -836,6 +856,21 @@ export default function ShutterbugWorld() {
                 </div>
               );
             })}
+          </div>
+
+          {/* Achievements — long-term badges earned across games. */}
+          <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.18em", color: INK, opacity: 0.6, margin: "22px 0 10px" }}>ACHIEVEMENTS <span style={{ opacity: 0.7 }}>— {earnedBadges}/{badges.length}</span></div>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            {badges.slice().sort((a, b) => (b.earned - a.earned) || (b.have / b.need - a.have / a.need)).map((b) => (
+              <div key={b.id} title={b.earned ? "Earned!" : `${b.have} / ${b.need}`}
+                style={{ display: "flex", alignItems: "center", gap: 7, padding: "7px 12px", borderRadius: 20,
+                  background: b.earned ? GOLD : PAPER, border: `1.5px solid ${b.earned ? GOLD : PAPER_LINE}`,
+                  color: INK, opacity: b.earned ? 1 : 0.75 }}>
+                <span aria-hidden="true" style={{ fontSize: 16, filter: b.earned ? "none" : "grayscale(1)" }}>{b.emoji}</span>
+                <span style={{ fontWeight: 800, fontSize: 13 }}>{b.name}</span>
+                <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, opacity: 0.7 }}>{b.earned ? "★" : `${b.have}/${b.need}`}</span>
+              </div>
+            ))}
           </div>
 
           <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.18em", color: INK, opacity: 0.6, margin: "22px 0 10px" }}>STAMPS</div>
@@ -1085,8 +1120,8 @@ export default function ShutterbugWorld() {
             <div style={{ marginTop: 12 }}>
               <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.18em", color: INK, opacity: 0.6, marginBottom: 6 }}>ALBUM <span style={{ opacity: 0.7, letterSpacing: 0 }}>— tap a photo to revisit it</span></div>
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                {album.map((p) => (
-                  <button key={p.id} onClick={() => setAlbumView(p)} title={`${p.subject} — ${p.city}`} aria-label={`Revisit ${p.subject}, ${p.city}`}
+                {album.map((p, i) => (
+                  <button key={`${p.id}-${i}`} onClick={() => setAlbumView(p)} title={`${p.subject} — ${p.city}`} aria-label={`Revisit ${p.subject}, ${p.city}`}
                     style={{ width: 46, height: 52, background: "#fff", border: `1px solid ${PAPER_LINE}`, borderRadius: 3, padding: 0, display: "flex", alignItems: "center", justifyContent: "center", transform: "rotate(-3deg)", cursor: "pointer" }}>
                     <Photo photo={p.photo} icon={p.icon} alt={p.subject} size={34} />
                   </button>

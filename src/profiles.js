@@ -191,6 +191,54 @@ export function passportData(profile) {
   };
 }
 
+// ---- Achievements ---------------------------------------------------------
+// Badges the player works toward across games. Each is { id, name, emoji, have,
+// need, earned }. Completion badges use category/kind totals; special ones use
+// tags. Long-term goals like these are the main replay driver.
+const ACH_CATNAME = {
+  mountain: ["Peak Bagger", "🏔️"], volcano: ["Volcano Hunter", "🌋"], waterfall: ["Waterfall Chaser", "💦"],
+  waterway: ["River Runner", "🏞️"], desert: ["Desert Wanderer", "🏜️"], ice: ["Polar Explorer", "🧊"],
+  coast: ["Island Hopper", "🏝️"], rock: ["Rockhound", "🪨"], wildlife: ["Safari Ranger", "🦁"],
+  ruins: ["Time Traveler", "🏛️"], temple: ["Pilgrim", "⛩️"], palace: ["Royal Guest", "🏰"],
+  monument: ["Monument Hunter", "🗽"], cityscape: ["City Slicker", "🏙️"],
+};
+const SUPERLATIVES = new Set(["highest", "tallest", "largest", "deepest", "longest", "driest", "oldest", "lowest", "most-active", "widest", "biggest"]);
+
+export function achievements(profile) {
+  const has = (id) => { const st = profile && profile.loc && profile.loc[id]; return !!(st && st.c > 0); };
+  const catHave = {}, catTotal = {}, kindHave = {}, kindTotal = {};
+  let unescoHave = 0, summitHave = 0, summitTotal = 0, superHave = 0, distinct = 0;
+  const contSet = new Set();
+  for (const l of LOCATIONS) {
+    const tags = l.tags || [];
+    catTotal[l.category] = (catTotal[l.category] || 0) + 1;
+    const k = kindOf(l.category); kindTotal[k] = (kindTotal[k] || 0) + 1;
+    if (tags.includes("continental-high")) summitTotal += 1;
+    if (has(l.id)) {
+      distinct += 1; contSet.add(l.continent);
+      catHave[l.category] = (catHave[l.category] || 0) + 1;
+      kindHave[k] = (kindHave[k] || 0) + 1;
+      if (tags.includes("unesco")) unescoHave += 1;
+      if (tags.includes("continental-high")) summitHave += 1;
+      if (tags.some((t) => SUPERLATIVES.has(t))) superHave += 1;
+    }
+  }
+  const list = [];
+  const add = (id, name, emoji, have, need) => list.push({ id, name, emoji, have, need, earned: have >= need });
+  for (const c of Object.keys(ACH_CATNAME)) add("cat_" + c, ACH_CATNAME[c][0], ACH_CATNAME[c][1], catHave[c] || 0, catTotal[c] || 0);
+  add("kind_built", "Master Builder", "🏛️", kindHave.built || 0, kindTotal.built || 0);
+  add("kind_natural", "Force of Nature", "⛰️", kindHave.natural || 0, kindTotal.natural || 0);
+  add("kind_living", "Life Lister", "🦁", kindHave.living || 0, kindTotal.living || 0);
+  add("summits", "Continental Giants", "🗻", summitHave, summitTotal);
+  add("unesco", "World Heritage", "🌐", unescoHave, 20);
+  add("globe", "Globetrotter", "🌍", contSet.size, 7);
+  add("record", "Record Breaker", "🏅", superHave, 8);
+  add("m25", "Shutterbug", "📸", distinct, 25);
+  add("m50", "Seasoned Traveller", "🧳", distinct, 50);
+  add("m100", "Around the World", "🗺️", distinct, 100);
+  return list;
+}
+
 function continentTotals(list) {
   const all = {};
   for (const l of LOCATIONS) all[l.continent] = (all[l.continent] || new Set()).add(l.country);
