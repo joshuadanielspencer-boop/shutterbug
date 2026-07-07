@@ -1033,14 +1033,14 @@ export default function ShutterbugWorld() {
                   Antarctica so it shows the true round continent. */}
               {inCity ? (
                 plateMode === "polar" ? (
-                  <image href="/relief-antarctica.jpg" x="0" y="0" width={ANT_PLATE} height={ANT_PLATE} preserveAspectRatio="none" />
+                  <image href="/relief-antarctica.jpg" xlinkHref="/relief-antarctica.jpg" x="0" y="0" width={ANT_PLATE} height={ANT_PLATE} preserveAspectRatio="none" />
                 ) : plateMode === "wrap" ? (
                   <g>
-                    <image href="/relief-world.jpg" x="0" y="0" width="360" height="180" preserveAspectRatio="none" />
-                    <image href="/relief-world.jpg" x="360" y="0" width="360" height="180" preserveAspectRatio="none" />
+                    <image href="/relief-world.jpg" xlinkHref="/relief-world.jpg" x="0" y="0" width="360" height="180" preserveAspectRatio="none" />
+                    <image href="/relief-world.jpg" xlinkHref="/relief-world.jpg" x="360" y="0" width="360" height="180" preserveAspectRatio="none" />
                   </g>
                 ) : (
-                  <image href="/relief-world.jpg" x="0" y="0" width="360" height="180" preserveAspectRatio="none" />
+                  <image href="/relief-world.jpg" xlinkHref="/relief-world.jpg" x="0" y="0" width="360" height="180" preserveAspectRatio="none" />
                 )
               ) : (
                 <>
