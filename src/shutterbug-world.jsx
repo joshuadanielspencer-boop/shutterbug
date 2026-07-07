@@ -356,6 +356,47 @@ const SFX = (() => {
   };
 })();
 
+// ---- Spoken greetings (Web Speech API) — the browser says the greeting aloud in ----
+// ---- the local language. No files, no network, no licensing. Maps each greeting  ----
+// ---- language to a BCP-47 code so the browser picks a matching voice; languages  ----
+// ---- without a code fall back to the default voice (still reads the Latin form).  ----
+const SPEECH_LANG = {
+  "Afrikaans": "af", "Amharic": "am", "Arabic": "ar", "Burmese": "my", "Cantonese": "zh-HK",
+  "Croatian": "hr", "Czech": "cs", "Dutch": "nl", "English": "en", "English (Australian)": "en-AU",
+  "Filipino": "fil", "French": "fr", "French (Québec)": "fr-CA", "German": "de",
+  "German (Austrian)": "de-AT", "Greek": "el", "Hindi": "hi", "Icelandic": "is",
+  "Indonesian": "id", "Italian": "it", "Japanese": "ja", "Khmer": "km", "Korean": "ko",
+  "Malay": "ms", "Mandarin Chinese": "zh-CN", "Mongolian": "mn", "Māori": "mi", "Nepali": "ne",
+  "Norwegian": "nb", "Persian": "fa", "Portuguese": "pt", "Russian": "ru", "Sinhala": "si",
+  "Spanish": "es", "Swahili": "sw", "Swiss German": "de-CH", "Thai": "th", "Turkish": "tr",
+  "Urdu": "ur", "Uzbek": "uz", "Vietnamese": "vi", "Xhosa": "xh",
+};
+const speechAvailable = typeof window !== "undefined" && "speechSynthesis" in window;
+function speakGreeting(g) {
+  try {
+    if (!speechAvailable || !g?.text) return;
+    // Speak the native-script form (before any "(romanization)"), a touch slowly.
+    const native = String(g.text).split(" (")[0].trim();
+    const u = new SpeechSynthesisUtterance(native);
+    const code = SPEECH_LANG[g.language];
+    if (code) u.lang = code;
+    u.rate = 0.85;
+    window.speechSynthesis.cancel();
+    window.speechSynthesis.speak(u);
+  } catch { /* speech is a nice-to-have; never break gameplay */ }
+}
+// Little 🔊 button that speaks a greeting aloud; hidden if speech is unavailable.
+function SpeakButton({ greeting }) {
+  if (!speechAvailable || !greeting?.text) return null;
+  return (
+    <button onClick={(e) => { e.stopPropagation(); speakGreeting(greeting); }}
+      aria-label={`Hear the ${greeting.language || "local"} greeting`} title="Hear it"
+      style={{ marginLeft: 6, verticalAlign: "middle", background: "none", border: "none", cursor: "pointer", fontSize: 14, lineHeight: 1, padding: "0 2px", color: OCEAN }}>
+      🔊
+    </button>
+  );
+}
+
 export default function ShutterbugWorld() {
   const [screen, setScreen] = useState("start"); // start | play | end | passport
   const [difficulty, setDifficulty] = useState("easy");
@@ -976,6 +1017,7 @@ export default function ShutterbugWorld() {
                   <span aria-hidden="true">💬 </span>Local greeting: “{currentLoc.greeting.text}”
                   {currentLoc.greeting.language ? ` — ${currentLoc.greeting.language}` : ""}
                   {currentLoc.greeting.pronunciation ? ` (${currentLoc.greeting.pronunciation})` : ""}
+                  <SpeakButton greeting={currentLoc.greeting} />
                 </div>
               )}
             </div>
@@ -1329,6 +1371,7 @@ function LandmarkModal({ p, onClose, reduced }) {
             <span aria-hidden="true">💬 </span>Local greeting: “{p.greeting.text}”
             {p.greeting.language ? ` — ${p.greeting.language}` : ""}
             {p.greeting.pronunciation ? ` (${p.greeting.pronunciation})` : ""}
+            <SpeakButton greeting={p.greeting} />
           </div>
         )}
         {p.fact && (
