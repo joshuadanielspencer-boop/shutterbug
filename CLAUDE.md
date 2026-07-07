@@ -27,13 +27,21 @@ must still verify those against a reliable source (rule 2).
 ### Deploy / install as an app
 
 The game is a **PWA** (via `vite-plugin-pwa`): installable and offline-capable, so
-it can run on an iPad or desktop without a dev server. To ship it, run
-`npm run build` and host the static `dist/` folder anywhere (Netlify drop, GitHub
-Pages, any static host). On an iPad, open the hosted URL in Safari → Share → **Add
-to Home Screen**; it then launches full-screen and works offline. The app shell,
-the relief map plates, and the icons are precached; landmark photos from Wikimedia
-are cached on first view, so places you've already visited work offline too.
-(For a GitHub Pages *project* site served under a subpath, set Vite's `base`.)
+it can run on an iPad or desktop without a dev server. On an iPad, open the hosted
+URL in Safari → Share → **Add to Home Screen**; it launches full-screen and works
+offline. The app shell, relief map plates, and icons are precached; landmark photos
+from Wikimedia are cached on first view, so visited places work offline too.
+
+Hosting options:
+- **Any root-served static host** (Netlify drop, Cloudflare Pages, a
+  `<user>.github.io` repo, a custom domain): just `npm run build` and serve `dist/`.
+- **GitHub Pages** (project site under `/<repo>/`): push to GitHub and set
+  Settings → Pages → Source = **GitHub Actions**. `.github/workflows/deploy.yml`
+  then tests, builds with `BASE_PATH=/<repo>/`, and publishes on every push to main.
+
+The app is **base-path aware**: `vite.config.js` reads `BASE_PATH` (default `/`) and
+sets Vite `base` + the PWA scope/start_url; runtime asset URLs use
+`import.meta.env.BASE_URL`, so the build works at a domain root or under a subpath.
 
 ## Folder structure
 

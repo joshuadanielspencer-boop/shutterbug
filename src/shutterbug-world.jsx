@@ -7,6 +7,11 @@ import { CATEGORIES, CATEGORY_ORDER, KIND_META, kindOf } from "./data/categories
 import { listProfiles, lastProfileName, getProfile, createProfile, setLastProfile,
   deleteProfile, recordGame, weightedOrder, passportData, achievements, storageAvailable } from "./profiles.js";
 
+// Base URL the app is served from ("/" at a domain root, "/<repo>/" on a GitHub
+// Pages project site). Prefix runtime asset URLs with it so the relief map plates
+// resolve wherever the build is hosted. Always ends with a slash.
+const BASE = import.meta.env.BASE_URL;
+
 /*
   SHUTTERBUG — A World Photo Safari  (working vertical slice)
   A spiritual successor to "Nigel's World: Adventures in Geography" (1991).
@@ -1255,14 +1260,14 @@ export default function ShutterbugWorld() {
                   Antarctica so it shows the true round continent. */}
               {inCity ? (
                 plateMode === "polar" ? (
-                  <image href="/relief-antarctica.jpg" xlinkHref="/relief-antarctica.jpg" x="0" y="0" width={ANT_PLATE} height={ANT_PLATE} preserveAspectRatio="none" />
+                  <image href={`${BASE}relief-antarctica.jpg`} xlinkHref={`${BASE}relief-antarctica.jpg`} x="0" y="0" width={ANT_PLATE} height={ANT_PLATE} preserveAspectRatio="none" />
                 ) : plateMode === "wrap" ? (
                   <g>
-                    <image href="/relief-world.jpg" xlinkHref="/relief-world.jpg" x="0" y="0" width="360" height="180" preserveAspectRatio="none" />
-                    <image href="/relief-world.jpg" xlinkHref="/relief-world.jpg" x="360" y="0" width="360" height="180" preserveAspectRatio="none" />
+                    <image href={`${BASE}relief-world.jpg`} xlinkHref={`${BASE}relief-world.jpg`} x="0" y="0" width="360" height="180" preserveAspectRatio="none" />
+                    <image href={`${BASE}relief-world.jpg`} xlinkHref={`${BASE}relief-world.jpg`} x="360" y="0" width="360" height="180" preserveAspectRatio="none" />
                   </g>
                 ) : (
-                  <image href="/relief-world.jpg" xlinkHref="/relief-world.jpg" x="0" y="0" width="360" height="180" preserveAspectRatio="none" />
+                  <image href={`${BASE}relief-world.jpg`} xlinkHref={`${BASE}relief-world.jpg`} x="0" y="0" width="360" height="180" preserveAspectRatio="none" />
                 )
               ) : (
                 <>

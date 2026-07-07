@@ -2,8 +2,15 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import { VitePWA } from "vite-plugin-pwa";
 
+// Served from the domain root by default (Netlify, a user.github.io site, a
+// custom domain). For a GitHub Pages PROJECT site served under /<repo>/, the
+// deploy workflow sets BASE_PATH=/<repo>/ so all asset URLs — and the PWA scope
+// and icon paths — get that prefix.
+const base = process.env.BASE_PATH || "/";
+
 // https://vite.dev/config/
 export default defineConfig({
+  base,
   plugins: [
     react(),
     // Turn the built app into an installable, offline-capable PWA so it can run
@@ -23,8 +30,8 @@ export default defineConfig({
         background_color: "#b09669",
         display: "standalone",
         orientation: "any",
-        start_url: "/",
-        scope: "/",
+        start_url: base,
+        scope: base,
         icons: [
           { src: "pwa-192x192.png", sizes: "192x192", type: "image/png" },
           { src: "pwa-512x512.png", sizes: "512x512", type: "image/png" },
