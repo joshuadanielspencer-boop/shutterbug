@@ -201,9 +201,10 @@ export const WORLD_COUNTRIES = [
 //     area, are generally treated as Asian for geographic purposes. (Their
 //     European cities — Moscow, St Petersburg, Istanbul — are still tagged Europe
 //     as game locations; those assignments are picked via the purple Europe bloc.)
-//   • The Caucasus (Georgia, Armenia, Azerbaijan) and Kazakhstan → Asia likewise.
+//   • The Caucasus (Georgia, Armenia, Azerbaijan), Kazakhstan, and Cyprus → Asia
+//     likewise (all lie on the Asian side of the divide).
 // Caribbean islands and Trinidad are grouped with North America; Greenland with
-// North America; Cyprus with Europe. Every one of the 177 countries is mapped.
+// North America. Every one of the 177 countries is mapped.
 // ===========================================================================
 export const COUNTRY_CONTINENT = {
   // North America
@@ -222,12 +223,12 @@ export const COUNTRY_CONTINENT = {
   "Venezuela": "South America",
   // Europe
   "Albania": "Europe", "Austria": "Europe", "Belarus": "Europe", "Belgium": "Europe",
-  "Bosnia and Herz.": "Europe", "Bulgaria": "Europe", "Croatia": "Europe", "Cyprus": "Europe",
+  "Bosnia and Herz.": "Europe", "Bulgaria": "Europe", "Croatia": "Europe",
   "Czechia": "Europe", "Denmark": "Europe", "Estonia": "Europe", "Finland": "Europe",
   "France": "Europe", "Germany": "Europe", "Greece": "Europe", "Hungary": "Europe",
   "Iceland": "Europe", "Ireland": "Europe", "Italy": "Europe", "Kosovo": "Europe",
   "Latvia": "Europe", "Lithuania": "Europe", "Luxembourg": "Europe", "Moldova": "Europe",
-  "Montenegro": "Europe", "N. Cyprus": "Europe", "Netherlands": "Europe",
+  "Montenegro": "Europe", "Netherlands": "Europe",
   "North Macedonia": "Europe", "Norway": "Europe", "Poland": "Europe", "Portugal": "Europe",
   "Romania": "Europe", "Serbia": "Europe", "Slovakia": "Europe",
   "Slovenia": "Europe", "Spain": "Europe", "Sweden": "Europe", "Switzerland": "Europe",
@@ -256,7 +257,7 @@ export const COUNTRY_CONTINENT = {
   "Mongolia": "Asia", "Myanmar": "Asia", "Nepal": "Asia", "North Korea": "Asia",
   "Oman": "Asia", "Pakistan": "Asia", "Palestine": "Asia", "Philippines": "Asia",
   "Qatar": "Asia", "Russia": "Asia", "Saudi Arabia": "Asia", "South Korea": "Asia", "Sri Lanka": "Asia",
-  "Turkey": "Asia",
+  "Turkey": "Asia", "Cyprus": "Asia", "N. Cyprus": "Asia",
   "Syria": "Asia", "Taiwan": "Asia", "Tajikistan": "Asia", "Thailand": "Asia",
   "Timor-Leste": "Asia", "Turkmenistan": "Asia", "United Arab Emirates": "Asia",
   "Uzbekistan": "Asia", "Vietnam": "Asia", "Yemen": "Asia",

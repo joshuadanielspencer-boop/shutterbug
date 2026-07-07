@@ -15,8 +15,14 @@ npm run preview  # serve the production build locally → http://localhost:4173/
 node scripts/gen-icons.mjs   # re-rasterize app/PWA icons from assets-src/icon.svg
 ```
 
-There is **no test runner configured yet.** When adding one, prefer Vitest
-(integrates with Vite) and wire it up as `npm test`, then document it here.
+```bash
+npm test         # run the Vitest data-invariant checks (test/data.test.js)
+```
+
+`npm test` guards content **shape** (unique ids, valid category, in-range
+coords, freely-licensed photo URLs, each continent/category populated enough for
+missions). It does **not** check whether facts or greetings are *true* — a human
+must still verify those against a reliable source (rule 2).
 
 ### Deploy / install as an app
 

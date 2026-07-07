@@ -98,25 +98,6 @@ function PhotoCredit({ photo, style }) {
   );
 }
 
-// ---- Camera viewfinder shown before the shutter is pressed (the photo is ----
-// ---- hidden until you shoot). Corner ticks + a prompt, sized like the photo. ----
-function Viewfinder() {
-  const tick = { position: "absolute", width: 18, height: 18, borderColor: GOLD, borderStyle: "solid" };
-  return (
-    <div style={{ height: 230, borderRadius: 4, background: OCEAN_DEEP, position: "relative", display: "flex", alignItems: "center", justifyContent: "center" }}>
-      <div style={{ ...tick, top: 12, left: 12, borderWidth: "2px 0 0 2px" }} />
-      <div style={{ ...tick, top: 12, right: 12, borderWidth: "2px 2px 0 0" }} />
-      <div style={{ ...tick, bottom: 12, left: 12, borderWidth: "0 0 2px 2px" }} />
-      <div style={{ ...tick, bottom: 12, right: 12, borderWidth: "0 2px 2px 0" }} />
-      <div style={{ position: "absolute", width: 22, height: 22, border: `2px solid ${CORAL}`, borderRadius: "50%", opacity: 0.7 }} />
-      <div style={{ textAlign: "center", color: PAPER, padding: "0 16px" }}>
-        <div style={{ fontSize: 34 }} aria-hidden="true">📷</div>
-        <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 10, letterSpacing: "0.22em", opacity: 0.75, marginTop: 6 }}>VIEWFINDER</div>
-        <div style={{ fontSize: 12, opacity: 0.85, marginTop: 4 }}>Press the shutter to take the shot</div>
-      </div>
-    </div>
-  );
-}
 
 // ---- Difficulty tiers. Each assignment is a two-step drill-down: pick the ----
 // ---- right CONTINENT on the world map, then the right CITY among the target ----
@@ -1405,4 +1386,3 @@ function Polaroid({ p }) {
 }
 
 const primaryBtn = { marginTop: 26, background: CORAL, color: "#fff", border: "none", borderRadius: 10, padding: "14px 28px", fontSize: 16, fontWeight: 800, letterSpacing: "0.03em", cursor: "pointer", boxShadow: "0 4px 0 #A93A28" };
-const cameraBtn = { marginTop: 12, background: GREEN, color: "#fff", border: "none", borderRadius: 8, padding: "11px 20px", fontSize: 15, fontWeight: 700, cursor: "pointer", boxShadow: "0 3px 0 #2E7A55" };
