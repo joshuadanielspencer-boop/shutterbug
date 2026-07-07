@@ -124,10 +124,12 @@ function Viewfinder() {
 // ---- Points per photo are HIGHER on Easy (younger players). `labels`: "all" ----
 // ---- names every city, "smart" hides names until hover/focus. `clue` picks ----
 // ---- the clue text.
+// `catShare` = the chance each assignment is a "photograph any {category} in
+// {continent}" mission instead of a specific-subject one (the rest are specific).
 const MODES = {
-  easy:   { label: "Easy",   assignments: 3, cityDecoys: 2, daysPer: 3, points: 150, labels: "all",   clue: "easy" },
-  medium: { label: "Medium", assignments: 5, cityDecoys: 3, daysPer: 3, points: 125, labels: "smart", clue: "hard" },
-  hard:   { label: "Hard",   assignments: 7, cityDecoys: 4, daysPer: 2, points: 100, labels: "smart", clue: "hard" },
+  easy:   { label: "Easy",   assignments: 3, cityDecoys: 2, daysPer: 3, points: 150, labels: "all",   clue: "easy", catShare: 0.4 },
+  medium: { label: "Medium", assignments: 5, cityDecoys: 3, daysPer: 3, points: 125, labels: "smart", clue: "hard", catShare: 0.5 },
+  hard:   { label: "Hard",   assignments: 7, cityDecoys: 4, daysPer: 2, points: 100, labels: "smart", clue: "hard", catShare: 0.5 },
 };
 const MODE_ORDER = ["easy", "medium", "hard"];
 
@@ -245,6 +247,25 @@ const CONTINENT_PIN = {
   "Asia": { x: 291, y: 55 },
   "Oceania": { x: 326, y: 122 },
   "Antarctica": { x: 180, y: 171 },
+};
+
+// category -> continent -> [location ids]. Used to build category missions and to
+// tally collections; every category has members on 3–7 continents (see Phase A).
+const CAT_LOCS = (() => {
+  const m = {};
+  for (const l of LOCATIONS) {
+    (m[l.category] = m[l.category] || {});
+    (m[l.category][l.continent] = m[l.category][l.continent] || []).push(l.id);
+  }
+  return m;
+})();
+
+// Pick one value from [{ v, w }] weighted by w.
+const weightedPick = (items) => {
+  const total = items.reduce((s, x) => s + x.w, 0);
+  let r = Math.random() * total;
+  for (const x of items) { r -= x.w; if (r <= 0) return x.v; }
+  return items[items.length - 1].v;
 };
 
 // Keep decoy pins from stacking, scaled to whatever continent box is on screen.
@@ -406,34 +427,64 @@ export default function ShutterbugWorld() {
   }, [screen]);
 
   const loc = (id) => LOCATIONS.find((l) => l.id === id);
-  const target = assignments.length ? loc(assignments[step]) : null;
+  // An assignment is either { type:"specific", targetId, continent } or
+  // { type:"category", category, continent, anchorId }. `target` is the specific
+  // subject, or (for a category mission) a representative anchor on that continent.
+  const asg = assignments.length ? assignments[step] : null;
+  const isCatAsg = asg?.type === "category";
+  const target = asg ? loc(isCatAsg ? asg.anchorId : asg.targetId) : null;
   const currentLoc = current ? loc(current) : null;
 
   const cityOptions = optionsByStep[step] || [];
 
   function startGame() {
     const mode = modePlan(difficulty);
+    const profile = profileName ? getProfile(profileName) : null;
     // Weighted order surfaces the active player's missed/unmastered places more
-    // often (a plain shuffle for guests).
-    const order = weightedOrder(profileName ? getProfile(profileName) : null).map((id) => BY_ID[id]);
-    const targets = order.slice(0, mode.assignments);
-    // Each assignment's city choices: the target + cityDecoys same-continent
-    // decoys, spaced for the continent zoom, in random order.
-    const options = targets.map((t) => {
-      const far = spacedFor(CONTINENT_META[t.continent].box);
-      const chosen = [t];
-      const want = mode.cityDecoys + 1;
-      for (const l of order) {
-        if (chosen.length >= want) break;
-        if (l.continent === t.continent && !chosen.includes(l) && far(l, chosen)) chosen.push(l);
-      }
-      for (const l of order) { // relax spacing if the continent is short on room
-        if (chosen.length >= want) break;
-        if (l.continent === t.continent && !chosen.includes(l)) chosen.push(l);
-      }
+    // often (a plain shuffle for guests). masteredSet = places already nailed.
+    const order = weightedOrder(profile).map((id) => BY_ID[id]);
+    const masteredSet = new Set(profile && profile.loc ? Object.keys(profile.loc).filter((id) => profile.loc[id].c > 0) : []);
+    const want = mode.cityDecoys + 1;
+
+    // City choices for an anchor: the anchor + cityDecoys same-continent decoys,
+    // spaced for the continent zoom, shuffled. Shared by both mission types.
+    const buildOptions = (anchor) => {
+      const far = spacedFor(CONTINENT_META[anchor.continent].box);
+      const chosen = [anchor];
+      for (const l of order) { if (chosen.length >= want) break; if (l.continent === anchor.continent && !chosen.includes(l) && far(l, chosen)) chosen.push(l); }
+      for (const l of order) { if (chosen.length >= want) break; if (l.continent === anchor.continent && !chosen.includes(l)) chosen.push(l); }
       return chosen.map((l) => l.id).sort(() => Math.random() - 0.5);
-    });
-    setAssignments(targets.map((l) => l.id));
+    };
+    // Weight favouring categories/continents the player hasn't finished yet.
+    const need = (ids) => { const un = ids.filter((id) => !masteredSet.has(id)).length; return un === 0 ? 0.3 : 1 + un * 0.06; };
+
+    const assignmentObjs = [];
+    const options = [];
+    const used = new Set();
+    let oi = 0;
+    for (let i = 0; i < mode.assignments; i++) {
+      if (Math.random() < mode.catShare) {
+        // Category mission: pick a category, then a continent that has members,
+        // then an anchor (prefer an unmastered, unused one) to teach on a hit.
+        const category = weightedPick(CATEGORY_ORDER.filter((c) => CAT_LOCS[c]).map((c) => ({ v: c, w: need(Object.values(CAT_LOCS[c]).flat()) })));
+        const continent = weightedPick(Object.keys(CAT_LOCS[category]).map((c) => ({ v: c, w: need(CAT_LOCS[category][c]) })));
+        const members = CAT_LOCS[category][continent];
+        const fresh = members.filter((id) => !used.has(id) && !masteredSet.has(id));
+        const pool = fresh.length ? fresh : (members.filter((id) => !used.has(id)).length ? members.filter((id) => !used.has(id)) : members);
+        const anchorId = pool[Math.floor(Math.random() * pool.length)];
+        used.add(anchorId);
+        assignmentObjs.push({ type: "category", category, continent, anchorId });
+        options.push(buildOptions(BY_ID[anchorId]));
+      } else {
+        // Specific mission: next unused location in the weighted order.
+        while (oi < order.length && used.has(order[oi].id)) oi++;
+        const t = order[oi < order.length ? oi : 0]; oi++;
+        used.add(t.id);
+        assignmentObjs.push({ type: "specific", targetId: t.id, continent: t.continent });
+        options.push(buildOptions(t));
+      }
+    }
+    setAssignments(assignmentObjs);
     setOptionsByStep(options);
     setStep(0);
     setPhase("continent");
@@ -479,8 +530,16 @@ export default function ShutterbugWorld() {
       recorded.current = true;
       if (profileName) {
         const correctIds = album.map((p) => p.id);
-        const missedIds = assignments.filter((id) => !correctIds.includes(id));
-        const won = assignments.length > 0 && correctIds.length === assignments.length;
+        // A specific assignment is satisfied if its subject was filed; a category
+        // assignment if any photo of that category on that continent was filed.
+        const missedIds = [];
+        for (const a of assignments) {
+          const ok = a.type === "category"
+            ? album.some((p) => p.category === a.category && p.continent === a.continent)
+            : correctIds.includes(a.targetId);
+          if (!ok) missedIds.push(a.type === "category" ? a.anchorId : a.targetId);
+        }
+        const won = assignments.length > 0 && missedIds.length === 0;
         const res = recordGame(profileName, { difficulty, score, timeMs: elapsedMs, won, visitedIds, correctIds, missedIds });
         setLastResult(res);
         if (res.isBest || res.isBestTime) sfx("stamp");
@@ -531,7 +590,8 @@ export default function ShutterbugWorld() {
   // ---- City phase: click a city on the zoomed continent to photograph it ----
   function photographCity(id) {
     if (phase !== "city" || flying || pending || days <= 0) return;
-    const cityLoc = loc(id);
+    const a = assignments[step];
+    const clicked = loc(id);
     setCurrent(id);
     setVisitedIds((v) => (v.includes(id) ? v : [...v, id]));
     sfx("shutter");
@@ -540,9 +600,12 @@ export default function ShutterbugWorld() {
     const d = Math.round((days - SHOT_COST) * 10) / 10; // a shot costs half a day
     setDays(d);
 
-    if (id === target.id) {
+    // Win by category for a category mission; by exact subject for a specific one.
+    const win = a.type === "category" ? clicked.category === a.category : id === a.targetId;
+    if (win) {
       const gain = MODES[difficulty].points;
-      setAlbum((a) => [...a, { id: target.id, subject: target.subject, flag: target.flag, city: target.city, country: target.country, continent: target.continent, category: target.category, fact: target.fact, icon: target.icon, photo: target.photo, greeting: target.greeting }]);
+      setAlbum((al) => [...al, { id: clicked.id, subject: clicked.subject, flag: clicked.flag, city: clicked.city, country: clicked.country, continent: clicked.continent, category: clicked.category, fact: clicked.fact, icon: clicked.icon, photo: clicked.photo, greeting: clicked.greeting }]);
+      const found = a.type === "category" ? `You found a ${CATEGORIES[a.category].noun} — ${clicked.subject}!` : `You photographed ${clicked.subject}.`;
       const done = step + 1 >= assignments.length;
       if (done) {
         const bonus = Math.round(Math.max(0, d) * 50);
@@ -550,28 +613,29 @@ export default function ShutterbugWorld() {
         setElapsedMs(Date.now() - startRef.current);
         sfx("win");
         setPending({ kind: "win", tone: "good", emoji: "🏆", title: "Trip complete!",
-          subtitle: `A perfect shot of ${target.subject}! +${gain}${bonus ? `, plus ${bonus} for ${d} day${d === 1 ? "" : "s"} to spare` : ""}.`,
-          fact: target.fact, photo: target.photo, category: target.category, buttonLabel: "See my results 📸" });
+          subtitle: `${found} +${gain}${bonus ? `, plus ${bonus} for ${d} day${d === 1 ? "" : "s"} to spare` : ""}.`,
+          fact: clicked.fact, photo: clicked.photo, category: clicked.category, buttonLabel: "See my results 📸" });
       } else if (d <= 0) {
         setScore((s) => s + gain);
         setElapsedMs(Date.now() - startRef.current);
         sfx("lose");
         setPending({ kind: "lose", tone: "bad", emoji: "⏳", title: "Got the shot — but out of days!",
-          subtitle: `You filed ${target.subject} (+${gain}), but that spent your last travel day.`,
-          fact: target.fact, buttonLabel: "See my results" });
+          subtitle: `${found} (+${gain}) — but that spent your last travel day.`,
+          fact: clicked.fact, buttonLabel: "See my results" });
       } else {
         setScore((s) => s + gain);
         sfx("success");
         setPending({ kind: "correct", tone: "good", emoji: "✅", title: "Perfect shot!",
-          subtitle: `You photographed ${target.subject}. +${gain} points!`,
-          fact: target.fact, photo: target.photo, category: target.category, buttonLabel: "Next assignment ✈" });
+          subtitle: `${found} +${gain} points!`,
+          fact: clicked.fact, photo: clicked.photo, category: clicked.category, buttonLabel: "Next assignment ✈" });
       }
     } else {
-      if (d <= 0) outOfDays(`That's ${cityLoc.subject}, not what the editor wanted — and the trip's over.`);
+      const wantTxt = a.type === "category" ? `a ${CATEGORIES[a.category].noun}` : target.subject;
+      if (d <= 0) outOfDays(`That's ${clicked.subject}, not ${wantTxt} — and the trip's over.`);
       else {
         sfx("fail");
         setPending({ kind: "wrong", tone: "bad", emoji: "❌", title: "Not the assignment",
-          subtitle: `That's ${cityLoc.subject}. The editor wants ${target.subject}. Half a day gone — pick another city.`,
+          subtitle: `That's ${clicked.subject}${a.type === "category" ? ` — a ${CATEGORIES[clicked.category].name}` : ""}. The editor wants ${wantTxt}. Half a day gone — pick another city.`,
           buttonLabel: "Keep looking 🔍" });
       }
     }
@@ -826,7 +890,13 @@ export default function ShutterbugWorld() {
 
   // play screen
   const mode = MODES[difficulty];
-  const clue = mode.clue === "easy" ? target.easy : target.hard;
+  // The editor's telegram adapts to the mission type: a specific subject, or
+  // "any {category} in {continent}" for a category mission (the player chooses).
+  const catMeta = isCatAsg ? CATEGORIES[asg.category] : null;
+  const promptSubject = isCatAsg ? `any ${catMeta.noun}` : (target ? target.subject : "");
+  const clue = isCatAsg
+    ? `In ${asg.continent.toUpperCase()}, find any ${catMeta.noun} and photograph it — you pick which one!`
+    : (mode.clue === "easy" ? target.easy : target.hard);
   const inCity = phase === "city";
   // City step: the square continent box (a topographic relief plate). World step:
   // the whole map, but with blank margins top/bottom so it isn't stretched to square.
@@ -862,7 +932,7 @@ export default function ShutterbugWorld() {
 
           <div style={{ background: PAPER, border: `1px dashed ${CORAL}`, borderRadius: 6, padding: "14px 16px", position: "relative" }}>
             <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.22em", color: CORAL, marginBottom: 8 }}>✎ TELEGRAM — FROM THE EDITOR</div>
-            <p style={{ margin: 0, color: INK, lineHeight: 1.5, fontSize: 15 }}>Bring me a photo of <b>{target.subject}</b>.</p>
+            <p style={{ margin: 0, color: INK, lineHeight: 1.5, fontSize: 15 }}>Bring me a photo of <b>{promptSubject}</b>.{isCatAsg && <> <CategoryBadge category={asg.category} size="sm" style={{ verticalAlign: "middle" }} /></>}</p>
             <p style={{ margin: "8px 0 0", color: INK, opacity: 0.85, lineHeight: 1.5, fontSize: 14, fontStyle: "italic" }}>{clue}</p>
           </div>
 
