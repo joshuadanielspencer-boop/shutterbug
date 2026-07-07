@@ -196,12 +196,12 @@ export const WORLD_COUNTRIES = [
 // ===========================================================================
 // COUNTRY → CONTINENT — which continent each country above belongs to, so the
 // world map can colour each continent (see CONTINENT_COLOR in the component) and
-// make it clickable. Transcontinental judgment calls, chosen to match the game's
-// own location tags so "pick the continent" stays consistent for those places:
-//   • Russia → Europe (the game's Russian landmark cities, Moscow & St
-//     Petersburg, are European; its Asian natural sites — Baikal, Kamchatka —
-//     are reachable via the huge red Asian bloc beside them).
-//   • Turkey → Europe (the game's Istanbul is tagged Europe).
+// make it clickable. Transcontinental judgment calls:
+//   • Russia and Turkey → Asia. Both straddle the Europe/Asia line but, by land
+//     area, are generally treated as Asian for geographic purposes. (Their
+//     European cities — Moscow, St Petersburg, Istanbul — are still tagged Europe
+//     as game locations; those assignments are picked via the purple Europe bloc.)
+//   • The Caucasus (Georgia, Armenia, Azerbaijan) and Kazakhstan → Asia likewise.
 // Caribbean islands and Trinidad are grouped with North America; Greenland with
 // North America; Cyprus with Europe. Every one of the 177 countries is mapped.
 // ===========================================================================
@@ -229,9 +229,9 @@ export const COUNTRY_CONTINENT = {
   "Latvia": "Europe", "Lithuania": "Europe", "Luxembourg": "Europe", "Moldova": "Europe",
   "Montenegro": "Europe", "N. Cyprus": "Europe", "Netherlands": "Europe",
   "North Macedonia": "Europe", "Norway": "Europe", "Poland": "Europe", "Portugal": "Europe",
-  "Romania": "Europe", "Russia": "Europe", "Serbia": "Europe", "Slovakia": "Europe",
+  "Romania": "Europe", "Serbia": "Europe", "Slovakia": "Europe",
   "Slovenia": "Europe", "Spain": "Europe", "Sweden": "Europe", "Switzerland": "Europe",
-  "Turkey": "Europe", "Ukraine": "Europe", "United Kingdom": "Europe",
+  "Ukraine": "Europe", "United Kingdom": "Europe",
   // Africa
   "Algeria": "Africa", "Angola": "Africa", "Benin": "Africa", "Botswana": "Africa",
   "Burkina Faso": "Africa", "Burundi": "Africa", "Cameroon": "Africa",
@@ -255,7 +255,8 @@ export const COUNTRY_CONTINENT = {
   "Kyrgyzstan": "Asia", "Laos": "Asia", "Lebanon": "Asia", "Malaysia": "Asia",
   "Mongolia": "Asia", "Myanmar": "Asia", "Nepal": "Asia", "North Korea": "Asia",
   "Oman": "Asia", "Pakistan": "Asia", "Palestine": "Asia", "Philippines": "Asia",
-  "Qatar": "Asia", "Saudi Arabia": "Asia", "South Korea": "Asia", "Sri Lanka": "Asia",
+  "Qatar": "Asia", "Russia": "Asia", "Saudi Arabia": "Asia", "South Korea": "Asia", "Sri Lanka": "Asia",
+  "Turkey": "Asia",
   "Syria": "Asia", "Taiwan": "Asia", "Tajikistan": "Asia", "Thailand": "Asia",
   "Timor-Leste": "Asia", "Turkmenistan": "Asia", "United Arab Emirates": "Asia",
   "Uzbekistan": "Asia", "Vietnam": "Asia", "Yemen": "Asia",

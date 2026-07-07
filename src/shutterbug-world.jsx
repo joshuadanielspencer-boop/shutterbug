@@ -1,6 +1,8 @@
 import React, { useState, useRef, useEffect } from "react";
 import { LOCATIONS } from "./data/locations.js";
 import { WORLD_COUNTRIES, COUNTRY_CONTINENT } from "./data/worldmap.js";
+import { WORLD_COUNTRIES_ROBINSON } from "./data/worldmap-robinson.js";
+import { robinson, eqToRobinson, ROBINSON_W, ROBINSON_H } from "./robinson.js";
 import { listProfiles, lastProfileName, getProfile, createProfile, setLastProfile,
   deleteProfile, recordGame, weightedOrder, passportData, storageAvailable } from "./profiles.js";
 
@@ -150,9 +152,32 @@ const CONTINENT_COLOR = {
   "Oceania": "#E9C33F",       // yellow
   "Antarctica": "#EDEDE6",    // white
 };
-// How much blank margin (world-map units) to letterbox above and below the world
-// map so it fills the square frame less aggressively — a gentler stretch.
-const WORLD_PAD = 40;
+// The world (continent-selection) map is a Robinson projection. Its viewBox is
+// this tall, with the ~182.6-tall map centred in it — so it fills the square frame
+// with a gentle stretch and blank margins top/bottom (and rounded blank corners).
+const WORLD_VBH = 262;
+const WORLD_BOX = { x: 0, y: (ROBINSON_H - WORLD_VBH) / 2, w: ROBINSON_W, h: WORLD_VBH };
+
+// The Robinson map outline (filled as ocean) and a light graticule, both static.
+const ROBINSON_OUTLINE = (() => {
+  const pts = [];
+  for (let lat = 90; lat >= -90; lat -= 5) pts.push(robinson(180, lat));  // right meridian, top→bottom
+  for (let lat = -90; lat <= 90; lat += 5) pts.push(robinson(-180, lat)); // left meridian, bottom→top
+  return "M" + pts.map((p) => `${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join("L") + "Z";
+})();
+const ROBINSON_GRATICULE = (() => {
+  const lines = [];
+  for (let lon = -150; lon <= 150; lon += 30) { // curved meridians
+    const pts = [];
+    for (let lat = -90; lat <= 90; lat += 5) pts.push(robinson(lon, lat));
+    lines.push("M" + pts.map((p) => `${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join("L"));
+  }
+  for (let lat = -60; lat <= 60; lat += 30) { // straight parallels
+    const a = robinson(-180, lat), b = robinson(180, lat);
+    lines.push(`M${a.x.toFixed(1)} ${a.y.toFixed(1)}L${b.x.toFixed(1)} ${b.y.toFixed(1)}`);
+  }
+  return lines;
+})();
 
 const CONTINENT_ORDER = ["North America", "South America", "Europe", "Africa", "Asia", "Oceania", "Antarctica"];
 // Only offer continents that actually have locations, so a continent added to the
@@ -773,7 +798,7 @@ export default function ShutterbugWorld() {
   // the whole map, but with blank margins top/bottom so it isn't stretched to square.
   const cityMeta = inCity && pickedContinent ? CONTINENT_META[pickedContinent] : null;
   const plateMode = cityMeta ? cityMeta.mode : "world"; // "equirect" | "wrap" | "polar" | "world"
-  const box = cityMeta ? cityMeta.box : { x: 0, y: -WORLD_PAD, w: 360, h: 180 + 2 * WORLD_PAD };
+  const box = cityMeta ? cityMeta.box : WORLD_BOX;
   // Where a location's pin sits on the current plate (polar for Antarctica, shifted
   // across the antimeridian for Pacific-centred Oceania, else the plain map coords).
   const pinXY = (l) => plateMode === "polar" ? antPlate(l.id)
@@ -880,14 +905,18 @@ export default function ShutterbugWorld() {
                 )
               ) : (
                 <>
-                <rect x="0" y="0" width="360" height="180" fill="url(#sea)" />
-                {/* World step: each continent is one clickable, colour-coded region. */}
+                {/* Robinson world map: the ocean outline, a light graticule, then each
+                    continent as one clickable colour-coded region. */}
+                <path d={ROBINSON_OUTLINE} fill={OCEAN} stroke={OCEAN_DEEP} strokeWidth="0.8" vectorEffect="non-scaling-stroke" />
+                <g stroke={OCEAN_DEEP} strokeWidth="0.4" fill="none" opacity="0.5" vectorEffect="non-scaling-stroke">
+                  {ROBINSON_GRATICULE.map((d, i) => <path key={i} d={d} />)}
+                </g>
                 {CONTINENTS.map((cont) => (
                   <g key={cont} className="sbw-cont" role="button" tabIndex={busy ? -1 : 0}
                      aria-label={`Choose ${cont}`} onClick={() => pickContinent(cont)}
                      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); pickContinent(cont); } }}
                      style={{ cursor: busy ? "default" : "pointer" }}>
-                    {WORLD_COUNTRIES.filter((c) => COUNTRY_CONTINENT[c.name] === cont).map((c) => (
+                    {WORLD_COUNTRIES_ROBINSON.filter((c) => COUNTRY_CONTINENT[c.name] === cont).map((c) => (
                       <path key={c.name} d={c.d} fill={CONTINENT_COLOR[cont]} fillRule="evenodd" stroke={INK} strokeWidth="0.3" vectorEffect="non-scaling-stroke" />
                     ))}
                   </g>
@@ -895,24 +924,30 @@ export default function ShutterbugWorld() {
                 </>
               )}
 
-              {/* departure city marker on the world map (continent phase) */}
-              {!inCity && currentLoc && (
+              {/* departure city marker on the world map (Robinson coords) */}
+              {!inCity && currentLoc && (() => {
+                const d = eqToRobinson(currentLoc.x, currentLoc.y);
+                return (
                 <g>
-                  <ellipse cx={currentLoc.x} cy={currentLoc.y} {...pinR(0.008)} fill={CORAL} stroke={INK} strokeWidth="1" vectorEffect="non-scaling-stroke" />
-                  <ellipse cx={currentLoc.x} cy={currentLoc.y} {...pinR(0.014)} fill="none" stroke={CORAL} strokeWidth="1" vectorEffect="non-scaling-stroke" className="sbw-ping" />
+                  <ellipse cx={d.x} cy={d.y} {...pinR(0.008)} fill={CORAL} stroke={INK} strokeWidth="1" vectorEffect="non-scaling-stroke" />
+                  <ellipse cx={d.x} cy={d.y} {...pinR(0.014)} fill="none" stroke={CORAL} strokeWidth="1" vectorEffect="non-scaling-stroke" className="sbw-ping" />
                 </g>
-              )}
+                );
+              })()}
 
-              {/* flight to the chosen continent */}
-              {flying && (
+              {/* flight to the chosen continent (Robinson coords) */}
+              {flying && (() => {
+                const a = eqToRobinson(flying.fromX, flying.fromY), b = eqToRobinson(flying.toX, flying.toY);
+                return (
                 <g className="sbw-plane-group">
-                  <line x1={flying.fromX} y1={flying.fromY} x2={flying.toX} y2={flying.toY} stroke={CORAL} strokeWidth="1" strokeDasharray="3 3" opacity="0.8" />
-                  <g style={{ animation: "sbw-fly 0.85s ease-in-out forwards", offsetPath: `path('M${flying.fromX} ${flying.fromY} L${flying.toX} ${flying.toY}')` }}>
+                  <line x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke={CORAL} strokeWidth="1" strokeDasharray="3 3" opacity="0.8" />
+                  <g style={{ animation: "sbw-fly 0.85s ease-in-out forwards", offsetPath: `path('M${a.x} ${a.y} L${b.x} ${b.y}')` }}>
                     {/* scaleY cancels the map's vertical stretch so the plane isn't squished tall */}
                     <text fontSize="9" fill={CORAL} transform={`scale(1 ${(box.h / box.w).toFixed(3)})`}>✈</text>
                   </g>
                 </g>
-              )}
+                );
+              })()}
 
               {/* city pins (city phase): the target + same-continent decoys */}
               {inCity && cityOptions.map((id) => {
