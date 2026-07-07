@@ -1,7 +1,58 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
+import { VitePWA } from "vite-plugin-pwa";
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [react()],
+  plugins: [
+    react(),
+    // Turn the built app into an installable, offline-capable PWA so it can run
+    // on an iPad or desktop without a dev server. The app shell, the relief map
+    // plates, and the icons are precached; landmark photos from Wikimedia are
+    // cached on first view so places you've visited work offline afterwards.
+    VitePWA({
+      registerType: "autoUpdate",
+      injectRegister: "auto", // injects the service-worker registration for us
+      includeAssets: ["favicon-32x32.png", "apple-touch-icon.png", "relief-world.jpg", "relief-antarctica.jpg"],
+      manifest: {
+        name: "Shutterbug — A World Photo Safari",
+        short_name: "Shutterbug",
+        description: "A geography photo safari: read the clue, fly to the right place, and photograph the right subject before your travel days run out.",
+        lang: "en",
+        theme_color: "#0E4A56",
+        background_color: "#b09669",
+        display: "standalone",
+        orientation: "any",
+        start_url: "/",
+        scope: "/",
+        icons: [
+          { src: "pwa-192x192.png", sizes: "192x192", type: "image/png" },
+          { src: "pwa-512x512.png", sizes: "512x512", type: "image/png" },
+          { src: "pwa-maskable-512x512.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
+        ],
+      },
+      workbox: {
+        // Precache the app shell + local assets (includes the ~1.8 MB relief JPGs).
+        globPatterns: ["**/*.{js,css,html,svg,png,jpg,ico,woff2}"],
+        maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
+        cleanupOutdatedCaches: true,
+        clientsClaim: true,
+        runtimeCaching: [
+          {
+            // Landmark photos come from Wikimedia (commons → upload.wikimedia.org).
+            // Cache-first so a place you've photographed once is available offline.
+            urlPattern: ({ url }) =>
+              url.hostname === "upload.wikimedia.org" || url.hostname === "commons.wikimedia.org",
+            handler: "CacheFirst",
+            options: {
+              cacheName: "landmark-photos",
+              expiration: { maxEntries: 400, maxAgeSeconds: 60 * 60 * 24 * 180 },
+              cacheableResponse: { statuses: [0, 200] },
+            },
+          },
+        ],
+      },
+      devOptions: { enabled: false },
+    }),
+  ],
 });

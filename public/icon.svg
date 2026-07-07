@@ -1,0 +1,48 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <!-- Shutterbug app icon: a vintage camera whose lens is a little globe.
+       Full-bleed background so it also works as a maskable icon (key art
+       sits within the central safe zone). Palette matches the game. -->
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="38%" r="75%">
+      <stop offset="0%" stop-color="#1C7385"/>
+      <stop offset="100%" stop-color="#0E4A56"/>
+    </radialGradient>
+    <radialGradient id="globe" cx="42%" cy="36%" r="70%">
+      <stop offset="0%" stop-color="#2C8FA3"/>
+      <stop offset="100%" stop-color="#15606E"/>
+    </radialGradient>
+  </defs>
+
+  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
+
+  <!-- dashed flight arc -->
+  <path d="M64 150 Q256 84 448 150" fill="none" stroke="#F0A500" stroke-width="9"
+        stroke-linecap="round" stroke-dasharray="6 20" opacity="0.85"/>
+  <g transform="translate(430 132) rotate(24)">
+    <path d="M-4 8 L22 8 L32 1 L26 10 L32 19 L22 11 L-4 11 L-9 9.5 Z" fill="#F0A500"/>
+  </g>
+
+  <!-- camera body -->
+  <g stroke="#10262E" stroke-width="12" stroke-linejoin="round">
+    <!-- pentaprism hump -->
+    <rect x="196" y="150" width="120" height="40" rx="10" fill="#F4ECD8"/>
+    <rect x="120" y="180" width="272" height="212" rx="30" fill="#F4ECD8"/>
+  </g>
+  <!-- shutter button + flash accents -->
+  <rect x="150" y="164" width="46" height="26" rx="7" fill="#E15C42" stroke="#10262E" stroke-width="8"/>
+  <circle cx="356" cy="214" r="15" fill="#F0A500" stroke="#10262E" stroke-width="8"/>
+
+  <!-- lens = globe -->
+  <circle cx="256" cy="298" r="92" fill="url(#globe)" stroke="#10262E" stroke-width="14"/>
+  <g fill="#3E9B6E" opacity="0.9">
+    <path d="M206 268 q26 -16 52 -6 q18 10 2 26 q-26 12 -52 0 q-16 -10 -2 -20 Z"/>
+    <path d="M268 312 q28 -8 40 10 q8 16 -10 22 q-26 8 -38 -10 q-8 -16 8 -22 Z"/>
+    <path d="M214 320 q16 -6 26 6 q6 12 -8 16 q-16 4 -22 -8 q-4 -10 4 -20 Z"/>
+  </g>
+  <g fill="none" stroke="#10262E" stroke-width="4.5" opacity="0.45">
+    <ellipse cx="256" cy="298" rx="92" ry="30"/>
+    <ellipse cx="256" cy="298" rx="34" ry="92"/>
+    <ellipse cx="256" cy="298" rx="70" ry="92"/>
+  </g>
+  <circle cx="228" cy="266" r="12" fill="#F4ECD8" opacity="0.85"/>
+</svg>

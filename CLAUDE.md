@@ -10,25 +10,47 @@ teaches a verifiable geography fact. Built with **Vite + React**.
 ```bash
 npm install      # install dependencies (first time)
 npm run dev      # start dev server with hot reload → http://localhost:5173/
-npm run build    # production build to dist/
-npm run preview  # serve the production build locally
+npm run build    # production build to dist/ (also generates the PWA service worker)
+npm run preview  # serve the production build locally → http://localhost:4173/
+node scripts/gen-icons.mjs   # re-rasterize app/PWA icons from assets-src/icon.svg
 ```
 
 There is **no test runner configured yet.** When adding one, prefer Vitest
 (integrates with Vite) and wire it up as `npm test`, then document it here.
 
+### Deploy / install as an app
+
+The game is a **PWA** (via `vite-plugin-pwa`): installable and offline-capable, so
+it can run on an iPad or desktop without a dev server. To ship it, run
+`npm run build` and host the static `dist/` folder anywhere (Netlify drop, GitHub
+Pages, any static host). On an iPad, open the hosted URL in Safari → Share → **Add
+to Home Screen**; it then launches full-screen and works offline. The app shell,
+the relief map plates, and the icons are precached; landmark photos from Wikimedia
+are cached on first view, so places you've already visited work offline too.
+(For a GitHub Pages *project* site served under a subpath, set Vite's `base`.)
+
 ## Folder structure
 
 ```
-index.html                 # Vite entry HTML, mounts #root
-vite.config.js             # Vite + @vitejs/plugin-react config
+index.html                 # Vite entry HTML + PWA/iOS meta; mounts #root
+vite.config.js             # Vite + plugin-react + vite-plugin-pwa (manifest, SW)
 package.json               # scripts and dependencies
+assets-src/icon.svg        # source art for the app icon (edit here, then gen-icons)
+scripts/gen-icons.mjs      # rasterizes icon.svg → public/*.png (needs sharp)
+public/                    # static assets copied as-is + precached by the PWA
+  relief-world.jpg         #   equirectangular shaded-relief plate (continent zooms)
+  relief-antarctica.jpg    #   polar relief plate for the Antarctica map
+  *.png / icon.svg         #   generated PWA + favicon + apple-touch icons
 src/
   main.jsx                 # React entry; renders <ShutterbugWorld /> into #root
   index.css                # global reset / base styles
   shutterbug-world.jsx     # main game component (the whole game, for now)
+  profiles.js              # localStorage profiles, bests, spaced-repetition, passport
+  robinson.js              # Robinson projection helpers for the world map
   data/
-    locations.js           # game content: locations, clues, geography facts
+    locations.js           # game content: 144 places — clues, facts, photos, greetings, category
+    categories.js          # the 14 subject categories + kinds + display metadata
+    worldmap.js            # country outline paths + COUNTRY_CONTINENT colour map
 .claude/                   # Claude Code project config (launch.json is shared)
 claude-code-game-build-guide.md   # design/build notes
 ```
@@ -44,9 +66,10 @@ must live in a dedicated data module under `src/data/`, imported by the
 components. Components hold presentation and logic only. This keeps content
 reviewable, correctable, and expandable without touching UI code.
 
-> **Current state:** locations, clues, and geography facts live in
-> `src/data/locations.js`. There are no greetings yet — when added, they belong
-> in `src/data/` too (e.g. `src/data/greetings.js`), never inline in a component.
+> **Current state:** every place (city, clues, fact, photo + license, local
+> greeting, and subject `category`/`tags`) lives in `src/data/locations.js`; the
+> category registry is `src/data/categories.js` and the map/continent data is
+> `src/data/worldmap.js`. Add or correct content there, never inline in a component.
 
 ### 2. Every fact and foreign-language greeting must be accurate and verifiable
 
@@ -67,6 +90,9 @@ source so it can be re-checked later.
 
 ## Notes
 
-- The current map is a stylized vector (not geographically exact) and landmarks
-  are hand-drawn icons standing in for real photos — deliberate demo placeholders.
-- Everything runs in-memory; there is no persistence or backend.
+- The world map is a real Robinson-projected vector map with colour-coded
+  continents; continent zooms use shaded-relief plates. Landmarks use real,
+  freely-licensed photos (Wikimedia Commons; attribution shown in-game), with the
+  hand-drawn `icon` only as a fallback when a photo is missing.
+- No backend. Player profiles, scores, best times, stamps, and achievements
+  persist in the browser's `localStorage` (see `src/profiles.js`).
