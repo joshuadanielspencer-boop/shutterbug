@@ -57,9 +57,23 @@ describe("locations", () => {
     }
   });
 
-  it("the easy clue names the location's continent (in caps)", () => {
+  it("has all three clue tiers, and the reveal ladder withholds place names", () => {
+    // easy spells things out; medium may name the continent/region but not the
+    // country; hard is pure context — no country, continent, or city name — so the
+    // player must deduce the place. (Antarctica's "country" is itself, so skip it.)
+    const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const has = (text, word) => new RegExp("\\b" + esc(word) + "\\b", "i").test(text);
     for (const l of LOCATIONS) {
-      expect(l.easy.toUpperCase(), l.id).toContain("IN " + l.continent.toUpperCase());
+      for (const tier of ["easy", "medium", "hard"]) {
+        expect(typeof l[tier], `${l.id}.${tier}`).toBe("string");
+        expect(l[tier].length, `${l.id}.${tier} length`).toBeGreaterThan(20);
+      }
+      if (l.country !== "Antarctica") {
+        expect(has(l.medium, l.country), `${l.id}: medium leaks country`).toBe(false);
+        expect(has(l.hard, l.country), `${l.id}: hard leaks country`).toBe(false);
+      }
+      expect(has(l.hard, l.continent), `${l.id}: hard leaks continent`).toBe(false);
+      if (l.city.length > 3) expect(has(l.hard, l.city), `${l.id}: hard leaks city`).toBe(false);
     }
   });
 

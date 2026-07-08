@@ -113,9 +113,9 @@ function PhotoCredit({ photo, style }) {
 // `catShare` = the chance each assignment is a "photograph any {category} in
 // {continent}" mission instead of a specific-subject one (the rest are specific).
 const MODES = {
-  easy:   { label: "Easy",   assignments: 3, cityDecoys: 2, daysPer: 3, points: 150, labels: "all",   clue: "easy", catShare: 0.4 },
-  medium: { label: "Medium", assignments: 5, cityDecoys: 3, daysPer: 3, points: 125, labels: "smart", clue: "hard", catShare: 0.5 },
-  hard:   { label: "Hard",   assignments: 7, cityDecoys: 4, daysPer: 2, points: 100, labels: "smart", clue: "hard", catShare: 0.5 },
+  easy:   { label: "Easy",   assignments: 3, cityDecoys: 2, daysPer: 3, points: 150, labels: "all",   clue: "easy",   catShare: 0.4 },
+  medium: { label: "Medium", assignments: 5, cityDecoys: 3, daysPer: 3, points: 125, labels: "smart", clue: "medium", catShare: 0.5 },
+  hard:   { label: "Hard",   assignments: 7, cityDecoys: 4, daysPer: 2, points: 100, labels: "smart", clue: "hard",   catShare: 0.5 },
 };
 const MODE_ORDER = ["easy", "medium", "hard"];
 
@@ -136,9 +136,9 @@ const SHOT_COST = 0.5;
 // ---- efficient route saves days. `reqs` = itinerary length; `slack` = spare days. ----
 const FLIGHT_DAYS = 2;
 const TOUR_MODES = {
-  easy:   { reqs: 4, catShare: 0.4, labels: "all",   clue: "easy", points: 150, slack: 3 },
-  medium: { reqs: 5, catShare: 0.5, labels: "smart", clue: "hard", points: 125, slack: 2 },
-  hard:   { reqs: 6, catShare: 0.6, labels: "smart", clue: "hard", points: 100, slack: 1 },
+  easy:   { reqs: 4, catShare: 0.4, labels: "all",   clue: "easy",   points: 150, slack: 3 },
+  medium: { reqs: 5, catShare: 0.5, labels: "smart", clue: "medium", points: 125, slack: 2 },
+  hard:   { reqs: 6, catShare: 0.6, labels: "smart", clue: "hard",   points: 100, slack: 1 },
 };
 // Best achievable Grand Tour score: every target filed, plus the day-bonus for the
 // most days a perfectly efficient route could bank (the buffer built into the budget).
@@ -957,7 +957,7 @@ export default function ShutterbugWorld() {
               <div style={{ display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap" }}>
                 {newBadges.map((b) => (
                   <span key={b.id} style={{ background: INK, color: PAPER, fontWeight: 800, fontSize: 14, padding: "7px 14px", borderRadius: 20 }}>
-                    <span aria-hidden="true">{b.emoji}</span> {b.name}
+                    <span aria-hidden="true" style={{ fontSize: 19 }}>{b.emoji}</span> {b.name}
                   </span>
                 ))}
               </div>
@@ -1042,7 +1042,7 @@ export default function ShutterbugWorld() {
               const kk = pp.kinds[k] || { mastered: 0, total: 0 };
               return (
                 <span key={k} style={{ fontFamily: "ui-monospace, monospace", fontSize: 12, fontWeight: 700, color: INK, background: PAPER, border: `1px solid ${PAPER_LINE}`, borderRadius: 14, padding: "5px 12px" }}>
-                  <span aria-hidden="true">{meta.emoji}</span> {meta.name}: {kk.mastered}/{kk.total}
+                  <span aria-hidden="true" style={{ fontSize: 17 }}>{meta.emoji}</span> {meta.name}: {kk.mastered}/{kk.total}
                 </span>
               );
             })}
@@ -1056,7 +1056,7 @@ export default function ShutterbugWorld() {
               return (
                 <div key={cat} style={{ background: "#fff", border: `2px solid ${done ? c.color : PAPER_LINE}`, borderRadius: 8, padding: "10px 12px", opacity: col.mastered ? 1 : 0.7 }}>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 4 }}>
-                    <span style={{ fontWeight: 800, color: INK, fontSize: 13, lineHeight: 1.2 }}><span aria-hidden="true">{c.emoji}</span> {c.name}</span>
+                    <span style={{ fontWeight: 800, color: INK, fontSize: 13, lineHeight: 1.2 }}><span aria-hidden="true" style={{ fontSize: 18 }}>{c.emoji}</span> {c.name}</span>
                     {done && <span title="Collection complete!" aria-label="complete" style={{ fontSize: 13 }}>⭐</span>}
                   </div>
                   <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 12, color: INK, opacity: 0.7, marginTop: 5 }}>{col.mastered} / {col.total}{done ? "" : ""}</div>
@@ -1076,7 +1076,7 @@ export default function ShutterbugWorld() {
                 style={{ display: "flex", alignItems: "center", gap: 7, padding: "7px 12px", borderRadius: 20,
                   background: b.earned ? GOLD : PAPER, border: `1.5px solid ${b.earned ? GOLD : PAPER_LINE}`,
                   color: INK, opacity: b.earned ? 1 : 0.75 }}>
-                <span aria-hidden="true" style={{ fontSize: 16, filter: b.earned ? "none" : "grayscale(1)" }}>{b.emoji}</span>
+                <span aria-hidden="true" style={{ fontSize: 22, filter: b.earned ? "none" : "grayscale(1)" }}>{b.emoji}</span>
                 <span style={{ fontWeight: 800, fontSize: 13 }}>{b.name}</span>
                 <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, opacity: 0.7 }}>{b.earned ? "★" : `${b.have}/${b.need}`}</span>
               </div>
@@ -1091,7 +1091,7 @@ export default function ShutterbugWorld() {
               {pp.countries.map((c) => (
                 <div key={c.country} style={{ width: 184, background: "#fff", border: `2px ${c.mastered ? "solid" : "dashed"} ${c.mastered ? CORAL : PAPER_LINE}`, borderRadius: 8, padding: 12, transform: `rotate(${(c.country.charCodeAt(0) % 5) - 2}deg)` }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <span style={{ fontSize: 26 }} aria-hidden="true">{c.flag}</span>
+                    <span style={{ fontSize: 34 }} aria-hidden="true">{c.flag}</span>
                     <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 10, letterSpacing: "0.1em", color: c.mastered ? CORAL : INK, opacity: c.mastered ? 1 : 0.55 }}>{c.mastered ? "★ MASTERED" : "✓ VISITED"}</span>
                   </div>
                   <div style={{ fontWeight: 800, color: INK, marginTop: 6 }}>{c.country}</div>
@@ -1141,9 +1141,16 @@ export default function ShutterbugWorld() {
   // In Grand Tour there's no single clue — the itinerary panel replaces it.
   const catMeta = (!isTour && isCatAsg) ? CATEGORIES[asg.category] : null;
   const promptSubject = isTour ? "" : (isCatAsg ? `any ${catMeta.noun}` : (target ? target.subject : ""));
+  const tier = mode.clue; // "easy" | "medium" | "hard"
+  // Reveal ladder: easy spells the subject out; medium/hard hide it so the player
+  // deduces it from the clue. The category badge is a gentle "what kind of place"
+  // nudge on easy/medium, withheld on hard.
+  const namesSubject = !isTour && !isCatAsg && tier === "easy";
+  const showTypeBadge = !isTour && (isCatAsg || tier !== "hard");
+  const badgeCat = isCatAsg ? asg.category : (target ? target.category : null);
   const clue = isTour ? "" : (isCatAsg
     ? `In ${asg.continent.toUpperCase()}, find any ${catMeta.noun} and photograph it — you pick which one!`
-    : (target ? (mode.clue === "easy" ? target.easy : target.hard) : ""));
+    : (target ? (target[tier] || target.hard) : ""));
   const inCity = phase === "city";
   // City step: the square continent box (a topographic relief plate). World step:
   // the whole map, but with blank margins top/bottom so it isn't stretched to square.
@@ -1182,8 +1189,17 @@ export default function ShutterbugWorld() {
           ) : (
           <div style={{ background: PAPER, border: `1px dashed ${CORAL}`, borderRadius: 6, padding: "14px 16px", position: "relative" }}>
             <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.22em", color: CORAL, marginBottom: 8 }}>✎ TELEGRAM — FROM THE EDITOR</div>
-            <p style={{ margin: 0, color: INK, lineHeight: 1.5, fontSize: 15 }}>Bring me a photo of <b>{promptSubject}</b>.{isCatAsg && <> <CategoryBadge category={asg.category} size="sm" style={{ verticalAlign: "middle" }} /></>}</p>
-            <p style={{ margin: "8px 0 0", color: INK, opacity: 0.85, lineHeight: 1.5, fontSize: 14, fontStyle: "italic" }}>{clue}</p>
+            {(isCatAsg || namesSubject) ? (
+              <>
+                <p style={{ margin: 0, color: INK, lineHeight: 1.5, fontSize: 15 }}>Bring me a photo of <b>{promptSubject}</b>.{showTypeBadge && badgeCat && <> <CategoryBadge category={badgeCat} size="sm" style={{ verticalAlign: "middle" }} /></>}</p>
+                <p style={{ margin: "8px 0 0", color: INK, opacity: 0.85, lineHeight: 1.5, fontSize: 14, fontStyle: "italic" }}>{clue}</p>
+              </>
+            ) : (
+              <>
+                <p style={{ margin: 0, color: INK, lineHeight: 1.5, fontSize: 15 }}>{clue}</p>
+                {showTypeBadge && badgeCat && <div style={{ marginTop: 10 }}><CategoryBadge category={badgeCat} size="sm" style={{ verticalAlign: "middle" }} /></div>}
+              </>
+            )}
           </div>
           )}
 
@@ -1204,7 +1220,7 @@ export default function ShutterbugWorld() {
                 {flashKey > 0 && !prefersReduced && <div key={flashKey} className="sbw-flash" />}
               </div>
               <PhotoCredit photo={currentLoc.photo} style={{ textAlign: "center", marginTop: 0, marginBottom: 4 }} />
-              <div style={{ fontWeight: 700, color: INK }}>{currentLoc.flag} {currentLoc.city}, {currentLoc.country}</div>
+              <div style={{ fontWeight: 700, color: INK }}><span style={{ fontSize: "1.5em", verticalAlign: "-0.08em" }}>{currentLoc.flag}</span> {currentLoc.city}, {currentLoc.country}</div>
               <div style={{ fontSize: 13, color: INK, opacity: 0.7, marginTop: 2 }}>{currentLoc.subject}</div>
               {currentLoc.greeting?.text && (
                 <div style={{ fontSize: 13, color: OCEAN, marginTop: 6 }}>
@@ -1509,9 +1525,9 @@ function CategoryBadge({ category, size = "md", style }) {
   const sm = size === "sm";
   return (
     <span style={{ display: "inline-flex", alignItems: "center", gap: 5, background: c.color, color: textOn(c.color),
-      fontWeight: 800, fontSize: sm ? 10 : 12, lineHeight: 1.3, letterSpacing: "0.02em",
-      padding: sm ? "2px 7px" : "3px 10px", borderRadius: 20, whiteSpace: "nowrap", ...style }}>
-      <span aria-hidden="true">{c.emoji}</span>{c.name}
+      fontWeight: 800, fontSize: sm ? 11 : 13, lineHeight: 1.3, letterSpacing: "0.02em",
+      padding: sm ? "3px 9px" : "4px 12px", borderRadius: 20, whiteSpace: "nowrap", ...style }}>
+      <span aria-hidden="true" style={{ fontSize: sm ? 16 : 19 }}>{c.emoji}</span>{c.name}
     </span>
   );
 }
@@ -1527,7 +1543,7 @@ function Itinerary({ reqs, here }) {
           const onHere = here && r.continent === here && !r.done;
           return (
             <div key={r.key} style={{ display: "flex", alignItems: "flex-start", gap: 8, fontSize: 14, lineHeight: 1.35, color: INK, opacity: r.done ? 0.5 : 1 }}>
-              <span aria-hidden="true" style={{ fontSize: 15 }}>{r.done ? "✅" : onHere ? "📸" : "⬜"}</span>
+              <span aria-hidden="true" style={{ fontSize: 19 }}>{r.done ? "✅" : onHere ? "📸" : "⬜"}</span>
               <span>
                 <span style={{ fontWeight: 700, textDecoration: r.done ? "line-through" : "none" }}>{r.label}</span>
                 {onHere && <span style={{ color: CORAL, fontWeight: 800 }}> — here now!</span>}
@@ -1594,7 +1610,7 @@ function LandmarkModal({ p, onClose, reduced }) {
         </div>
         <PhotoCredit photo={p.photo} style={{ textAlign: "center", marginTop: 0, marginBottom: 8 }} />
         <h2 style={{ fontFamily: "ui-sans-serif, system-ui", fontWeight: 900, fontSize: 24, color: INK, margin: "4px 0 2px" }}>{p.subject}</h2>
-        <div style={{ fontWeight: 700, color: INK }}>{p.flag} {p.city}, {p.country}</div>
+        <div style={{ fontWeight: 700, color: INK }}><span style={{ fontSize: "1.5em", verticalAlign: "-0.08em" }}>{p.flag}</span> {p.city}, {p.country}</div>
         <div style={{ marginTop: 8, display: "flex", gap: 6, justifyContent: "center", alignItems: "center", flexWrap: "wrap" }}>
           {p.category && <CategoryBadge category={p.category} />}
           {p.continent && <span style={{ fontSize: 12, color: INK, opacity: 0.6 }}>{p.continent}</span>}
@@ -1653,7 +1669,7 @@ function Polaroid({ p }) {
       <div style={{ background: PAPER, display: "flex", alignItems: "center", justifyContent: "center", height: 110, borderRadius: 2, overflow: "hidden" }}>
         <Photo photo={p.photo} icon={p.icon} alt={p.subject} size={82} />
       </div>
-      <div style={{ fontWeight: 700, color: INK, fontSize: 13, marginTop: 8 }}>{p.flag} {p.subject}</div>
+      <div style={{ fontWeight: 700, color: INK, fontSize: 13, marginTop: 8 }}><span style={{ fontSize: "1.5em", verticalAlign: "-0.08em" }}>{p.flag}</span> {p.subject}</div>
       {p.category && <div style={{ marginTop: 5 }}><CategoryBadge category={p.category} size="sm" /></div>}
       <div style={{ fontSize: 11, color: INK, opacity: 0.65, lineHeight: 1.35, marginTop: 5 }}>{p.fact}</div>
       <PhotoCredit photo={p.photo} />
