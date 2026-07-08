@@ -6,7 +6,7 @@ import { COUNTRY_INFO, COUNTRY_LAYER_CONTINENTS } from "./data/countries.js";
 import { robinson, eqToRobinson, ROBINSON_W, ROBINSON_H } from "./robinson.js";
 import { CATEGORIES, CATEGORY_ORDER, KIND_META, kindOf } from "./data/categories.js";
 import { listProfiles, lastProfileName, getProfile, createProfile, setLastProfile,
-  deleteProfile, recordGame, weightedOrder, passportData, achievements, storageAvailable } from "./profiles.js";
+  deleteProfile, recordGame, weightedOrder, passportData, achievements, topScores, storageAvailable } from "./profiles.js";
 
 // Base URL the app is served from ("/" at a domain root, "/<repo>/" on a GitHub
 // Pages project site). Prefix runtime asset URLs with it so the relief map plates
@@ -114,9 +114,9 @@ function PhotoCredit({ photo, style }) {
 // `catShare` = the chance each assignment is a "photograph any {category} in
 // {continent}" mission instead of a specific-subject one (the rest are specific).
 const MODES = {
-  easy:   { label: "Easy",   assignments: 3, cityDecoys: 2, daysPer: 3, points: 150, labels: "all",   clue: "easy",   catShare: 0.4 },
-  medium: { label: "Medium", assignments: 5, cityDecoys: 3, daysPer: 3, points: 125, labels: "smart", clue: "medium", catShare: 0.5 },
-  hard:   { label: "Hard",   assignments: 7, cityDecoys: 4, daysPer: 2, points: 100, labels: "smart", clue: "hard",   catShare: 0.5 },
+  easy:   { label: "Easy",   assignments: 3, cityDecoys: 2, daysPer: 3, points: 150, labels: "all",   clue: "easy",   catShare: 0.4, countryOpts: 3 },
+  medium: { label: "Medium", assignments: 5, cityDecoys: 3, daysPer: 3, points: 125, labels: "smart", clue: "medium", catShare: 0.5, countryOpts: 5 },
+  hard:   { label: "Hard",   assignments: 7, cityDecoys: 4, daysPer: 2, points: 100, labels: "smart", clue: "hard",   catShare: 0.5, countryOpts: 7 },
 };
 const MODE_ORDER = ["easy", "medium", "hard"];
 
@@ -559,6 +559,16 @@ export default function ShutterbugWorld() {
       for (const l of order) { if (chosen.length >= want) break; if (l.country === anchor.country && l.continent === anchor.continent && !chosen.includes(l)) chosen.push(l); }
       return chosen.map((l) => l.id).sort(() => Math.random() - 0.5);
     };
+    // Which countries to show in the country step: the correct one(s) plus decoys,
+    // capped at mode.countryOpts so crowded continents (Asia) aren't overwhelming.
+    const shuffle = (a) => a.slice().sort(() => Math.random() - 0.5);
+    const pickCountries = (continent, mustInclude) => {
+      const all = LAYER_COUNTRY_LIST[continent] || [];
+      const chosen = mustInclude.filter((c) => all.includes(c));
+      const pool = shuffle(all.filter((c) => !chosen.includes(c)));
+      while (chosen.length < mode.countryOpts && pool.length) chosen.push(pool.pop());
+      return shuffle(chosen);
+    };
     // Weight favouring categories/continents the player hasn't finished yet.
     const need = (ids) => { const un = ids.filter((id) => !masteredSet.has(id)).length; return un === 0 ? 0.3 : 1 + un * 0.06; };
 
@@ -577,14 +587,16 @@ export default function ShutterbugWorld() {
         const pool = fresh.length ? fresh : (members.filter((id) => !used.has(id)).length ? members.filter((id) => !used.has(id)) : members);
         const anchorId = pool[Math.floor(Math.random() * pool.length)];
         used.add(anchorId);
-        assignmentObjs.push({ type: "category", category, continent, anchorId });
+        const catC = (LAYER_COUNTRY_LIST[continent] || []).filter((c) => countryHasCategory(continent, c, category));
+        const mustCat = catC.length ? [catC[Math.floor(Math.random() * catC.length)]] : [];
+        assignmentObjs.push({ type: "category", category, continent, anchorId, countries: usesCountryLayer(mode, continent) ? pickCountries(continent, mustCat) : null });
         options.push(buildOptions(BY_ID[anchorId]));
       } else {
         // Specific mission: next unused location in the weighted order.
         while (oi < order.length && used.has(order[oi].id)) oi++;
         const t = order[oi < order.length ? oi : 0]; oi++;
         used.add(t.id);
-        assignmentObjs.push({ type: "specific", targetId: t.id, continent: t.continent });
+        assignmentObjs.push({ type: "specific", targetId: t.id, continent: t.continent, countries: usesCountryLayer(mode, t.continent) ? pickCountries(t.continent, [t.country]) : null });
         options.push(usesCountryLayer(mode, t.continent) ? buildCountryOptions(t) : buildOptions(t));
       }
     }
@@ -1006,6 +1018,26 @@ export default function ShutterbugWorld() {
           </div>
 
           <button onClick={gameMode === "tour" ? startTour : startGame} style={primaryBtn}>{gameMode === "tour" ? "Start the Grand Tour ✈" : "Begin the assignment ✈"}</button>
+
+          {canSave && (() => {
+            const leaders = topScores(5);
+            if (!leaders.length) return null;
+            return (
+              <div style={{ marginTop: 28, maxWidth: 400, marginInline: "auto", background: PAPER, border: `1px solid ${PAPER_LINE}`, borderRadius: 10, padding: "14px 16px", textAlign: "left" }}>
+                <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.2em", color: CORAL, marginBottom: 8, textAlign: "center" }}><span aria-hidden="true" style={{ fontSize: 15 }}>🏆</span> HIGH SCORES</div>
+                {leaders.map((r, i) => (
+                  <div key={r.name + i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, padding: "6px 2px", borderTop: i ? `1px solid ${PAPER_LINE}` : "none" }}>
+                    <span style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+                      <span style={{ fontFamily: "ui-monospace, monospace", fontWeight: 800, fontSize: 14, color: i === 0 ? GOLD : INK, opacity: i === 0 ? 1 : 0.6, width: 16, textAlign: "right" }}>{i + 1}</span>
+                      <span style={{ fontWeight: 700, color: INK, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.name}</span>
+                      <span style={{ fontSize: 11, color: INK, opacity: 0.5 }}>{MODES[r.difficulty]?.label || ""}</span>
+                    </span>
+                    <span style={{ fontFamily: "ui-monospace, monospace", fontWeight: 800, color: CORAL }}>{r.score}</span>
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
         </div>
       </Frame>
     );
@@ -1413,7 +1445,7 @@ export default function ShutterbugWorld() {
 
               {/* Country step (Medium/Hard): clickable country regions over the
                   continent relief, each labelled — pick the one the clue points to. */}
-              {inCountry && (LAYER_COUNTRY_LIST[pickedContinent] || []).map((country) => {
+              {inCountry && ((asg && asg.countries) || LAYER_COUNTRY_LIST[pickedContinent] || []).map((country) => {
                 const cm = COUNTRY_META[countryKey(pickedContinent, country)];
                 if (!cm) return null;
                 // On a Pacific-wrapped continent (Oceania) the equirectangular country
@@ -1421,6 +1453,10 @@ export default function ShutterbugWorld() {
                 // tiny island), so show a clickable marker + label instead of an outline.
                 const wrapPlate = plateMode === "wrap";
                 const d = WC_BY_NAME[country];
+                // Hard mode hides the names on outline continents — tell them apart by
+                // shape + the hover highlight. Marker (Oceania) steps keep labels, as
+                // there's no country shape to recognise there.
+                const showLabel = wrapPlate || mode.clue !== "hard";
                 return (
                   <g key={country} className="sbw-country" role="button" tabIndex={busy ? -1 : 0}
                      aria-label={`Choose ${country}`} onClick={() => pickCountry(country)}
@@ -1429,8 +1465,8 @@ export default function ShutterbugWorld() {
                     {(!wrapPlate && d)
                       ? <path d={d} fillRule="evenodd" fill="rgba(244,236,216,0.16)" stroke={PAPER} strokeWidth="0.9" vectorEffect="non-scaling-stroke" />
                       : <ellipse cx={cm.cx} cy={cm.cy} {...pinR(0.028)} fill="rgba(240,165,0,0.55)" stroke={PAPER} strokeWidth="1" vectorEffect="non-scaling-stroke" />}
-                    <text x={cm.cx} y={cm.cy + (wrapPlate ? -0.03 * box.h : 0)} fontSize={0.03 * box.h} fontFamily="ui-monospace, monospace" fontWeight="800" fill={INK} textAnchor="middle"
-                      style={{ paintOrder: "stroke", stroke: PAPER, strokeWidth: 0.012 * box.h }}>{country}</text>
+                    {showLabel && <text x={cm.cx} y={cm.cy + (wrapPlate ? -0.03 * box.h : 0)} fontSize={0.03 * box.h} fontFamily="ui-monospace, monospace" fontWeight="800" fill={INK} textAnchor="middle"
+                      style={{ paintOrder: "stroke", stroke: PAPER, strokeWidth: 0.012 * box.h }}>{country}</text>}
                   </g>
                 );
               })}
@@ -1478,6 +1514,20 @@ export default function ShutterbugWorld() {
                     {isCurrent && <ellipse cx={px} cy={py} {...pinR(0.015)} fill="none" stroke={CORAL} strokeWidth="1" vectorEffect="non-scaling-stroke" className="sbw-ping" />}
                     <text className="sbw-label" x={px + 0.012 * box.w} y={py - 0.012 * box.h} fontSize={0.02 * box.h} fontFamily="ui-monospace, monospace" fill={INK} style={{ paintOrder: "stroke", stroke: PAPER, strokeWidth: 0.006 * box.h }}>{l.city}</text>
                   </g>
+                );
+              })}
+
+              {/* Blue stars mark every place you've already photographed THIS game —
+                  shown on the world map (all of them) and on a continent zoom (that
+                  continent's). */}
+              {album.map((p) => {
+                const l = BY_ID[p.id];
+                if (!l || (zoomed && l.continent !== pickedContinent)) return null;
+                const pos = zoomed ? pinXY(l) : eqToRobinson(l.x, l.y);
+                const sz = (zoomed ? 0.032 : 0.024) * box.h;
+                return (
+                  <text key={"star" + p.id} x={pos.x} y={pos.y} fontSize={sz} textAnchor="middle" dominantBaseline="central"
+                    fill="#2E6FC9" style={{ paintOrder: "stroke", stroke: "#fff", strokeWidth: sz * 0.26, pointerEvents: "none" }}>★</text>
                 );
               })}
             </svg>

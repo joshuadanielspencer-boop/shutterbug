@@ -149,6 +149,22 @@ export function weightedOrder(profile) {
     .map((x) => x.id);
 }
 
+// Leaderboard: the top-N single best scores across all saved travellers. Each
+// traveller contributes their highest score (over difficulties); returns
+// [{ name, score, difficulty }] sorted high→low. Guests aren't saved, so they
+// never appear.
+export function topScores(n = 5) {
+  const s = read();
+  const rows = [];
+  for (const p of Object.values(s.profiles)) {
+    let max = 0, mode = null;
+    for (const [d, v] of Object.entries(p.best || {})) if (v > max) { max = v; mode = d; }
+    if (max > 0) rows.push({ name: p.name, score: max, difficulty: mode });
+  }
+  rows.sort((a, b) => b.score - a.score);
+  return rows.slice(0, n);
+}
+
 // Build passport data: one entry per country the profile has touched, plus
 // totals. Countries/continents are derived from the per-location stats.
 export function passportData(profile) {
