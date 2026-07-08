@@ -3,6 +3,7 @@ import { LOCATIONS } from "./data/locations.js";
 import { WORLD_COUNTRIES, COUNTRY_CONTINENT } from "./data/worldmap.js";
 import { WORLD_COUNTRIES_ROBINSON } from "./data/worldmap-robinson.js";
 import { COUNTRY_INFO, COUNTRY_LAYER_CONTINENTS } from "./data/countries.js";
+import { COUNTRY_PEOPLE, greetingMeaning } from "./data/culture.js";
 import { robinson, eqToRobinson, ROBINSON_W, ROBINSON_H } from "./robinson.js";
 import { CATEGORIES, CATEGORY_ORDER, KIND_META, kindOf } from "./data/categories.js";
 import { listProfiles, lastProfileName, getProfile, createProfile, setLastProfile,
@@ -249,6 +250,10 @@ const WC_ALIAS = { "United States": "United States of America" };
 const wcPath = (country) => WC_BY_NAME[country] || WC_BY_NAME[WC_ALIAS[country]];
 const COUNTRY_FLAG = {}; // country -> flag emoji (first landmark's flag)
 for (const l of LOCATIONS) if (!COUNTRY_FLAG[l.country]) COUNTRY_FLAG[l.country] = l.flag;
+// country -> a representative local greeting (first landmark that has one), so the
+// culture card can teach "how they say hello" even before you pick a city.
+const COUNTRY_GREETING = {};
+for (const l of LOCATIONS) if (!COUNTRY_GREETING[l.country] && l.greeting && l.greeting.text) COUNTRY_GREETING[l.country] = l.greeting;
 const LAYER_COUNTRY_LIST = {}; // continent -> [country names that have landmarks]
 const COUNTRY_LOCS = {};       // continent -> { country -> [location ids] }
 const COUNTRY_META = {};       // "continent|country" -> { box, cx, cy }  (keyed per
@@ -1452,6 +1457,7 @@ export default function ShutterbugWorld() {
                   <span aria-hidden="true">💬 </span>Local greeting: “{currentLoc.greeting.text}”
                   {currentLoc.greeting.language ? ` — ${currentLoc.greeting.language}` : ""}
                   {currentLoc.greeting.pronunciation ? ` (${currentLoc.greeting.pronunciation})` : ""}
+                  {greetingMeaning(currentLoc.greeting) ? `, “${greetingMeaning(currentLoc.greeting)}”` : ""}
                   <SpeakButton greeting={currentLoc.greeting} />
                 </div>
               )}
@@ -1466,6 +1472,32 @@ export default function ShutterbugWorld() {
               {pickedCountry && COUNTRY_INFO[pickedCountry] && (
                 <div style={{ marginTop: 10, background: PAPER, border: `1px solid ${PAPER_LINE}`, borderRadius: 6, padding: "8px 10px", fontSize: 12, color: INK, lineHeight: 1.45, textAlign: "left" }}>
                   <span aria-hidden="true">📖 </span>{COUNTRY_INFO[pickedCountry].blurb}
+                </div>
+              )}
+              {/* Culture card: how people here say hello (+ a reviewed photo of
+                  people in traditional dress, once one is added to COUNTRY_PEOPLE). */}
+              {pickedCountry && (COUNTRY_GREETING[pickedCountry] || COUNTRY_PEOPLE[pickedCountry]) && (
+                <div style={{ marginTop: 10, background: PAPER, border: `1px solid ${PAPER_LINE}`, borderRadius: 6, padding: 10, textAlign: "left" }}>
+                  {COUNTRY_PEOPLE[pickedCountry] && (
+                    <figure style={{ margin: "0 0 8px" }}>
+                      <img src={COUNTRY_PEOPLE[pickedCountry].src} alt={COUNTRY_PEOPLE[pickedCountry].caption}
+                        style={{ width: "100%", borderRadius: 4, display: "block" }} loading="lazy" />
+                      <figcaption style={{ fontSize: 11, color: INK, opacity: 0.7, marginTop: 4, lineHeight: 1.4 }}>
+                        {COUNTRY_PEOPLE[pickedCountry].caption} · {COUNTRY_PEOPLE[pickedCountry].credit} ({COUNTRY_PEOPLE[pickedCountry].license})
+                      </figcaption>
+                    </figure>
+                  )}
+                  {COUNTRY_GREETING[pickedCountry] && (() => {
+                    const g = COUNTRY_GREETING[pickedCountry]; const mean = greetingMeaning(g);
+                    return (
+                      <div style={{ fontSize: 13, color: OCEAN, lineHeight: 1.5 }}>
+                        <span aria-hidden="true">💬 </span>Here they say <b>“{g.text}”</b>
+                        {g.pronunciation ? ` (${g.pronunciation})` : ""} in {g.language}
+                        {mean ? ` — it means “${mean}.”` : "."}
+                        <SpeakButton greeting={g} />
+                      </div>
+                    );
+                  })()}
                 </div>
               )}
               {isTour && (
@@ -1920,6 +1952,7 @@ function LandmarkModal({ p, onClose, reduced }) {
             <span aria-hidden="true">💬 </span>Local greeting: “{p.greeting.text}”
             {p.greeting.language ? ` — ${p.greeting.language}` : ""}
             {p.greeting.pronunciation ? ` (${p.greeting.pronunciation})` : ""}
+            {greetingMeaning(p.greeting) ? `, “${greetingMeaning(p.greeting)}”` : ""}
             <SpeakButton greeting={p.greeting} />
           </div>
         )}
