@@ -35,5 +35,9 @@ export const COUNTRY_INFO = {
   "Norway": { capital: "Oslo", region: "Scandinavia", blurb: "Norway, in Scandinavia in Northern Europe, is ruled from Oslo. Its long coastline is carved into deep, steep-sided fjords, and in the far north the winter sky glows with the northern lights." },
 };
 
-// Continents where the country-map layer is active (Medium/Hard only).
-export const COUNTRY_LAYER_CONTINENTS = new Set(["Europe"]);
+// Continents where the country-map layer is active (Medium/Hard only). The five
+// equirectangular-plate continents; Oceania (Pacific-wrapped) and Antarctica
+// (polar, no countries) stay continent-only. Blurbs so far exist only for Europe
+// (see COUNTRY_INFO) — other continents show the country map + zoom without the
+// paragraph until their blurbs are written.
+export const COUNTRY_LAYER_CONTINENTS = new Set(["North America", "South America", "Europe", "Africa", "Asia"]);

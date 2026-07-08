@@ -224,7 +224,10 @@ const WC_BY_NAME = Object.fromEntries(WORLD_COUNTRIES.map((c) => [c.name, c.d]))
 const COUNTRY_FLAG = {}; // country -> flag emoji (first landmark's flag)
 for (const l of LOCATIONS) if (!COUNTRY_FLAG[l.country]) COUNTRY_FLAG[l.country] = l.flag;
 const LAYER_COUNTRY_LIST = {}; // continent -> [country names that have landmarks]
-const COUNTRY_META = {};       // country -> { box, cx, cy }
+const COUNTRY_META = {};       // "continent|country" -> { box, cx, cy }  (keyed per
+// continent so a transcontinental country — e.g. Russia, with landmarks in both
+// Europe and Asia — zooms to the right region for whichever continent you're on).
+const countryKey = (continent, country) => `${continent}|${country}`;
 (() => {
   for (const cont of COUNTRY_LAYER_CONTINENTS) {
     const byC = {};
@@ -235,7 +238,7 @@ const COUNTRY_META = {};       // country -> { box, cx, cy }
       const minX = Math.min(...xs), maxX = Math.max(...xs), minY = Math.min(...ys), maxY = Math.max(...ys);
       const cx = (minX + maxX) / 2, cy = (minY + maxY) / 2;
       const side = Math.min(120, Math.max(16, Math.max(maxX - minX, maxY - minY) * 1.9));
-      COUNTRY_META[country] = { box: { x: cx - side / 2, y: cy - side / 2, w: side, h: side }, cx, cy };
+      COUNTRY_META[countryKey(cont, country)] = { box: { x: cx - side / 2, y: cy - side / 2, w: side, h: side }, cx, cy };
     }
   }
 })();
@@ -1220,7 +1223,7 @@ export default function ShutterbugWorld() {
   // of a country-layer assignment zooms further into the picked country. World step:
   // the whole map, letterboxed so it isn't stretched to square.
   const contMeta = pickedContinent ? CONTINENT_META[pickedContinent] : null;
-  const countryBox = inCity && pickedCountry && COUNTRY_META[pickedCountry] ? COUNTRY_META[pickedCountry].box : null;
+  const countryBox = inCity && pickedCountry && COUNTRY_META[countryKey(pickedContinent, pickedCountry)] ? COUNTRY_META[countryKey(pickedContinent, pickedCountry)].box : null;
   const plateMode = zoomed ? (contMeta ? contMeta.mode : "equirect") : "world";
   const box = !zoomed ? WORLD_BOX : (countryBox || (contMeta ? contMeta.box : WORLD_BOX));
   // Where a location's pin sits on the current plate (polar for Antarctica, shifted
@@ -1388,7 +1391,7 @@ export default function ShutterbugWorld() {
               {/* Country step (Medium/Hard): clickable country regions over the
                   continent relief, each labelled — pick the one the clue points to. */}
               {inCountry && (LAYER_COUNTRY_LIST[pickedContinent] || []).map((country) => {
-                const d = WC_BY_NAME[country], cm = COUNTRY_META[country];
+                const d = WC_BY_NAME[country], cm = COUNTRY_META[countryKey(pickedContinent, country)];
                 if (!d || !cm) return null;
                 return (
                   <g key={country} className="sbw-country" role="button" tabIndex={busy ? -1 : 0}
@@ -1397,7 +1400,7 @@ export default function ShutterbugWorld() {
                      style={{ cursor: busy ? "default" : "pointer" }}>
                     <path d={d} fillRule="evenodd" fill="rgba(244,236,216,0.16)" stroke={PAPER} strokeWidth="0.9" vectorEffect="non-scaling-stroke" />
                     <text x={cm.cx} y={cm.cy} fontSize={0.03 * box.h} fontFamily="ui-monospace, monospace" fontWeight="800" fill={INK} textAnchor="middle"
-                      style={{ paintOrder: "stroke", stroke: PAPER, strokeWidth: 0.012 * box.h, pointerEvents: "none" }}>{country}</text>
+                      style={{ paintOrder: "stroke", stroke: PAPER, strokeWidth: 0.012 * box.h }}>{country}</text>
                   </g>
                 );
               })}
