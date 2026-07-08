@@ -124,6 +124,10 @@ export function recordGame(name, { difficulty, score, timeMs = 0, won = false, v
   visitedIds.forEach((id) => bump(id, "v"));
   correctIds.forEach((id) => { bump(id, "c").last = "c"; });
   missedIds.forEach((id) => { const e = bump(id, "m"); if (e.last !== "c") e.last = "m"; });
+  // Stamp when each place was last encountered (flown to or photographed) so the
+  // game can favour genuinely NEW/least-recent places each playthrough.
+  const now = Date.now();
+  [...new Set([...visitedIds, ...correctIds])].forEach((id) => { if (p.loc[id]) p.loc[id].t = now; });
 
   s.lastProfile = name;
   write(s);
@@ -137,6 +141,18 @@ export function weightFor(profile, id) {
   if (e.c === 0 && e.m > 0) return 4;       // assigned but missed → surface a lot
   if (e.c === 0) return 2.5;                // visited but never photographed
   return Math.max(1, 2 - e.c * 0.4);        // mastered → gradually rarer
+}
+
+// Every location id ordered FRESHEST first: never-encountered places (no
+// timestamp) come first in random order, then the least-recently-visited. Once a
+// player has seen everything, their oldest visits become "new" again — so review
+// continues indefinitely. Used to guarantee a share of new places each game.
+export function freshFirst(profile) {
+  const loc = (profile && profile.loc) || {};
+  return LOCATIONS
+    .map((l) => ({ id: l.id, t: (loc[l.id] && loc[l.id].t) || 0, r: Math.random() }))
+    .sort((a, b) => (a.t - b.t) || (a.r - b.r))
+    .map((x) => x.id);
 }
 
 // A weighted-random ordering of every location id (Efraimidis–Spirakis: take
@@ -215,7 +231,7 @@ const ACH_CATNAME = {
   mountain: ["Peak Bagger", "🏔️"], volcano: ["Volcano Hunter", "🌋"], waterfall: ["Waterfall Chaser", "💦"],
   waterway: ["River Runner", "🏞️"], desert: ["Desert Wanderer", "🏜️"], ice: ["Polar Explorer", "🧊"],
   coast: ["Island Hopper", "🏝️"], rock: ["Rockhound", "🪨"], wildlife: ["Safari Ranger", "🦁"],
-  ruins: ["Time Traveler", "🏛️"], temple: ["Pilgrim", "⛩️"], palace: ["Royal Guest", "🏰"],
+  ruins: ["Time Traveler", "🏛️"], temple: ["Pilgrim", "⛪"], palace: ["Royal Guest", "🏰"],
   monument: ["Monument Hunter", "🗽"], cityscape: ["City Slicker", "🏙️"],
 };
 const SUPERLATIVES = new Set(["highest", "tallest", "largest", "deepest", "longest", "driest", "oldest", "lowest", "most-active", "widest", "biggest"]);

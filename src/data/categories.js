@@ -15,7 +15,7 @@
 
 export const CATEGORIES = {
   ruins:     { name: "Ancient Wonder",   plural: "Ancient Wonders",   noun: "ancient wonder",     emoji: "🏛️", kind: "built",   color: "#B08D57" },
-  temple:    { name: "Sacred Place",     plural: "Sacred Places",     noun: "sacred place",       emoji: "⛩️", kind: "built",   color: "#C0576A" },
+  temple:    { name: "Sacred Place",     plural: "Sacred Places",     noun: "sacred place",       emoji: "⛪", kind: "built",   color: "#C0576A" },
   palace:    { name: "Castle & Palace",  plural: "Castles & Palaces", noun: "castle or palace",   emoji: "🏰", kind: "built",   color: "#8E6BB0" },
   monument:  { name: "Landmark & Icon",  plural: "Landmarks & Icons", noun: "famous landmark",    emoji: "🗽", kind: "built",   color: "#E15C42" },
   cityscape: { name: "City View",        plural: "City Views",        noun: "city view",          emoji: "🏙️", kind: "built",   color: "#4A7BA6" },

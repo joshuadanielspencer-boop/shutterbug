@@ -6,7 +6,7 @@ import { COUNTRY_INFO, COUNTRY_LAYER_CONTINENTS } from "./data/countries.js";
 import { robinson, eqToRobinson, ROBINSON_W, ROBINSON_H } from "./robinson.js";
 import { CATEGORIES, CATEGORY_ORDER, KIND_META, kindOf } from "./data/categories.js";
 import { listProfiles, lastProfileName, getProfile, createProfile, setLastProfile,
-  deleteProfile, recordGame, weightedOrder, passportData, achievements, topScores, storageAvailable } from "./profiles.js";
+  deleteProfile, recordGame, weightedOrder, freshFirst, passportData, achievements, topScores, storageAvailable } from "./profiles.js";
 
 // Base URL the app is served from ("/" at a domain root, "/<repo>/" on a GitHub
 // Pages project site). Prefix runtime asset URLs with it so the relief map plates
@@ -113,10 +113,13 @@ function PhotoCredit({ photo, style }) {
 // ---- the clue text.
 // `catShare` = the chance each assignment is a "photograph any {category} in
 // {continent}" mission instead of a specific-subject one (the rest are specific).
+// `slack` = spare travel days baked into the budget on top of the clean-route
+// cost (distance flights + one shot each); banking them at the end is the day
+// bonus, and it shrinks with difficulty.
 const MODES = {
-  easy:   { label: "Easy",   assignments: 3, cityDecoys: 2, daysPer: 3, points: 150, labels: "all",   clue: "easy",   catShare: 0.4, countryOpts: 3 },
-  medium: { label: "Medium", assignments: 5, cityDecoys: 3, daysPer: 3, points: 125, labels: "smart", clue: "medium", catShare: 0.5, countryOpts: 5 },
-  hard:   { label: "Hard",   assignments: 7, cityDecoys: 4, daysPer: 2, points: 100, labels: "smart", clue: "hard",   catShare: 0.5, countryOpts: 7 },
+  easy:   { label: "Easy",   assignments: 3, cityDecoys: 2, daysPer: 3, points: 150, slack: 5, labels: "all",   clue: "easy",   catShare: 0.4, countryOpts: 3 },
+  medium: { label: "Medium", assignments: 5, cityDecoys: 3, daysPer: 3, points: 125, slack: 5, labels: "smart", clue: "medium", catShare: 0.5, countryOpts: 5 },
+  hard:   { label: "Hard",   assignments: 7, cityDecoys: 4, daysPer: 2, points: 100, slack: 4, labels: "smart", clue: "hard",   catShare: 0.5, countryOpts: 7 },
 };
 const MODE_ORDER = ["easy", "medium", "hard"];
 
@@ -129,13 +132,31 @@ const modePlan = (key) => {
 // real decision, not a free guess.
 const SHOT_COST = 0.5;
 
+// The traveller's home airport — where the very first flight departs from.
+const HUB = { x: 106, y: 49 };
+
+// Great-circle distance (km) between two MAP points. Our coords are x = lon+180
+// (0..360) and y = 90-lat (0..180); the haversine below is inherently
+// longitude-wrap-safe, so Pacific hops measure the short way round.
+const kmBetween = (a, b) => {
+  const toRad = (d) => (d * Math.PI) / 180;
+  const lat1 = toRad(90 - a.y), lat2 = toRad(90 - b.y);
+  const h = Math.sin(toRad(a.y - b.y) / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(toRad(b.x - a.x) / 2) ** 2;
+  return 2 * 6371 * Math.asin(Math.min(1, Math.sqrt(h)));
+};
+// A flight's cost in travel DAYS: the great-circle distance scaled and rounded to
+// the nearest HALF day, with a floor (even a short hop is half a day) and a cap so
+// no single leg is ruinous. Long hauls really do cost more than short ones.
+const FLIGHT_KM_PER_DAY = 6000;
+const flightDays = (from, to) => Math.max(0.5, Math.min(3, Math.round((kmBetween(from, to) / FLIGHT_KM_PER_DAY) * 2) / 2));
+
 // ---- Grand Tour mode: instead of one assignment at a time, you get a whole ----
 // ---- itinerary of targets across several continents on ONE shared day budget, ----
-// ---- fulfilled in ANY order. Flying to a NEW continent costs FLIGHT_DAYS; ----
-// ---- photographing another target on the continent you're already on is just ----
-// ---- the SHOT_COST — so grouping same-continent targets and planning an ----
-// ---- efficient route saves days. `reqs` = itinerary length; `slack` = spare days. ----
-const FLIGHT_DAYS = 2;
+// ---- fulfilled in ANY order. Flying to a new continent costs a distance-based ----
+// ---- number of days (see flightDays); photographing another target on the ----
+// ---- continent you're already on is just the SHOT_COST — so grouping ----
+// ---- same-continent targets and planning an efficient route saves days. ----
+// ---- `reqs` = itinerary length; `slack` = spare days. ----
 const TOUR_MODES = {
   easy:   { reqs: 4, catShare: 0.4, labels: "all",   clue: "easy",   points: 150, slack: 3 },
   medium: { reqs: 5, catShare: 0.5, labels: "smart", clue: "medium", points: 125, slack: 2 },
@@ -221,6 +242,11 @@ const CONTINENT_META = (() => {
 // ---- which countries each layer-continent has, each country's outline path, and ----
 // ---- a square zoom box around that country's landmarks. ----
 const WC_BY_NAME = Object.fromEntries(WORLD_COUNTRIES.map((c) => [c.name, c.d]));
+// A few location country names differ from the world-map polygon names; map them
+// so the country outline/border can still be drawn. (Singapore has no polygon — a
+// tiny island — so it simply shows a marker with no border, which is fine.)
+const WC_ALIAS = { "United States": "United States of America" };
+const wcPath = (country) => WC_BY_NAME[country] || WC_BY_NAME[WC_ALIAS[country]];
 const COUNTRY_FLAG = {}; // country -> flag emoji (first landmark's flag)
 for (const l of LOCATIONS) if (!COUNTRY_FLAG[l.country]) COUNTRY_FLAG[l.country] = l.flag;
 const LAYER_COUNTRY_LIST = {}; // continent -> [country names that have landmarks]
@@ -320,10 +346,10 @@ const spacedFor = (box) => {
   });
 };
 
-// The best score a game could reach: every photo landed, and every travel day
-// beyond the minimum banked as bonus. The minimum is one flight (1 day) plus one
-// shot (SHOT_COST) per assignment.
-const maxScoreFor = (nAssign, mode) => nAssign * mode.points + nAssign * (mode.daysPer - 1 - SHOT_COST) * 50;
+// The best score a game could reach: every photo landed (points each) plus the
+// full day bonus for banking all the slack days (a perfect clean route spends only
+// the flights + shots, leaving exactly `slack` days at 50 pts apiece).
+const maxScoreFor = (nAssign, mode) => nAssign * mode.points + mode.slack * 50;
 
 // Rank on the FRACTION of the achievable max, so a perfect Easy run and a
 // perfect Hard run both earn the top title regardless of raw points.
@@ -495,6 +521,7 @@ export default function ShutterbugWorld() {
   const [lastResult, setLastResult] = useState(null); // {isBest, isBestTime} after a recorded game
   const [newBadges, setNewBadges] = useState([]); // achievements newly earned this game
   const [confirmRemove, setConfirmRemove] = useState(false); // passport delete confirmation
+  const [researched, setResearched] = useState({}); // assignment step -> revealed research note (Research button)
   const recorded = useRef(false);
   const startRef = useRef(0); // ms timestamp the current game began
   const timer = useRef(null);
@@ -537,9 +564,9 @@ export default function ShutterbugWorld() {
     const mode = modePlan(difficulty);
     const profile = profileName ? getProfile(profileName) : null;
     // Weighted order surfaces the active player's missed/unmastered places more
-    // often (a plain shuffle for guests). masteredSet = places already nailed.
+    // often (a plain shuffle for guests). Used to fill the non-fresh anchor slots
+    // and to pick same-continent city decoys.
     const order = weightedOrder(profile).map((id) => BY_ID[id]);
-    const masteredSet = new Set(profile && profile.loc ? Object.keys(profile.loc).filter((id) => profile.loc[id].c > 0) : []);
     const want = mode.cityDecoys + 1;
 
     // City choices for an anchor: the anchor + cityDecoys same-continent decoys,
@@ -569,35 +596,37 @@ export default function ShutterbugWorld() {
       while (chosen.length < mode.countryOpts && pool.length) chosen.push(pool.pop());
       return shuffle(chosen);
     };
-    // Weight favouring categories/continents the player hasn't finished yet.
-    const need = (ids) => { const un = ids.filter((id) => !masteredSet.has(id)).length; return un === 0 ? 0.3 : 1 + un * 0.06; };
+    // ---- Pick the anchors FIRST, all DISTINCT, at least 40% genuinely NEW -----
+    // Choosing anchors up front (rather than per-mission) guarantees no location is
+    // used twice in one playthrough (fixes the duplicate bug) and lets us reserve a
+    // share of never-/least-recently-seen places. `freshFirst` orders places by how
+    // long ago the player last saw them (never-seen first); once everything's been
+    // seen, oldest visits resurface — so review continues forever.
+    const n = mode.assignments;
+    const needFresh = Math.ceil(0.4 * n);
+    const anchorIds = [];
+    const used = new Set();
+    const take = (id) => { if (id && !used.has(id)) { used.add(id); anchorIds.push(id); } };
+    freshFirst(profile).forEach((id) => { if (anchorIds.length < needFresh) take(id); });
+    order.forEach((l) => { if (anchorIds.length < n) take(l.id); });        // fill the rest, weighted
+    freshFirst(profile).forEach((id) => { if (anchorIds.length < n) take(id); }); // safety net (tiny catalogs)
+    const anchors = anchorIds.slice(0, n).map((id) => BY_ID[id]).sort(() => Math.random() - 0.5);
 
     const assignmentObjs = [];
     const options = [];
-    const used = new Set();
-    let oi = 0;
-    for (let i = 0; i < mode.assignments; i++) {
-      if (Math.random() < mode.catShare) {
-        // Category mission: pick a category, then a continent that has members,
-        // then an anchor (prefer an unmastered, unused one) to teach on a hit.
-        const category = weightedPick(CATEGORY_ORDER.filter((c) => CAT_LOCS[c]).map((c) => ({ v: c, w: need(Object.values(CAT_LOCS[c]).flat()) })));
-        const continent = weightedPick(Object.keys(CAT_LOCS[category]).map((c) => ({ v: c, w: need(CAT_LOCS[category][c]) })));
-        const members = CAT_LOCS[category][continent];
-        const fresh = members.filter((id) => !used.has(id) && !masteredSet.has(id));
-        const pool = fresh.length ? fresh : (members.filter((id) => !used.has(id)).length ? members.filter((id) => !used.has(id)) : members);
-        const anchorId = pool[Math.floor(Math.random() * pool.length)];
-        used.add(anchorId);
-        const catC = (LAYER_COUNTRY_LIST[continent] || []).filter((c) => countryHasCategory(continent, c, category));
-        const mustCat = catC.length ? [catC[Math.floor(Math.random() * catC.length)]] : [];
-        assignmentObjs.push({ type: "category", category, continent, anchorId, countries: usesCountryLayer(mode, continent) ? pickCountries(continent, mustCat) : null });
-        options.push(buildOptions(BY_ID[anchorId]));
+    for (const anchor of anchors) {
+      const continent = anchor.continent;
+      if (Math.random() < mode.catShare && CAT_LOCS[anchor.category] && CAT_LOCS[anchor.category][continent]) {
+        // Category mission built AROUND this anchor: bring back any <category> on
+        // this continent. The anchor (its own country has the category) teaches on
+        // a hit; its country is guaranteed to appear among the country choices.
+        const category = anchor.category;
+        assignmentObjs.push({ type: "category", category, continent, anchorId: anchor.id, countries: usesCountryLayer(mode, continent) ? pickCountries(continent, [anchor.country]) : null });
+        options.push(buildOptions(anchor));
       } else {
-        // Specific mission: next unused location in the weighted order.
-        while (oi < order.length && used.has(order[oi].id)) oi++;
-        const t = order[oi < order.length ? oi : 0]; oi++;
-        used.add(t.id);
-        assignmentObjs.push({ type: "specific", targetId: t.id, continent: t.continent, countries: usesCountryLayer(mode, t.continent) ? pickCountries(t.continent, [t.country]) : null });
-        options.push(usesCountryLayer(mode, t.continent) ? buildCountryOptions(t) : buildOptions(t));
+        // Specific mission: photograph exactly this place.
+        assignmentObjs.push({ type: "specific", targetId: anchor.id, continent, countries: usesCountryLayer(mode, continent) ? pickCountries(continent, [anchor.country]) : null });
+        options.push(usesCountryLayer(mode, continent) ? buildCountryOptions(anchor) : buildOptions(anchor));
       }
     }
     setAssignments(assignmentObjs);
@@ -607,7 +636,11 @@ export default function ShutterbugWorld() {
     setPickedContinent(null);
     setPickedCountry(null);
     setCurrent(null);
-    setDays(mode.assignments * mode.daysPer);
+    // Budget = the clean-route cost (distance flight + one shot per assignment,
+    // hopping hub → continent → continent) plus the difficulty's slack days.
+    let cleanCost = 0, fromXY = HUB;
+    for (const a of assignmentObjs) { const to = CONTINENT_PIN[a.continent]; cleanCost += flightDays(fromXY, to) + SHOT_COST; fromXY = to; }
+    setDays(Math.round((cleanCost + mode.slack) * 10) / 10);
     setScore(0);
     setAlbum([]);
     setVisitedIds([]);
@@ -616,6 +649,7 @@ export default function ShutterbugWorld() {
     setNewBadges([]);
     setPending(null);
     setElapsedMs(0);
+    setResearched({});
     startRef.current = Date.now();
     recorded.current = false;
     setMsg({ type: "info", text: "Read the editor's clue, then pick the right continent on the map." });
@@ -677,9 +711,11 @@ export default function ShutterbugWorld() {
       opts[cont] = chosen.map((l) => l.id).sort(() => Math.random() - 0.5);
     }
 
-    // Budget: the minimal route (one flight per continent + one shot per target)
+    // Budget: a generous route allowance (a distance-based flight to each visited
+    // continent — real chained routes are usually shorter) + one shot per target,
     // plus buffer for wrong guesses and detours.
-    const budget = Math.ceil(FLIGHT_DAYS * contsUsed.length + SHOT_COST * reqs.length + reqs.length + tm.slack);
+    const routeCost = contsUsed.reduce((s, c) => s + flightDays(HUB, CONTINENT_PIN[c]), 0);
+    const budget = Math.ceil(routeCost + SHOT_COST * reqs.length + reqs.length + tm.slack);
 
     setGameMode("tour");
     setTourReqs(reqs);
@@ -764,18 +800,20 @@ export default function ShutterbugWorld() {
     if (gameMode === "tour") {
       // Grand Tour: fly anywhere you like — it just costs a flight. No "wrong
       // continent"; going somewhere with no targets is simply a wasted trip.
-      const from = current ? loc(current) : (pickedContinent ? CONTINENT_PIN[pickedContinent] : { x: 106, y: 49 });
+      const from = current ? loc(current) : (pickedContinent ? CONTINENT_PIN[pickedContinent] : HUB);
       const to = CONTINENT_PIN[cont];
+      const cost = flightDays(from, to); // distance-based: group nearby continents to save days
       sfx("plane");
       const finalize = () => {
-        const nd = Math.round((days - FLIGHT_DAYS) * 10) / 10;
+        const nd = Math.round((days - cost) * 10) / 10;
         setDays(nd);
         setFlying(null); setPickedContinent(cont); setPhase("city"); setCurrent(null); setRevealed(false);
+        const costTxt = `−${cost} day${cost === 1 ? "" : "s"}`;
         if (nd <= 0) return outOfDays(`You reached ${cont}, but the trip's budget is spent.`);
         const here = tourReqs.filter((r) => !r.done && r.continent === cont).length;
         setMsg(here
-          ? { type: "info", text: `Touched down in ${cont}. ${here} target${here === 1 ? "" : "s"} on your list ${here === 1 ? "is" : "are"} here.` }
-          : { type: "warn", text: `Touched down in ${cont} — but nothing on your list is here. Fly on when ready.` });
+          ? { type: "info", text: `Touched down in ${cont} (${costTxt}). ${here} target${here === 1 ? "" : "s"} on your list ${here === 1 ? "is" : "are"} here.` }
+          : { type: "warn", text: `Touched down in ${cont} (${costTxt}) — but nothing on your list is here. Fly on when ready.` });
       };
       if (prefersReduced) { finalize(); return; }
       setFlying({ fromX: from.x, fromY: from.y, toX: to.x, toY: to.y });
@@ -783,13 +821,15 @@ export default function ShutterbugWorld() {
       return;
     }
     if (!target) return;
+    const from = current ? loc(current) : HUB; // first flight departs from the home hub
+    const to = CONTINENT_PIN[cont];
+    const cost = flightDays(from, to); // distance-based: farther continents cost more
+    const costTxt = `−${cost} day${cost === 1 ? "" : "s"}`;
     if (cont === target.continent) {
-      const from = current ? loc(current) : { x: 106, y: 49 }; // first flight departs from a hub
-      const to = CONTINENT_PIN[cont];
       const useCountry = usesCountryLayer(MODES[difficulty], cont);
       sfx("plane");
       const finalize = () => {
-        const nd = Math.round((days - 1) * 10) / 10; // the flight to the continent costs a day
+        const nd = Math.round((days - cost) * 10) / 10;
         setDays(nd);
         setFlying(null);
         setPickedContinent(cont);
@@ -798,18 +838,18 @@ export default function ShutterbugWorld() {
         setCurrent(null);   // arrived on the continent; no city picked yet
         setRevealed(false);
         if (nd <= 0) outOfDays(`You reached ${cont}, but the trip's budget is spent.`);
-        else setMsg({ type: "info", text: useCountry ? `Touched down in ${cont}. Now pick the right country.` : `Touched down in ${cont}. Now pick the right city.` });
+        else setMsg({ type: "info", text: `Touched down in ${cont} (${costTxt}). ${useCountry ? "Now pick the right country." : "Now pick the right city."}` });
       };
       if (prefersReduced) { finalize(); return; }
       setFlying({ fromX: from.x, fromY: from.y, toX: to.x, toY: to.y });
       timer.current = setTimeout(finalize, 850);
     } else {
-      const nd = Math.round((days - 1) * 10) / 10; // a wrong continent is a wasted flight
+      const nd = Math.round((days - cost) * 10) / 10; // a wrong continent is a wasted flight
       setDays(nd);
       sfx("fail");
       if (nd <= 0) outOfDays(`${cont} wasn't right, and that was your last day.`);
       else setPending({ kind: "wrong", tone: "bad", emoji: "❌", title: "Not that continent",
-        subtitle: `The editor's subject isn't in ${cont}. A wasted flight cost you a day — read the clue and try again.`,
+        subtitle: `The editor's subject isn't in ${cont}. A wasted flight there and back cost you ${cost} day${cost === 1 ? "" : "s"} — read the clue and try again.`,
         buttonLabel: "Try again" });
     }
   }
@@ -834,13 +874,33 @@ export default function ShutterbugWorld() {
       setDays(nd);
       sfx("fail");
       const why = a && a.type === "category"
-        ? `There's no ${CATEGORIES[a.category].noun} to photograph in ${country}.`
+        ? `We don't have a ${CATEGORIES[a.category].noun} on file to photograph in ${country} — try another country.`
         : `The editor's subject isn't in ${country}.`;
       if (nd <= 0) outOfDays(`${country} wasn't right, and that was your last day.`);
       else setPending({ kind: "wrongcountry", tone: "bad", emoji: "❌", title: "Not that country",
         subtitle: `${why} Half a day gone — read the clue and the country notes, then try again.`,
         buttonLabel: "Try again" });
     }
+  }
+
+  // ---- Research: spend half a travel day to have the newsroom look up exactly ----
+  // where the editor's subject is. It all but hands the player the answer (naming
+  // the place a hard clue withholds) — the cost is the trade-off. Once per
+  // assignment; the note stays pinned under the telegram for the rest of the trip.
+  function doResearch() {
+    if (gameMode === "tour" || flying || pending) return;
+    if (researched[step] || days <= SHOT_COST) return;
+    const a = assignments[step];
+    if (!a) return;
+    const t = a.type === "category" ? loc(a.anchorId) : loc(a.targetId);
+    const catNoun = CATEGORIES[t.category].noun;
+    const text = a.type === "category"
+      ? `The newsroom suggests ${t.city}, ${t.country} ${t.flag} in ${t.continent} — its ${catNoun}, ${t.subject}, would be a perfect shot.`
+      : `The editor's subject is ${t.subject} — in ${t.city}, ${t.country} ${t.flag} (${t.continent}).`;
+    setResearched((r) => ({ ...r, [step]: text }));
+    setDays((d) => Math.round((d - SHOT_COST) * 10) / 10);
+    sfx("success");
+    setMsg({ type: "info", text: `🔎 Research: ${text}` });
   }
 
   // ---- City phase: click a city on the zoomed continent to photograph it ----
@@ -904,9 +964,22 @@ export default function ShutterbugWorld() {
     const a = assignments[step];
     // Win by category for a category mission; by exact subject for a specific one.
     const win = a.type === "category" ? clicked.category === a.category : id === a.targetId;
+    // Never file the same place twice in one trip. A category mission lets the
+    // player roam, so they could pick a subject already in the album from an
+    // earlier assignment — nudge them to a fresh one instead of double-counting.
+    // (A specific target already filed earlier still counts as done, below.)
+    const already = album.some((x) => x.id === id);
+    if (already && !(win && a.type === "specific")) {
+      if (d <= 0) { outOfDays(`You already photographed ${clicked.subject} — and the trip's over.`); return; }
+      sfx("fail");
+      setPending({ kind: "dup", tone: "bad", emoji: "📸", title: "Already in your album",
+        subtitle: `You've already photographed ${clicked.subject} on this trip. Find a different ${a.type === "category" ? CATEGORIES[a.category].noun : "subject"} — half a day gone.`,
+        buttonLabel: "Keep looking 🔍" });
+      return;
+    }
     if (win) {
       const gain = MODES[difficulty].points;
-      setAlbum((al) => [...al, { id: clicked.id, subject: clicked.subject, flag: clicked.flag, city: clicked.city, country: clicked.country, continent: clicked.continent, category: clicked.category, fact: clicked.fact, icon: clicked.icon, photo: clicked.photo, greeting: clicked.greeting }]);
+      setAlbum((al) => (al.some((x) => x.id === clicked.id) ? al : [...al, { id: clicked.id, subject: clicked.subject, flag: clicked.flag, city: clicked.city, country: clicked.country, continent: clicked.continent, category: clicked.category, fact: clicked.fact, icon: clicked.icon, photo: clicked.photo, greeting: clicked.greeting }]));
       const found = a.type === "category" ? `You found a ${CATEGORIES[a.category].noun} — ${clicked.subject}!` : `You photographed ${clicked.subject}.`;
       const done = step + 1 >= assignments.length;
       if (done) {
@@ -947,7 +1020,8 @@ export default function ShutterbugWorld() {
   if (screen === "start") {
     return (
       <Frame>
-        <div style={{ maxWidth: 620, margin: "0 auto", textAlign: "center", padding: "8px 4px" }}>
+        <div style={{ maxWidth: 960, margin: "0 auto", textAlign: "center", padding: "8px 4px" }}>
+          <div style={{ maxWidth: 620, margin: "0 auto" }}>
           <Stamp>Field Edition · Pack your bags ✈</Stamp>
           <h1 style={{ fontFamily: "ui-sans-serif, system-ui", fontWeight: 900, letterSpacing: "0.06em", textTransform: "uppercase", fontSize: "clamp(24px, 7vw, 40px)", color: INK, margin: "10px 0 2px" }}>Shutterbug</h1>
           <p style={{ fontFamily: "ui-monospace, monospace", letterSpacing: "0.28em", textTransform: "uppercase", fontSize: 12, color: CORAL, margin: 0 }}>A World Photo Safari</p>
@@ -957,6 +1031,13 @@ export default function ShutterbugWorld() {
             fly to the right city, and photograph the right subject before your travel days run out.
             Every correct shot teaches a bit of world geography.
           </p>
+          </div>
+
+          {/* Two columns on wide screens: the setup controls on the left, the
+              high-score board on the right so it's visible without scrolling.
+              Stacks on narrow screens (flexWrap). */}
+          <div style={{ display: "flex", gap: 24, alignItems: "flex-start", justifyContent: "center", flexWrap: "wrap", marginTop: 8, textAlign: "center" }}>
+            <div style={{ flex: "1 1 440px", maxWidth: 560, minWidth: 300 }}>
 
           <div style={{ marginTop: 22 }}>
             <Field label="Traveller">
@@ -1018,12 +1099,14 @@ export default function ShutterbugWorld() {
           </div>
 
           <button onClick={gameMode === "tour" ? startTour : startGame} style={primaryBtn}>{gameMode === "tour" ? "Start the Grand Tour ✈" : "Begin the assignment ✈"}</button>
+            </div>
 
+            <div style={{ flex: "0 1 340px", minWidth: 260, marginTop: 22 }}>
           {canSave && (() => {
             const leaders = topScores(5);
             if (!leaders.length) return null;
             return (
-              <div style={{ marginTop: 28, maxWidth: 400, marginInline: "auto", background: PAPER, border: `1px solid ${PAPER_LINE}`, borderRadius: 10, padding: "14px 16px", textAlign: "left" }}>
+              <div style={{ maxWidth: 400, marginInline: "auto", background: PAPER, border: `1px solid ${PAPER_LINE}`, borderRadius: 10, padding: "14px 16px", textAlign: "left" }}>
                 <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.2em", color: CORAL, marginBottom: 8, textAlign: "center" }}><span aria-hidden="true" style={{ fontSize: 15 }}>🏆</span> HIGH SCORES</div>
                 {leaders.map((r, i) => (
                   <div key={r.name + i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, padding: "6px 2px", borderTop: i ? `1px solid ${PAPER_LINE}` : "none" }}>
@@ -1038,6 +1121,8 @@ export default function ShutterbugWorld() {
               </div>
             );
           })()}
+            </div>
+          </div>
         </div>
       </Frame>
     );
@@ -1048,7 +1133,9 @@ export default function ShutterbugWorld() {
     const isTourEnd = gameMode === "tour";
     const totalTargets = isTourEnd ? tourReqs.length : assignments.length;
     const maxScore = isTourEnd ? tourMaxScore(tourReqs.length, difficulty) : maxScoreFor(assignments.length, mode);
-    const pct = maxScore > 0 ? score / maxScore : 0;
+    // Clamp at 1: distance flights vary slightly by the exact cities visited, so a
+    // very efficient route can bank a shade more than the nominal max — never > 100%.
+    const pct = maxScore > 0 ? Math.min(1, score / maxScore) : 0;
     const r = rankFor(pct);
     return (
       <Frame>
@@ -1327,6 +1414,20 @@ export default function ShutterbugWorld() {
           </div>
           )}
 
+          {/* Research: buy the answer for half a day (assignments only). */}
+          {!isTour && (researched[step] ? (
+            <div style={{ marginTop: 10, background: "#EAF1F2", border: `1px solid ${OCEAN}`, borderRadius: 6, padding: "10px 12px", fontSize: 13, color: INK, lineHeight: 1.45 }}>
+              <b style={{ color: OCEAN }}>🔎 Research notes:</b> {researched[step]}
+            </div>
+          ) : (
+            <button onClick={doResearch} disabled={busy || days <= SHOT_COST}
+              title="Spend half a travel day for the newsroom to pin down the editor's subject"
+              style={{ marginTop: 10, padding: "7px 14px", borderRadius: 8, border: `1.5px solid ${OCEAN}`, background: "transparent", color: OCEAN, fontWeight: 700, fontSize: 13,
+                cursor: (busy || days <= SHOT_COST) ? "default" : "pointer", opacity: (busy || days <= SHOT_COST) ? 0.5 : 1 }}>
+              🔎 Research the subject <span style={{ opacity: 0.75, fontWeight: 600 }}>(½ day)</span>
+            </button>
+          ))}
+
           {msg && (
             <div style={{ marginTop: 12, padding: "10px 12px", borderRadius: 6, fontSize: 14, lineHeight: 1.4,
               background: msg.type === "win" ? "#EAF6EF" : msg.type === "lose" ? "#FBEAE6" : msg.type === "warn" ? "#FCF3E0" : "#EAF1F2",
@@ -1388,8 +1489,8 @@ export default function ShutterbugWorld() {
               <div style={{ fontWeight: 800, color: INK, marginTop: 4 }}>{isTour ? "Where to next?" : "Which continent?"}</div>
               <div style={{ fontSize: 13, color: INK, opacity: 0.8, marginTop: 6, lineHeight: 1.45 }}>
                 {isTour
-                  ? `Pick a continent to fly to (costs ${FLIGHT_DAYS} travel days). Group nearby targets to save days!`
-                  : `${current ? `Departing ${currentLoc.flag} ${currentLoc.city}. ` : ""}Read the clue, then click the continent it points to.`}
+                  ? "Pick a continent to fly to — farther flights cost more days. Group nearby targets to save days!"
+                  : `${current ? `Departing ${currentLoc.flag} ${currentLoc.city}. ` : ""}Read the clue, then click the continent it points to — farther flights cost more travel days.`}
               </div>
             </div>
           )}
@@ -1452,7 +1553,7 @@ export default function ShutterbugWorld() {
                 // outlines don't line up with the plate (and many "countries" are one
                 // tiny island), so show a clickable marker + label instead of an outline.
                 const wrapPlate = plateMode === "wrap";
-                const d = WC_BY_NAME[country];
+                const d = wcPath(country);
                 // Hard mode hides the names on outline continents — tell them apart by
                 // shape + the hover highlight. Marker (Oceania) steps keep labels, as
                 // there's no country shape to recognise there.
@@ -1496,23 +1597,35 @@ export default function ShutterbugWorld() {
                 );
               })()}
 
-              {/* city pins (city phase): the target + same-continent decoys */}
+              {/* Highlight the country you're standing in (city step): its coral
+                  border teaches the player the country's shape and where it sits on
+                  the continent. Only outline continents have a usable shape. */}
+              {inCity && pickedCountry && plateMode !== "wrap" && wcPath(pickedCountry) && (
+                <path d={wcPath(pickedCountry)} fillRule="evenodd" fill="rgba(240,165,0,0.12)" stroke={CORAL} strokeWidth="1.8" vectorEffect="non-scaling-stroke" style={{ pointerEvents: "none" }} />
+              )}
+
+              {/* city pins (city phase): the target + same-continent decoys. Each pin
+                  carries its subject's CATEGORY EMOJI on a light disc — a colour-blind-
+                  safe, at-a-glance clue to what kind of place it is (mountain, temple…),
+                  so the player can match it against the editor's clue. */}
               {inCity && cityOptions.map((id) => {
                 const l = loc(id);
                 const { x: px, y: py } = pinXY(l);
                 const isCurrent = id === current;
                 const alwaysLabel = mode.labels === "all" || isCurrent;
+                const emoji = (CATEGORIES[l.category] || {}).emoji || "📍";
                 return (
                   <g key={id} className={`sbw-pin${alwaysLabel ? "" : " sbw-pin--hide"}`}
                      role="button" tabIndex={busy ? -1 : 0}
-                     aria-label={`Photograph ${l.city}, ${l.country}`}
+                     aria-label={`Photograph ${l.city}, ${l.country} (${(CATEGORIES[l.category] || {}).name || "place"})`}
                      onClick={() => photographCity(id)}
                      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); photographCity(id); } }}
                      style={{ cursor: busy ? "default" : "pointer" }}>
-                    <ellipse cx={px} cy={py} {...pinR(0.017)} fill="transparent" />
-                    <ellipse cx={px} cy={py} {...pinR(isCurrent ? 0.0115 : 0.009)} fill={isCurrent ? CORAL : GOLD} stroke={INK} strokeWidth="1" vectorEffect="non-scaling-stroke" />
-                    {isCurrent && <ellipse cx={px} cy={py} {...pinR(0.015)} fill="none" stroke={CORAL} strokeWidth="1" vectorEffect="non-scaling-stroke" className="sbw-ping" />}
-                    <text className="sbw-label" x={px + 0.012 * box.w} y={py - 0.012 * box.h} fontSize={0.02 * box.h} fontFamily="ui-monospace, monospace" fill={INK} style={{ paintOrder: "stroke", stroke: PAPER, strokeWidth: 0.006 * box.h }}>{l.city}</text>
+                    <ellipse cx={px} cy={py} {...pinR(0.026)} fill="transparent" />
+                    <ellipse cx={px} cy={py} {...pinR(isCurrent ? 0.02 : 0.017)} fill={isCurrent ? "rgba(233,92,66,0.22)" : "rgba(255,255,255,0.78)"} stroke={isCurrent ? CORAL : INK} strokeWidth={isCurrent ? "1.4" : "1"} vectorEffect="non-scaling-stroke" />
+                    {isCurrent && <ellipse cx={px} cy={py} {...pinR(0.026)} fill="none" stroke={CORAL} strokeWidth="1" vectorEffect="non-scaling-stroke" className="sbw-ping" />}
+                    <text x={px} y={py} fontSize={0.028 * box.h} textAnchor="middle" dominantBaseline="central" style={{ pointerEvents: "none" }}>{emoji}</text>
+                    <text className="sbw-label" x={px + 0.022 * box.w} y={py - 0.02 * box.h} fontSize={0.02 * box.h} fontFamily="ui-monospace, monospace" fill={INK} style={{ paintOrder: "stroke", stroke: PAPER, strokeWidth: 0.006 * box.h }}>{l.city}</text>
                   </g>
                 );
               })}
