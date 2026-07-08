@@ -224,17 +224,21 @@ const WC_BY_NAME = Object.fromEntries(WORLD_COUNTRIES.map((c) => [c.name, c.d]))
 const COUNTRY_FLAG = {}; // country -> flag emoji (first landmark's flag)
 for (const l of LOCATIONS) if (!COUNTRY_FLAG[l.country]) COUNTRY_FLAG[l.country] = l.flag;
 const LAYER_COUNTRY_LIST = {}; // continent -> [country names that have landmarks]
+const COUNTRY_LOCS = {};       // continent -> { country -> [location ids] }
 const COUNTRY_META = {};       // "continent|country" -> { box, cx, cy }  (keyed per
 // continent so a transcontinental country — e.g. Russia, with landmarks in both
 // Europe and Asia — zooms to the right region for whichever continent you're on).
 const countryKey = (continent, country) => `${continent}|${country}`;
 (() => {
   for (const cont of COUNTRY_LAYER_CONTINENTS) {
+    const wrap = CONTINENT_META[cont] && CONTINENT_META[cont].mode === "wrap"; // Oceania: Pacific-centred
     const byC = {};
     for (const l of LOCATIONS) if (l.continent === cont) (byC[l.country] = byC[l.country] || []).push(l);
     LAYER_COUNTRY_LIST[cont] = Object.keys(byC);
+    COUNTRY_LOCS[cont] = {};
     for (const [country, ls] of Object.entries(byC)) {
-      const xs = ls.map((l) => l.x), ys = ls.map((l) => l.y);
+      COUNTRY_LOCS[cont][country] = ls.map((l) => l.id);
+      const xs = ls.map((l) => (wrap && l.x < 180 ? l.x + 360 : l.x)), ys = ls.map((l) => l.y);
       const minX = Math.min(...xs), maxX = Math.max(...xs), minY = Math.min(...ys), maxY = Math.max(...ys);
       const cx = (minX + maxX) / 2, cy = (minY + maxY) / 2;
       const side = Math.min(120, Math.max(16, Math.max(maxX - minX, maxY - minY) * 1.9));
@@ -242,10 +246,15 @@ const countryKey = (continent, country) => `${continent}|${country}`;
     }
   }
 })();
-// Does this assignment use the country layer? Medium/Hard + a layer-continent +
-// a specific (not category) mission.
-const usesCountryLayer = (mode, continent, type) =>
-  mode.clue !== "easy" && COUNTRY_LAYER_CONTINENTS.has(continent) && type === "specific";
+// Does this assignment use the country layer? Medium/Hard on a layer-continent —
+// both specific missions (pick the target's country) and category missions (pick
+// any country on the continent that has a member of the wanted category).
+const usesCountryLayer = (mode, continent) =>
+  mode.clue !== "easy" && COUNTRY_LAYER_CONTINENTS.has(continent);
+// For a category mission: does this country (on this continent) hold a member of
+// the wanted category?
+const countryHasCategory = (continent, country, category) =>
+  (COUNTRY_LOCS[continent]?.[country] || []).some((id) => BY_ID[id].category === category);
 
 // Real lon/lat of each Antarctic subject → a position on the polar relief plate
 // (azimuthal: distance from the centred pole grows with distance from the pole;
@@ -517,7 +526,12 @@ export default function ShutterbugWorld() {
 
   // Which city pins to show on the zoomed continent: the current assignment's
   // options, or (in Grand Tour) the options for the continent you're standing on.
-  const cityOptions = gameMode === "tour" ? (tourOptions[pickedContinent] || []) : (optionsByStep[step] || []);
+  // In the country layer, the city choices are the picked country's own landmarks
+  // (computed at pick-time, so it works for category missions where the country is
+  // the player's free choice). Otherwise the pre-built per-step options.
+  const cityOptions = gameMode === "tour" ? (tourOptions[pickedContinent] || [])
+    : (pickedCountry && COUNTRY_LOCS[pickedContinent] && COUNTRY_LOCS[pickedContinent][pickedCountry]) ? COUNTRY_LOCS[pickedContinent][pickedCountry]
+    : (optionsByStep[step] || []);
 
   function startGame() {
     const mode = modePlan(difficulty);
@@ -571,7 +585,7 @@ export default function ShutterbugWorld() {
         const t = order[oi < order.length ? oi : 0]; oi++;
         used.add(t.id);
         assignmentObjs.push({ type: "specific", targetId: t.id, continent: t.continent });
-        options.push(usesCountryLayer(mode, t.continent, "specific") ? buildCountryOptions(t) : buildOptions(t));
+        options.push(usesCountryLayer(mode, t.continent) ? buildCountryOptions(t) : buildOptions(t));
       }
     }
     setAssignments(assignmentObjs);
@@ -760,7 +774,7 @@ export default function ShutterbugWorld() {
     if (cont === target.continent) {
       const from = current ? loc(current) : { x: 106, y: 49 }; // first flight departs from a hub
       const to = CONTINENT_PIN[cont];
-      const useCountry = usesCountryLayer(MODES[difficulty], cont, asg && asg.type);
+      const useCountry = usesCountryLayer(MODES[difficulty], cont);
       sfx("plane");
       const finalize = () => {
         const nd = Math.round((days - 1) * 10) / 10; // the flight to the continent costs a day
@@ -791,7 +805,13 @@ export default function ShutterbugWorld() {
   // ---- Country phase (Medium/Hard): pick the target's country on the continent ----
   function pickCountry(country) {
     if (phase !== "country" || flying || pending || days <= 0 || !target) return;
-    if (country === target.country) {
+    const a = assignments[step];
+    // Category missions: any country on the continent holding a member of the
+    // wanted category is correct. Specific missions: the target's own country.
+    const ok = a && a.type === "category"
+      ? countryHasCategory(pickedContinent, country, a.category)
+      : country === target.country;
+    if (ok) {
       setPickedCountry(country);
       setPhase("city");
       setCurrent(null);
@@ -801,9 +821,12 @@ export default function ShutterbugWorld() {
       const nd = Math.round((days - 0.5) * 10) / 10; // a wrong country costs half a day
       setDays(nd);
       sfx("fail");
+      const why = a && a.type === "category"
+        ? `There's no ${CATEGORIES[a.category].noun} to photograph in ${country}.`
+        : `The editor's subject isn't in ${country}.`;
       if (nd <= 0) outOfDays(`${country} wasn't right, and that was your last day.`);
       else setPending({ kind: "wrongcountry", tone: "bad", emoji: "❌", title: "Not that country",
-        subtitle: `The editor's subject isn't in ${country}. Half a day gone — read the clue and the country notes, then try again.`,
+        subtitle: `${why} Half a day gone — read the clue and the country notes, then try again.`,
         buttonLabel: "Try again" });
     }
   }
@@ -1391,15 +1414,22 @@ export default function ShutterbugWorld() {
               {/* Country step (Medium/Hard): clickable country regions over the
                   continent relief, each labelled — pick the one the clue points to. */}
               {inCountry && (LAYER_COUNTRY_LIST[pickedContinent] || []).map((country) => {
-                const d = WC_BY_NAME[country], cm = COUNTRY_META[countryKey(pickedContinent, country)];
-                if (!d || !cm) return null;
+                const cm = COUNTRY_META[countryKey(pickedContinent, country)];
+                if (!cm) return null;
+                // On a Pacific-wrapped continent (Oceania) the equirectangular country
+                // outlines don't line up with the plate (and many "countries" are one
+                // tiny island), so show a clickable marker + label instead of an outline.
+                const wrapPlate = plateMode === "wrap";
+                const d = WC_BY_NAME[country];
                 return (
                   <g key={country} className="sbw-country" role="button" tabIndex={busy ? -1 : 0}
                      aria-label={`Choose ${country}`} onClick={() => pickCountry(country)}
                      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); pickCountry(country); } }}
                      style={{ cursor: busy ? "default" : "pointer" }}>
-                    <path d={d} fillRule="evenodd" fill="rgba(244,236,216,0.16)" stroke={PAPER} strokeWidth="0.9" vectorEffect="non-scaling-stroke" />
-                    <text x={cm.cx} y={cm.cy} fontSize={0.03 * box.h} fontFamily="ui-monospace, monospace" fontWeight="800" fill={INK} textAnchor="middle"
+                    {(!wrapPlate && d)
+                      ? <path d={d} fillRule="evenodd" fill="rgba(244,236,216,0.16)" stroke={PAPER} strokeWidth="0.9" vectorEffect="non-scaling-stroke" />
+                      : <ellipse cx={cm.cx} cy={cm.cy} {...pinR(0.028)} fill="rgba(240,165,0,0.55)" stroke={PAPER} strokeWidth="1" vectorEffect="non-scaling-stroke" />}
+                    <text x={cm.cx} y={cm.cy + (wrapPlate ? -0.03 * box.h : 0)} fontSize={0.03 * box.h} fontFamily="ui-monospace, monospace" fontWeight="800" fill={INK} textAnchor="middle"
                       style={{ paintOrder: "stroke", stroke: PAPER, strokeWidth: 0.012 * box.h }}>{country}</text>
                   </g>
                 );
@@ -1485,9 +1515,11 @@ export default function ShutterbugWorld() {
         .sbw-cont:hover path,
         .sbw-cont:focus-visible path{ filter: brightness(1.15) saturate(1.15); stroke-width: 0.8; }
         .sbw-country{ outline: none; }
-        .sbw-country path{ transition: fill .12s ease; }
+        .sbw-country path, .sbw-country ellipse{ transition: fill .12s ease; }
         .sbw-country:hover path,
         .sbw-country:focus-visible path{ fill: rgba(240,165,0,0.42); }
+        .sbw-country:hover ellipse,
+        .sbw-country:focus-visible ellipse{ fill: rgba(240,165,0,0.92); }
         .sbw-pin{ outline: none; }
         .sbw-pin ellipse:nth-child(2){ transition: transform .12s ease; transform-box: fill-box; transform-origin: center; }
         .sbw-pin:hover ellipse:nth-child(2){ transform: scale(1.45); }

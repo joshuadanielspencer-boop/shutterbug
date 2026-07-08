@@ -40,4 +40,4 @@ export const COUNTRY_INFO = {
 // (polar, no countries) stay continent-only. Blurbs so far exist only for Europe
 // (see COUNTRY_INFO) — other continents show the country map + zoom without the
 // paragraph until their blurbs are written.
-export const COUNTRY_LAYER_CONTINENTS = new Set(["North America", "South America", "Europe", "Africa", "Asia"]);
+export const COUNTRY_LAYER_CONTINENTS = new Set(["North America", "South America", "Europe", "Africa", "Asia", "Oceania"]);
