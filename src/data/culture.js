@@ -81,10 +81,48 @@ export const GREETING_MEANING = {
 // country name (as used in locations.js `country`). Shape mirrors a location
 // `photo` plus a caption:
 //   { src, source, credit, license, caption }
-// POPULATED ONLY AFTER licence verification + human review (rule 2). Empty for
-// now; the culture card shows the flag + greeting without a photo until a
-// reviewed entry lands here.
-export const COUNTRY_PEOPLE = {};
+// POPULATED ONLY AFTER licence verification + human review (rule 2). Each src is
+// a Wikimedia Commons Special:FilePath URL (?width caps the download); licences
+// were re-verified against the Commons API and the choices reviewed for
+// respectful, accurate representation before being added here.
+export const COUNTRY_PEOPLE = {
+  "Japan": {
+    src: "https://commons.wikimedia.org/wiki/Special:FilePath/NagoyaFestival.jpg?width=500",
+    source: "https://commons.wikimedia.org/wiki/File:NagoyaFestival.jpg",
+    credit: "Petr Vodička", license: "CC BY-SA 4.0",
+    caption: "Women wearing kimono at the Nagoya Festival, Japan",
+  },
+  "India": {
+    src: "https://commons.wikimedia.org/wiki/Special:FilePath/Banjara_women_in_traditional_dress_30.jpg?width=500",
+    source: "https://commons.wikimedia.org/wiki/File:Banjara_women_in_traditional_dress_30.jpg",
+    credit: "Govt. of Telangana, Dept. of Language & Culture", license: "CC BY-SA 4.0",
+    caption: "Banjara women in traditional dress, Telangana, India",
+  },
+  "Mexico": {
+    src: "https://commons.wikimedia.org/wiki/Special:FilePath/Jarabe_Tapat%C3%ADo.jpg?width=500",
+    source: "https://commons.wikimedia.org/wiki/File:Jarabe_Tapat%C3%ADo.jpg",
+    credit: "Mike.isilra", license: "CC BY-SA 4.0",
+    caption: "Dancers perform the Jarabe Tapatío, Mexico's national dance",
+  },
+  "Peru": {
+    src: "https://commons.wikimedia.org/wiki/Special:FilePath/Pollera_de_Pomabamba.jpg?width=500",
+    source: "https://commons.wikimedia.org/wiki/File:Pollera_de_Pomabamba.jpg",
+    credit: "Cbrescia", license: "CC BY-SA 4.0",
+    caption: "The pollera dress of Pomabamba, in Peru's Áncash region",
+  },
+  "Kenya": {
+    src: "https://commons.wikimedia.org/wiki/Special:FilePath/Maasai_woman%2C_Kenya.jpg?width=500",
+    source: "https://commons.wikimedia.org/wiki/File:Maasai_woman,_Kenya.jpg",
+    credit: "Dr. Ondřej Havelka", license: "CC BY 4.0",
+    caption: "A Maasai woman in traditional dress and beaded jewellery, Kenya",
+  },
+  "New Zealand": {
+    src: "https://commons.wikimedia.org/wiki/Special:FilePath/Maori_men%27s_cultural_performance_group_%28AM_78261-1%29.jpg?width=500",
+    source: "https://commons.wikimedia.org/wiki/File:Maori_men%27s_cultural_performance_group_(AM_78261-1).jpg",
+    credit: "T. W. Collins / Auckland War Memorial Museum", license: "CC BY 4.0",
+    caption: "Māori men perform a haka (Auckland Museum, 1943)",
+  },
+};
 
 // The English gloss for a greeting object (or null if none is known).
 export const greetingMeaning = (greeting) =>
