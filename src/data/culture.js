@@ -324,6 +324,98 @@ export const COUNTRY_PEOPLE = {
     credit: "Jamieson Teo", license: "CC BY-SA 2.0",
     caption: "Peranakan (Nyonya) ladies in Singapore in the kebaya, an embroidered blouse over a batik sarong",
   },
+
+  // ---- Europe (reviewed batch; Russia & Turkey are in the Asia batch above) ----
+  "United Kingdom": {
+    src: "https://commons.wikimedia.org/wiki/Special:FilePath/Northern%20Constabulary%20Pipe%20Band%20at%20Cowal%20Highland%20Games%20Dunoon%20Scotland%20(4949923566).jpg?width=500",
+    source: "https://commons.wikimedia.org/wiki/File:Northern%20Constabulary%20Pipe%20Band%20at%20Cowal%20Highland%20Games%20Dunoon%20Scotland%20(4949923566).jpg",
+    credit: "Dave Conner", license: "CC BY 2.0",
+    caption: "A Scottish pipe band in full Highland dress, kilts and bagpipes, at the Cowal Highland Gathering",
+  },
+  "France": {
+    src: "https://commons.wikimedia.org/wiki/Special:FilePath/2016%20Festo%20Vierginenco%2001.jpg?width=500",
+    source: "https://commons.wikimedia.org/wiki/File:2016%20Festo%20Vierginenco%2001.jpg",
+    credit: "Finoskov", license: "CC BY-SA 4.0",
+    caption: "Young women of the Pays d'Arles in traditional Arlésienne dress at a festival in Provence",
+  },
+  "Italy": {
+    src: "https://commons.wikimedia.org/wiki/Special:FilePath/Women%20of%20sardinia.jpg?width=500",
+    source: "https://commons.wikimedia.org/wiki/File:Women%20of%20sardinia.jpg",
+    credit: "Cristiano Cani", license: "CC BY 2.0",
+    caption: "Women of Sardinia in their bright, hand-embroidered village costumes for a festival",
+  },
+  "Greece": {
+    src: "https://commons.wikimedia.org/wiki/Special:FilePath/Evzones%20wearing%20the%20traditional%20Fustanella.jpg?width=500",
+    source: "https://commons.wikimedia.org/wiki/File:Evzones%20wearing%20the%20traditional%20Fustanella.jpg",
+    credit: "George E. Koronaios", license: "CC BY-SA 4.0",
+    caption: "Greek Evzone guards in the pleated fustanella at the Tomb of the Unknown Soldier, Athens",
+  },
+  "Germany": {
+    src: "https://commons.wikimedia.org/wiki/Special:FilePath/005%20Trachtenumzug%20Feldmoching.JPG?width=500",
+    source: "https://commons.wikimedia.org/wiki/File:005%20Trachtenumzug%20Feldmoching.JPG",
+    credit: "Usien", license: "CC BY-SA 3.0",
+    caption: "A Bavarian folk group at the Munich costume parade, men in lederhosen and a woman in a dirndl",
+  },
+  "Spain": {
+    src: "https://commons.wikimedia.org/wiki/Special:FilePath/Feria%20abril%202011%200001.jpg?width=500",
+    source: "https://commons.wikimedia.org/wiki/File:Feria%20abril%202011%200001.jpg",
+    credit: "Sevilla Congress & Convention Bureau", license: "CC BY-SA 4.0",
+    caption: "Women in colourful ruffled flamenco dresses at Seville's April Fair",
+  },
+  "Portugal": {
+    src: "https://commons.wikimedia.org/wiki/Special:FilePath/Romaria%20da%20Senhora%20d'Agonia%20-%20Viana%20do%20Castelo.jpg?width=500",
+    source: "https://commons.wikimedia.org/wiki/File:Romaria%20da%20Senhora%20d'Agonia%20-%20Viana%20do%20Castelo.jpg",
+    credit: "Rosino", license: "CC BY-SA 2.0",
+    caption: "Women in the red-and-gold lavradeira dress of Viana do Castelo at a festival in northern Portugal",
+  },
+  "Netherlands": {
+    src: "https://commons.wikimedia.org/wiki/Special:FilePath/Marken%20Klederdracht%20IMG0022.jpg?width=500",
+    source: "https://commons.wikimedia.org/wiki/File:Marken%20Klederdracht%20IMG0022.jpg",
+    credit: "Hnapel", license: "CC BY-SA 4.0",
+    caption: "A man and woman from Marken in traditional Easter klederdracht, with a white lace cap",
+  },
+  "Belgium": {
+    src: "https://commons.wikimedia.org/wiki/Special:FilePath/0%20Binche%20-%20Les%20Gilles%20le%20jour%20du%20mardi%20gras%20(1).JPG?width=500",
+    source: "https://commons.wikimedia.org/wiki/File:0%20Binche%20-%20Les%20Gilles%20le%20jour%20du%20mardi%20gras%20(1).JPG",
+    credit: "Jean-Pol GRANDMONT", license: "CC BY-SA 3.0",
+    caption: "Gilles of Binche in tall ostrich-feather hats on the last day of their famous carnival",
+  },
+  "Switzerland": {
+    src: "https://commons.wikimedia.org/wiki/Special:FilePath/March%C3%A9-Concours%202019%2C%20Bild%203.jpg?width=500",
+    source: "https://commons.wikimedia.org/wiki/File:March%C3%A9-Concours%202019%2C%20Bild%203.jpg",
+    credit: "PaterMcFly", license: "CC BY 4.0",
+    caption: "A Swiss folk group in the red-and-yellow Appenzell Tracht at a festival",
+  },
+  "Austria": {
+    src: "https://commons.wikimedia.org/wiki/Special:FilePath/Lindwurm%20Klagenfurt%2C%20Volkstanzgruppe%20aus%20K%C3%A4rnten.jpg?width=500",
+    source: "https://commons.wikimedia.org/wiki/File:Lindwurm%20Klagenfurt%2C%20Volkstanzgruppe%20aus%20K%C3%A4rnten.jpg",
+    credit: "Naturpuur", license: "CC BY 4.0",
+    caption: "A Carinthian folk-dance group in traditional dirndls and Tracht in Klagenfurt",
+  },
+  "Czechia": {
+    src: "https://commons.wikimedia.org/wiki/Special:FilePath/Moravian%20Slovak%20Costumes%20during%20Jizda%20Kralu.jpg?width=500",
+    source: "https://commons.wikimedia.org/wiki/File:Moravian%20Slovak%20Costumes%20during%20Jizda%20Kralu.jpg",
+    credit: "Jialiang Gao", license: "CC BY-SA 3.0",
+    caption: "Children in bright Moravian folk costumes (kroj) at the Ride of the Kings festival in Vlčnov",
+  },
+  "Croatia": {
+    src: "https://commons.wikimedia.org/wiki/Special:FilePath/PosavinaGirls.jpg?width=500",
+    source: "https://commons.wikimedia.org/wiki/File:PosavinaGirls.jpg",
+    credit: "Veronikablg", license: "CC BY-SA 4.0",
+    caption: "Two young women in the red-and-white folk costume of Croatia's Posavina region by Sisak fortress",
+  },
+  "Iceland": {
+    src: "https://commons.wikimedia.org/wiki/Special:FilePath/All%20Dressed%20Up%20(5847023926).jpg?width=500",
+    source: "https://commons.wikimedia.org/wiki/File:All%20Dressed%20Up%20(5847023926).jpg",
+    credit: "Helgi Halldórsson", license: "CC BY-SA 2.0",
+    caption: "A woman in Iceland's national costume, the þjóðbúningur, on National Day",
+  },
+  "Norway": {
+    src: "https://commons.wikimedia.org/wiki/Special:FilePath/Trondheim%20bunad%20May%2017.jpg?width=500",
+    source: "https://commons.wikimedia.org/wiki/File:Trondheim%20bunad%20May%2017.jpg",
+    credit: "Sigmund", license: "CC BY 2.0",
+    caption: "Two friends wear their Trøndelag bunad to celebrate Norway's National Day, 17 May",
+  },
 };
 
 // The English gloss for a greeting object (or null if none is known).
