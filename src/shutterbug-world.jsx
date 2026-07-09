@@ -489,11 +489,25 @@ const rankFor = (pct) => {
 const QUIZ_CONTINENTS = Object.keys(CONTINENT_PIN);
 const shuffleArr = (a) => a.slice().sort(() => Math.random() - 0.5);
 const pickN = (pool, n, exclude = new Set()) => shuffleArr(pool.filter((x) => !exclude.has(x))).slice(0, n);
+// Countries whose capital is a single unambiguous city, so "what is the capital
+// of X?" has one right answer. Multi-seated capitals (South Africa, Bolivia,
+// Sri Lanka…) carry quizCapital: false in the data and sit this question out —
+// but their capital still shows on the country card.
+const CAPITAL_OF = {};
+const CONTINENT_OF_COUNTRY = {};
+for (const l of LOCATIONS) if (!CONTINENT_OF_COUNTRY[l.country]) CONTINENT_OF_COUNTRY[l.country] = l.continent;
+for (const [country, info] of Object.entries(COUNTRY_INFO)) {
+  if (info.capital && info.quizCapital !== false) CAPITAL_OF[country] = info.capital;
+}
+const capitalsOn = (continent) =>
+  Object.keys(CAPITAL_OF).filter((c) => CONTINENT_OF_COUNTRY[c] === continent).map((c) => CAPITAL_OF[c]);
+const ALL_CAPITALS = Object.values(CAPITAL_OF);
 // Build one question for a given location, choosing among the applicable types.
 function quizQuestionFor(l) {
   const cat = CATEGORIES[l.category];
   const types = ["continent", "category", "photo"];        // always available
   if (!(l.countries && l.countries.length > 1)) types.push("country"); // skip border landmarks
+  if (CAPITAL_OF[l.country]) types.push("capital");
   const kind = types[Math.floor(Math.random() * types.length)];
   if (kind === "continent") {
     const opts = shuffleArr([l.continent, ...pickN(QUIZ_CONTINENTS, 3, new Set([l.continent]))]);
@@ -509,6 +523,16 @@ function quizQuestionFor(l) {
     return { kind, prompt: `Which country is ${l.subject} in?`, photo: null,
       options: opts.map((o) => ({ label: o, correct: o === l.country })),
       explain: `${l.subject} is in ${l.country}.` };
+  }
+  if (kind === "capital") {
+    const answer = CAPITAL_OF[l.country];
+    // Distractors from the same continent read as plausible; top up worldwide.
+    const near = pickN(capitalsOn(l.continent), 3, new Set([answer]));
+    const filled = near.length >= 3 ? near : [...near, ...pickN(ALL_CAPITALS, 3 - near.length, new Set([answer, ...near]))];
+    const opts = shuffleArr([answer, ...filled]);
+    return { kind, prompt: `What is the capital of ${l.country}?`, photo: null,
+      options: opts.map((o) => ({ label: o, correct: o === answer })),
+      explain: `${answer} is the capital of ${l.country}. ${COUNTRY_INFO[l.country].blurb}` };
   }
   if (kind === "category") {
     const names = CATEGORY_ORDER.map((c) => CATEGORIES[c].name);
@@ -2125,6 +2149,10 @@ export default function ShutterbugWorld() {
               </div>
               {pickedCountry && COUNTRY_INFO[pickedCountry] && (
                 <div style={{ marginTop: 10, background: PAPER, border: `1px solid ${PAPER_LINE}`, borderRadius: 6, padding: "8px 10px", fontSize: 12, color: INK, lineHeight: 1.45, textAlign: "left" }}>
+                  <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.06em", color: GREEN, fontWeight: 700, marginBottom: 5 }}>
+                    <span aria-hidden="true">★ </span>Capital: {COUNTRY_INFO[pickedCountry].capital}
+                    <span style={{ color: INK, opacity: 0.55, fontWeight: 400 }}> · {COUNTRY_INFO[pickedCountry].region}</span>
+                  </div>
                   <span aria-hidden="true">📖 </span>{COUNTRY_INFO[pickedCountry].blurb}
                 </div>
               )}

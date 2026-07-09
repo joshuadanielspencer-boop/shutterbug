@@ -6,6 +6,7 @@ import { describe, it, expect } from "vitest";
 import { LOCATIONS } from "../src/data/locations.js";
 import { CATEGORIES, CATEGORY_ORDER, KIND_META } from "../src/data/categories.js";
 import { WORLD_COUNTRIES, COUNTRY_CONTINENT } from "../src/data/worldmap.js";
+import { COUNTRY_INFO } from "../src/data/countries.js";
 
 const CONTINENTS = [
   "North America", "South America", "Europe", "Africa", "Asia", "Oceania", "Antarctica",
@@ -124,5 +125,58 @@ describe("world map ↔ continents", () => {
       const cont = COUNTRY_CONTINENT[c.name];
       expect(CONTINENTS, `country "${c.name}"`).toContain(cont);
     }
+  });
+});
+
+describe("country registry (COUNTRY_INFO)", () => {
+  // Antarctica has no country, so no capital, region or blurb.
+  const played = [...new Set(LOCATIONS.map((l) => l.country))].filter((c) => c !== "Antarctica");
+
+  it("every country a player can visit has an entry", () => {
+    for (const c of played) expect(COUNTRY_INFO[c], `no COUNTRY_INFO for "${c}"`).toBeTruthy();
+  });
+
+  it("every entry has a capital, a region, and a two-sentence blurb", () => {
+    for (const [country, info] of Object.entries(COUNTRY_INFO)) {
+      expect(typeof info.capital, country).toBe("string");
+      expect(info.capital.length, country).toBeGreaterThan(1);
+      expect(typeof info.region, country).toBe("string");
+      expect(info.region.length, country).toBeGreaterThan(1);
+      expect(typeof info.blurb, country).toBe("string");
+      // Kid-sized: long enough to teach, short enough to read on a card.
+      expect(info.blurb.length, `${country} blurb length`).toBeGreaterThan(80);
+      expect(info.blurb.length, `${country} blurb length`).toBeLessThan(340);
+      // The blurb should name the capital it claims (except multi-seated ones,
+      // whose `capital` field is a phrase, not a single city name).
+      if (info.quizCapital !== false) {
+        expect(info.blurb, `${country} blurb should name ${info.capital}`).toContain(info.capital);
+      }
+    }
+  });
+
+  it("COUNTRY_INFO has no entry for a country nobody can visit", () => {
+    for (const country of Object.keys(COUNTRY_INFO)) {
+      expect(played, `COUNTRY_INFO has orphan "${country}"`).toContain(country);
+    }
+  });
+
+  it("the capital quiz has enough unambiguous capitals for 3 distractors", () => {
+    const quizzable = Object.values(COUNTRY_INFO).filter((i) => i.quizCapital !== false);
+    expect(quizzable.length).toBeGreaterThanOrEqual(4);
+    // …and enough on each continent that same-continent distractors are the norm.
+    const contOf = {};
+    for (const l of LOCATIONS) if (!contOf[l.country]) contOf[l.country] = l.continent;
+    const byCont = {};
+    for (const [country, info] of Object.entries(COUNTRY_INFO)) {
+      if (info.quizCapital !== false) byCont[contOf[country]] = (byCont[contOf[country]] || 0) + 1;
+    }
+    for (const [cont, n] of Object.entries(byCont)) {
+      expect(n, `only ${n} quizzable capital(s) on ${cont}`).toBeGreaterThanOrEqual(1);
+    }
+  });
+
+  it("capitals are distinct (a duplicate would make a quiz question unanswerable)", () => {
+    const caps = Object.entries(COUNTRY_INFO).filter(([, i]) => i.quizCapital !== false).map(([, i]) => i.capital);
+    expect(new Set(caps).size, "duplicate capital in the quiz pool").toBe(caps.length);
   });
 });
