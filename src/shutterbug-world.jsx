@@ -7,7 +7,7 @@ import { COUNTRY_PEOPLE, greetingMeaning } from "./data/culture.js";
 import { robinson, eqToRobinson, ROBINSON_W, ROBINSON_H } from "./robinson.js";
 import { CATEGORIES, CATEGORY_ORDER, KIND_META, kindOf } from "./data/categories.js";
 import { listProfiles, lastProfileName, getProfile, createProfile, setLastProfile,
-  deleteProfile, recordGame, recordExplore, weightedOrder, freshFirst, passportData, achievements, topScores, storageAvailable } from "./profiles.js";
+  deleteProfile, recordGame, recordExplore, recordQuiz, weightedOrder, freshFirst, passportData, achievements, topScores, storageAvailable } from "./profiles.js";
 
 // Base URL the app is served from ("/" at a domain root, "/<repo>/" on a GitHub
 // Pages project site). Prefix runtime asset URLs with it so the relief map plates
@@ -388,6 +388,58 @@ const rankFor = (pct) => {
   return { title: "Trainee", note: "Read the editor's clues more closely next time." };
 };
 
+// ===========================================================================
+// QUIZ ENGINE — multiple-choice geography questions generated ENTIRELY from the
+// verified location data (continent, country, category, subject, photo, fact).
+// Nothing invented, so it stays rule-2 safe. Used by Quiz mode (and, later,
+// inside Education mode).
+// ===========================================================================
+const QUIZ_CONTINENTS = Object.keys(CONTINENT_PIN);
+const shuffleArr = (a) => a.slice().sort(() => Math.random() - 0.5);
+const pickN = (pool, n, exclude = new Set()) => shuffleArr(pool.filter((x) => !exclude.has(x))).slice(0, n);
+// Build one question for a given location, choosing among the applicable types.
+function quizQuestionFor(l) {
+  const cat = CATEGORIES[l.category];
+  const types = ["continent", "category", "photo"];        // always available
+  if (!(l.countries && l.countries.length > 1)) types.push("country"); // skip border landmarks
+  const kind = types[Math.floor(Math.random() * types.length)];
+  if (kind === "continent") {
+    const opts = shuffleArr([l.continent, ...pickN(QUIZ_CONTINENTS, 3, new Set([l.continent]))]);
+    return { kind, prompt: `Which continent is ${l.subject} in?`, photo: null,
+      options: opts.map((o) => ({ label: o, correct: o === l.continent })),
+      explain: `${l.subject} is in ${l.continent}.` };
+  }
+  if (kind === "country") {
+    const sameCont = [...new Set(LOCATIONS.filter((x) => x.continent === l.continent).map((x) => x.country))];
+    const others = pickN(sameCont, 3, new Set([l.country]));
+    const filled = others.length >= 3 ? others : [...others, ...pickN([...new Set(LOCATIONS.map((x) => x.country))], 3 - others.length, new Set([l.country, ...others]))];
+    const opts = shuffleArr([l.country, ...filled]);
+    return { kind, prompt: `Which country is ${l.subject} in?`, photo: null,
+      options: opts.map((o) => ({ label: o, correct: o === l.country })),
+      explain: `${l.subject} is in ${l.country}.` };
+  }
+  if (kind === "category") {
+    const names = CATEGORY_ORDER.map((c) => CATEGORIES[c].name);
+    const opts = shuffleArr([cat.name, ...pickN(names, 3, new Set([cat.name]))]);
+    return { kind, prompt: `What kind of place is ${l.subject}?`, photo: l.photo,
+      options: opts.map((o) => ({ label: o, correct: o === cat.name })),
+      explain: `${l.subject} is a ${cat.name.toLowerCase()}.` };
+  }
+  // photo → subject: show the photo, name the landmark. Distractors prefer the
+  // same category (harder, more meaningful) then any.
+  const sameCat = LOCATIONS.filter((x) => x.id !== l.id && x.category === l.category).map((x) => x.subject);
+  const distract = sameCat.length >= 3 ? pickN(sameCat, 3) : [...pickN(sameCat, sameCat.length), ...pickN(LOCATIONS.filter((x) => x.id !== l.id).map((x) => x.subject), 3 - sameCat.length, new Set([l.subject, ...sameCat]))];
+  const opts = shuffleArr([l.subject, ...distract]);
+  return { kind: "photo", prompt: "Which landmark is this?", photo: l.photo,
+    options: opts.map((o) => ({ label: o, correct: o === l.subject })),
+    explain: `This is ${l.subject}, in ${l.country} (${l.continent}). ${l.fact}` };
+}
+// A quiz = n questions from n distinct locations (freshest first for variety).
+function buildQuiz(order, n = 10) {
+  const chosen = order.slice(0, Math.min(n, order.length)).map((id) => BY_ID[id]).filter(Boolean);
+  return chosen.map(quizQuestionFor);
+}
+
 // Milliseconds → "m:ss".
 const fmtTime = (ms) => {
   const s = Math.max(0, Math.round(ms / 1000));
@@ -550,6 +602,7 @@ export default function ShutterbugWorld() {
   const [confirmRemove, setConfirmRemove] = useState(false); // passport delete confirmation
   const [researched, setResearched] = useState({}); // assignment step -> revealed research note (Research button)
   const [cityPlan, setCityPlan] = useState(null); // country-layer city step: { ids, wide } (wide = continent view for thin countries)
+  const [quiz, setQuiz] = useState(null); // Quiz mode: { questions, i, answeredIdx, score, correctCount, streak, done, best }
   const recorded = useRef(false);
   const startRef = useRef(0); // ms timestamp the current game began
   const timer = useRef(null);
@@ -802,6 +855,36 @@ export default function ShutterbugWorld() {
     if (profileName && visitedIds.length) recordExplore(profileName, visitedIds);
     refreshProfiles();
     setScreen("start");
+  }
+
+  // ---- Quiz mode: 10 multiple-choice geography questions built from the data. ----
+  function startQuiz() {
+    const profile = profileName ? getProfile(profileName) : null;
+    const questions = buildQuiz(freshFirst(profile), 10); // freshest places first, for variety
+    setQuiz({ questions, i: 0, answeredIdx: null, score: 0, correctCount: 0, streak: 0, lastGain: 0, done: false, best: null });
+    setGameMode("quiz");
+    startRef.current = Date.now();
+    setScreen("quiz");
+  }
+  function answerQuiz(idx) {
+    if (!quiz || quiz.answeredIdx !== null || quiz.done) return;
+    const correct = quiz.questions[quiz.i].options[idx].correct;
+    const streak = correct ? quiz.streak + 1 : 0;
+    const gain = correct ? 100 + Math.max(0, streak - 1) * 20 : 0; // consecutive-correct bonus
+    sfx(correct ? "success" : "fail");
+    setQuiz({ ...quiz, answeredIdx: idx, score: quiz.score + gain, correctCount: quiz.correctCount + (correct ? 1 : 0), streak, lastGain: gain });
+  }
+  function nextQuiz() {
+    if (!quiz || quiz.answeredIdx === null) return;
+    if (quiz.i + 1 >= quiz.questions.length) {
+      setElapsedMs(Date.now() - startRef.current);
+      let best = null;
+      if (profileName) { best = recordQuiz(profileName, { score: quiz.score, correct: quiz.correctCount, total: quiz.questions.length }); refreshProfiles(); }
+      sfx(quiz.correctCount >= quiz.questions.length * 0.5 ? "win" : "lose");
+      setQuiz({ ...quiz, done: true, best });
+    } else {
+      setQuiz({ ...quiz, i: quiz.i + 1, answeredIdx: null });
+    }
   }
 
   // Dismiss the result popup and do what its button promised.
@@ -1218,10 +1301,12 @@ export default function ShutterbugWorld() {
 
           <div style={{ marginTop: 22 }}>
             <Field label="Mode">
-              <Toggle options={[["assignments", "Assignments"], ["tour", "Grand Tour"], ["explore", "Explore 🧭"]]} value={gameMode} onChange={setGameMode} />
+              <Toggle options={[["assignments", "Assignments"], ["tour", "Grand Tour"], ["explore", "Explore 🧭"], ["quiz", "Quiz 🧠"]]} value={gameMode} onChange={setGameMode} />
             </Field>
             <p style={{ fontSize: 12, color: INK, opacity: 0.7, margin: "8px auto 0", maxWidth: 430, lineHeight: 1.45 }}>
-              {gameMode === "explore"
+              {gameMode === "quiz"
+                ? "Quiz: ten fast multiple-choice questions — name the landmark from its photo, place it on a continent or in a country, or spot its type. Build a streak for bonus points."
+                : gameMode === "explore"
                 ? "Explore: no timer, no score — roam the whole world, drill into any country, and click any place to read its story, culture card, and clues. Everywhere you visit is stamped in your passport."
                 : gameMode === "tour"
                 ? "Grand Tour: a whole itinerary of targets across continents on one shared day budget — plan an efficient route and photograph them in any order."
@@ -1229,7 +1314,7 @@ export default function ShutterbugWorld() {
             </p>
           </div>
 
-          {gameMode !== "explore" && (
+          {gameMode !== "explore" && gameMode !== "quiz" && (
           <div style={{ marginTop: 22 }}>
             <Field label="Difficulty">
               <Toggle options={MODE_ORDER.map((k) => [k, MODES[k].label])} value={difficulty} onChange={setDifficulty} />
@@ -1238,7 +1323,7 @@ export default function ShutterbugWorld() {
           </div>
           )}
 
-          <button onClick={gameMode === "explore" ? startExplore : gameMode === "tour" ? startTour : startGame} style={primaryBtn}>{gameMode === "explore" ? "Start exploring 🧭" : gameMode === "tour" ? "Start the Grand Tour ✈" : "Begin the assignment ✈"}</button>
+          <button onClick={gameMode === "quiz" ? startQuiz : gameMode === "explore" ? startExplore : gameMode === "tour" ? startTour : startGame} style={primaryBtn}>{gameMode === "quiz" ? "Start the quiz 🧠" : gameMode === "explore" ? "Start exploring 🧭" : gameMode === "tour" ? "Start the Grand Tour ✈" : "Begin the assignment ✈"}</button>
             </div>
 
             <div style={{ flex: "0 1 340px", minWidth: 260, marginTop: 22 }}>
@@ -1272,6 +1357,72 @@ export default function ShutterbugWorld() {
             );
           })()}
             </div>
+          </div>
+        </div>
+      </Frame>
+    );
+  }
+
+  // ---------- QUIZ SCREEN ----------
+  if (screen === "quiz" && quiz) {
+    if (quiz.done) {
+      const pct = quiz.questions.length ? quiz.correctCount / quiz.questions.length : 0;
+      const r = rankFor(pct);
+      return (
+        <Frame>
+          <div style={{ maxWidth: 560, margin: "0 auto", textAlign: "center" }}>
+            <Stamp>Quiz complete</Stamp>
+            <div style={{ fontSize: 52, margin: "10px 0" }} aria-hidden="true">{pct >= 0.9 ? "🏆" : pct >= 0.5 ? "🎉" : "📚"}</div>
+            <h2 style={{ fontFamily: "ui-sans-serif, system-ui", fontWeight: 900, fontSize: 30, color: INK, margin: "0 0 4px" }}>{quiz.correctCount} / {quiz.questions.length} correct</h2>
+            <p style={{ fontFamily: "ui-monospace, monospace", fontSize: 22, color: CORAL, fontWeight: 700, margin: "6px 0" }}>{quiz.score} pts</p>
+            <p style={{ color: INK, fontWeight: 700, marginTop: 6 }}>{r.title}</p>
+            {quiz.best?.isBest && <div style={{ marginTop: 10 }}><span style={{ background: GOLD, color: INK, fontWeight: 800, fontSize: 14, padding: "6px 14px", borderRadius: 20 }}>★ New best quiz score!</span></div>}
+            <div style={{ display: "flex", gap: 10, justifyContent: "center", marginTop: 22, flexWrap: "wrap" }}>
+              <button onClick={startQuiz} style={primaryBtn}>Play again 🧠</button>
+              <button onClick={() => { setQuiz(null); setGameMode("assignments"); setScreen("start"); }} style={{ ...primaryBtn, background: "transparent", color: INK, border: `2px solid ${INK}`, boxShadow: "none" }}>Back to start</button>
+            </div>
+          </div>
+        </Frame>
+      );
+    }
+    const q = quiz.questions[quiz.i];
+    const answered = quiz.answeredIdx !== null;
+    return (
+      <Frame>
+        <div style={{ maxWidth: 560, margin: "0 auto" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+            <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 12, letterSpacing: "0.18em", color: INK, opacity: 0.7 }}>🧠 QUESTION {quiz.i + 1}/{quiz.questions.length}</span>
+            <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 13, fontWeight: 700, color: CORAL }}>{quiz.score} pts{quiz.streak > 1 ? ` · 🔥${quiz.streak}` : ""}</span>
+          </div>
+          {q.photo && (
+            <div style={{ margin: "0 auto 14px", maxWidth: 380, borderRadius: 8, overflow: "hidden", border: `1px solid ${PAPER_LINE}` }}>
+              <Photo photo={q.photo} alt="Quiz landmark" size={360} full />
+            </div>
+          )}
+          <h2 style={{ fontFamily: "ui-sans-serif, system-ui", fontWeight: 800, fontSize: 20, color: INK, textAlign: "center", margin: "0 0 16px", lineHeight: 1.35 }}>{q.prompt}</h2>
+          <div style={{ display: "grid", gap: 10 }}>
+            {q.options.map((o, idx) => {
+              const isCorrect = o.correct, isChosen = quiz.answeredIdx === idx;
+              const bg = !answered ? "#fff" : isCorrect ? "#EAF6EF" : isChosen ? "#FBEAE6" : "#fff";
+              const bd = !answered ? PAPER_LINE : isCorrect ? GREEN : isChosen ? CORAL : PAPER_LINE;
+              return (
+                <button key={idx} onClick={() => answerQuiz(idx)} disabled={answered}
+                  style={{ textAlign: "left", padding: "12px 14px", borderRadius: 10, border: `2px solid ${bd}`, background: bg, color: INK, fontWeight: 700, fontSize: 15, cursor: answered ? "default" : "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
+                  <span>{o.label}</span>
+                  {answered && isCorrect && <span aria-hidden="true">✅</span>}
+                  {answered && isChosen && !isCorrect && <span aria-hidden="true">❌</span>}
+                </button>
+              );
+            })}
+          </div>
+          {answered && (
+            <div style={{ marginTop: 14, background: PAPER, border: `1px solid ${PAPER_LINE}`, borderRadius: 8, padding: "10px 12px", fontSize: 13, color: INK, lineHeight: 1.5 }}>
+              <b style={{ color: q.options[quiz.answeredIdx].correct ? GREEN : CORAL }}>{q.options[quiz.answeredIdx].correct ? `Correct!${quiz.lastGain ? ` +${quiz.lastGain}` : ""}` : "Not quite."}</b> {q.explain}
+            </div>
+          )}
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 16 }}>
+            <button onClick={() => { setQuiz(null); setGameMode("assignments"); setScreen("start"); }} style={{ background: "none", border: "none", color: INK, opacity: 0.6, fontSize: 13, cursor: "pointer", fontWeight: 700 }}>← Quit</button>
+            {answered && <button onClick={nextQuiz} style={{ ...primaryBtn, margin: 0, padding: "10px 22px" }}>{quiz.i + 1 >= quiz.questions.length ? "See results" : "Next question →"}</button>}
           </div>
         </div>
       </Frame>

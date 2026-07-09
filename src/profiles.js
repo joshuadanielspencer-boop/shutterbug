@@ -140,6 +140,22 @@ export function recordGame(name, { difficulty, score, timeMs = 0, won = false, r
   return { isBest, best: p.best[difficulty], isBestTime, bestTime: p.bestTime[difficulty] || 0 };
 }
 
+// Quiz mode: record a finished quiz. Keeps the profile's best quiz score.
+// Returns { isBest, best }.
+export function recordQuiz(name, { score = 0, correct = 0, total = 0 } = {}) {
+  const s = read();
+  const p = s.profiles[name];
+  if (!p) return { isBest: false, best: 0 };
+  p.quizGames = (p.quizGames || 0) + 1;
+  p.lastPlayed = Date.now();
+  const prev = (p.quizBest && p.quizBest.score) || 0;
+  const isBest = score > prev;
+  if (isBest) p.quizBest = { score, correct, total, at: Date.now() };
+  s.lastProfile = name;
+  write(s);
+  return { isBest, best: (p.quizBest && p.quizBest.score) || 0 };
+}
+
 // Explore mode: stamp every place the player visited into the passport (counts
 // as "visited", not "photographed/mastered") without recording a scored game.
 export function recordExplore(name, visitedIds = []) {
