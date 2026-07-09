@@ -140,6 +140,46 @@ export function recordGame(name, { difficulty, score, timeMs = 0, won = false, r
   return { isBest, best: p.best[difficulty], isBestTime, bestTime: p.bestTime[difficulty] || 0 };
 }
 
+// Daily Challenge: everyone plays the SAME seeded assignments on a given date.
+// We keep each traveller's best score for that date. Returns { isBest, best, first }.
+export function recordDaily(name, dateKey, { score = 0, rank = null, timeMs = 0, won = false, visitedIds = [], correctIds = [] } = {}) {
+  const s = read();
+  const p = s.profiles[name];
+  if (!p) return { isBest: false, best: 0, first: false };
+  p.daily = p.daily || {};
+  const prev = p.daily[dateKey];
+  const isBest = !prev || score > prev.score;
+  if (isBest) p.daily[dateKey] = { score, rank, timeMs, won, at: Date.now() };
+  p.loc = p.loc || {};
+  const now = Date.now();
+  const bump = (id, f) => { const e = p.loc[id] || (p.loc[id] = { v: 0, c: 0, m: 0 }); e[f] += 1; e.t = now; return e; };
+  visitedIds.forEach((id) => bump(id, "v"));
+  correctIds.forEach((id) => { bump(id, "c").last = "c"; });
+  p.lastPlayed = now;
+  s.lastProfile = name;
+  write(s);
+  return { isBest, best: p.daily[dateKey].score, first: !prev };
+}
+
+// Today's board: every traveller's best score for this date, high→low (ties broken
+// by the faster time).
+export function dailyTop(dateKey, n = 5) {
+  const s = read();
+  const rows = [];
+  for (const p of Object.values(s.profiles)) {
+    const d = p.daily && p.daily[dateKey];
+    if (d && d.score > 0) rows.push({ name: p.name, score: d.score, rank: d.rank, timeMs: d.timeMs || 0 });
+  }
+  rows.sort((a, b) => b.score - a.score || a.timeMs - b.timeMs);
+  return rows.slice(0, n);
+}
+
+// Has this traveller already played today's challenge? Returns their record or null.
+export function dailyPlayed(name, dateKey) {
+  const p = getProfile(name);
+  return (p && p.daily && p.daily[dateKey]) || null;
+}
+
 // Streak / Survival: record a finished run. Keeps the profile's longest streak,
 // and stamps the places photographed into the passport (as `c`, like a real shot).
 // Returns { isBest, best }.

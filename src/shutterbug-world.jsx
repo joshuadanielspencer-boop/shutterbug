@@ -7,7 +7,8 @@ import { COUNTRY_PEOPLE, greetingMeaning } from "./data/culture.js";
 import { robinson, eqToRobinson, ROBINSON_W, ROBINSON_H } from "./robinson.js";
 import { CATEGORIES, CATEGORY_ORDER, KIND_META, kindOf } from "./data/categories.js";
 import { listProfiles, lastProfileName, getProfile, createProfile, setLastProfile,
-  deleteProfile, recordGame, recordExplore, recordQuiz, recordStreak, weightedOrder, freshFirst, passportData, achievements, topScores, storageAvailable } from "./profiles.js";
+  deleteProfile, recordGame, recordExplore, recordQuiz, recordStreak, recordDaily, dailyTop, dailyPlayed,
+  weightedOrder, freshFirst, passportData, achievements, topScores, storageAvailable } from "./profiles.js";
 
 // Base URL the app is served from ("/" at a domain root, "/<repo>/" on a GitHub
 // Pages project site). Prefix runtime asset URLs with it so the relief map plates
@@ -410,6 +411,25 @@ function makeAssignmentPlan(mode, anchors, order) {
     }
   }
   return { assignmentObjs, options };
+}
+
+// ---- Daily Challenge: the SAME assignments for every player, every day. ----
+// The date string seeds a small PRNG; we temporarily swap Math.random for it while
+// generating, so the whole (otherwise random) mission builder becomes deterministic.
+// Everyone therefore gets an identical challenge, and scores are comparable.
+const dailyKey = (d = new Date()) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+const hashStr = (str) => { let h = 2166136261 >>> 0; for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; };
+function withSeededRandom(seed, fn) {
+  const orig = Math.random;
+  let s = seed >>> 0;
+  Math.random = () => { // mulberry32
+    s = (s + 0x6D2B79F5) | 0;
+    let t = Math.imul(s ^ (s >>> 15), 1 | s);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+  try { return fn(); } finally { Math.random = orig; }
 }
 
 // Pick n DISTINCT anchor locations, at least 40% of them genuinely NEW to this
@@ -871,6 +891,31 @@ export default function ShutterbugWorld() {
     setScreen("start");
   }
 
+  // ---- Daily Challenge: identical seeded assignments for everyone, each day. ----
+  // Always played at Medium so every score is comparable.
+  function startDaily() {
+    const key = dailyKey();
+    const mode = MODES.medium;
+    const { assignmentObjs, options } = withSeededRandom(hashStr(key), () => {
+      const order = LOCATIONS.slice().sort(() => Math.random() - 0.5); // seeded, so identical for all
+      const anchors = order.slice(0, mode.assignments);
+      return makeAssignmentPlan(mode, anchors, order);
+    });
+    setDifficulty("medium");                 // keeps every mode-dependent bit consistent
+    setGameMode("daily"); setExpedition(null);
+    setAssignments(assignmentObjs); setOptionsByStep(options); setStep(0);
+    setPhase("continent"); setPickedContinent(null); setPickedCountry(null); setCityPlan(null); setCurrent(null);
+    let cleanCost = 0, fromXY = HUB;
+    for (const a of assignmentObjs) { const to = CONTINENT_PIN[a.continent]; cleanCost += flightDays(fromXY, to) + SHOT_COST; fromXY = to; }
+    setDays(Math.round((cleanCost + mode.slack) * 10) / 10);
+    setScore(0); setStreak(0); setAlbum([]); setVisitedIds([]);
+    setRevealed(false); setLastResult(null); setNewBadges([]); setPending(null);
+    setElapsedMs(0); setResearched({});
+    startRef.current = Date.now(); recorded.current = false;
+    setMsg({ type: "info", text: `📅 Daily Challenge for ${key} — the same five assignments for every traveller today. Good luck!` });
+    setFlying(null); setScreen("play");
+  }
+
   // ---- Streak / Survival: endless assignments, no day budget. ONE wrong ----
   // ---- photograph ends the run. Score climbs faster the longer you survive. ----
   function startStreak() {
@@ -1035,6 +1080,16 @@ export default function ShutterbugWorld() {
         // with the best score for the leaderboard.
         const maxScore = gameMode === "tour" ? tourMaxScore(tourReqs.length, difficulty) : maxScoreFor(assignments.length, MODES[difficulty]);
         const runRank = rankFor(maxScore > 0 ? Math.min(1, score / maxScore) : 0).title;
+        if (gameMode === "daily") {
+          // The Daily keeps its own per-date board, separate from the free-play bests.
+          const res = recordDaily(profileName, dailyKey(), { score, rank: runRank, timeMs: elapsedMs, won, visitedIds, correctIds });
+          setLastResult({ isBest: res.isBest, dailyBest: res.best, dailyFirst: res.first });
+          const earned = achievements(getProfile(profileName)).filter((a) => a.earned && !beforeEarned.has(a.id));
+          setNewBadges(earned);
+          if (res.isBest || earned.length) sfx("stamp");
+          refreshProfiles();
+          return;
+        }
         const res = recordGame(profileName, { difficulty, score, timeMs: elapsedMs, won, rank: runRank, mode: gameMode, visitedIds, correctIds, missedIds });
         setLastResult(res);
         const earnedNow = achievements(getProfile(profileName)).filter((a) => a.earned && !beforeEarned.has(a.id));
@@ -1362,6 +1417,11 @@ export default function ShutterbugWorld() {
   }
 
   // ---------- SCREENS ----------
+  const isTour = gameMode === "tour";
+  const isExplore = gameMode === "explore";
+  const isStreak = gameMode === "streak";
+  const isDaily = gameMode === "daily";
+
   if (screen === "start") {
     return (
       <Frame>
@@ -1460,6 +1520,15 @@ export default function ShutterbugWorld() {
               style={{ padding: "9px 18px", borderRadius: 10, border: `1.5px solid ${CORAL}`, background: "transparent", color: CORAL, fontWeight: 800, fontSize: 14, cursor: "pointer" }}>
               🔥 Streak / Survival
             </button>
+            {(() => {
+              const played = profileName && canSave ? dailyPlayed(profileName, dailyKey()) : null;
+              return (
+                <button onClick={startDaily} title="The same five assignments for every traveller today (played at Medium)"
+                  style={{ padding: "9px 18px", borderRadius: 10, border: `1.5px solid ${GREEN}`, background: "transparent", color: GREEN, fontWeight: 800, fontSize: 14, cursor: "pointer" }}>
+                  📅 Daily Challenge{played ? ` · your best ${played.score}` : ""}
+                </button>
+              );
+            })()}
           </div>
             </div>
 
@@ -1623,23 +1692,44 @@ export default function ShutterbugWorld() {
     return (
       <Frame>
         <div style={{ maxWidth: 640, margin: "0 auto", textAlign: "center" }}>
-          <Stamp>Roll Developed</Stamp>
+          <Stamp>{isDaily ? `Daily Challenge · ${dailyKey()}` : "Roll Developed"}</Stamp>
           <h2 style={{ fontFamily: "ui-sans-serif, system-ui", fontWeight: 900, letterSpacing: "0.08em", fontSize: 30, color: INK, margin: "10px 0 4px" }}>{album.length} / {totalTargets} shots filed</h2>
           <p style={{ fontFamily: "ui-monospace, monospace", fontSize: 22, color: CORAL, fontWeight: 700, margin: "6px 0" }}>{score} pts · ⏱ {fmtTime(elapsedMs)}</p>
-          <p style={{ fontFamily: "ui-monospace, monospace", fontSize: 12, color: INK, opacity: 0.6, margin: "0 0 6px", letterSpacing: "0.06em" }}>{isTourEnd ? "Grand Tour" : mode.label} · {mode.label} · {Math.round(pct * 100)}% of a perfect run</p>
+          <p style={{ fontFamily: "ui-monospace, monospace", fontSize: 12, color: INK, opacity: 0.6, margin: "0 0 6px", letterSpacing: "0.06em" }}>{isDaily ? "Daily Challenge" : isTourEnd ? "Grand Tour" : mode.label} · {mode.label} · {Math.round(pct * 100)}% of a perfect run</p>
           <p style={{ color: INK, fontWeight: 700, marginTop: 6 }}>{r.title}</p>
           <p style={{ color: INK, opacity: 0.7, marginTop: 2 }}>{r.note}</p>
 
           {profileName && (lastResult?.isBest || lastResult?.isBestTime) && (
             <div style={{ marginTop: 10, display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap" }}>
               {lastResult.isBest && (
-                <span style={{ background: GOLD, color: INK, fontWeight: 800, fontSize: 14, padding: "6px 14px", borderRadius: 20 }}>★ New best score!</span>
+                <span style={{ background: GOLD, color: INK, fontWeight: 800, fontSize: 14, padding: "6px 14px", borderRadius: 20 }}>{isDaily ? "★ Your best for today!" : "★ New best score!"}</span>
               )}
-              {lastResult.isBestTime && (
+              {!isDaily && lastResult.isBestTime && (
                 <span style={{ background: GREEN, color: "#fff", fontWeight: 800, fontSize: 14, padding: "6px 14px", borderRadius: 20 }}>⏱ New best time!</span>
               )}
             </div>
           )}
+
+          {/* Today's board: everyone plays the same seeded challenge, so scores compare. */}
+          {isDaily && (() => {
+            const rows = dailyTop(dailyKey(), 5);
+            if (!rows.length) return null;
+            return (
+              <div style={{ marginTop: 18, maxWidth: 380, marginInline: "auto", background: PAPER, border: `1px solid ${PAPER_LINE}`, borderRadius: 10, padding: "12px 14px", textAlign: "left" }}>
+                <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.2em", color: GREEN, marginBottom: 8, textAlign: "center" }}>📅 TODAY'S BOARD</div>
+                {rows.map((row, i) => (
+                  <div key={row.name + i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, padding: "5px 2px", borderTop: i ? `1px solid ${PAPER_LINE}` : "none" }}>
+                    <span style={{ display: "flex", gap: 10, alignItems: "baseline", minWidth: 0 }}>
+                      <span style={{ fontFamily: "ui-monospace, monospace", fontWeight: 800, fontSize: 13, color: i === 0 ? GOLD : INK, opacity: i === 0 ? 1 : 0.6, width: 14, textAlign: "right" }}>{i + 1}</span>
+                      <span style={{ fontWeight: 700, color: INK, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{row.name}</span>
+                      {row.timeMs > 0 && <span style={{ fontSize: 11, color: INK, opacity: 0.5 }}>⏱ {fmtTime(row.timeMs)}</span>}
+                    </span>
+                    <span style={{ fontFamily: "ui-monospace, monospace", fontWeight: 800, color: CORAL }}>{row.score}</span>
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
 
           {profileName && newBadges.length > 0 && (
             <div style={{ marginTop: 12 }}>
@@ -1855,9 +1945,6 @@ export default function ShutterbugWorld() {
 
   // play screen
   const mode = MODES[difficulty];
-  const isTour = gameMode === "tour";
-  const isExplore = gameMode === "explore";
-  const isStreak = gameMode === "streak";
   // The editor's telegram adapts to the mission type: a specific subject, or
   // "any {category} in {continent}" for a category mission (the player chooses).
   // In Grand Tour there's no single clue — the itinerary panel replaces it.
@@ -1899,7 +1986,7 @@ export default function ShutterbugWorld() {
         {/* Field journal panel */}
         <div style={{ flex: "1 1 340px", minWidth: 300 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-            <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 12, letterSpacing: "0.18em", color: INK, opacity: 0.7 }}>{isExplore ? "🧭 EXPLORE" : isStreak ? "🔥 SURVIVAL" : isTour ? `GRAND TOUR · ${tourReqs.filter((r) => r.done).length}/${tourReqs.length} filed` : `ASSIGNMENT ${step + 1}/${assignments.length}`}</span>
+            <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 12, letterSpacing: "0.18em", color: INK, opacity: 0.7 }}>{isExplore ? "🧭 EXPLORE" : isStreak ? "🔥 SURVIVAL" : isTour ? `GRAND TOUR · ${tourReqs.filter((r) => r.done).length}/${tourReqs.length} filed` : `${isDaily ? "📅 DAILY · " : ""}ASSIGNMENT ${step + 1}/${assignments.length}`}</span>
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
               <button onClick={() => setSoundOn((s) => !s)} aria-label={soundOn ? "Turn sound off" : "Turn sound on"} aria-pressed={soundOn} title={soundOn ? "Sound on" : "Sound off"}
                 style={{ background: "none", border: "none", cursor: "pointer", fontSize: 15, lineHeight: 1, padding: 2, color: INK, opacity: 0.75 }}>
