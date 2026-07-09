@@ -140,6 +140,28 @@ export function recordGame(name, { difficulty, score, timeMs = 0, won = false, r
   return { isBest, best: p.best[difficulty], isBestTime, bestTime: p.bestTime[difficulty] || 0 };
 }
 
+// Streak / Survival: record a finished run. Keeps the profile's longest streak,
+// and stamps the places photographed into the passport (as `c`, like a real shot).
+// Returns { isBest, best }.
+export function recordStreak(name, { streak = 0, score = 0, timeMs = 0, visitedIds = [], correctIds = [] } = {}) {
+  const s = read();
+  const p = s.profiles[name];
+  if (!p) return { isBest: false, best: 0 };
+  p.streakGames = (p.streakGames || 0) + 1;
+  p.lastPlayed = Date.now();
+  p.loc = p.loc || {};
+  const now = Date.now();
+  const bump = (id, field) => { const e = p.loc[id] || (p.loc[id] = { v: 0, c: 0, m: 0 }); e[field] += 1; e.t = now; return e; };
+  visitedIds.forEach((id) => bump(id, "v"));
+  correctIds.forEach((id) => { bump(id, "c").last = "c"; });
+  const prev = (p.streakBest && p.streakBest.streak) || 0;
+  const isBest = streak > prev;
+  if (isBest) p.streakBest = { streak, score, timeMs, at: now };
+  s.lastProfile = name;
+  write(s);
+  return { isBest, best: (p.streakBest && p.streakBest.streak) || 0 };
+}
+
 // Quiz mode: record a finished quiz. Keeps the profile's best quiz score.
 // Returns { isBest, best }.
 export function recordQuiz(name, { score = 0, correct = 0, total = 0 } = {}) {
