@@ -173,6 +173,19 @@ const TOUR_MODES = {
 // most days a perfectly efficient route could bank (the buffer built into the budget).
 const tourMaxScore = (nReqs, difficulty) => nReqs * TOUR_MODES[difficulty].points + (nReqs + TOUR_MODES[difficulty].slack) * 50;
 
+// ---- Themed Expeditions: guided, curated Grand Tours around a single learning ----
+// theme (all wildlife, all volcanoes…). Each is a Grand Tour whose specific targets
+// are drawn from the theme, with an intro "lesson". `pick` selects the theme's
+// members; the itinerary favours one target per continent for a round-the-world feel.
+const EXPEDITIONS = [
+  { id: "wildlife", title: "Wildlife Safari", emoji: "🦁", lesson: "Photograph the world's most amazing animals — each a star of its own home. From pandas to penguins, every stop is a creature found in one special place.", pick: (l) => l.category === "wildlife" },
+  { id: "volcano", title: "Ring of Fire", emoji: "🌋", lesson: "Chase the planet's volcanoes and hot springs. Most ring the Pacific Ocean, along the cracks where Earth's giant plates grind together.", pick: (l) => l.category === "volcano" },
+  { id: "mountain", title: "Roof of the World", emoji: "🏔️", lesson: "Climb to the highest places on Earth. Mountains rise over millions of years where the ground is slowly pushed and folded upward.", pick: (l) => l.category === "mountain" },
+  { id: "waterfall", title: "Chasing Waterfalls", emoji: "💦", lesson: "Follow rivers to the edge and over it! Waterfalls form where a river crosses from hard rock to soft rock that wears away faster.", pick: (l) => l.category === "waterfall" },
+  { id: "ruins", title: "Ancient Wonders", emoji: "🏛️", lesson: "Visit the ruins of long-ago peoples and see the astonishing things they built — all without a single modern machine.", pick: (l) => l.category === "ruins" },
+  { id: "heritage", title: "World Heritage", emoji: "🌐", lesson: "Tour places so special that the whole world agreed to protect them: UNESCO World Heritage Sites, treasures for everyone.", pick: (l) => (l.tags || []).includes("unesco") },
+];
+
 const BY_ID = Object.fromEntries(LOCATIONS.map((l) => [l.id, l]));
 // Each continent gets its own colour on the world map — the player picks a
 // continent by its colour/shape, with no text labels (the easy clue names it,
@@ -603,6 +616,7 @@ export default function ShutterbugWorld() {
   const [researched, setResearched] = useState({}); // assignment step -> revealed research note (Research button)
   const [cityPlan, setCityPlan] = useState(null); // country-layer city step: { ids, wide } (wide = continent view for thin countries)
   const [quiz, setQuiz] = useState(null); // Quiz mode: { questions, i, answeredIdx, score, correctCount, streak, done, best }
+  const [expedition, setExpedition] = useState(null); // active themed expedition {id,title,emoji,lesson} (a curated Grand Tour)
   const recorded = useRef(false);
   const startRef = useRef(0); // ms timestamp the current game began
   const timer = useRef(null);
@@ -740,7 +754,7 @@ export default function ShutterbugWorld() {
     recorded.current = false;
     setMsg({ type: "info", text: "Read the editor's clue, then pick the right continent on the map." });
     setFlying(null);
-    setGameMode("assignments");
+    setGameMode("assignments"); setExpedition(null);
     setScreen("play");
   }
 
@@ -803,7 +817,7 @@ export default function ShutterbugWorld() {
     const routeCost = contsUsed.reduce((s, c) => s + flightDays(HUB, CONTINENT_PIN[c]), 0);
     const budget = Math.ceil(routeCost + SHOT_COST * reqs.length + reqs.length + tm.slack);
 
-    setGameMode("tour");
+    setGameMode("tour"); setExpedition(null);
     setTourReqs(reqs);
     setTourOptions(opts);
     setAssignments([]); setOptionsByStep([]); setStep(0);
@@ -820,7 +834,7 @@ export default function ShutterbugWorld() {
   // country, click any place to read its full story (fact, culture card, all three
   // clue tiers). Everywhere you visit is stamped into the passport. ----
   function startExplore() {
-    setGameMode("explore");
+    setGameMode("explore"); setExpedition(null);
     setTourReqs([]); setTourOptions({});
     setAssignments([]); setOptionsByStep([]); setStep(0);
     setPhase("continent"); setPickedContinent(null); setPickedCountry(null); setCityPlan(null);
@@ -857,12 +871,57 @@ export default function ShutterbugWorld() {
     setScreen("start");
   }
 
+  // ---- Themed Expedition: a curated Grand Tour around one theme, with a lesson. ----
+  function startExpedition(exp) {
+    const tm = TOUR_MODES[difficulty];
+    const profile = profileName ? getProfile(profileName) : null;
+    const order = weightedOrder(profile).map((id) => BY_ID[id]);
+    // Gather the theme's members, then pick a round-the-world set: one per continent
+    // first (up to reqs), then fill. Prefer fresh/unmastered via the weighted order.
+    const members = order.filter(exp.pick);
+    const byCont = {};
+    for (const l of members) (byCont[l.continent] = byCont[l.continent] || []).push(l);
+    const conts = shuffleArr(Object.keys(byCont));
+    const picks = [];
+    let ci = 0;
+    while (picks.length < tm.reqs && conts.some((c) => byCont[c].length)) {
+      const c = conts[ci % conts.length];
+      if (byCont[c].length) picks.push(byCont[c].shift());
+      ci++;
+    }
+    const reqs = picks.map((l, i) => ({ key: "r" + i, kind: "specific", continent: l.continent, targetId: l.id, anchorId: l.id, label: `${l.subject} — ${l.continent}`, done: false }));
+    // City options per visited continent: the targets there + spaced decoys.
+    const opts = {};
+    const contsUsed = [...new Set(reqs.map((r) => r.continent))];
+    for (const cont of contsUsed) {
+      const anchors = reqs.filter((r) => r.continent === cont).map((r) => BY_ID[r.anchorId]);
+      const far = spacedFor(CONTINENT_META[cont].box);
+      const chosen = [...anchors];
+      const total = Math.max(tm.labels === "all" ? 4 : 5, anchors.length + 2);
+      for (const l of order) { if (chosen.length >= total) break; if (l.continent === cont && !chosen.includes(l) && far(l, chosen)) chosen.push(l); }
+      for (const l of order) { if (chosen.length >= total) break; if (l.continent === cont && !chosen.includes(l)) chosen.push(l); }
+      opts[cont] = chosen.map((l) => l.id).sort(() => Math.random() - 0.5);
+    }
+    const routeCost = contsUsed.reduce((s, c) => s + flightDays(HUB, CONTINENT_PIN[c]), 0);
+    const budget = Math.ceil(routeCost + SHOT_COST * reqs.length + reqs.length + tm.slack + 2); // a touch more generous — expeditions are for learning
+    setExpedition(exp);
+    setGameMode("tour");
+    setTourReqs(reqs); setTourOptions(opts);
+    setAssignments([]); setOptionsByStep([]); setStep(0);
+    setPhase("continent"); setPickedContinent(null); setPickedCountry(null); setCityPlan(null); setCurrent(null);
+    setDays(budget); setScore(0); setAlbum([]); setVisitedIds([]);
+    setRevealed(false); setLastResult(null); setNewBadges([]); setPending(null);
+    setElapsedMs(0); setResearched({}); startRef.current = Date.now(); recorded.current = false;
+    setMsg({ type: "info", text: `${exp.emoji} ${exp.title}: ${exp.lesson}` });
+    setFlying(null); setScreen("play");
+  }
+
   // ---- Quiz mode: 10 multiple-choice geography questions built from the data. ----
   function startQuiz() {
     const profile = profileName ? getProfile(profileName) : null;
     const questions = buildQuiz(freshFirst(profile), 10); // freshest places first, for variety
     setQuiz({ questions, i: 0, answeredIdx: null, score: 0, correctCount: 0, streak: 0, lastGain: 0, done: false, best: null });
-    setGameMode("quiz");
+    setGameMode("quiz"); setExpedition(null);
     startRef.current = Date.now();
     setScreen("quiz");
   }
@@ -1324,6 +1383,10 @@ export default function ShutterbugWorld() {
           )}
 
           <button onClick={gameMode === "quiz" ? startQuiz : gameMode === "explore" ? startExplore : gameMode === "tour" ? startTour : startGame} style={primaryBtn}>{gameMode === "quiz" ? "Start the quiz 🧠" : gameMode === "explore" ? "Start exploring 🧭" : gameMode === "tour" ? "Start the Grand Tour ✈" : "Begin the assignment ✈"}</button>
+          <button onClick={() => setScreen("expeditions")}
+            style={{ display: "block", margin: "12px auto 0", padding: "9px 18px", borderRadius: 10, border: `1.5px solid ${OCEAN}`, background: "transparent", color: OCEAN, fontWeight: 800, fontSize: 14, cursor: "pointer" }}>
+            🗺️ Themed Expeditions →
+          </button>
             </div>
 
             <div style={{ flex: "0 1 340px", minWidth: 260, marginTop: 22 }}>
@@ -1483,6 +1546,36 @@ export default function ShutterbugWorld() {
                 📕 View passport
               </button>
             )}
+          </div>
+        </div>
+      </Frame>
+    );
+  }
+
+  // ---------- THEMED EXPEDITIONS PICKER ----------
+  if (screen === "expeditions") {
+    return (
+      <Frame>
+        <div style={{ maxWidth: 640, margin: "0 auto" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+            <Stamp>Themed Expeditions 🗺️</Stamp>
+            <button onClick={() => setScreen("start")} style={{ background: "none", border: "none", color: INK, opacity: 0.7, fontWeight: 700, cursor: "pointer", fontSize: 13 }}>← Back</button>
+          </div>
+          <p style={{ color: INK, opacity: 0.8, marginTop: 0, lineHeight: 1.5 }}>Pick a themed round-the-world trip. Each is a guided Grand Tour with a short lesson — photograph the theme's stars across the continents on one shared day budget. Uses your chosen difficulty ({MODES[difficulty].label}).</p>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(240px,1fr))", gap: 12, marginTop: 16 }}>
+            {EXPEDITIONS.map((exp) => {
+              const members = LOCATIONS.filter(exp.pick);
+              const conts = new Set(members.map((l) => l.continent)).size;
+              return (
+                <button key={exp.id} onClick={() => startExpedition(exp)}
+                  style={{ textAlign: "left", background: "#fff", border: `1.5px solid ${PAPER_LINE}`, borderRadius: 12, padding: 14, cursor: "pointer" }}>
+                  <div style={{ fontSize: 30 }} aria-hidden="true">{exp.emoji}</div>
+                  <div style={{ fontWeight: 800, color: INK, marginTop: 4, fontSize: 16 }}>{exp.title}</div>
+                  <div style={{ fontSize: 11, color: OCEAN, fontWeight: 700, marginTop: 2 }}>{members.length} places · {conts} continents</div>
+                  <p style={{ fontSize: 12.5, color: INK, opacity: 0.8, lineHeight: 1.45, margin: "6px 0 0" }}>{exp.lesson}</p>
+                </button>
+              );
+            })}
           </div>
         </div>
       </Frame>
@@ -1723,7 +1816,15 @@ export default function ShutterbugWorld() {
               </div>
             </div>
           ) : isTour ? (
-            <Itinerary reqs={tourReqs} here={inCity ? pickedContinent : null} />
+            <>
+              {expedition && (
+                <div style={{ background: PAPER, border: `1px dashed ${OCEAN}`, borderRadius: 6, padding: "10px 14px", marginBottom: 10 }}>
+                  <div style={{ fontWeight: 800, color: INK, fontSize: 15 }}>{expedition.emoji} {expedition.title}</div>
+                  <p style={{ margin: "4px 0 0", color: INK, opacity: 0.8, fontSize: 12.5, lineHeight: 1.45 }}>{expedition.lesson}</p>
+                </div>
+              )}
+              <Itinerary reqs={tourReqs} here={inCity ? pickedContinent : null} />
+            </>
           ) : (
           <div style={{ background: PAPER, border: `1px dashed ${CORAL}`, borderRadius: 6, padding: "14px 16px", position: "relative" }}>
             <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.22em", color: CORAL, marginBottom: 8 }}>✎ TELEGRAM — FROM THE EDITOR</div>
