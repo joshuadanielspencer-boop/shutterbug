@@ -117,10 +117,16 @@ function PhotoCredit({ photo, style }) {
 // `slack` = spare travel days baked into the budget on top of the clean-route
 // cost (distance flights + one shot each); banking them at the end is the day
 // bonus, and it shrinks with difficulty.
+// `research` gates the ½-day Research hint by tier: "free" (Easy — a leg-up for
+// young players, no day cost), "half" (Medium — costs SHOT_COST), "off" (Hard —
+// no hand-holding). `blurb` is the one-line explainer on the start screen.
 const MODES = {
-  easy:   { label: "Easy",   assignments: 3, cityDecoys: 2, daysPer: 3, points: 150, slack: 5, labels: "all",   clue: "easy",   catShare: 0.4, countryOpts: 3 },
-  medium: { label: "Medium", assignments: 5, cityDecoys: 3, daysPer: 3, points: 125, slack: 5, labels: "smart", clue: "medium", catShare: 0.5, countryOpts: 5 },
-  hard:   { label: "Hard",   assignments: 7, cityDecoys: 4, daysPer: 2, points: 100, slack: 4, labels: "smart", clue: "hard",   catShare: 0.5, countryOpts: 7 },
+  easy:   { label: "Easy",   assignments: 3, cityDecoys: 2, daysPer: 3, points: 150, slack: 5, labels: "all",   clue: "easy",   catShare: 0.4, countryOpts: 3, research: "free",
+            blurb: "Clues spell out the place · fly straight to the city · all pins labelled · free Research hints." },
+  medium: { label: "Medium", assignments: 5, cityDecoys: 3, daysPer: 3, points: 125, slack: 5, labels: "smart", clue: "medium", catShare: 0.5, countryOpts: 5, research: "half",
+            blurb: "Clues name the continent but hide the country · pick the country, then the city · Research costs ½ day." },
+  hard:   { label: "Hard",   assignments: 7, cityDecoys: 4, daysPer: 2, points: 100, slack: 4, labels: "smart", clue: "hard",   catShare: 0.5, countryOpts: 7, research: "off",
+            blurb: "Pure-context clues — no place names · country names hidden on the map · no Research · more, tighter trips." },
 };
 const MODE_ORDER = ["easy", "medium", "hard"];
 
@@ -543,6 +549,7 @@ export default function ShutterbugWorld() {
   const [newBadges, setNewBadges] = useState([]); // achievements newly earned this game
   const [confirmRemove, setConfirmRemove] = useState(false); // passport delete confirmation
   const [researched, setResearched] = useState({}); // assignment step -> revealed research note (Research button)
+  const [cityPlan, setCityPlan] = useState(null); // country-layer city step: { ids, wide } (wide = continent view for thin countries)
   const recorded = useRef(false);
   const startRef = useRef(0); // ms timestamp the current game began
   const timer = useRef(null);
@@ -578,6 +585,7 @@ export default function ShutterbugWorld() {
   // (computed at pick-time, so it works for category missions where the country is
   // the player's free choice). Otherwise the pre-built per-step options.
   const cityOptions = gameMode === "tour" ? (tourOptions[pickedContinent] || [])
+    : (pickedCountry && cityPlan) ? cityPlan.ids
     : (pickedCountry && COUNTRY_LOCS[pickedContinent] && COUNTRY_LOCS[pickedContinent][pickedCountry]) ? COUNTRY_LOCS[pickedContinent][pickedCountry]
     : (optionsByStep[step] || []);
 
@@ -671,6 +679,7 @@ export default function ShutterbugWorld() {
     setPending(null);
     setElapsedMs(0);
     setResearched({});
+    setCityPlan(null);
     startRef.current = Date.now();
     recorded.current = false;
     setMsg({ type: "info", text: "Read the editor's clue, then pick the right continent on the map." });
@@ -889,6 +898,27 @@ export default function ShutterbugWorld() {
       ? countryHasCategory(pickedContinent, country, a.category)
       : countriesOf(target).includes(country); // border landmarks accept either country
     if (ok) {
+      // Build the city-step plan. A country with 3+ of its own landmarks zooms in
+      // tight and shows just those. A thinner country (fewer than 3) would leave
+      // too few choices, so we keep a continent-wide view and pad with the nearest
+      // neighbours — always at least 3 pins to choose among (the highlighted
+      // country border still shows where you are). Fills back to the tight zoom as
+      // that country gains landmarks.
+      const own = (COUNTRY_LOCS[pickedContinent] && COUNTRY_LOCS[pickedContinent][country]) || [];
+      let plan;
+      if (own.length >= 3) {
+        plan = { ids: own.slice().sort(() => Math.random() - 0.5), wide: false };
+      } else {
+        const far = spacedFor(CONTINENT_META[pickedContinent].box);
+        const near = LOCATIONS
+          .filter((l) => l.continent === pickedContinent && !own.includes(l.id))
+          .sort((x, y) => kmBetween(target, x) - kmBetween(target, y));
+        const chosen = own.map((id) => BY_ID[id]);
+        for (const l of near) { if (chosen.length >= 3) break; if (far(l, chosen)) chosen.push(l); }
+        for (const l of near) { if (chosen.length >= 3) break; if (!chosen.includes(l)) chosen.push(l); }
+        plan = { ids: chosen.map((l) => l.id).sort(() => Math.random() - 0.5), wide: true };
+      }
+      setCityPlan(plan);
       setPickedCountry(country);
       setPhase("city");
       setCurrent(null);
@@ -912,9 +942,11 @@ export default function ShutterbugWorld() {
   // where the editor's subject is. It all but hands the player the answer (naming
   // the place a hard clue withholds) — the cost is the trade-off. Once per
   // assignment; the note stays pinned under the telegram for the rest of the trip.
+  const researchCost = MODES[difficulty].research === "free" ? 0 : SHOT_COST; // Easy: free
   function doResearch() {
     if (gameMode === "tour" || flying || pending) return;
-    if (researched[step] || days <= SHOT_COST) return;
+    if (MODES[difficulty].research === "off") return;            // Hard: no Research
+    if (researched[step] || days <= researchCost) return;
     const a = assignments[step];
     if (!a) return;
     const t = a.type === "category" ? loc(a.anchorId) : loc(a.targetId);
@@ -923,7 +955,7 @@ export default function ShutterbugWorld() {
       ? `The newsroom suggests ${t.city}, ${t.country} ${t.flag} in ${t.continent} — its ${catNoun}, ${t.subject}, would be a perfect shot.`
       : `The editor's subject is ${t.subject} — in ${t.city}, ${t.country} ${t.flag} (${t.continent}).`;
     setResearched((r) => ({ ...r, [step]: text }));
-    setDays((d) => Math.round((d - SHOT_COST) * 10) / 10);
+    if (researchCost > 0) setDays((d) => Math.round((d - researchCost) * 10) / 10);
     sfx("success");
     setMsg({ type: "info", text: `🔎 Research: ${text}` });
   }
@@ -1121,6 +1153,7 @@ export default function ShutterbugWorld() {
             <Field label="Difficulty">
               <Toggle options={MODE_ORDER.map((k) => [k, MODES[k].label])} value={difficulty} onChange={setDifficulty} />
             </Field>
+            <p style={{ fontSize: 12, color: INK, opacity: 0.7, margin: "8px auto 0", maxWidth: 430, lineHeight: 1.45 }}>{MODES[difficulty].blurb}</p>
           </div>
 
           <button onClick={gameMode === "tour" ? startTour : startGame} style={primaryBtn}>{gameMode === "tour" ? "Start the Grand Tour ✈" : "Begin the assignment ✈"}</button>
@@ -1400,7 +1433,7 @@ export default function ShutterbugWorld() {
   // of a country-layer assignment zooms further into the picked country. World step:
   // the whole map, letterboxed so it isn't stretched to square.
   const contMeta = pickedContinent ? CONTINENT_META[pickedContinent] : null;
-  const countryBox = inCity && pickedCountry && COUNTRY_META[countryKey(pickedContinent, pickedCountry)] ? COUNTRY_META[countryKey(pickedContinent, pickedCountry)].box : null;
+  const countryBox = inCity && pickedCountry && !(cityPlan && cityPlan.wide) && COUNTRY_META[countryKey(pickedContinent, pickedCountry)] ? COUNTRY_META[countryKey(pickedContinent, pickedCountry)].box : null;
   const plateMode = zoomed ? (contMeta ? contMeta.mode : "equirect") : "world";
   const box = !zoomed ? WORLD_BOX : (countryBox || (contMeta ? contMeta.box : WORLD_BOX));
   // Where a location's pin sits on the current plate (polar for Antarctica, shifted
@@ -1449,19 +1482,23 @@ export default function ShutterbugWorld() {
           </div>
           )}
 
-          {/* Research: buy the answer for half a day (assignments only). */}
-          {!isTour && (researched[step] ? (
+          {/* Research: buy the answer (assignments only). Free on Easy, ½ day on
+              Medium, unavailable on Hard. */}
+          {!isTour && mode.research !== "off" && (researched[step] ? (
             <div style={{ marginTop: 10, background: "#EAF1F2", border: `1px solid ${OCEAN}`, borderRadius: 6, padding: "10px 12px", fontSize: 13, color: INK, lineHeight: 1.45 }}>
               <b style={{ color: OCEAN }}>🔎 Research notes:</b> {researched[step]}
             </div>
-          ) : (
-            <button onClick={doResearch} disabled={busy || days <= SHOT_COST}
-              title="Spend half a travel day for the newsroom to pin down the editor's subject"
+          ) : (() => {
+            const disabled = busy || days <= researchCost;
+            return (
+            <button onClick={doResearch} disabled={disabled}
+              title={researchCost > 0 ? "Spend half a travel day for the newsroom to pin down the editor's subject" : "Ask the newsroom to pin down the editor's subject — free on Easy"}
               style={{ marginTop: 10, padding: "7px 14px", borderRadius: 8, border: `1.5px solid ${OCEAN}`, background: "transparent", color: OCEAN, fontWeight: 700, fontSize: 13,
-                cursor: (busy || days <= SHOT_COST) ? "default" : "pointer", opacity: (busy || days <= SHOT_COST) ? 0.5 : 1 }}>
-              🔎 Research the subject <span style={{ opacity: 0.75, fontWeight: 600 }}>(½ day)</span>
+                cursor: disabled ? "default" : "pointer", opacity: disabled ? 0.5 : 1 }}>
+              🔎 Research the subject <span style={{ opacity: 0.75, fontWeight: 600 }}>({researchCost > 0 ? "½ day" : "free"})</span>
             </button>
-          ))}
+            );
+          })())}
 
           {msg && (
             <div style={{ marginTop: 12, padding: "10px 12px", borderRadius: 6, fontSize: 14, lineHeight: 1.4,
