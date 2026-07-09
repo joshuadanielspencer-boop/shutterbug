@@ -334,6 +334,17 @@ const CAT_LOCS = (() => {
   return m;
 })();
 
+// A "photograph any {category} in {continent}" mission is only FAIR when the
+// continent genuinely has MORE THAN ONE of that category — otherwise "any" is a
+// lie with a single right answer, and same-continent decoys the player thinks
+// qualify get rejected (frustrating). Antarctica is excluded from category
+// missions entirely: nearly everything there reads as a "frozen wonder",
+// "mountain" or "desert" at a glance, so the category framing there is
+// inherently confusing (playtest feedback). Category missions on Antarctica
+// become specific "photograph <this place>" missions instead.
+const categoryMissionOK = (category, continent) =>
+  continent !== "Antarctica" && ((CAT_LOCS[category] && CAT_LOCS[category][continent]) || []).length >= 2;
+
 // Pick one value from [{ v, w }] weighted by w.
 const weightedPick = (items) => {
   const total = items.reduce((s, x) => s + x.w, 0);
@@ -621,7 +632,7 @@ export default function ShutterbugWorld() {
     const options = [];
     for (const anchor of anchors) {
       const continent = anchor.continent;
-      if (Math.random() < mode.catShare && CAT_LOCS[anchor.category] && CAT_LOCS[anchor.category][continent]) {
+      if (Math.random() < mode.catShare && categoryMissionOK(anchor.category, continent)) {
         // Category mission built AROUND this anchor: bring back any <category> on
         // this continent. The anchor (its own country has the category) teaches on
         // a hit; its country is guaranteed to appear among the country choices.
@@ -681,7 +692,7 @@ export default function ShutterbugWorld() {
 
     const usedAnchors = new Set(), usedCatCont = new Set(), reqs = [];
     for (const cont of slots) {
-      const catsHere = CATEGORY_ORDER.filter((c) => CAT_LOCS[c] && CAT_LOCS[c][cont]
+      const catsHere = CATEGORY_ORDER.filter((c) => categoryMissionOK(c, cont)
         && CAT_LOCS[c][cont].some((id) => !usedAnchors.has(id)) && !usedCatCont.has(c + "|" + cont));
       let req = null;
       if (Math.random() < tm.catShare && catsHere.length) {

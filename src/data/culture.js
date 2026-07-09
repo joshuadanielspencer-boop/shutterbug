@@ -208,6 +208,122 @@ export const COUNTRY_PEOPLE = {
     credit: "Maureen Lunn", license: "CC BY 2.0",
     caption: "Sudanese men in the jalabiya robe with a taqiyah cap and shawl",
   },
+
+  // ---- Asia (reviewed batch; Japan & India in the pilot above) ----------
+  "China": {
+    src: "https://commons.wikimedia.org/wiki/Special:FilePath/A%20woman%20with%20Chinese%20clothes.jpg?width=500",
+    source: "https://commons.wikimedia.org/wiki/File:A%20woman%20with%20Chinese%20clothes.jpg",
+    credit: "Peachyeung316", license: "CC BY-SA 4.0",
+    caption: "A woman in Hong Kong wearing a qipao (cheongsam), a fitted Chinese silk dress",
+  },
+  "South Korea": {
+    src: "https://commons.wikimedia.org/wiki/Special:FilePath/Hanbok%20(female%20and%20male).jpg?width=500",
+    source: "https://commons.wikimedia.org/wiki/File:Hanbok%20(female%20and%20male).jpg",
+    credit: "Korea.net / KOCIS", license: "CC BY 2.0",
+    caption: "A woman and man in hanbok, South Korea's colourful traditional clothing",
+  },
+  "Thailand": {
+    src: "https://commons.wikimedia.org/wiki/Special:FilePath/4%20Couple%20in%20traditional%20thai%20dress.jpg?width=500",
+    source: "https://commons.wikimedia.org/wiki/File:4%20Couple%20in%20traditional%20thai%20dress.jpg",
+    credit: "Helloerror", license: "CC BY-SA 4.0",
+    caption: "A couple in chut thai, the woman's golden silk sabai draped across one shoulder",
+  },
+  "Vietnam": {
+    src: "https://commons.wikimedia.org/wiki/Special:FilePath/Vietnamese%20student%20girls%20in%20Temple%20of%20Literature.JPG?width=500",
+    source: "https://commons.wikimedia.org/wiki/File:Vietnamese%20student%20girls%20in%20Temple%20of%20Literature.JPG",
+    credit: "Viethavvh", license: "CC BY-SA 4.0",
+    caption: "Students in the áo dài, Vietnam's national dress, at Hanoi's Temple of Literature",
+  },
+  "Nepal": {
+    src: "https://commons.wikimedia.org/wiki/Special:FilePath/A%20group%20of%20Nepalese%20Girls%20and%20Boys%20in%20cultural%20dress.jpg?width=500",
+    source: "https://commons.wikimedia.org/wiki/File:A%20group%20of%20Nepalese%20Girls%20and%20Boys%20in%20cultural%20dress.jpg",
+    credit: "Rojisha Pandit Chettri", license: "CC BY-SA 4.0",
+    caption: "Children in Nepal dressed in traditional Nepali attire",
+  },
+  "Indonesia": {
+    src: "https://commons.wikimedia.org/wiki/Special:FilePath/Girls%20in%20traditional%20Hindu%20dress%20in%20Bali%20Indonesia.jpg?width=500",
+    source: "https://commons.wikimedia.org/wiki/File:Girls%20in%20traditional%20Hindu%20dress%20in%20Bali%20Indonesia.jpg",
+    credit: "VasenkaPhotography", license: "CC BY 2.0",
+    caption: "Girls in Bali in traditional Balinese dress for a Hindu ceremony",
+  },
+  "Cambodia": {
+    src: "https://commons.wikimedia.org/wiki/Special:FilePath/Siem-Reap%20Dance%20of%20Cambodia%20(1).jpg?width=500",
+    source: "https://commons.wikimedia.org/wiki/File:Siem-Reap%20Dance%20of%20Cambodia%20(1).jpg",
+    credit: "Pierre André Leclercq", license: "CC BY-SA 4.0",
+    caption: "A Khmer classical dancer in a golden Apsara crown and pleated silk sampot, Siem Reap",
+  },
+  "Myanmar": {
+    src: "https://commons.wikimedia.org/wiki/Special:FilePath/2016%20Rangun%2C%20Park%20Maha%20Bandula%2C%20Kobiety%20w%20tradycyjnych%20strojach.jpg?width=500",
+    source: "https://commons.wikimedia.org/wiki/File:2016%20Rangun%2C%20Park%20Maha%20Bandula%2C%20Kobiety%20w%20tradycyjnych%20strojach.jpg",
+    credit: "Marcin Konsek", license: "CC BY-SA 4.0",
+    caption: "Women in Yangon wearing Myanmar's traditional wrap skirt, the longyi",
+  },
+  "Iran": {
+    src: "https://commons.wikimedia.org/wiki/Special:FilePath/Qashqai%20nomad%20woman.jpg?width=500",
+    source: "https://commons.wikimedia.org/wiki/File:Qashqai%20nomad%20woman.jpg",
+    credit: "ninara", license: "CC BY 2.0",
+    caption: "A Qashqai nomad woman in the colourful layered skirts of her southern Iranian tribe",
+  },
+  "Jordan": {
+    src: "https://commons.wikimedia.org/wiki/Special:FilePath/Jordanian%20Bedouin%20Arab%20Men.jpg?width=500",
+    source: "https://commons.wikimedia.org/wiki/File:Jordanian%20Bedouin%20Arab%20Men.jpg",
+    credit: "Mr Masri", license: "CC0",
+    caption: "Bedouin men in Jordan in the red-and-white shemagh headscarf and long robes",
+  },
+  "Pakistan": {
+    src: "https://commons.wikimedia.org/wiki/Special:FilePath/Schoolgirls%20in%20Shalwar%20Kameez%2C%20Abbotabad%20Pakistan%20-%20UK%20International%20Development.jpg?width=500",
+    source: "https://commons.wikimedia.org/wiki/File:Schoolgirls%20in%20Shalwar%20Kameez%2C%20Abbotabad%20Pakistan%20-%20UK%20International%20Development.jpg",
+    credit: "Vicki Francis / UK DFID", license: "CC BY 2.0",
+    caption: "Girls in Abbottabad in Pakistan's national dress: white shalwar trousers and blue kameez shirt",
+  },
+  "Philippines": {
+    src: "https://commons.wikimedia.org/wiki/Special:FilePath/Groomsmen%20wearing%20barong%20tagalog%20at%20a%20wedding.jpg?width=500",
+    source: "https://commons.wikimedia.org/wiki/File:Groomsmen%20wearing%20barong%20tagalog%20at%20a%20wedding.jpg",
+    credit: "Ron Bulovs", license: "CC BY 2.0",
+    caption: "Men in the barong tagalog, an embroidered Filipino dress shirt, at a wedding",
+  },
+  "Russia": {
+    src: "https://commons.wikimedia.org/wiki/Special:FilePath/Traditional%20Russian%20Folk%20Costumes%2001.JPG?width=500",
+    source: "https://commons.wikimedia.org/wiki/File:Traditional%20Russian%20Folk%20Costumes%2001.JPG",
+    credit: "Ninaras", license: "CC BY 4.0",
+    caption: "Performers in bright Russian folk dress with the sarafan jumper at a St Petersburg festival",
+  },
+  "Turkey": {
+    src: "https://commons.wikimedia.org/wiki/Special:FilePath/Turkish%20folk%20dancers%20(1085290934).jpg?width=500",
+    source: "https://commons.wikimedia.org/wiki/File:Turkish%20folk%20dancers%20(1085290934).jpg",
+    credit: "allen watkin", license: "CC BY-SA 2.0",
+    caption: "Dancers perform a traditional Turkish folk dance in bright regional costumes",
+  },
+  "United Arab Emirates": {
+    src: "https://commons.wikimedia.org/wiki/Special:FilePath/Girl%20with%20the%20falcon.jpg?width=500",
+    source: "https://commons.wikimedia.org/wiki/File:Girl%20with%20the%20falcon.jpg",
+    credit: "Amarhabeeb", license: "CC BY-SA 4.0",
+    caption: "A girl in Emirati traditional dress holds a falcon at a heritage festival in Abu Dhabi",
+  },
+  "Uzbekistan": {
+    src: "https://commons.wikimedia.org/wiki/Special:FilePath/Uzbek%20girl%20in%20traditional%20clothing.jpg?width=500",
+    source: "https://commons.wikimedia.org/wiki/File:Uzbek%20girl%20in%20traditional%20clothing.jpg",
+    credit: "Elamanovaelvina", license: "CC BY-SA 4.0",
+    caption: "A girl in Uzbekistan in a chopon robe of adras silk and an embroidered do'ppi cap",
+  },
+  "Sri Lanka": {
+    src: "https://commons.wikimedia.org/wiki/Special:FilePath/Traditional%20Sri%20Lankan%20Kandyan%20dress.jpg?width=500",
+    source: "https://commons.wikimedia.org/wiki/File:Traditional%20Sri%20Lankan%20Kandyan%20dress.jpg",
+    credit: "Rangani Kaushalya Meddepola", license: "CC BY-SA 4.0",
+    caption: "A young woman in Sri Lanka's Kandyan osariya, a sari with a lacy blouse and waist frill",
+  },
+  "Taiwan": {
+    src: "https://commons.wikimedia.org/wiki/Special:FilePath/Ilisin%20-%20Women%20in%20Traditional%20Attire.jpg?width=500",
+    source: "https://commons.wikimedia.org/wiki/File:Ilisin%20-%20Women%20in%20Traditional%20Attire.jpg",
+    credit: "Kevshen", license: "CC BY-SA 4.0",
+    caption: "Amis women of eastern Taiwan in traditional dress for the Ilisin harvest festival",
+  },
+  "Singapore": {
+    src: "https://commons.wikimedia.org/wiki/Special:FilePath/Kebaya%201.jpg?width=500",
+    source: "https://commons.wikimedia.org/wiki/File:Kebaya%201.jpg",
+    credit: "Jamieson Teo", license: "CC BY-SA 2.0",
+    caption: "Peranakan (Nyonya) ladies in Singapore in the kebaya, an embroidered blouse over a batik sarong",
+  },
 };
 
 // The English gloss for a greeting object (or null if none is known).
