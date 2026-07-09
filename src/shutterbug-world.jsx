@@ -260,11 +260,16 @@ const COUNTRY_META = {};       // "continent|country" -> { box, cx, cy }  (keyed
 // continent so a transcontinental country — e.g. Russia, with landmarks in both
 // Europe and Asia — zooms to the right region for whichever continent you're on).
 const countryKey = (continent, country) => `${continent}|${country}`;
+// A landmark usually sits in one country, but a few straddle a border (e.g.
+// Niagara Falls on the Canada–US line). `countries` lists every country it can be
+// reached from; `country` stays the primary (for its flag/greeting). Picking ANY
+// of its countries in the country layer counts as correct.
+const countriesOf = (l) => (l.countries && l.countries.length ? l.countries : [l.country]);
 (() => {
   for (const cont of COUNTRY_LAYER_CONTINENTS) {
     const wrap = CONTINENT_META[cont] && CONTINENT_META[cont].mode === "wrap"; // Oceania: Pacific-centred
     const byC = {};
-    for (const l of LOCATIONS) if (l.continent === cont) (byC[l.country] = byC[l.country] || []).push(l);
+    for (const l of LOCATIONS) if (l.continent === cont) for (const c of countriesOf(l)) (byC[c] = byC[c] || []).push(l);
     LAYER_COUNTRY_LIST[cont] = Object.keys(byC);
     COUNTRY_LOCS[cont] = {};
     for (const [country, ls] of Object.entries(byC)) {
@@ -641,7 +646,7 @@ export default function ShutterbugWorld() {
         options.push(buildOptions(anchor));
       } else {
         // Specific mission: photograph exactly this place.
-        assignmentObjs.push({ type: "specific", targetId: anchor.id, continent, countries: usesCountryLayer(mode, continent) ? pickCountries(continent, [anchor.country]) : null });
+        assignmentObjs.push({ type: "specific", targetId: anchor.id, continent, countries: usesCountryLayer(mode, continent) ? pickCountries(continent, countriesOf(anchor)) : null });
         options.push(usesCountryLayer(mode, continent) ? buildCountryOptions(anchor) : buildOptions(anchor));
       }
     }
@@ -793,7 +798,11 @@ export default function ShutterbugWorld() {
           }
           won = assignments.length > 0 && missedIds.length === 0;
         }
-        const res = recordGame(profileName, { difficulty, score, timeMs: elapsedMs, won, visitedIds, correctIds, missedIds });
+        // Rank earned this run (same computation the results screen shows), stored
+        // with the best score for the leaderboard.
+        const maxScore = gameMode === "tour" ? tourMaxScore(tourReqs.length, difficulty) : maxScoreFor(assignments.length, MODES[difficulty]);
+        const runRank = rankFor(maxScore > 0 ? Math.min(1, score / maxScore) : 0).title;
+        const res = recordGame(profileName, { difficulty, score, timeMs: elapsedMs, won, rank: runRank, mode: gameMode, visitedIds, correctIds, missedIds });
         setLastResult(res);
         const earnedNow = achievements(getProfile(profileName)).filter((a) => a.earned && !beforeEarned.has(a.id));
         setNewBadges(earnedNow);
@@ -878,7 +887,7 @@ export default function ShutterbugWorld() {
     // wanted category is correct. Specific missions: the target's own country.
     const ok = a && a.type === "category"
       ? countryHasCategory(pickedContinent, country, a.category)
-      : country === target.country;
+      : countriesOf(target).includes(country); // border landmarks accept either country
     if (ok) {
       setPickedCountry(country);
       setPhase("city");
@@ -1124,16 +1133,26 @@ export default function ShutterbugWorld() {
             return (
               <div style={{ maxWidth: 400, marginInline: "auto", background: PAPER, border: `1px solid ${PAPER_LINE}`, borderRadius: 10, padding: "14px 16px", textAlign: "left" }}>
                 <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.2em", color: CORAL, marginBottom: 8, textAlign: "center" }}><span aria-hidden="true" style={{ fontSize: 15 }}>🏆</span> HIGH SCORES</div>
-                {leaders.map((r, i) => (
-                  <div key={r.name + i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, padding: "6px 2px", borderTop: i ? `1px solid ${PAPER_LINE}` : "none" }}>
-                    <span style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
-                      <span style={{ fontFamily: "ui-monospace, monospace", fontWeight: 800, fontSize: 14, color: i === 0 ? GOLD : INK, opacity: i === 0 ? 1 : 0.6, width: 16, textAlign: "right" }}>{i + 1}</span>
-                      <span style={{ fontWeight: 700, color: INK, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.name}</span>
-                      <span style={{ fontSize: 11, color: INK, opacity: 0.5 }}>{MODES[r.difficulty]?.label || ""}</span>
+                {leaders.map((r, i) => {
+                  // Second line: the editor-rank earned on that run · difficulty (and
+                  // mode, if Grand Tour) · completion time.
+                  const bits = [];
+                  if (r.rank) bits.push(r.rank);
+                  bits.push((MODES[r.difficulty]?.label || r.difficulty || "") + (r.mode === "tour" ? " · Grand Tour" : ""));
+                  if (r.timeMs > 0) bits.push("⏱ " + fmtTime(r.timeMs));
+                  return (
+                  <div key={r.name + i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, padding: "7px 2px", borderTop: i ? `1px solid ${PAPER_LINE}` : "none" }}>
+                    <span style={{ display: "flex", alignItems: "baseline", gap: 10, minWidth: 0 }}>
+                      <span style={{ fontFamily: "ui-monospace, monospace", fontWeight: 800, fontSize: 14, color: i === 0 ? GOLD : INK, opacity: i === 0 ? 1 : 0.6, width: 16, textAlign: "right", flex: "none" }}>{i + 1}</span>
+                      <span style={{ minWidth: 0 }}>
+                        <span style={{ fontWeight: 700, color: INK, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "block" }}>{r.name}</span>
+                        <span style={{ fontSize: 11, color: INK, opacity: 0.6, lineHeight: 1.3 }}>{bits.join(" · ")}</span>
+                      </span>
                     </span>
-                    <span style={{ fontFamily: "ui-monospace, monospace", fontWeight: 800, color: CORAL }}>{r.score}</span>
+                    <span style={{ fontFamily: "ui-monospace, monospace", fontWeight: 800, color: CORAL, flex: "none" }}>{r.score}</span>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             );
           })()}

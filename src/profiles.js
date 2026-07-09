@@ -95,7 +95,7 @@ export function deleteProfile(name) {
 
 // Record one finished game against a profile.
 // Returns { isBest, best, isBestTime, bestTime }.
-export function recordGame(name, { difficulty, score, timeMs = 0, won = false, visitedIds = [], correctIds = [], missedIds = [] }) {
+export function recordGame(name, { difficulty, score, timeMs = 0, won = false, rank = null, mode = "assignments", visitedIds = [], correctIds = [], missedIds = [] }) {
   const s = read();
   const p = s.profiles[name];
   if (!p) return { isBest: false, best: 0, isBestTime: false, bestTime: 0 };
@@ -105,7 +105,13 @@ export function recordGame(name, { difficulty, score, timeMs = 0, won = false, v
   p.best = p.best || {};
   const prevBest = p.best[difficulty] || 0;
   const isBest = score > prevBest;
-  if (isBest) p.best[difficulty] = score;
+  if (isBest) {
+    p.best[difficulty] = score;
+    // Remember the details of the run that set this best, for the leaderboard:
+    // the editor-rank earned, the mode, and how long the trip took.
+    p.bestMeta = p.bestMeta || {};
+    p.bestMeta[difficulty] = { score, rank, mode, timeMs, won, at: Date.now() };
+  }
 
   // Best time is only tracked for a fully completed trip (all shots filed).
   let isBestTime = false;
@@ -173,9 +179,12 @@ export function topScores(n = 5) {
   const s = read();
   const rows = [];
   for (const p of Object.values(s.profiles)) {
-    let max = 0, mode = null;
-    for (const [d, v] of Object.entries(p.best || {})) if (v > max) { max = v; mode = d; }
-    if (max > 0) rows.push({ name: p.name, score: max, difficulty: mode });
+    let max = 0, diff = null;
+    for (const [d, v] of Object.entries(p.best || {})) if (v > max) { max = v; diff = d; }
+    if (max > 0) {
+      const meta = (p.bestMeta && p.bestMeta[diff]) || {};
+      rows.push({ name: p.name, score: max, difficulty: diff, rank: meta.rank || null, timeMs: meta.timeMs || 0, mode: meta.mode || null });
+    }
   }
   rows.sort((a, b) => b.score - a.score);
   return rows.slice(0, n);

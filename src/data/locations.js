@@ -1077,6 +1077,7 @@ export const LOCATIONS = [
       source: "https://commons.wikimedia.org/wiki/File:Grand_Prismatic_Spring_2013.jpg" },
     greeting: { text: "Hello", language: "English", pronunciation: null } },
   { id: "niagara", city: "Niagara Falls", country: "Canada", flag: "🇨🇦", continent: "North America",
+    countries: ["Canada", "United States"], // straddles the border — reachable from either
     x: 100.9, y: 46.9,
     subject: "Niagara Falls", icon: "", category: "waterfall", tags: [],
     easy: "In North America, on the Canada–US border, the mighty Horseshoe Falls thunder at Niagara, fed by a river that drains four of the five Great Lakes.",
