@@ -324,6 +324,12 @@ export const COUNTRY_PEOPLE = {
     credit: "Jamieson Teo", license: "CC BY-SA 2.0",
     caption: "Peranakan (Nyonya) ladies in Singapore in the kebaya, an embroidered blouse over a batik sarong",
   },
+  "Mongolia": {
+    src: "https://commons.wikimedia.org/wiki/Special:FilePath/Przed%20rozpocz%C4%99ciem%20lokalnego%20festiwalu%20Naadam%20(06).jpg?width=500",
+    source: "https://commons.wikimedia.org/wiki/File:Przed%20rozpocz%C4%99ciem%20lokalnego%20festiwalu%20Naadam%20(06).jpg",
+    credit: "Marcin Konsek", license: "CC BY-SA 4.0",
+    caption: "Men wearing the deel — Mongolia's traditional robe — before a Naadam festival",
+  },
 
   // ---- Europe (reviewed batch; Russia & Turkey are in the Asia batch above) ----
   "United Kingdom": {
@@ -415,6 +421,110 @@ export const COUNTRY_PEOPLE = {
     source: "https://commons.wikimedia.org/wiki/File:Trondheim%20bunad%20May%2017.jpg",
     credit: "Sigmund", license: "CC BY 2.0",
     caption: "Two friends wear their Trøndelag bunad to celebrate Norway's National Day, 17 May",
+  },
+
+  // ---- Americas & Oceania (reviewed batch; Mexico/Peru/New Zealand in the pilot) ----
+  "Guatemala": {
+    src: "https://commons.wikimedia.org/wiki/Special:FilePath/Ixil%20young%20woman%20with%20ceremonial%20dress.jpg?width=500",
+    source: "https://commons.wikimedia.org/wiki/File:Ixil%20young%20woman%20with%20ceremonial%20dress.jpg",
+    credit: "Sigrid Marisol Aguilar Jocol", license: "CC BY-SA 4.0",
+    caption: "A young Ixil Maya woman in her people's colourful ceremonial dress, in Guatemala's highlands",
+  },
+  "Panama": {
+    src: "https://commons.wikimedia.org/wiki/Special:FilePath/Empollerada%20de%20Panam%C3%A1.jpg?width=500",
+    source: "https://commons.wikimedia.org/wiki/File:Empollerada%20de%20Panam%C3%A1.jpg",
+    credit: "Ayaita", license: "CC BY-SA 3.0",
+    caption: "A woman wears Panama's national dress, the pollera, at a folk festival",
+  },
+  "Cuba": {
+    src: "https://commons.wikimedia.org/wiki/Special:FilePath/Bailarines%20de%20rumba%20cubana%20en%20la%20plaza%20de%20los%20trabajadores%20de%20Camag%C3%BCey%2C%20Cuba.jpg?width=500",
+    source: "https://commons.wikimedia.org/wiki/File:Bailarines%20de%20rumba%20cubana%20en%20la%20plaza%20de%20los%20trabajadores%20de%20Camag%C3%BCey%2C%20Cuba.jpg",
+    credit: "Manuel Díaz Reyes", license: "CC BY-SA 4.0",
+    caption: "Dancers perform Cuba's lively rumba in a public square in Camagüey",
+  },
+  "Greenland": {
+    src: "https://commons.wikimedia.org/wiki/Special:FilePath/Greenland%201999%20(01).jpg?width=500",
+    source: "https://commons.wikimedia.org/wiki/File:Greenland%201999%20(01).jpg",
+    credit: "Vadeve", license: "Public domain",
+    caption: "Young women in Greenland's kalaallisuut, with beaded collars and tall white sealskin boots",
+  },
+  "Canada": {
+    src: "https://commons.wikimedia.org/wiki/Special:FilePath/Dancer%20on%20Pow-Wow%202016%20in%20Wendake%2C%20Quebec%2C%20Canada.jpg?width=500",
+    source: "https://commons.wikimedia.org/wiki/File:Dancer%20on%20Pow-Wow%202016%20in%20Wendake%2C%20Quebec%2C%20Canada.jpg",
+    credit: "Marc Lautenbacher", license: "CC BY-SA 4.0",
+    caption: "A First Nations dancer in traditional regalia at the powwow in Wendake, Quebec",
+  },
+  "United States": {
+    src: "https://commons.wikimedia.org/wiki/Special:FilePath/Assiniboine%20Sioux%20Jingle%20Dress%20Girls.jpg?width=500",
+    source: "https://commons.wikimedia.org/wiki/File:Assiniboine%20Sioux%20Jingle%20Dress%20Girls.jpg",
+    credit: "Thayne Tuason", license: "CC BY-SA 4.0",
+    caption: "Assiniboine Sioux dancers in jingle dresses trimmed with metal cones that chime as they dance",
+  },
+  "Argentina": {
+    src: "https://commons.wikimedia.org/wiki/Special:FilePath/San%20Antonio%20de%20Areco-Fiesta%20de%20la%20Tradici%C3%B3n%2011.jpg?width=500",
+    source: "https://commons.wikimedia.org/wiki/File:San%20Antonio%20de%20Areco-Fiesta%20de%20la%20Tradici%C3%B3n%2011.jpg",
+    credit: "AnselmoesMaciel", license: "CC BY-SA 4.0",
+    caption: "Argentine gauchos in hats, ponchos and boots ride at the yearly Festival of Tradition",
+  },
+  "Bolivia": {
+    src: "https://commons.wikimedia.org/wiki/Special:FilePath/Aymara%20Women%2C%20El%20Alto%2C%20Bolivia%20(2173402729).jpg?width=500",
+    source: "https://commons.wikimedia.org/wiki/File:Aymara%20Women%2C%20El%20Alto%2C%20Bolivia%20(2173402729).jpg",
+    credit: "Pedro Szekely", license: "CC BY 2.0",
+    caption: "Aymara women in El Alto in the traditional pollera skirt and bowler hat",
+  },
+  "Brazil": {
+    src: "https://commons.wikimedia.org/wiki/Special:FilePath/Baiana%20em%20desfile%20de%202%20de%20Julho%20em%20S%C3%A3o%20F%C3%A9lix.jpg?width=500",
+    source: "https://commons.wikimedia.org/wiki/File:Baiana%20em%20desfile%20de%202%20de%20Julho%20em%20S%C3%A3o%20F%C3%A9lix.jpg",
+    credit: "ExpressaoSAMPA", license: "CC BY-SA 4.0",
+    caption: "A woman in the Baiana dress of Bahia — white lace blouse, headwrap and full floral skirt",
+  },
+  "Chile": {
+    src: "https://commons.wikimedia.org/wiki/Special:FilePath/Traditional%20dress%20of%20the%20Chilean%20cueca%2C%20a%20national%20dance.jpg?width=500",
+    source: "https://commons.wikimedia.org/wiki/File:Traditional%20dress%20of%20the%20Chilean%20cueca%2C%20a%20national%20dance.jpg",
+    credit: "Quilicura", license: "CC BY-SA 4.0",
+    caption: "Dancers in huaso and china dress perform the cueca, Chile's national dance",
+  },
+  "Colombia": {
+    src: "https://commons.wikimedia.org/wiki/Special:FilePath/Bailadoras%20de%20Cumbia.jpg?width=500",
+    source: "https://commons.wikimedia.org/wiki/File:Bailadoras%20de%20Cumbia.jpg",
+    credit: "Luis Pérez", license: "CC BY 2.0",
+    caption: "Women dance the cumbia in flowing pollera skirts at a folk festival in San Pelayo",
+  },
+  "Ecuador": {
+    src: "https://commons.wikimedia.org/wiki/Special:FilePath/Traditional%20dress%20in%20otavalo%20market%20with%20customer.jpg?width=500",
+    source: "https://commons.wikimedia.org/wiki/File:Traditional%20dress%20in%20otavalo%20market%20with%20customer.jpg",
+    credit: "DickClarkMises", license: "CC0",
+    caption: "An Otavalo woman in a white embroidered blouse at Ecuador's famous Otavalo market",
+  },
+  "Venezuela": {
+    src: "https://commons.wikimedia.org/wiki/Special:FilePath/Pareja%20bailando%20joropo%20llanero%20(Puro).jpg?width=500",
+    source: "https://commons.wikimedia.org/wiki/File:Pareja%20bailando%20joropo%20llanero%20(Puro).jpg",
+    credit: "Simplemente Venezuela", license: "CC BY-SA 4.0",
+    caption: "A couple dances the joropo as harp, cuatro and maracas play",
+  },
+  "Guyana": {
+    src: "https://commons.wikimedia.org/wiki/Special:FilePath/Guyana%20dance%202002%2011%2023.jpg?width=500",
+    source: "https://commons.wikimedia.org/wiki/File:Guyana%20dance%202002%2011%2023.jpg",
+    credit: "EsAvila", license: "CC BY-SA 4.0",
+    caption: "Macushi people of Guyana dance in fibre skirts and feathered headdresses",
+  },
+  "Australia": {
+    src: "https://commons.wikimedia.org/wiki/Special:FilePath/Boigu%20dance.jpg?width=500",
+    source: "https://commons.wikimedia.org/wiki/File:Boigu%20dance.jpg",
+    credit: "u-turn77", license: "CC BY 2.0",
+    caption: "A Torres Strait Islander dancer in a feathered dhari headdress and woven grass cape",
+  },
+  "French Polynesia": {
+    src: "https://commons.wikimedia.org/wiki/Special:FilePath/Danse%20Heiva%202014-3424.jpg?width=500",
+    source: "https://commons.wikimedia.org/wiki/File:Danse%20Heiva%202014-3424.jpg",
+    credit: "Anne-Laure Lépine", license: "CC BY-SA 4.0",
+    caption: "A dance troupe performs in grass skirts and feathered headdresses at the Heiva i Tahiti festival",
+  },
+  "Vanuatu": {
+    src: "https://commons.wikimedia.org/wiki/Special:FilePath/Vanuatu-humans-of-vanuatu-2.jpg?width=500",
+    source: "https://commons.wikimedia.org/wiki/File:Vanuatu-humans-of-vanuatu-2.jpg",
+    credit: "Graham Crumb / Imagicity.com", license: "CC BY-SA 3.0",
+    caption: "Ni-Vanuatu women dance in woven fibre tops and grass skirts, tapping bamboo poles to the beat",
   },
 };
 
