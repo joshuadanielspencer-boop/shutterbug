@@ -122,6 +122,92 @@ export const COUNTRY_PEOPLE = {
     credit: "T. W. Collins / Auckland War Memorial Museum", license: "CC BY 4.0",
     caption: "Māori men perform a haka (Auckland Museum, 1943)",
   },
+
+  // ---- Africa (reviewed batch) ------------------------------------------
+  "Egypt": {
+    src: "https://commons.wikimedia.org/wiki/Special:FilePath/Egypt_(Luxor)_Another_Egyptian_man_with_traditional_dress_named_jellabiya_(26321884786).jpg?width=500",
+    source: "https://commons.wikimedia.org/wiki/File:Egypt_(Luxor)_Another_Egyptian_man_with_traditional_dress_named_jellabiya_(26321884786).jpg",
+    credit: "Güldem Üstün", license: "CC BY 2.0",
+    caption: "An Egyptian man in Luxor wears a jellabiya, Egypt's long loose robe",
+  },
+  "Morocco": {
+    src: "https://commons.wikimedia.org/wiki/Special:FilePath/Women_group_in_Traditional_festival_in_Ouarzazate%2C_Morocco_1_by_Brahim_FARAJI.jpg?width=500",
+    source: "https://commons.wikimedia.org/wiki/File:Women_group_in_Traditional_festival_in_Ouarzazate%2C_Morocco_1_by_Brahim_FARAJI.jpg",
+    credit: "Brahim FARAJI", license: "CC BY-SA 4.0",
+    caption: "Moroccan women in bright traditional dress at a festival in Ouarzazate",
+  },
+  "Ethiopia": {
+    src: "https://commons.wikimedia.org/wiki/Special:FilePath/Habesha_woman-b.jpg?width=500",
+    source: "https://commons.wikimedia.org/wiki/File:Habesha_woman-b.jpg",
+    credit: "msafari2425", license: "CC BY 2.0",
+    caption: "An Ethiopian woman in a habesha kemis performs a cultural dance",
+  },
+  "Ghana": {
+    src: "https://commons.wikimedia.org/wiki/Special:FilePath/Ghanaian_women_in_Kente_cloth_and_beads.jpg?width=500",
+    source: "https://commons.wikimedia.org/wiki/File:Ghanaian_women_in_Kente_cloth_and_beads.jpg",
+    credit: "Pambelle12", license: "CC BY-SA 4.0",
+    caption: "A woman in Ghana wears bright kente cloth and beads",
+  },
+  "South Africa": {
+    src: "https://commons.wikimedia.org/wiki/Special:FilePath/Ndebele_woman.jpg?width=500",
+    source: "https://commons.wikimedia.org/wiki/File:Ndebele_woman.jpg",
+    credit: "Steve Evans", license: "CC BY 3.0",
+    caption: "An Ndebele woman of South Africa in traditional beaded neck rings",
+  },
+  "Tanzania": {
+    src: "https://commons.wikimedia.org/wiki/Special:FilePath/Two_women_wearing_Kangas.jpg?width=500",
+    source: "https://commons.wikimedia.org/wiki/File:Two_women_wearing_Kangas.jpg",
+    credit: "Sophiestolle", license: "CC BY-SA 4.0",
+    caption: "Two women in Tanzania wear colourful kanga cloths printed with Swahili sayings",
+  },
+  "Namibia": {
+    src: "https://commons.wikimedia.org/wiki/Special:FilePath/A_proud_herero_woman.jpg?width=500",
+    source: "https://commons.wikimedia.org/wiki/File:A_proud_herero_woman.jpg",
+    credit: "Ngarii", license: "CC BY-SA 4.0",
+    caption: "A Herero woman in Namibia in the Victorian-style dress and cow-horn headdress",
+  },
+  "Rwanda": {
+    src: "https://commons.wikimedia.org/wiki/Special:FilePath/Bride_in_Rwanda_traditional_wedding.jpg?width=500",
+    source: "https://commons.wikimedia.org/wiki/File:Bride_in_Rwanda_traditional_wedding.jpg",
+    credit: "Claude Nizeyimana", license: "CC BY-SA 4.0",
+    caption: "Women in Rwanda wear the mushanana, a sash draped over one shoulder, at a wedding",
+  },
+  "Mali": {
+    src: "https://commons.wikimedia.org/wiki/Special:FilePath/Tuareg_woman_from_Mali%2C_2007.jpg?width=500",
+    source: "https://commons.wikimedia.org/wiki/File:Tuareg_woman_from_Mali%2C_2007.jpg",
+    credit: "Alain Elorza", license: "CC BY-SA 2.0",
+    caption: "A young Tuareg woman in Mali in the traditional veil and headwrap of the Sahara",
+  },
+  "Algeria": {
+    src: "https://commons.wikimedia.org/wiki/Special:FilePath/Jeune_fille_en_tenue_traditionnelle_jouant_la_Darbouka.JPG?width=500",
+    source: "https://commons.wikimedia.org/wiki/File:Jeune_fille_en_tenue_traditionnelle_jouant_la_Darbouka.JPG",
+    credit: "Louadfel", license: "CC BY-SA 4.0",
+    caption: "A girl in a gold-embroidered Algerian karakou plays the darbouka at a festival",
+  },
+  "Botswana": {
+    src: "https://commons.wikimedia.org/wiki/Special:FilePath/Folk_dance_troupe_3.jpg?width=500",
+    source: "https://commons.wikimedia.org/wiki/File:Folk_dance_troupe_3.jpg",
+    credit: "Mompati Dikunwane", license: "CC BY-SA 4.0",
+    caption: "Dancers in traditional Setswana dress at Botswana's Domboshaba Cultural Festival",
+  },
+  "Zimbabwe": {
+    src: "https://commons.wikimedia.org/wiki/Special:FilePath/Ibhetshu.jpg?width=500",
+    source: "https://commons.wikimedia.org/wiki/File:Ibhetshu.jpg",
+    credit: "Sibusisiwe Gugu", license: "CC BY-SA 4.0",
+    caption: "A young Zimbabwean woman in traditional beaded regalia called the ibhetshu",
+  },
+  "Madagascar": {
+    src: "https://commons.wikimedia.org/wiki/Special:FilePath/Hira_gasy_musicians_2008.jpg?width=500",
+    source: "https://commons.wikimedia.org/wiki/File:Hira_gasy_musicians_2008.jpg",
+    credit: "Lemurbaby", license: "CC BY-SA 3.0",
+    caption: "Malagasy hira gasy musicians in traditional dress with a lamba sash",
+  },
+  "Sudan": {
+    src: "https://commons.wikimedia.org/wiki/Special:FilePath/Jellabiya_Sudan2008.jpg?width=500",
+    source: "https://commons.wikimedia.org/wiki/File:Jellabiya_Sudan2008.jpg",
+    credit: "Maureen Lunn", license: "CC BY 2.0",
+    caption: "Sudanese men in the jalabiya robe with a taqiyah cap and shawl",
+  },
 };
 
 // The English gloss for a greeting object (or null if none is known).
