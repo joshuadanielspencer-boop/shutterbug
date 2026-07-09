@@ -7,7 +7,7 @@ import { COUNTRY_PEOPLE, greetingMeaning } from "./data/culture.js";
 import { robinson, eqToRobinson, ROBINSON_W, ROBINSON_H } from "./robinson.js";
 import { CATEGORIES, CATEGORY_ORDER, KIND_META, kindOf } from "./data/categories.js";
 import { listProfiles, lastProfileName, getProfile, createProfile, setLastProfile,
-  deleteProfile, recordGame, weightedOrder, freshFirst, passportData, achievements, topScores, storageAvailable } from "./profiles.js";
+  deleteProfile, recordGame, recordExplore, weightedOrder, freshFirst, passportData, achievements, topScores, storageAvailable } from "./profiles.js";
 
 // Base URL the app is served from ("/" at a domain root, "/<repo>/" on a GitHub
 // Pages project site). Prefix runtime asset URLs with it so the relief map plates
@@ -585,6 +585,9 @@ export default function ShutterbugWorld() {
   // (computed at pick-time, so it works for category missions where the country is
   // the player's free choice). Otherwise the pre-built per-step options.
   const cityOptions = gameMode === "tour" ? (tourOptions[pickedContinent] || [])
+    : gameMode === "explore"
+      ? (pickedCountry ? ((COUNTRY_LOCS[pickedContinent] && COUNTRY_LOCS[pickedContinent][pickedCountry]) || [])
+                       : LOCATIONS.filter((l) => l.continent === pickedContinent).map((l) => l.id))
     : (pickedCountry && cityPlan) ? cityPlan.ids
     : (pickedCountry && COUNTRY_LOCS[pickedContinent] && COUNTRY_LOCS[pickedContinent][pickedCountry]) ? COUNTRY_LOCS[pickedContinent][pickedCountry]
     : (optionsByStep[step] || []);
@@ -760,6 +763,47 @@ export default function ShutterbugWorld() {
     setScreen("play");
   }
 
+  // ---- Explore mode: no timer, no score, no losing. Fly anywhere, drill into any
+  // country, click any place to read its full story (fact, culture card, all three
+  // clue tiers). Everywhere you visit is stamped into the passport. ----
+  function startExplore() {
+    setGameMode("explore");
+    setTourReqs([]); setTourOptions({});
+    setAssignments([]); setOptionsByStep([]); setStep(0);
+    setPhase("continent"); setPickedContinent(null); setPickedCountry(null); setCityPlan(null);
+    setCurrent(null); setDays(0); setScore(0); setAlbum([]); setVisitedIds([]);
+    setRevealed(false); setLastResult(null); setNewBadges([]); setPending(null);
+    setResearched({}); setElapsedMs(0);
+    startRef.current = Date.now(); recorded.current = false;
+    setMsg({ type: "info", text: "Explore freely — click any continent to begin. No timer, no score." });
+    setFlying(null);
+    setScreen("play");
+  }
+  // Explore: step back up one level (place → country/continent → world).
+  function exploreBack() {
+    if (flying || pending) return;
+    setCurrent(null); setRevealed(false);
+    if (phase === "city") {
+      setCityPlan(null);
+      if (pickedCountry && COUNTRY_LAYER_CONTINENTS.has(pickedContinent)) {
+        setPickedCountry(null); setPhase("country");
+        setMsg({ type: "info", text: `${pickedContinent} — pick a country to explore.` });
+      } else {
+        setPickedCountry(null); setPickedContinent(null); setPhase("continent");
+        setMsg({ type: "info", text: "Pick a continent to explore." });
+      }
+    } else if (phase === "country") {
+      setPickedContinent(null); setPhase("continent");
+      setMsg({ type: "info", text: "Pick a continent to explore." });
+    }
+  }
+  // Explore: finish and stamp everywhere visited into the passport.
+  function doneExplore() {
+    if (profileName && visitedIds.length) recordExplore(profileName, visitedIds);
+    refreshProfiles();
+    setScreen("start");
+  }
+
   // Dismiss the result popup and do what its button promised.
   function continueFromResult() {
     const kind = pending?.kind;
@@ -830,7 +874,24 @@ export default function ShutterbugWorld() {
 
   // ---- Continent phase: pick a continent on the world map ----
   function pickContinent(cont) {
-    if (phase !== "continent" || flying || pending || days <= 0) return;
+    if (phase !== "continent" || flying || pending || (gameMode !== "explore" && days <= 0)) return;
+    if (gameMode === "explore") {
+      // Free flight; drill into countries where the layer exists, else straight to
+      // the places. No wrong answers.
+      const from = current ? loc(current) : (pickedContinent ? CONTINENT_PIN[pickedContinent] : HUB);
+      const to = CONTINENT_PIN[cont];
+      const useCountry = COUNTRY_LAYER_CONTINENTS.has(cont);
+      sfx("plane");
+      const finalize = () => {
+        setFlying(null); setPickedContinent(cont); setPickedCountry(null); setCityPlan(null);
+        setPhase(useCountry ? "country" : "city"); setCurrent(null); setRevealed(false);
+        setMsg({ type: "info", text: useCountry ? `Welcome to ${cont}! Pick a country to explore.` : `Welcome to ${cont}! Click any place to learn about it.` });
+      };
+      if (prefersReduced) { finalize(); return; }
+      setFlying({ fromX: from.x, fromY: from.y, toX: to.x, toY: to.y });
+      timer.current = setTimeout(finalize, 850);
+      return;
+    }
     if (gameMode === "tour") {
       // Grand Tour: fly anywhere you like — it just costs a flight. No "wrong
       // continent"; going somewhere with no targets is simply a wasted trip.
@@ -890,7 +951,15 @@ export default function ShutterbugWorld() {
 
   // ---- Country phase (Medium/Hard): pick the target's country on the continent ----
   function pickCountry(country) {
-    if (phase !== "country" || flying || pending || days <= 0 || !target) return;
+    if (phase !== "country" || flying || pending) return;
+    if (gameMode === "explore") {
+      setPickedCountry(country);
+      setCityPlan({ ids: ((COUNTRY_LOCS[pickedContinent] && COUNTRY_LOCS[pickedContinent][country]) || []).slice().sort(() => Math.random() - 0.5), wide: false });
+      setPhase("city"); setCurrent(null); setRevealed(false);
+      setMsg({ type: "info", text: `${country} — click any place to learn about it.` });
+      return;
+    }
+    if (days <= 0 || !target) return;
     const a = assignments[step];
     // Category missions: any country on the continent holding a member of the
     // wanted category is correct. Specific missions: the target's own country.
@@ -962,13 +1031,22 @@ export default function ShutterbugWorld() {
 
   // ---- City phase: click a city on the zoomed continent to photograph it ----
   function photographCity(id) {
-    if (phase !== "city" || flying || pending || days <= 0) return;
+    if (phase !== "city" || flying || pending || (gameMode !== "explore" && days <= 0)) return;
     const clicked = loc(id);
     setCurrent(id);
     setVisitedIds((v) => (v.includes(id) ? v : [...v, id]));
     sfx("shutter");
     if (!prefersReduced) setFlashKey((k) => k + 1);
     setRevealed(true);
+
+    if (gameMode === "explore") {
+      // Just reveal the place and file it into the album — no cost, no scoring.
+      // The rich info panel (fact, culture card, clue tiers) renders from `currentLoc`.
+      setAlbum((al) => (al.some((x) => x.id === clicked.id) ? al
+        : [...al, { id: clicked.id, subject: clicked.subject, flag: clicked.flag, city: clicked.city, country: clicked.country, continent: clicked.continent, category: clicked.category, fact: clicked.fact, icon: clicked.icon, photo: clicked.photo, greeting: clicked.greeting }]));
+      return;
+    }
+
     const d = Math.round((days - SHOT_COST) * 10) / 10; // a shot costs half a day
     setDays(d);
 
@@ -1140,23 +1218,27 @@ export default function ShutterbugWorld() {
 
           <div style={{ marginTop: 22 }}>
             <Field label="Mode">
-              <Toggle options={[["assignments", "Assignments"], ["tour", "Grand Tour"]]} value={gameMode} onChange={setGameMode} />
+              <Toggle options={[["assignments", "Assignments"], ["tour", "Grand Tour"], ["explore", "Explore 🧭"]]} value={gameMode} onChange={setGameMode} />
             </Field>
             <p style={{ fontSize: 12, color: INK, opacity: 0.7, margin: "8px auto 0", maxWidth: 430, lineHeight: 1.45 }}>
-              {gameMode === "tour"
+              {gameMode === "explore"
+                ? "Explore: no timer, no score — roam the whole world, drill into any country, and click any place to read its story, culture card, and clues. Everywhere you visit is stamped in your passport."
+                : gameMode === "tour"
                 ? "Grand Tour: a whole itinerary of targets across continents on one shared day budget — plan an efficient route and photograph them in any order."
                 : "Assignments: one editor's clue at a time — fly to the right place and photograph the right subject before your days run out."}
             </p>
           </div>
 
+          {gameMode !== "explore" && (
           <div style={{ marginTop: 22 }}>
             <Field label="Difficulty">
               <Toggle options={MODE_ORDER.map((k) => [k, MODES[k].label])} value={difficulty} onChange={setDifficulty} />
             </Field>
             <p style={{ fontSize: 12, color: INK, opacity: 0.7, margin: "8px auto 0", maxWidth: 430, lineHeight: 1.45 }}>{MODES[difficulty].blurb}</p>
           </div>
+          )}
 
-          <button onClick={gameMode === "tour" ? startTour : startGame} style={primaryBtn}>{gameMode === "tour" ? "Start the Grand Tour ✈" : "Begin the assignment ✈"}</button>
+          <button onClick={gameMode === "explore" ? startExplore : gameMode === "tour" ? startTour : startGame} style={primaryBtn}>{gameMode === "explore" ? "Start exploring 🧭" : gameMode === "tour" ? "Start the Grand Tour ✈" : "Begin the assignment ✈"}</button>
             </div>
 
             <div style={{ flex: "0 1 340px", minWidth: 260, marginTop: 22 }}>
@@ -1411,6 +1493,7 @@ export default function ShutterbugWorld() {
   // play screen
   const mode = MODES[difficulty];
   const isTour = gameMode === "tour";
+  const isExplore = gameMode === "explore";
   // The editor's telegram adapts to the mission type: a specific subject, or
   // "any {category} in {continent}" for a category mission (the player chooses).
   // In Grand Tour there's no single clue — the itinerary panel replaces it.
@@ -1445,25 +1528,50 @@ export default function ShutterbugWorld() {
   // cleanly. Pins are ellipses whose radii scale with the box (rx∝box.w, ry∝box.h),
   // so they stay perfectly ROUND and a steady on-screen size at every zoom level.
   const pinR = (k) => ({ rx: k * box.w, ry: k * box.h });
-  const busy = !!flying || !!pending || days <= 0;
+  const busy = !!flying || !!pending || (!isExplore && days <= 0);
   return (
     <Frame>
       <div style={{ display: "flex", gap: 16, alignItems: "flex-start", flexWrap: "wrap" }}>
         {/* Field journal panel */}
         <div style={{ flex: "1 1 340px", minWidth: 300 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-            <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 12, letterSpacing: "0.18em", color: INK, opacity: 0.7 }}>{isTour ? `GRAND TOUR · ${tourReqs.filter((r) => r.done).length}/${tourReqs.length} filed` : `ASSIGNMENT ${step + 1}/${assignments.length}`}</span>
+            <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 12, letterSpacing: "0.18em", color: INK, opacity: 0.7 }}>{isExplore ? "🧭 EXPLORE" : isTour ? `GRAND TOUR · ${tourReqs.filter((r) => r.done).length}/${tourReqs.length} filed` : `ASSIGNMENT ${step + 1}/${assignments.length}`}</span>
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
               <button onClick={() => setSoundOn((s) => !s)} aria-label={soundOn ? "Turn sound off" : "Turn sound on"} aria-pressed={soundOn} title={soundOn ? "Sound on" : "Sound off"}
                 style={{ background: "none", border: "none", cursor: "pointer", fontSize: 15, lineHeight: 1, padding: 2, color: INK, opacity: 0.75 }}>
                 {soundOn ? "🔊" : "🔇"}
               </button>
-              <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 13, fontWeight: 700, color: INK, opacity: 0.75 }} title="Time on this trip">⏱ {fmtTime(Math.max(0, liveNow - startRef.current))}</span>
-              <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 13, fontWeight: 700, color: days <= 1 ? CORAL : INK }}>◷ {days} day{days === 1 ? "" : "s"} left</span>
+              {isExplore ? (
+                <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 13, fontWeight: 700, color: OCEAN }} title="Places you've discovered">📸 {album.length} discovered</span>
+              ) : (<>
+                <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 13, fontWeight: 700, color: INK, opacity: 0.75 }} title="Time on this trip">⏱ {fmtTime(Math.max(0, liveNow - startRef.current))}</span>
+                <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 13, fontWeight: 700, color: days <= 1 ? CORAL : INK }}>◷ {days} day{days === 1 ? "" : "s"} left</span>
+              </>)}
             </div>
           </div>
 
-          {isTour ? (
+          {isExplore ? (
+            <div style={{ background: PAPER, border: `1px dashed ${OCEAN}`, borderRadius: 6, padding: "12px 14px" }}>
+              <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.18em", color: OCEAN, marginBottom: 6 }}>
+                🧭 {["World", pickedContinent, pickedCountry].filter(Boolean).join(" › ")}
+              </div>
+              <p style={{ margin: 0, color: INK, opacity: 0.8, fontSize: 13, lineHeight: 1.45 }}>
+                {inCity && revealed ? "Read all about this place below — then click another pin, or step back to roam." : inCity ? "Click any pin to learn its story." : inCountry ? "Pick a country to explore." : "Pick a continent to begin."}
+              </p>
+              <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
+                {phase !== "continent" && (
+                  <button onClick={exploreBack} disabled={busy}
+                    style={{ padding: "6px 12px", borderRadius: 8, border: `1.5px solid ${INK}`, background: "transparent", color: INK, fontWeight: 700, fontSize: 12, cursor: busy ? "default" : "pointer", opacity: busy ? 0.5 : 1 }}>
+                    ↑ Back
+                  </button>
+                )}
+                <button onClick={doneExplore}
+                  style={{ padding: "6px 12px", borderRadius: 8, border: `1.5px solid ${CORAL}`, background: "transparent", color: CORAL, fontWeight: 700, fontSize: 12, cursor: "pointer" }}>
+                  ✓ Done exploring
+                </button>
+              </div>
+            </div>
+          ) : isTour ? (
             <Itinerary reqs={tourReqs} here={inCity ? pickedContinent : null} />
           ) : (
           <div style={{ background: PAPER, border: `1px dashed ${CORAL}`, borderRadius: 6, padding: "14px 16px", position: "relative" }}>
@@ -1484,7 +1592,7 @@ export default function ShutterbugWorld() {
 
           {/* Research: buy the answer (assignments only). Free on Easy, ½ day on
               Medium, unavailable on Hard. */}
-          {!isTour && mode.research !== "off" && (researched[step] ? (
+          {!isTour && !isExplore && mode.research !== "off" && (researched[step] ? (
             <div style={{ marginTop: 10, background: "#EAF1F2", border: `1px solid ${OCEAN}`, borderRadius: 6, padding: "10px 12px", fontSize: 13, color: INK, lineHeight: 1.45 }}>
               <b style={{ color: OCEAN }}>🔎 Research notes:</b> {researched[step]}
             </div>
@@ -1526,6 +1634,22 @@ export default function ShutterbugWorld() {
                   {currentLoc.greeting.pronunciation ? ` (${currentLoc.greeting.pronunciation})` : ""}
                   {greetingMeaning(currentLoc.greeting) ? `, “${greetingMeaning(currentLoc.greeting)}”` : ""}
                   <SpeakButton greeting={currentLoc.greeting} />
+                </div>
+              )}
+              {isExplore && (
+                <div style={{ marginTop: 10, textAlign: "left" }}>
+                  <div style={{ textAlign: "center", marginBottom: 8 }}><CategoryBadge category={currentLoc.category} size="sm" /></div>
+                  <div style={{ background: PAPER, border: `1px solid ${PAPER_LINE}`, borderRadius: 6, padding: "9px 11px", fontSize: 13, color: INK, lineHeight: 1.5 }}>
+                    <b style={{ color: CORAL }}>Did you know?</b> {currentLoc.fact}
+                  </div>
+                  <details style={{ marginTop: 8, fontSize: 12, color: INK }}>
+                    <summary style={{ cursor: "pointer", color: OCEAN, fontWeight: 700 }}>How the editor might clue this place</summary>
+                    <div style={{ marginTop: 6, lineHeight: 1.5 }}>
+                      <div><b>Easy:</b> {currentLoc.easy}</div>
+                      <div style={{ marginTop: 4 }}><b>Medium:</b> {currentLoc.medium}</div>
+                      <div style={{ marginTop: 4 }}><b>Hard:</b> {currentLoc.hard}</div>
+                    </div>
+                  </details>
                 </div>
               )}
             </div>

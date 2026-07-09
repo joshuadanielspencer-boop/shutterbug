@@ -140,6 +140,23 @@ export function recordGame(name, { difficulty, score, timeMs = 0, won = false, r
   return { isBest, best: p.best[difficulty], isBestTime, bestTime: p.bestTime[difficulty] || 0 };
 }
 
+// Explore mode: stamp every place the player visited into the passport (counts
+// as "visited", not "photographed/mastered") without recording a scored game.
+export function recordExplore(name, visitedIds = []) {
+  const s = read();
+  const p = s.profiles[name];
+  if (!p || !visitedIds.length) return;
+  p.loc = p.loc || {};
+  const now = Date.now();
+  for (const id of visitedIds) {
+    const e = p.loc[id] || (p.loc[id] = { v: 0, c: 0, m: 0 });
+    e.v += 1; e.t = now;
+  }
+  p.lastPlayed = now;
+  s.lastProfile = name;
+  write(s);
+}
+
 // How strongly to resurface a location for this profile (higher = more often).
 export function weightFor(profile, id) {
   const e = profile && profile.loc && profile.loc[id];
