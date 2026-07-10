@@ -387,16 +387,17 @@ export const COUNTRY_PEOPLE = {
     caption: "Women in colourful ruffled flamenco dresses at Seville's April Fair",
   },
   "Portugal": {
-    src: "https://commons.wikimedia.org/wiki/Special:FilePath/Romaria%20da%20Senhora%20d'Agonia%20-%20Viana%20do%20Castelo.jpg?width=800",
-    source: "https://commons.wikimedia.org/wiki/File:Romaria%20da%20Senhora%20d'Agonia%20-%20Viana%20do%20Castelo.jpg",
-    credit: "Rosino", license: "CC BY-SA 2.0",
-    caption: "Women in the red-and-gold lavradeira dress of Viana do Castelo at a festival in northern Portugal",
+    src: "https://commons.wikimedia.org/wiki/Special:FilePath/Pa%C3%A7os%20do%20Concelho%20de%20Angra%20do%20Hero%C3%ADsmo%20-%20Folclore.jpg?width=800",
+    source: "https://commons.wikimedia.org/wiki/File:Paços_do_Concelho_de_Angra_do_Heroísmo_-_Folclore.jpg",
+    credit: "Concierge.2C", license: "CC BY-SA 3.0",
+    caption: "Folk dancers in traditional dress on the Praça Velha at the Azores folklore festival, Angra do Heroísmo, Portugal",
   },
   "Netherlands": {
     src: "https://commons.wikimedia.org/wiki/Special:FilePath/Marken%20Klederdracht%20IMG0022.jpg?width=800",
     source: "https://commons.wikimedia.org/wiki/File:Marken%20Klederdracht%20IMG0022.jpg",
     credit: "Hnapel", license: "CC BY-SA 4.0",
     caption: "A man and woman from Marken in traditional Easter klederdracht, with a white lace cap",
+    portrait: true, // no free landscape photo of this dress exists — show it whole
   },
   "Belgium": {
     src: "https://commons.wikimedia.org/wiki/Special:FilePath/0%20Binche%20-%20Les%20Gilles%20le%20jour%20du%20mardi%20gras%20(1).JPG?width=800",
@@ -417,10 +418,10 @@ export const COUNTRY_PEOPLE = {
     caption: "A Carinthian folk-dance group in traditional dirndls and Tracht in Klagenfurt",
   },
   "Czechia": {
-    src: "https://commons.wikimedia.org/wiki/Special:FilePath/Moravian%20Slovak%20Costumes%20during%20Jizda%20Kralu.jpg?width=800",
-    source: "https://commons.wikimedia.org/wiki/File:Moravian%20Slovak%20Costumes%20during%20Jizda%20Kralu.jpg",
-    credit: "Jialiang Gao", license: "CC BY-SA 3.0",
-    caption: "Children in bright Moravian folk costumes (kroj) at the Ride of the Kings festival in Vlčnov",
+    src: "https://commons.wikimedia.org/wiki/Special:FilePath/Hor%C3%A1cko%20national%20costumes%20of%20Baudy%C5%A1%20group%20in%20T%C5%99eb%C3%AD%C4%8D%2C%20T%C5%99eb%C3%AD%C4%8D%20District.jpg?width=800",
+    source: "https://commons.wikimedia.org/wiki/File:Hor%C3%A1cko_national_costumes_of_Baudy%C5%A1_group_in_T%C5%99eb%C3%AD%C4%8D%2C_T%C5%99eb%C3%AD%C4%8D_District.jpg",
+    credit: "Frettie", license: "CC BY-SA 3.0",
+    caption: "Dancers of the Baudyš group in Horácko folk costume (kroj) at Třebíč, Czechia",
   },
   "Croatia": {
     src: "https://commons.wikimedia.org/wiki/Special:FilePath/PosavinaGirls.jpg?width=800",
@@ -447,6 +448,7 @@ export const COUNTRY_PEOPLE = {
     source: "https://commons.wikimedia.org/wiki/File:Ixil%20young%20woman%20with%20ceremonial%20dress.jpg",
     credit: "Sigrid Marisol Aguilar Jocol", license: "CC BY-SA 4.0",
     caption: "A young Ixil Maya woman in her people's colourful ceremonial dress, in Guatemala's highlands",
+    portrait: true, // no free landscape photo of this dress exists — show it whole
   },
   "Panama": {
     src: "https://commons.wikimedia.org/wiki/Special:FilePath/Empollerada%20de%20Panam%C3%A1.jpg?width=800",
@@ -471,6 +473,7 @@ export const COUNTRY_PEOPLE = {
     source: "https://commons.wikimedia.org/wiki/File:Dancer%20on%20Pow-Wow%202016%20in%20Wendake%2C%20Quebec%2C%20Canada.jpg",
     credit: "Marc Lautenbacher", license: "CC BY-SA 4.0",
     caption: "A First Nations dancer in traditional regalia at the powwow in Wendake, Quebec",
+    portrait: true, // no free landscape photo of this dress exists — show it whole
   },
   "United States": {
     src: "https://commons.wikimedia.org/wiki/Special:FilePath/Assiniboine%20Sioux%20Jingle%20Dress%20Girls.jpg?width=800",
@@ -489,12 +492,14 @@ export const COUNTRY_PEOPLE = {
     source: "https://commons.wikimedia.org/wiki/File:Aymara%20Women%2C%20El%20Alto%2C%20Bolivia%20(2173402729).jpg",
     credit: "Pedro Szekely", license: "CC BY 2.0",
     caption: "Aymara women in El Alto in the traditional pollera skirt and bowler hat",
+    portrait: true, // no free landscape photo of this dress exists — show it whole
   },
   "Brazil": {
     src: "https://commons.wikimedia.org/wiki/Special:FilePath/Baiana%20em%20desfile%20de%202%20de%20Julho%20em%20S%C3%A3o%20F%C3%A9lix.jpg?width=800",
     source: "https://commons.wikimedia.org/wiki/File:Baiana%20em%20desfile%20de%202%20de%20Julho%20em%20S%C3%A3o%20F%C3%A9lix.jpg",
     credit: "ExpressaoSAMPA", license: "CC BY-SA 4.0",
     caption: "A woman in the Baiana dress of Bahia — white lace blouse, headwrap and full floral skirt",
+    portrait: true, // no free landscape photo of this dress exists — show it whole
   },
   "Chile": {
     src: "https://commons.wikimedia.org/wiki/Special:FilePath/Traditional%20dress%20of%20the%20Chilean%20cueca%2C%20a%20national%20dance.jpg?width=800",
@@ -509,10 +514,10 @@ export const COUNTRY_PEOPLE = {
     caption: "Women dance the cumbia in flowing pollera skirts at a folk festival in San Pelayo",
   },
   "Ecuador": {
-    src: "https://commons.wikimedia.org/wiki/Special:FilePath/Traditional%20dress%20in%20otavalo%20market%20with%20customer.jpg?width=800",
-    source: "https://commons.wikimedia.org/wiki/File:Traditional%20dress%20in%20otavalo%20market%20with%20customer.jpg",
-    credit: "DickClarkMises", license: "CC0",
-    caption: "An Otavalo woman in a white embroidered blouse at Ecuador's famous Otavalo market",
+    src: "https://commons.wikimedia.org/wiki/Special:FilePath/Otavalo%20%2867829745%29.jpeg?width=800",
+    source: "https://commons.wikimedia.org/wiki/File:Otavalo_(67829745).jpeg",
+    credit: "Miguel Murillo", license: "CC BY 3.0",
+    caption: "A Kichwa Otavalo woman in a traditional shawl and coral beads, Ecuador",
   },
   "Venezuela": {
     src: "https://commons.wikimedia.org/wiki/Special:FilePath/Pareja%20bailando%20joropo%20llanero%20(Puro).jpg?width=800",
@@ -531,6 +536,7 @@ export const COUNTRY_PEOPLE = {
     source: "https://commons.wikimedia.org/wiki/File:Boigu%20dance.jpg",
     credit: "u-turn77", license: "CC BY 2.0",
     caption: "A Torres Strait Islander dancer in a feathered dhari headdress and woven grass cape",
+    portrait: true, // no free landscape photo of this dress exists — show it whole
   },
   "French Polynesia": {
     src: "https://commons.wikimedia.org/wiki/Special:FilePath/Danse%20Heiva%202014-3424.jpg?width=800",

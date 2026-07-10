@@ -3110,13 +3110,22 @@ function PeoplePhoto({ people }) {
   if (!people) return null;
   return (
     <figure style={{ margin: "10px 0 0", textAlign: "left" }}>
-      {/* NOT loading="lazy": the image sits inside this overflow:hidden frame, and a
+      {/* Fixed landscape frame, so a culture card can never push the page into a
+          scroll. Landscape sources fill it (cropped a little, biased upward to keep
+          faces). The handful of countries whose only acceptable freely-licensed
+          photo is portrait carry `portrait: true` and are shown WHOLE inside the
+          frame — cropping a full-body shot to 16:9 would cut away the very dress
+          the card exists to teach.
+
+          NOT loading="lazy": the image sits inside this overflow:hidden frame, and a
           lazy image clipped by its container never intersects the viewport, so it
           never loads — the card showed an empty grey box. It's one image, and the
           player has already flown here, so eager is right anyway. */}
       <div style={{ width: "100%", aspectRatio: "16 / 9", borderRadius: 4, overflow: "hidden", background: "#DCE9EC" }}>
         <img src={people.src} alt={people.caption} decoding="async"
-          style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "50% 30%", display: "block" }} />
+          style={{ width: "100%", height: "100%", display: "block",
+            objectFit: people.portrait ? "contain" : "cover",
+            objectPosition: people.portrait ? "50% 50%" : "50% 30%" }} />
       </div>
       <figcaption style={{ fontSize: 11, color: INK, opacity: 0.7, marginTop: 4, lineHeight: 1.4 }}>
         {people.caption} · {people.credit} ({people.license})
