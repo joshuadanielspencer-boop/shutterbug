@@ -693,6 +693,90 @@ const SFX = (() => {
   };
 })();
 
+// ---- Generative background music (Web Audio) -------------------------------
+// A quiet, kalimba-like pattern in C-major pentatonic over a slow bass root,
+// composed live by a look-ahead scheduler — so it never audibly loops, ships
+// no audio files, and works offline. It has its own context and mute toggle,
+// separate from the sound effects. start() must be called from a user gesture
+// (a click handler) to satisfy autoplay rules, especially on iPad Safari.
+const MUSIC = (() => {
+  let ctx = null, master = null, timer = null, nextBeat = 0, running = false;
+  const ac = () => {
+    try {
+      if (typeof window === "undefined") return null;
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return null;
+      if (!ctx) {
+        ctx = new AC();
+        master = ctx.createGain();
+        master.gain.value = 0.0001;
+        const soften = ctx.createBiquadFilter();
+        soften.type = "lowpass"; soften.frequency.value = 2400; // rounds off the pluck edges
+        master.connect(soften); soften.connect(ctx.destination);
+      }
+      if (ctx.state === "suspended") ctx.resume();
+      return ctx;
+    } catch { return null; }
+  };
+  const PENT = [261.63, 293.66, 329.63, 392.0, 440.0, 523.25]; // C D E G A C'
+  const pluck = (t, f, peak) => {
+    const o = ctx.createOscillator(); o.type = "sine"; o.frequency.value = f;
+    const o2 = ctx.createOscillator(); o2.type = "sine"; o2.frequency.value = f * 2; // soft octave partial
+    const g = ctx.createGain(); const g2 = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(peak, t + 0.012);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 1.1);
+    g2.gain.setValueAtTime(0.0001, t); g2.gain.exponentialRampToValueAtTime(peak * 0.25, t + 0.012);
+    g2.gain.exponentialRampToValueAtTime(0.0001, t + 0.5);
+    o.connect(g); g.connect(master); o2.connect(g2); g2.connect(master);
+    o.start(t); o.stop(t + 1.2); o2.start(t); o2.stop(t + 0.6);
+  };
+  const bass = (t, f) => {
+    const o = ctx.createOscillator(); o.type = "sine"; o.frequency.value = f;
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.09, t + 0.05);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 2.6);
+    o.connect(g); g.connect(master); o.start(t); o.stop(t + 2.8);
+  };
+  let lastIdx = -1;
+  const schedule = () => {
+    try {
+      if (!running || !ctx) return;
+      const spb = 60 / 76 / 2;                 // eighth notes at 76 bpm
+      const ahead = ctx.currentTime + 0.7;
+      while (nextBeat < ahead) {
+        const beat = Math.round(nextBeat / spb);
+        if (beat % 16 === 0) bass(nextBeat, [130.81, 98.0, 110.0][Math.floor(Math.random() * 3)]);
+        // Sparse melody: rests are what keep it calm. Never repeat a note.
+        if (Math.random() < 0.5) {
+          let i; do { i = Math.floor(Math.random() * PENT.length); } while (i === lastIdx);
+          lastIdx = i;
+          pluck(nextBeat, PENT[i], 0.07 + Math.random() * 0.05);
+        }
+        nextBeat += spb;
+      }
+    } catch { /* music must never break gameplay */ }
+  };
+  return {
+    start() {
+      try {
+        const c = ac(); if (!c || running) return;
+        running = true;
+        master.gain.setTargetAtTime(0.16, c.currentTime, 0.4); // fade in
+        nextBeat = Math.max(nextBeat, c.currentTime + 0.15);
+        if (!timer) timer = setInterval(schedule, 250);
+        schedule();
+      } catch { /* ignore */ }
+    },
+    stop() {
+      try {
+        running = false;
+        if (timer) { clearInterval(timer); timer = null; }
+        if (ctx && master) master.gain.setTargetAtTime(0.0001, ctx.currentTime, 0.25); // fade out
+      } catch { /* ignore */ }
+    },
+  };
+})();
+
 // ---- Spoken greetings (Web Speech API) — the browser says the greeting aloud in ----
 // ---- the local language. No files, no network, no licensing. Maps each greeting  ----
 // ---- language to a BCP-47 code so the browser picks a matching voice; languages  ----
@@ -754,6 +838,10 @@ export default function ShutterbugWorld() {
   const [revealed, setRevealed] = useState(false); // has the current city's photo been shot?
   const [flashKey, setFlashKey] = useState(0); // bump to replay the shutter flash
   const [soundOn, setSoundOn] = useState(true);
+  const [musicOn, setMusicOn] = useState(() => { try { return localStorage.getItem("shutterbug.music") !== "off"; } catch { return true; } });
+  useEffect(() => { try { localStorage.setItem("shutterbug.music", musicOn ? "on" : "off"); } catch { /* ignore */ } }, [musicOn]);
+  // Leaving for the start/passport screens ends the ambient loop.
+  useEffect(() => { if (screen === "start" || screen === "passport") MUSIC.stop(); }, [screen]);
   const [pending, setPending] = useState(null); // result popup that pauses play until dismissed
   const [elapsedMs, setElapsedMs] = useState(0); // final game time, shown on the results screen
   const [liveNow, setLiveNow] = useState(0); // ticks while playing so the on-screen timer updates
@@ -819,6 +907,7 @@ export default function ShutterbugWorld() {
     : (optionsByStep[step] || []);
 
   function startGame() {
+    if (musicOn) MUSIC.start();
     const mode = modePlan(difficulty);
     const profile = profileName ? getProfile(profileName) : null;
     // Weighted order surfaces the active player's missed/unmastered places more
@@ -860,6 +949,7 @@ export default function ShutterbugWorld() {
   // ---- Grand Tour: build an itinerary of targets across continents on one shared ----
   // ---- day budget, fulfilled in any order. ----
   function startTour() {
+    if (musicOn) MUSIC.start();
     const tm = TOUR_MODES[difficulty];
     const profile = profileName ? getProfile(profileName) : null;
     const order = weightedOrder(profile).map((id) => BY_ID[id]);
@@ -933,6 +1023,7 @@ export default function ShutterbugWorld() {
   // country, click any place to read its full story (fact, culture card, all three
   // clue tiers). Everywhere you visit is stamped into the passport. ----
   function startExplore() {
+    if (musicOn) MUSIC.start();
     setGameMode("explore"); setExpedition(null);
     setTourReqs([]); setTourOptions({});
     setAssignments([]); setOptionsByStep([]); setStep(0);
@@ -973,6 +1064,7 @@ export default function ShutterbugWorld() {
   // ---- Daily Challenge: identical seeded assignments for everyone, each day. ----
   // Always played at Medium so every score is comparable.
   function startDaily() {
+    if (musicOn) MUSIC.start();
     const key = dailyKey();
     const mode = MODES.medium;
     const { assignmentObjs, options } = withSeededRandom(hashStr(key), () => {
@@ -998,6 +1090,7 @@ export default function ShutterbugWorld() {
   // ---- Streak / Survival: endless assignments, no day budget. ONE wrong ----
   // ---- photograph ends the run. Score climbs faster the longer you survive. ----
   function startStreak() {
+    if (musicOn) MUSIC.start();
     const mode = modePlan(difficulty);
     const profile = profileName ? getProfile(profileName) : null;
     const order = weightedOrder(profile).map((id) => BY_ID[id]);
@@ -1062,6 +1155,7 @@ export default function ShutterbugWorld() {
 
   // ---- Quiz mode: 10 multiple-choice geography questions built from the data. ----
   function startQuiz() {
+    if (musicOn) MUSIC.start();
     const profile = profileName ? getProfile(profileName) : null;
     const questions = buildQuiz(freshFirst(profile), 10); // freshest places first, for variety
     setQuiz({ questions, i: 0, answeredIdx: null, score: 0, correctCount: 0, streak: 0, lastGain: 0, done: false, best: null });
@@ -2087,6 +2181,11 @@ export default function ShutterbugWorld() {
               <button onClick={() => setSoundOn((s) => !s)} aria-label={soundOn ? "Turn sound off" : "Turn sound on"} aria-pressed={soundOn} title={soundOn ? "Sound on" : "Sound off"}
                 style={{ background: "none", border: "none", cursor: "pointer", fontSize: 15, lineHeight: 1, padding: 2, color: INK, opacity: 0.75 }}>
                 {soundOn ? "🔊" : "🔇"}
+              </button>
+              <button onClick={() => setMusicOn((m) => { const v = !m; if (v) MUSIC.start(); else MUSIC.stop(); return v; })}
+                aria-label={musicOn ? "Turn music off" : "Turn music on"} aria-pressed={musicOn} title={musicOn ? "Music on" : "Music off"}
+                style={{ background: "none", border: "none", cursor: "pointer", fontSize: 15, lineHeight: 1, padding: 2, color: INK, opacity: musicOn ? 0.75 : 0.45 }}>
+                {musicOn ? "🎵" : <span style={{ textDecoration: "line-through" }}>🎵</span>}
               </button>
               {isExplore ? (
                 <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 13, fontWeight: 700, color: OCEAN }} title="Places you've discovered">📸 {album.length} discovered</span>
