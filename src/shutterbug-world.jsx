@@ -8,7 +8,7 @@ import { categoryCountries, categoryMissionOK as missionOK } from "./missions.js
 import { robinson, eqToRobinson, ROBINSON_W, ROBINSON_H } from "./robinson.js";
 import { CATEGORIES, CATEGORY_ORDER, KIND_META, kindOf } from "./data/categories.js";
 import { listProfiles, lastProfileName, getProfile, createProfile, setLastProfile,
-  deleteProfile, setAvatar, recordGame, recordExplore, recordQuiz, recordStreak, recordDaily, dailyTop, dailyPlayed,
+  deleteProfile, setAvatar, recordGame, recordExplore, recordQuiz,
   weightedOrder, freshFirst, passportData, achievements, topScores, storageAvailable } from "./profiles.js";
 
 // Base URL the app is served from ("/" at a domain root, "/<repo>/" on a GitHub
@@ -75,6 +75,9 @@ function Landmark({ icon, size = 96 }) {
 
 // ---- The photo shown for a subject: a real `photo` (object with a `src`) if ----
 // ---- the data has one, otherwise the hand-drawn `icon` placeholder.        ----
+// Ask Commons for a specific render width (adds or replaces ?width=…).
+const withWidth = (src, w) => src ? (src.includes("?width=") ? src.replace(/\?width=\d+/, `?width=${w}`) : src + `?width=${w}`) : src;
+
 function Photo({ photo, icon, alt = "", size = 96, full = false }) {
   if (photo?.src) {
     return (
@@ -253,6 +256,15 @@ const CONTINENT_META = (() => {
     const xs = locs.map((l) => (wrap && l.x < 180 ? l.x + 360 : l.x)), ys = locs.map((l) => l.y);
     const minX = Math.min(...xs), maxX = Math.max(...xs), minY = Math.min(...ys), maxY = Math.max(...ys);
     const cx = (minX + maxX) / 2, cy = (minY + maxY) / 2;
+    if (c === "Asia") {
+      // Asia's landmarks span ~115° of longitude but ~70° of latitude; the forced
+      // square showed the Arctic, half of Africa and all of Australia just to fit.
+      // Hug the content instead (same rectangular treatment as Oceania below).
+      const w = Math.max(40, (maxX - minX) * 1.08);
+      const h = Math.max(40, (maxY - minY) * 1.14);
+      meta[c] = { mode: "equirect", box: { x: cx - w / 2, y: cy - h / 2, w, h }, cx, cy };
+      continue;
+    }
     if (wrap) {
       // Oceania sprawls ~120° of longitude (Australia to Rapa Nui) but only ~64° of
       // latitude. Forcing it into a SQUARE — as every other continent is — made the
@@ -333,6 +345,14 @@ const countriesOf = (l) => (l.countries && l.countries.length ? l.countries : [l
 // Does this assignment use the country layer? Medium/Hard on a layer-continent —
 // both specific missions (pick the target's country) and category missions (pick
 // any country on the continent that has a member of the wanted category).
+// 8-way compass direction from one map point to another (for gentle hints).
+const compass = (from, to) => {
+  let dx = to.x - from.x; if (dx > 180) dx -= 360; if (dx < -180) dx += 360;
+  const ang = Math.atan2(-(to.y - from.y), dx) * 180 / Math.PI; // 0=east, 90=north
+  const dirs = ["east", "north-east", "north", "north-west", "west", "south-west", "south", "south-east"];
+  return dirs[Math.round(((ang + 360) % 360) / 45) % 8];
+};
+
 const usesCountryLayer = (mode, continent) =>
   mode.clue !== "easy" && COUNTRY_LAYER_CONTINENTS.has(continent);
 // For a category mission: does this country (on this continent) hold a member of
@@ -413,7 +433,7 @@ const categoryMissionOK = (category, continent, mode = null) =>
 
 // Turn a list of anchor locations into mission objects + per-step city options.
 // Each anchor becomes either a category mission ("any X on this continent") or a
-// specific one. Shared by Assignments and Streak. `order` is the weighted
+// specific one. `order` is the weighted
 // resurfacing order, used to pick plausible same-continent decoys.
 function makeAssignmentPlan(mode, anchors, order) {
   const want = mode.cityDecoys + 1;
@@ -459,24 +479,8 @@ function makeAssignmentPlan(mode, anchors, order) {
   return { assignmentObjs, options };
 }
 
-// ---- Daily Challenge: the SAME assignments for every player, every day. ----
-// The date string seeds a small PRNG; we temporarily swap Math.random for it while
-// generating, so the whole (otherwise random) mission builder becomes deterministic.
-// Everyone therefore gets an identical challenge, and scores are comparable.
-const dailyKey = (d = new Date()) =>
-  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+// FNV-1a string hash — used to derive a traveller's stable default avatar.
 const hashStr = (str) => { let h = 2166136261 >>> 0; for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; };
-function withSeededRandom(seed, fn) {
-  const orig = Math.random;
-  let s = seed >>> 0;
-  Math.random = () => { // mulberry32
-    s = (s + 0x6D2B79F5) | 0;
-    let t = Math.imul(s ^ (s >>> 15), 1 | s);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-  try { return fn(); } finally { Math.random = orig; }
-}
 
 // Pick n DISTINCT anchor locations, at least 40% of them genuinely NEW to this
 // player. Choosing anchors up front guarantees no place is used twice in one run.
@@ -760,16 +764,6 @@ const SFX = (() => {
       tone(c, t + 0.1, 1568, 0.12, 0.2, "triangle");
       tone(c, t + 0.17, 2093, 0.16, 0.18, "triangle");
     }); },
-    // Streak chime: climbs a pentatonic ladder as the run grows, so every catch
-    // sounds a little more triumphant than the last (caps after two octaves).
-    streak(n = 1) { safe((c) => { const t = c.currentTime;
-      const PENT = [523.25, 587.33, 659.25, 783.99, 880];
-      const i = Math.min(Math.max(n, 1) - 1, 9);
-      const f = PENT[i % 5] * (i >= 5 ? 2 : 1);
-      tone(c, t, f, 0.1, 0.28, "triangle");
-      tone(c, t + 0.09, f * 1.5, 0.14, 0.24, "triangle");
-      tone(c, t + 0.2, f * 2, 0.26, 0.16, "sine");
-    }); },
     // New badge: a bright bugle-style flourish, distinct from the stamp.
     badge() { safe((c) => { const t = c.currentTime;
       notes(c, [587.33, 587.33, 880], 0.09, 0.16, 0.26, "triangle");
@@ -790,8 +784,6 @@ const MODE_CARDS = [
     blurb: "No timer, no score — roam the world, drill into any country, and read every place's story, culture card, and clues. Everywhere you visit is stamped in your passport." },
   { id: "quiz", name: "Quiz", emoji: "🧠", photoId: "xian",
     blurb: "Ten fast multiple-choice questions — name the landmark from its photo, place it on the map, or know the capital. Build a streak for bonus points." },
-  { id: "streak", name: "Streak", emoji: "🔥", photoId: "kilauea",
-    blurb: "Endless assignments, no day budget — but one wrong photograph ends the run. Every correct shot is worth more than the last." },
 ];
 // The Grand Tour's itinerary choices: a classic random tour, or one of the themed
 // expeditions (each a curated tour with a lesson). Shown as chips under the cards
@@ -913,30 +905,6 @@ function speakGreeting(g) {
     window.speechSynthesis.speak(u);
   } catch { /* speech is a nice-to-have; never break gameplay */ }
 }
-// Read any English game text aloud (the editor's clue, a fact) — for travellers
-// who can't read yet, or are still learning. A touch slower than default.
-function speakText(text) {
-  try {
-    if (!speechAvailable || !text) return;
-    const u = new SpeechSynthesisUtterance(String(text));
-    u.lang = "en-US";
-    u.rate = 0.92;
-    window.speechSynthesis.cancel();
-    window.speechSynthesis.speak(u);
-  } catch { /* speech is a nice-to-have; never break gameplay */ }
-}
-// "Read it to me" — a labelled pill, bigger than the greeting's inline 🔊 so a
-// pre-reader can find it (the label is for the grown-up showing them once).
-function ReadAloud({ text, label = "Read it to me" }) {
-  if (!speechAvailable || !text) return null;
-  return (
-    <button onClick={(e) => { e.stopPropagation(); speakText(text); }} aria-label={label} title={label}
-      style={{ background: "none", border: `1px solid ${OCEAN}`, borderRadius: 12, cursor: "pointer",
-        fontSize: 11, fontWeight: 700, color: OCEAN, padding: "2px 9px", lineHeight: 1.4 }}>
-      🔊 {label}
-    </button>
-  );
-}
 // A mystery-country silhouette for the shape quiz. The outline paths are complex,
 // so the viewBox is fitted at mount from the browser's own getBBox measurement.
 function ShapeView({ d }) {
@@ -1022,7 +990,6 @@ export default function ShutterbugWorld() {
   const [cityPlan, setCityPlan] = useState(null); // country-layer city step: { ids, wide } (wide = continent view for thin countries)
   const [quiz, setQuiz] = useState(null); // Quiz mode: { questions, i, answeredIdx, score, correctCount, streak, done, best }
   const [expedition, setExpedition] = useState(null); // active themed expedition {id,title,emoji,lesson} (a curated Grand Tour)
-  const [streak, setStreak] = useState(0); // Streak mode: consecutive correct photographs this run
   const recorded = useRef(false);
   const startRef = useRef(0); // ms timestamp the current game began
   const timer = useRef(null);
@@ -1231,52 +1198,6 @@ export default function ShutterbugWorld() {
     setScreen("start");
   }
 
-  // ---- Daily Challenge: identical seeded assignments for everyone, each day. ----
-  // Always played at Medium so every score is comparable.
-  function startDaily() {
-    if (musicOn) MUSIC.start();
-    const key = dailyKey();
-    const mode = MODES.medium;
-    const { assignmentObjs, options } = withSeededRandom(hashStr(key), () => {
-      const order = LOCATIONS.slice().sort(() => Math.random() - 0.5); // seeded, so identical for all
-      const anchors = order.slice(0, mode.assignments);
-      return makeAssignmentPlan(mode, anchors, order);
-    });
-    setDifficulty("medium");                 // keeps every mode-dependent bit consistent
-    setGameMode("daily"); setExpedition(null);
-    setAssignments(assignmentObjs); setOptionsByStep(options); setStep(0);
-    setPhase("continent"); setPickedContinent(null); setPickedCountry(null); setCityPlan(null); setCurrent(null);
-    let cleanCost = 0, fromXY = HUB;
-    for (const a of assignmentObjs) { const to = CONTINENT_PIN[a.continent]; cleanCost += flightDays(fromXY, to) + SHOT_COST; fromXY = to; }
-    setDays(Math.round((cleanCost + mode.slack) * 10) / 10);
-    setScore(0); setStreak(0); setAlbum([]); setVisitedIds([]);
-    setRevealed(false); setLastResult(null); setNewBadges([]); setPending(null);
-    setElapsedMs(0); setResearched({});
-    startRef.current = Date.now(); recorded.current = false;
-    setMsg({ type: "info", text: `📅 Daily Challenge for ${key} — the same five assignments for every traveller today. Good luck!` });
-    setFlying(null); setScreen("play");
-  }
-
-  // ---- Streak / Survival: endless assignments, no day budget. ONE wrong ----
-  // ---- photograph ends the run. Score climbs faster the longer you survive. ----
-  function startStreak() {
-    if (musicOn) MUSIC.start();
-    const mode = modePlan(difficulty);
-    const profile = profileName ? getProfile(profileName) : null;
-    const order = weightedOrder(profile).map((id) => BY_ID[id]);
-    const anchors = pickAnchors(profile, order, Math.min(60, LOCATIONS.length)); // a long supply
-    const { assignmentObjs, options } = makeAssignmentPlan(mode, anchors, order);
-    setAssignments(assignmentObjs); setOptionsByStep(options); setStep(0);
-    setGameMode("streak"); setExpedition(null);
-    setPhase("continent"); setPickedContinent(null); setPickedCountry(null); setCityPlan(null); setCurrent(null);
-    setDays(999);                              // no day economy in Streak; the counter is hidden
-    setScore(0); setStreak(0); setAlbum([]); setVisitedIds([]);
-    setRevealed(false); setLastResult(null); setNewBadges([]); setPending(null);
-    setElapsedMs(0); setResearched({});
-    startRef.current = Date.now(); recorded.current = false;
-    setMsg({ type: "info", text: "Survival! One wrong photograph ends the run. Wrong continent or country just costs you a nudge — how long can your streak go?" });
-    setFlying(null); setScreen("play");
-  }
 
   // ---- Themed Expedition: a curated Grand Tour around one theme, with a lesson. ----
   function startExpedition(exp) {
@@ -1356,7 +1277,6 @@ export default function ShutterbugWorld() {
 
   // Dismiss the result popup and do what its button promised.
   function continueFromResult() {
-    try { if (speechAvailable) window.speechSynthesis.cancel(); } catch { /* ignore */ }
     const kind = pending?.kind;
     setPending(null);
     if (kind === "correct") {
@@ -1366,14 +1286,6 @@ export default function ShutterbugWorld() {
       setPickedContinent(null);    // current stays = the city just shot, so the next flight departs from there
       setPickedCountry(null);
       setMsg({ type: "info", text: "New assignment! Read the clue and pick the continent." });
-    } else if (kind === "streak-correct") {
-      // Survived — on to the next one. Running out of assignments means a perfect run.
-      if (step + 1 >= assignments.length) { setElapsedMs(Date.now() - startRef.current); setScreen("end"); return; }
-      setStep((n) => n + 1);
-      setRevealed(false); setPhase("continent"); setPickedContinent(null); setPickedCountry(null); setCityPlan(null);
-      setMsg({ type: "info", text: `🔥 Streak ${streak}. New assignment — read the clue and pick the continent.` });
-    } else if (kind === "streak-lose") {
-      setScreen("end");
     } else if (kind === "win" || kind === "lose" || kind === "tour-win" || kind === "tour-lose") {
       setScreen("end");
     } else if (kind === "wrong" && phase === "city") {
@@ -1395,16 +1307,6 @@ export default function ShutterbugWorld() {
         const correctIds = album.map((p) => p.id);
         const missedIds = [];
         let won;
-        if (gameMode === "streak") {
-          // Survival: no per-difficulty best score; we track the longest streak.
-          const res = recordStreak(profileName, { streak, score, timeMs: elapsedMs, visitedIds, correctIds });
-          setLastResult({ isBest: res.isBest, bestStreak: res.best });
-          const earned = achievements(getProfile(profileName)).filter((a) => a.earned && !beforeEarned.has(a.id));
-          setNewBadges(earned);
-          if (earned.length) sfx("badge"); else if (res.isBest) sfx("stamp");
-          refreshProfiles();
-          return;
-        }
         if (gameMode === "tour") {
           // Grand Tour: a requirement is met when its checkbox got ticked.
           for (const r of tourReqs) if (!r.done) missedIds.push(r.anchorId);
@@ -1424,16 +1326,6 @@ export default function ShutterbugWorld() {
         // with the best score for the leaderboard.
         const maxScore = gameMode === "tour" ? tourMaxScore(tourReqs.length, difficulty) : maxScoreFor(assignments.length, MODES[difficulty]);
         const runRank = rankFor(maxScore > 0 ? Math.min(1, score / maxScore) : 0).title;
-        if (gameMode === "daily") {
-          // The Daily keeps its own per-date board, separate from the free-play bests.
-          const res = recordDaily(profileName, dailyKey(), { score, rank: runRank, timeMs: elapsedMs, won, visitedIds, correctIds });
-          setLastResult({ isBest: res.isBest, dailyBest: res.best, dailyFirst: res.first });
-          const earned = achievements(getProfile(profileName)).filter((a) => a.earned && !beforeEarned.has(a.id));
-          setNewBadges(earned);
-          if (earned.length) sfx("badge"); else if (res.isBest) sfx("stamp");
-          refreshProfiles();
-          return;
-        }
         const res = recordGame(profileName, { difficulty, score, timeMs: elapsedMs, won, rank: runRank, mode: gameMode, visitedIds, correctIds, missedIds });
         setLastResult(res);
         const earnedNow = achievements(getProfile(profileName)).filter((a) => a.earned && !beforeEarned.has(a.id));
@@ -1497,8 +1389,7 @@ export default function ShutterbugWorld() {
     if (!target) return;
     const from = current ? loc(current) : HUB; // first flight departs from the home hub
     const to = CONTINENT_PIN[cont];
-    const freeDays = gameMode === "streak";    // Streak has no day economy
-    const cost = freeDays ? 0 : flightDays(from, to); // distance-based: farther continents cost more
+    const cost = flightDays(from, to); // distance-based: farther continents cost more
     const costTxt = `−${cost} day${cost === 1 ? "" : "s"}`;
     if (cont === target.continent) {
       const useCountry = usesCountryLayer(MODES[difficulty], cont);
@@ -1512,8 +1403,8 @@ export default function ShutterbugWorld() {
         setPhase(useCountry ? "country" : "city"); // Medium/Hard Europe: pick the country first
         setCurrent(null);   // arrived on the continent; no city picked yet
         setRevealed(false);
-        if (!freeDays && nd <= 0) outOfDays(`You reached ${cont}, but the trip's budget is spent.`);
-        else setMsg({ type: "info", text: `Touched down in ${cont}${freeDays ? "" : ` (${costTxt})`}. ${useCountry ? "Now pick the right country." : "Now pick the right city."}` });
+        if (nd <= 0) outOfDays(`You reached ${cont}, but the trip's budget is spent.`);
+        else setMsg({ type: "info", text: `Touched down in ${cont} (${costTxt}). ${useCountry ? "Now pick the right country." : "Now pick the right city."}` });
       };
       if (prefersReduced) { finalize(); return; }
       setFlying({ fromX: from.x, fromY: from.y, toX: to.x, toY: to.y });
@@ -1522,11 +1413,10 @@ export default function ShutterbugWorld() {
       const nd = Math.round((days - cost) * 10) / 10; // a wrong continent is a wasted flight
       setDays(nd);
       sfx("fail");
-      if (!freeDays && nd <= 0) outOfDays(`${cont} wasn't right, and that was your last day.`);
+      if (nd <= 0) outOfDays(`${cont} wasn't right, and that was your last day.`);
       else setPending({ kind: "wrong", tone: "bad", emoji: "❌", title: "Not that continent",
-        subtitle: freeDays
-          ? `The editor's subject isn't in ${cont}. No harm done — read the clue and try again.`
-          : `The editor's subject isn't in ${cont}. A wasted flight there and back cost you ${cost} day${cost === 1 ? "" : "s"} — read the clue and try again.`,
+        subtitle: `The editor's subject isn't in ${cont}. A wasted flight there and back cost you ${cost} day${cost === 1 ? "" : "s"} — read the clue and try again.`,
+        hint: `Try looking ${compass(CONTINENT_PIN[cont], CONTINENT_PIN[target.continent])} of ${cont}.`,
         buttonLabel: "Try again" });
     }
   }
@@ -1583,17 +1473,21 @@ export default function ShutterbugWorld() {
       setRevealed(false);
       setMsg({ type: "info", text: `Arrived in ${country}. Now photograph the editor's subject.` });
     } else {
-      const freeDays = gameMode === "streak";     // Streak has no day economy
-      const nd = freeDays ? days : Math.round((days - 0.5) * 10) / 10; // a wrong country costs half a day
+      const nd = Math.round((days - 0.5) * 10) / 10; // a wrong country costs half a day
       setDays(nd);
       sfx("fail");
       const why = a && a.type === "category"
         ? `We don't have a ${CATEGORIES[a.category].noun} on file to photograph in ${country} — try another country.`
         : `The editor's subject isn't in ${country}.`;
-      if (!freeDays && nd <= 0) outOfDays(`${country} wasn't right, and that was your last day.`);
-      else setPending({ kind: "wrongcountry", tone: "bad", emoji: "❌", title: "Not that country",
-        subtitle: `${why} ${freeDays ? "No harm done" : "Half a day gone"} — read the clue and the country notes, then try again.`,
-        buttonLabel: "Try again" });
+      if (nd <= 0) outOfDays(`${country} wasn't right, and that was your last day.`);
+      else {
+        // Gentle nudge: the first letter of a country that IS right.
+        const goal = a && a.type === "category" ? (a.countries || [])[0] : (countriesOf(target)[0]);
+        setPending({ kind: "wrongcountry", tone: "bad", emoji: "❌", title: "Not that country",
+          subtitle: `${why} Half a day gone — read the clue and the country notes, then try again.`,
+          hint: goal ? `The country you're after starts with “${goal[0]}”.` : null,
+          buttonLabel: "Try again" });
+      }
     }
   }
 
@@ -1637,31 +1531,6 @@ export default function ShutterbugWorld() {
       return;
     }
 
-    if (gameMode === "streak") {
-      // Survival: a correct shot extends the streak (worth more each time); ONE
-      // wrong shot ends the run. No day cost anywhere.
-      const a = assignments[step];
-      const won = a.type === "category" ? clicked.category === a.category : id === a.targetId;
-      if (won) {
-        const ns = streak + 1;
-        const gain = 100 + ns * 10;             // the longer you survive, the richer each shot
-        setStreak(ns);
-        setScore((s) => s + gain);
-        setAlbum((al) => (al.some((x) => x.id === clicked.id) ? al
-          : [...al, { id: clicked.id, subject: clicked.subject, flag: clicked.flag, city: clicked.city, country: clicked.country, continent: clicked.continent, category: clicked.category, fact: clicked.fact, icon: clicked.icon, photo: clicked.photo, greeting: clicked.greeting }]));
-        sfx("streak", ns);
-        setPending({ kind: "streak-correct", tone: "good", emoji: "🔥", title: `Streak ${ns}!`,
-          subtitle: `${clicked.subject} — +${gain} points. Keep the run alive!`,
-          fact: clicked.fact, photo: clicked.photo, category: clicked.category, buttonLabel: "Next assignment ✈" });
-      } else {
-        setElapsedMs(Date.now() - startRef.current);
-        sfx("lose");
-        setPending({ kind: "streak-lose", tone: "bad", emoji: "💥", title: "Run over!",
-          subtitle: `That's ${clicked.subject}${a.type === "category" ? ` — a ${CATEGORIES[clicked.category].name}` : ""}, not what the editor wanted. Your streak ends at ${streak}.`,
-          fact: clicked.fact, buttonLabel: "See my results" });
-      }
-      return;
-    }
 
     const d = Math.round((days - SHOT_COST) * 10) / 10; // a shot costs half a day
     setDays(d);
@@ -1757,10 +1626,15 @@ export default function ShutterbugWorld() {
       }
     } else {
       const wantTxt = a.type === "category" ? `a ${CATEGORIES[a.category].noun}` : target.subject;
+      const km = a.type === "specific" ? kmBetween(clicked, target) : null;
+      const warmth = km === null ? null
+        : km < 400 ? "You're very warm — the right pin is close to where you just shot!"
+        : km < 1500 ? "You're warm — the right pin isn't far from there."
+        : "You're cold — look at a different part of the map.";
       if (d <= 0) outOfDays(`That's ${clicked.subject}, not ${wantTxt} — and the trip's over.`);
       else {
         sfx("fail");
-        setPending({ kind: "wrong", tone: "bad", emoji: "❌", title: "Not the assignment",
+        setPending({ kind: "wrong", tone: "bad", emoji: "❌", title: "Not the assignment", hint: warmth,
           subtitle: `That's ${clicked.subject}${a.type === "category" ? ` — a ${CATEGORIES[clicked.category].name}` : ""}. The editor wants ${wantTxt}. Half a day gone — pick another city.`,
           buttonLabel: "Keep looking 🔍" });
       }
@@ -1770,8 +1644,6 @@ export default function ShutterbugWorld() {
   // ---------- SCREENS ----------
   const isTour = gameMode === "tour";
   const isExplore = gameMode === "explore";
-  const isStreak = gameMode === "streak";
-  const isDaily = gameMode === "daily";
 
   if (screen === "start") {
     return (
@@ -1854,24 +1726,6 @@ export default function ShutterbugWorld() {
             </Field>
           </div>
 
-          {/* ---- Today's Challenge: a daily ritual, not a mode — one slim banner. ---- */}
-          {(() => {
-            const played = profileName && canSave ? dailyPlayed(profileName, dailyKey()) : null;
-            return (
-              <div style={{ marginTop: 22, display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", justifyContent: "space-between",
-                background: "#EAF6EF", border: `1.5px solid ${GREEN}`, borderRadius: 10, padding: "10px 14px", textAlign: "left" }}>
-                <span style={{ minWidth: 0 }}>
-                  <span style={{ fontWeight: 800, color: INK, fontSize: 14 }}><span aria-hidden="true">📅 </span>Today's Challenge</span>
-                  <span style={{ fontSize: 12, color: INK, opacity: 0.7, display: "block" }}>
-                    The same five assignments for every traveller today (Medium).{played ? ` Your best today: ${played.score}.` : ""}
-                  </span>
-                </span>
-                <button onClick={startDaily} style={{ padding: "8px 18px", borderRadius: 8, border: "none", background: GREEN, color: "#fff", fontWeight: 800, fontSize: 13, cursor: "pointer", flex: "none" }}>
-                  Play ▸
-                </button>
-              </div>
-            );
-          })()}
 
           {/* ---- Pick a way to play: photo cards ---- */}
           <div style={{ marginTop: 18 }}>
@@ -1934,7 +1788,7 @@ export default function ShutterbugWorld() {
           )}
 
           {/* ---- Difficulty stamps (only for the modes that use them) ---- */}
-          {(gameMode === "assignments" || gameMode === "tour" || gameMode === "streak") && (
+          {(gameMode === "assignments" || gameMode === "tour") && (
             <div style={{ marginTop: 18 }}>
               <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.22em", color: INK, opacity: 0.65, marginBottom: 8 }}>
                 DIFFICULTY
@@ -1954,11 +1808,11 @@ export default function ShutterbugWorld() {
           <button
             onClick={gameMode === "quiz" ? startQuiz : gameMode === "explore" ? startExplore
               : gameMode === "tour" ? () => (tourTheme === "classic" ? startTour() : startExpedition(EXPEDITIONS.find((e) => e.id === tourTheme)))
-              : gameMode === "streak" ? startStreak : startGame}
+              : startGame}
             style={primaryBtn}>
             {gameMode === "quiz" ? "Start the quiz 🧠" : gameMode === "explore" ? "Start exploring 🧭"
               : gameMode === "tour" ? (tourTheme === "classic" ? "Start the Grand Tour ✈" : `Start the ${TOUR_THEMES.find((t) => t.id === tourTheme)?.title} 🗺️`)
-              : gameMode === "streak" ? "Start the run 🔥" : "Begin the assignment ✈"}
+              : "Begin the assignment ✈"}
           </button>
 
           {/* ---- High scores, tucked behind a toggle ---- */}
@@ -2083,50 +1937,6 @@ export default function ShutterbugWorld() {
   }
 
   // ---------- STREAK RESULTS ----------
-  if (screen === "end" && gameMode === "streak") {
-    const perfect = step + 1 >= assignments.length && streak > 0;
-    return (
-      <Frame>
-        {(perfect || (lastResult?.isBest && streak >= 3)) && <Confetti reduced={prefersReduced} />}
-        <div style={{ maxWidth: 600, margin: "0 auto", textAlign: "center" }}>
-          <Stamp>{perfect ? "Perfect run!" : "Run over"}</Stamp>
-          <div style={{ fontSize: 54, margin: "10px 0" }} aria-hidden="true">{perfect ? "🏆" : streak >= 5 ? "🔥" : "💥"}</div>
-          <h2 style={{ fontFamily: "ui-sans-serif, system-ui", fontWeight: 900, fontSize: 32, color: INK, margin: "0 0 2px" }}>Streak of {streak}</h2>
-          <p style={{ fontFamily: "ui-monospace, monospace", fontSize: 22, color: CORAL, fontWeight: 700, margin: "6px 0" }}>{score} pts · ⏱ {fmtTime(elapsedMs)}</p>
-          <p style={{ color: INK, opacity: 0.75, marginTop: 4 }}>
-            {streak === 0 ? "The very first shot got away. Read the clue carefully and try again!"
-              : perfect ? "You photographed every single assignment without a miss. Astonishing."
-              : `You filed ${streak} perfect shot${streak === 1 ? "" : "s"} in a row before the run ended.`}
-          </p>
-          {lastResult?.isBest && <div style={{ marginTop: 10 }}><span style={{ background: GOLD, color: INK, fontWeight: 800, fontSize: 14, padding: "6px 14px", borderRadius: 20 }}>★ New longest streak!</span></div>}
-          {!lastResult?.isBest && lastResult?.bestStreak > 0 && <p style={{ fontSize: 12, color: INK, opacity: 0.6, marginTop: 8 }}>Your best is {lastResult.bestStreak}.</p>}
-
-          {newBadges.length > 0 && (
-            <div style={{ marginTop: 12 }}>
-              <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.18em", color: CORAL, marginBottom: 6 }}>🏅 ACHIEVEMENT{newBadges.length > 1 ? "S" : ""} UNLOCKED!</div>
-              <div style={{ display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap" }}>
-                {newBadges.map((b) => <span key={b.id} style={{ background: GOLD, color: INK, fontWeight: 700, fontSize: 13, padding: "5px 12px", borderRadius: 20 }}>{b.emoji} {b.name}</span>)}
-              </div>
-            </div>
-          )}
-
-          {album.length > 0 && (
-            <div style={{ marginTop: 20 }}>
-              <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.18em", color: INK, opacity: 0.6, marginBottom: 8 }}>YOUR RUN</div>
-              <div style={{ display: "flex", gap: 6, justifyContent: "center", flexWrap: "wrap" }}>
-                {album.map((p) => <span key={p.id} title={p.subject} style={{ fontSize: 22 }} aria-label={p.subject}>{(CATEGORIES[p.category] || {}).emoji || "📍"}</span>)}
-              </div>
-            </div>
-          )}
-
-          <div style={{ display: "flex", gap: 10, justifyContent: "center", marginTop: 22, flexWrap: "wrap" }}>
-            <button onClick={startStreak} style={primaryBtn}>Run it again 🔥</button>
-            <button onClick={() => { setGameMode("assignments"); setStreak(0); setScreen("start"); }} style={{ ...primaryBtn, background: "transparent", color: INK, border: `2px solid ${INK}`, boxShadow: "none" }}>Back to start</button>
-          </div>
-        </div>
-      </Frame>
-    );
-  }
 
   if (screen === "end") {
     const mode = MODES[difficulty];
@@ -2141,45 +1951,24 @@ export default function ShutterbugWorld() {
       <Frame>
         {totalTargets > 0 && album.length >= totalTargets && <Confetti reduced={prefersReduced} />}
         <div style={{ maxWidth: 640, margin: "0 auto", textAlign: "center" }}>
-          <Stamp>{isDaily ? `Daily Challenge · ${dailyKey()}` : "Roll Developed"}</Stamp>
+          <Stamp>Roll Developed</Stamp>
           <h2 style={{ fontFamily: "ui-sans-serif, system-ui", fontWeight: 900, letterSpacing: "0.08em", fontSize: 30, color: INK, margin: "10px 0 4px" }}>{album.length} / {totalTargets} shots filed</h2>
           <p style={{ fontFamily: "ui-monospace, monospace", fontSize: 22, color: CORAL, fontWeight: 700, margin: "6px 0" }}>{score} pts · ⏱ {fmtTime(elapsedMs)}</p>
-          <p style={{ fontFamily: "ui-monospace, monospace", fontSize: 12, color: INK, opacity: 0.6, margin: "0 0 6px", letterSpacing: "0.06em" }}>{isDaily ? "Daily Challenge" : isTourEnd ? "Grand Tour" : mode.label} · {mode.label} · {Math.round(pct * 100)}% of a perfect run</p>
+          <p style={{ fontFamily: "ui-monospace, monospace", fontSize: 12, color: INK, opacity: 0.6, margin: "0 0 6px", letterSpacing: "0.06em" }}>{isTourEnd ? "Grand Tour" : "Assignments"} · {mode.label} · {Math.round(pct * 100)}% of a perfect run</p>
           <p style={{ color: INK, fontWeight: 700, marginTop: 6 }}>{r.title}</p>
           <p style={{ color: INK, opacity: 0.7, marginTop: 2 }}>{r.note}</p>
 
           {profileName && (lastResult?.isBest || lastResult?.isBestTime) && (
             <div style={{ marginTop: 10, display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap" }}>
               {lastResult.isBest && (
-                <span style={{ background: GOLD, color: INK, fontWeight: 800, fontSize: 14, padding: "6px 14px", borderRadius: 20 }}>{isDaily ? "★ Your best for today!" : "★ New best score!"}</span>
+                <span style={{ background: GOLD, color: INK, fontWeight: 800, fontSize: 14, padding: "6px 14px", borderRadius: 20 }}>★ New best score!</span>
               )}
-              {!isDaily && lastResult.isBestTime && (
+              {lastResult.isBestTime && (
                 <span style={{ background: GREEN, color: "#fff", fontWeight: 800, fontSize: 14, padding: "6px 14px", borderRadius: 20 }}>⏱ New best time!</span>
               )}
             </div>
           )}
 
-          {/* Today's board: everyone plays the same seeded challenge, so scores compare. */}
-          {isDaily && (() => {
-            const rows = dailyTop(dailyKey(), 5);
-            if (!rows.length) return null;
-            return (
-              <div style={{ marginTop: 18, maxWidth: 380, marginInline: "auto", background: PAPER, border: `1px solid ${PAPER_LINE}`, borderRadius: 10, padding: "12px 14px", textAlign: "left" }}>
-                <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.2em", color: GREEN, marginBottom: 8, textAlign: "center" }}>📅 TODAY'S BOARD</div>
-                {rows.map((row, i) => (
-                  <div key={row.name + i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, padding: "5px 2px", borderTop: i ? `1px solid ${PAPER_LINE}` : "none" }}>
-                    <span style={{ display: "flex", gap: 10, alignItems: "center", minWidth: 0 }}>
-                      <span style={{ fontFamily: "ui-monospace, monospace", fontWeight: 800, fontSize: 13, color: i === 0 ? GOLD : INK, opacity: i === 0 ? 1 : 0.6, width: 14, textAlign: "right" }}>{i + 1}</span>
-                      <Avatar spec={row.avatar || defaultAvatar(row.name)} size={24} />
-                      <span style={{ fontWeight: 700, color: INK, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{row.name}</span>
-                      {row.timeMs > 0 && <span style={{ fontSize: 11, color: INK, opacity: 0.5 }}>⏱ {fmtTime(row.timeMs)}</span>}
-                    </span>
-                    <span style={{ fontFamily: "ui-monospace, monospace", fontWeight: 800, color: CORAL }}>{row.score}</span>
-                  </div>
-                ))}
-              </div>
-            );
-          })()}
 
           {profileName && newBadges.length > 0 && (
             <div style={{ marginTop: 12 }}>
@@ -2426,6 +2215,11 @@ export default function ShutterbugWorld() {
     : (target ? (target[tier] || target.hard) : ""));
   const inCountry = phase === "country";
   const inCity = phase === "city";
+  // Which country the traveller is "in" right now, for the country card. Easy
+  // mode has no country step, but a specific mission's country is known as soon
+  // as you land on the continent (the easy clue names it anyway); category
+  // missions and tours span countries, so theirs appears after the shot instead.
+  const ctxCountry = pickedCountry || (inCity && !isTour && asg && asg.type === "specific" && target ? target.country : null);
   const zoomed = inCountry || inCity; // both steps show a topographic relief plate
   // Country step + city step: the continent's square relief box, but the city step
   // of a country-layer assignment zooms further into the picked country. World step:
@@ -2456,7 +2250,7 @@ export default function ShutterbugWorld() {
         {/* Field journal panel */}
         <div style={{ flex: "1 1 340px", minWidth: 300 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-            <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 12, letterSpacing: "0.18em", color: INK, opacity: 0.7, display: "inline-flex", alignItems: "center", gap: 7 }}>{profileName && <Avatar spec={avatarFor(getProfile(profileName))} size={22} />}{isExplore ? "🧭 EXPLORE" : isStreak ? "🔥 SURVIVAL" : isTour ? `GRAND TOUR · ${tourReqs.filter((r) => r.done).length}/${tourReqs.length} filed` : `${isDaily ? "📅 DAILY · " : ""}ASSIGNMENT ${step + 1}/${assignments.length}`}</span>
+            <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 12, letterSpacing: "0.18em", color: INK, opacity: 0.7, display: "inline-flex", alignItems: "center", gap: 7 }}>{profileName && <Avatar spec={avatarFor(getProfile(profileName))} size={22} />}{isExplore ? "🧭 EXPLORE" : isTour ? `GRAND TOUR · ${tourReqs.filter((r) => r.done).length}/${tourReqs.length} filed` : `ASSIGNMENT ${step + 1}/${assignments.length}`}</span>
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
               <button onClick={() => setSoundOn((s) => !s)} aria-label={soundOn ? "Turn sound off" : "Turn sound on"} aria-pressed={soundOn} title={soundOn ? "Sound on" : "Sound off"}
                 style={{ background: "none", border: "none", cursor: "pointer", fontSize: 15, lineHeight: 1, padding: 2, color: INK, opacity: 0.75 }}>
@@ -2476,11 +2270,7 @@ export default function ShutterbugWorld() {
                 <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 13, fontWeight: 700, color: OCEAN }} title="Places you've discovered">📸 {album.length} discovered</span>
               ) : (<>
                 <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 13, fontWeight: 700, color: INK, opacity: 0.75 }} title="Time on this trip">⏱ {fmtTime(Math.max(0, liveNow - startRef.current))}</span>
-                {isStreak ? (
-                  <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 13, fontWeight: 800, color: CORAL }} title="One wrong photo ends the run">🔥 {streak} · {score} pts</span>
-                ) : (
-                  <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 13, fontWeight: 700, color: days <= 1 ? CORAL : INK }}>◷ {days} day{days === 1 ? "" : "s"} left</span>
-                )}
+                <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 13, fontWeight: 700, color: days <= 1 ? CORAL : INK }}>◷ {days} day{days === 1 ? "" : "s"} left</span>
               </>)}
             </div>
           </div>
@@ -2518,10 +2308,7 @@ export default function ShutterbugWorld() {
             </>
           ) : (
           <div style={{ background: PAPER, border: `1px dashed ${CORAL}`, borderRadius: 6, padding: "14px 16px", position: "relative" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, marginBottom: 8 }}>
-              <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.22em", color: CORAL }}>✎ TELEGRAM — FROM THE EDITOR</span>
-              <ReadAloud text={(isCatAsg || namesSubject) ? `Bring me a photo of ${promptSubject}. ${clue}` : clue} />
-            </div>
+            <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.22em", color: CORAL, marginBottom: 8 }}>✎ TELEGRAM — FROM THE EDITOR</div>
             {(isCatAsg || namesSubject) ? (
               <>
                 <p style={{ margin: 0, color: INK, lineHeight: 1.5, fontSize: 15 }}>Bring me a photo of <b>{promptSubject}</b>.{showTypeBadge && badgeCat && <> <CategoryBadge category={badgeCat} size="sm" style={{ verticalAlign: "middle" }} /></>}</p>
@@ -2538,7 +2325,7 @@ export default function ShutterbugWorld() {
 
           {/* Research: buy the answer (assignments only). Free on Easy, ½ day on
               Medium, unavailable on Hard. */}
-          {!isTour && !isExplore && !isStreak && mode.research !== "off" && (researched[step] ? (
+          {!isTour && !isExplore && mode.research !== "off" && (researched[step] ? (
             <div style={{ marginTop: 10, background: "#EAF1F2", border: `1px solid ${OCEAN}`, borderRadius: 6, padding: "10px 12px", fontSize: 13, color: INK, lineHeight: 1.45 }}>
               <b style={{ color: OCEAN }}>🔎 Research notes:</b> {researched[step]}
             </div>
@@ -2567,37 +2354,19 @@ export default function ShutterbugWorld() {
             <div style={{ marginTop: 12, background: "#fff", border: `1px solid ${PAPER_LINE}`, borderRadius: 8, padding: 14, textAlign: "center" }}>
               <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.18em", color: INK, opacity: 0.6 }}>YOUR SHOT</div>
               <div style={{ margin: "8px 0", position: "relative", overflow: "hidden", borderRadius: 4 }}>
-                {/* The film "develops": washed-out and grey at first, colour blooming in. */}
+                {/* The film "develops": washed-out and grey at first, colour blooming in.
+                    Shown at the image's own aspect ratio — cover-cropping cut wide
+                    subjects (all of Victoria Falls) down to a slice. */}
                 <div key={`dev${flashKey}`} className={prefersReduced ? undefined : "sbw-develop"}>
-                  <Photo photo={currentLoc.photo} icon={currentLoc.icon} alt={currentLoc.subject} size={230} full />
+                  <img src={withWidth(currentLoc.photo?.src, 1200)} alt={currentLoc.subject}
+                    style={{ width: "100%", maxHeight: 460, objectFit: "contain", display: "block", borderRadius: 4, background: "#10262E" }} />
                 </div>
                 {flashKey > 0 && !prefersReduced && <div key={flashKey} className="sbw-flash" />}
               </div>
               <PhotoCredit photo={currentLoc.photo} style={{ textAlign: "center", marginTop: 0, marginBottom: 4 }} />
               <div style={{ fontWeight: 700, color: INK }}><span style={{ fontSize: "1.5em", verticalAlign: "-0.08em" }}>{currentLoc.flag}</span> {currentLoc.city}, {currentLoc.country}</div>
               <div style={{ fontSize: 13, color: INK, opacity: 0.7, marginTop: 2 }}>{currentLoc.subject}</div>
-              {currentLoc.greeting?.text && (
-                <div style={{ fontSize: 13, color: OCEAN, marginTop: 6 }}>
-                  <span aria-hidden="true">💬 </span>Local greeting: “{currentLoc.greeting.text}”
-                  {currentLoc.greeting.language ? ` — ${currentLoc.greeting.language}` : ""}
-                  {currentLoc.greeting.pronunciation ? ` (${currentLoc.greeting.pronunciation})` : ""}
-                  {greetingMeaning(currentLoc.greeting) ? `, ${quoteGloss(greetingMeaning(currentLoc.greeting))}` : ""}
-                  <SpeakButton greeting={currentLoc.greeting} />
-                </div>
-              )}
-              {/* Easy mode has no country step, so the country lesson (capital,
-                  blurb, and how people dress and say hello) appears here, with
-                  the shot you just took. Medium/Hard saw it at the country step. */}
-              {!pickedCountry && COUNTRY_INFO[currentLoc.country] && (
-                <div style={{ marginTop: 10, background: PAPER, border: `1px solid ${PAPER_LINE}`, borderRadius: 6, padding: "8px 10px", fontSize: 12, color: INK, lineHeight: 1.45, textAlign: "left" }}>
-                  <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.06em", color: GREEN, fontWeight: 700, marginBottom: 5 }}>
-                    <span aria-hidden="true">★ </span>Capital: {COUNTRY_INFO[currentLoc.country].capital}
-                    <span style={{ color: INK, opacity: 0.55, fontWeight: 400 }}> · {COUNTRY_INFO[currentLoc.country].region}</span>
-                  </div>
-                  <span aria-hidden="true">📖 </span>{COUNTRY_INFO[currentLoc.country].blurb}
-                </div>
-              )}
-              {!pickedCountry && <PeoplePhoto people={COUNTRY_PEOPLE[currentLoc.country]} />}
+              <CountryCard country={currentLoc.country} />
               {isExplore && (
                 <div style={{ marginTop: 10, textAlign: "left" }}>
                   <div style={{ textAlign: "center", marginBottom: 8 }}><CategoryBadge category={currentLoc.category} size="sm" /></div>
@@ -2618,37 +2387,11 @@ export default function ShutterbugWorld() {
           ) : inCity ? (
             <div style={{ marginTop: 12, background: "#fff", border: `1px dashed ${CORAL}`, borderRadius: 8, padding: 16, textAlign: "center" }}>
               <div style={{ fontSize: 28 }} aria-hidden="true">📸</div>
-              <div style={{ fontWeight: 800, color: INK, marginTop: 4 }}><span style={{ fontSize: "1.3em", verticalAlign: "-0.08em" }}>{pickedCountry ? COUNTRY_FLAG[pickedCountry] : ""}</span> You're in {pickedCountry || pickedContinent}!</div>
+              <div style={{ fontWeight: 800, color: INK, marginTop: 4 }}><span style={{ fontSize: "1.3em", verticalAlign: "-0.08em" }}>{ctxCountry ? COUNTRY_FLAG[ctxCountry] : ""}</span> You're in {ctxCountry || pickedContinent}!</div>
               <div style={{ fontSize: 13, color: INK, opacity: 0.8, marginTop: 6, lineHeight: 1.45 }}>
                 {isTour ? "Photograph any target on your itinerary that's here, then fly on." : "Click the right city on the map to photograph the editor's subject."}
               </div>
-              {pickedCountry && COUNTRY_INFO[pickedCountry] && (
-                <div style={{ marginTop: 10, background: PAPER, border: `1px solid ${PAPER_LINE}`, borderRadius: 6, padding: "8px 10px", fontSize: 12, color: INK, lineHeight: 1.45, textAlign: "left" }}>
-                  <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.06em", color: GREEN, fontWeight: 700, marginBottom: 5 }}>
-                    <span aria-hidden="true">★ </span>Capital: {COUNTRY_INFO[pickedCountry].capital}
-                    <span style={{ color: INK, opacity: 0.55, fontWeight: 400 }}> · {COUNTRY_INFO[pickedCountry].region}</span>
-                  </div>
-                  <span aria-hidden="true">📖 </span>{COUNTRY_INFO[pickedCountry].blurb}
-                </div>
-              )}
-              {/* Culture card: how people here say hello (+ a reviewed photo of
-                  people in traditional dress, once one is added to COUNTRY_PEOPLE). */}
-              {pickedCountry && (COUNTRY_GREETING[pickedCountry] || COUNTRY_PEOPLE[pickedCountry]) && (
-                <div style={{ marginTop: 10, background: PAPER, border: `1px solid ${PAPER_LINE}`, borderRadius: 6, padding: 10, textAlign: "left" }}>
-                  <PeoplePhoto people={COUNTRY_PEOPLE[pickedCountry]} />
-                  {COUNTRY_GREETING[pickedCountry] && (() => {
-                    const g = COUNTRY_GREETING[pickedCountry]; const mean = greetingMeaning(g);
-                    return (
-                      <div style={{ fontSize: 13, color: OCEAN, lineHeight: 1.5 }}>
-                        <span aria-hidden="true">💬 </span>Here they say <b>“{g.text}”</b>
-                        {g.pronunciation ? ` (${g.pronunciation})` : ""} in {g.language}
-                        {mean ? ` — it means ${quoteGloss(mean)}` : "."}
-                        <SpeakButton greeting={g} />
-                      </div>
-                    );
-                  })()}
-                </div>
-              )}
+              <CountryCard country={ctxCountry} />
               {isTour && (
                 <button onClick={() => { if (!busy) { setPhase("continent"); setRevealed(false); setMsg({ type: "info", text: "Pick the next continent to fly to." }); } }} disabled={busy}
                   style={{ marginTop: 10, padding: "8px 16px", borderRadius: 8, border: `1.5px solid ${OCEAN}`, background: "transparent", color: OCEAN, fontWeight: 700, fontSize: 13, cursor: busy ? "default" : "pointer" }}>
@@ -2775,8 +2518,9 @@ export default function ShutterbugWorld() {
                     {(!wrapPlate && d)
                       ? <path d={d} fillRule="evenodd" fill="rgba(244,236,216,0.16)" stroke={PAPER} strokeWidth="0.9" vectorEffect="non-scaling-stroke" />
                       : <ellipse cx={cm.cx} cy={cm.cy} {...pinR(0.028)} fill="rgba(240,165,0,0.55)" stroke={PAPER} strokeWidth="1" vectorEffect="non-scaling-stroke" />}
-                    {/* label drawn in a later pass, so no marker can cover it */}
-                    {showLabel && !wrapPlate && <text x={cm.cx} y={cm.cy} fontSize={0.03 * box.h} fontFamily="ui-monospace, monospace" fontWeight="800" fill={INK} textAnchor="middle"
+                    {/* label drawn in a later pass, so no marker can cover it; lifted
+                        slightly so it floats clear of the country's border stroke */}
+                    {showLabel && !wrapPlate && <text x={cm.cx} y={cm.cy - 0.022 * box.h} fontSize={0.03 * box.h} fontFamily="ui-monospace, monospace" fontWeight="800" fill={INK} textAnchor="middle"
                       style={{ paintOrder: "stroke", stroke: PAPER, strokeWidth: 0.012 * box.h, pointerEvents: "none" }}>{country}</text>}
                   </g>
                 );
@@ -2882,14 +2626,6 @@ export default function ShutterbugWorld() {
             </svg>
 
           </div>
-          <p style={{ fontSize: 11, color: INK, opacity: 0.55, marginTop: 8, fontFamily: "ui-monospace, monospace", letterSpacing: "0.06em" }}>
-            {isTour
-              ? (inCity ? "Click a target on your itinerary that's here." : "Each continent has its own colour — pick where to fly next.")
-              : (inCity ? "Click the right city — read the clue and reason it out."
-                : inCountry ? "Click the country the clue points to — its notes will help."
-                : "Each continent has its own colour — click the one the clue points to.")}
-          </p>
-
           {/* Album strip — under the map so the layout is symmetric. */}
           {album.length > 0 && (
             <div style={{ marginTop: 12 }}>
@@ -3131,17 +2867,19 @@ function ResultModal({ data, onContinue, reduced }) {
         <h2 style={{ fontFamily: "ui-sans-serif, system-ui", fontWeight: 900, fontSize: 26, color: accent, margin: "10px 0 6px" }}>{data.title}</h2>
         {data.category && <div style={{ marginBottom: 10 }}><CategoryBadge category={data.category} /></div>}
         {data.photo?.src && (
-          <div style={{ margin: "0 auto 10px", maxWidth: 300, borderRadius: 8, overflow: "hidden", border: `2px solid ${accent}` }}>
-            <img src={data.photo.src} alt="" style={{ width: "100%", height: 150, objectFit: "cover", display: "block" }} />
+          <div style={{ margin: "0 auto 10px", maxWidth: 360, borderRadius: 8, overflow: "hidden", border: `2px solid ${accent}`, background: "#10262E" }}>
+            <img src={withWidth(data.photo.src, 1200)} alt="" style={{ width: "100%", maxHeight: 300, objectFit: "contain", display: "block" }} />
           </div>
         )}
         <p style={{ color: INK, fontSize: 15, lineHeight: 1.5, margin: "0 auto", maxWidth: 340 }}>{data.subtitle}</p>
+        {data.hint && (
+          <p style={{ color: OCEAN, fontSize: 14, fontWeight: 700, lineHeight: 1.45, margin: "10px auto 0", maxWidth: 340 }}>
+            <span aria-hidden="true">💡 </span>{data.hint}
+          </p>
+        )}
         {data.fact && (
           <div style={{ marginTop: 14, background: "#fff", border: `1px dashed ${accent}`, borderRadius: 10, padding: "10px 12px", textAlign: "left" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, marginBottom: 4 }}>
-              <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 10, letterSpacing: "0.18em", color: accent }}>📖 DID YOU KNOW?</span>
-              <ReadAloud text={data.fact} label="Read" />
-            </div>
+            <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 10, letterSpacing: "0.18em", color: accent, marginBottom: 4 }}>📖 DID YOU KNOW?</div>
             <div style={{ color: INK, fontSize: 13, lineHeight: 1.45 }}>{data.fact}</div>
           </div>
         )}
@@ -3370,6 +3108,42 @@ function PeoplePhoto({ people }) {
         {people.caption} · {people.credit} ({people.license})
       </figcaption>
     </figure>
+  );
+}
+
+// The country card — the game's cultural centrepiece, shown the moment you're
+// in a country in ANY mode: the country and its flag, a photo of its people in
+// traditional dress, how they say hello, then the capital and a short story.
+function CountryCard({ country }) {
+  if (!country || country === "Antarctica") return null;
+  const info = COUNTRY_INFO[country], g = COUNTRY_GREETING[country], people = COUNTRY_PEOPLE[country];
+  if (!info && !g && !people) return null;
+  const mean = g ? greetingMeaning(g) : null;
+  return (
+    <div style={{ marginTop: 10, background: PAPER, border: `1px solid ${PAPER_LINE}`, borderRadius: 8, padding: 12, textAlign: "left" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
+        <span aria-hidden="true" style={{ fontSize: 32, lineHeight: 1 }}>{COUNTRY_FLAG[country] || "🏳️"}</span>
+        <span style={{ fontWeight: 900, color: INK, fontSize: 17 }}>{country}</span>
+        {info && <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, color: INK, opacity: 0.55, marginLeft: "auto" }}>{info.region}</span>}
+      </div>
+      <PeoplePhoto people={people} />
+      {g && (
+        <div style={{ fontSize: 13.5, color: OCEAN, lineHeight: 1.55, marginTop: 8 }}>
+          <span aria-hidden="true">💬 </span>Here they say <b>“{g.text}”</b>
+          {g.pronunciation ? ` (${g.pronunciation})` : ""} in {g.language}
+          {mean ? ` — it means ${quoteGloss(mean)}` : "."}
+          <SpeakButton greeting={g} />
+        </div>
+      )}
+      {info && (
+        <div style={{ marginTop: 8, fontSize: 12, color: INK, lineHeight: 1.5 }}>
+          <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.06em", color: GREEN, fontWeight: 700, marginBottom: 3 }}>
+            <span aria-hidden="true">★ </span>Capital: {info.capital}
+          </div>
+          <span aria-hidden="true">📖 </span>{info.blurb}
+        </div>
+      )}
+    </div>
   );
 }
 
