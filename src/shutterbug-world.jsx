@@ -353,8 +353,11 @@ const compass = (from, to) => {
   return dirs[Math.round(((ang + 360) % 360) / 45) % 8];
 };
 
+// EVERY location routes through the country step now, on all difficulties:
+// world map → pick continent → continent map → pick country → country map →
+// pick the city. (Antarctica has no countries, so it stays continent→city.)
 const usesCountryLayer = (mode, continent) =>
-  mode.clue !== "easy" && COUNTRY_LAYER_CONTINENTS.has(continent);
+  COUNTRY_LAYER_CONTINENTS.has(continent);
 // For a category mission: does this country (on this continent) hold a member of
 // the wanted category?
 const countryHasCategory = (continent, country, category) =>
@@ -1438,33 +1441,17 @@ export default function ShutterbugWorld() {
       ? countryHasCategory(pickedContinent, country, a.category)
       : countriesOf(target).includes(country); // border landmarks accept either country
     if (ok) {
-      // Build the city-step plan. A country with 3+ of its own landmarks zooms in
-      // tight and shows just those. A thinner country (fewer than 3) would leave
-      // too few choices, so we keep a continent-wide view and pad with the nearest
-      // neighbours — always at least 3 pins to choose among (the highlighted
-      // country border still shows where you are). Fills back to the tight zoom as
-      // that country gains landmarks.
+      // You picked this country, so the city step shows ONLY its own landmarks —
+      // never neighbours from other countries (that made the card say "You're in
+      // Austria" while showing German pins). A country with 3+ landmarks zooms in
+      // tight; a thinner one keeps the continent view (so the lone pin isn't lost
+      // in a hard zoom) but still shows only that country's own places. Countries
+      // fill toward 3+ as content is added.
       const own = (COUNTRY_LOCS[pickedContinent] && COUNTRY_LOCS[pickedContinent][country]) || [];
-      let plan;
-      if (own.length >= 3) {
-        plan = { ids: own.slice().sort(() => Math.random() - 0.5), wide: false };
-      } else {
-        const far = spacedFor(CONTINENT_META[pickedContinent].box);
-        // Neighbours nearest the country you actually flew to (for a category mission
-        // that may not be the anchor's country), so the padded pins are plausibly local
-        // — but never so close they sit on top of a pin already shown. Colonia del
-        // Sacramento is only ~56 km from Buenos Aires across the Río de la Plata;
-        // without the distance floor the pad would draw one pin over the other.
-        const here = own.length ? BY_ID[own[0]] : target;
-        const near = LOCATIONS
-          .filter((l) => l.continent === pickedContinent && !own.includes(l.id)
-            && own.every((id) => kmBetween(BY_ID[id], l) > 120))
-          .sort((x, y) => kmBetween(here, x) - kmBetween(here, y));
-        const chosen = own.map((id) => BY_ID[id]);
-        for (const l of near) { if (chosen.length >= 3) break; if (far(l, chosen)) chosen.push(l); }
-        for (const l of near) { if (chosen.length >= 3) break; if (!chosen.includes(l)) chosen.push(l); }
-        plan = { ids: chosen.map((l) => l.id).sort(() => Math.random() - 0.5), wide: true };
-      }
+      // Zoom into the country you picked whenever it has a map box; only fall back
+      // to the continent view if it doesn't (safety — keeps a lone pin visible).
+      const hasBox = !!COUNTRY_META[countryKey(pickedContinent, country)];
+      const plan = { ids: own.slice().sort(() => Math.random() - 0.5), wide: !hasBox };
       setCityPlan(plan);
       setPickedCountry(country);
       setPhase("city");
