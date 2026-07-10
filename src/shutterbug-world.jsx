@@ -1650,10 +1650,10 @@ export default function ShutterbugWorld() {
       <Frame>
         <div style={{ maxWidth: 960, margin: "0 auto", textAlign: "center", padding: "8px 4px" }}>
           <div style={{ maxWidth: 620, margin: "0 auto" }}>
-          <Stamp>Field Edition · Pack your bags ✈</Stamp>
-          <h1 style={{ fontFamily: "ui-sans-serif, system-ui", fontWeight: 900, letterSpacing: "0.06em", textTransform: "uppercase", fontSize: "clamp(24px, 7vw, 40px)", color: INK, margin: "10px 0 2px" }}>Shutterbug</h1>
-          <p style={{ fontFamily: "ui-monospace, monospace", letterSpacing: "0.28em", textTransform: "uppercase", fontSize: 12, color: CORAL, margin: 0 }}>A World Photo Safari</p>
-          <TravelCollage />
+          {/* Hand-illustrated splash — the title and tagline live in the artwork,
+              so no text heading is needed here. */}
+          <img src={`${BASE}splash.jpg`} alt="Shutterbug — A World Photo Safari"
+            style={{ width: "100%", maxWidth: 620, height: "auto", display: "block", margin: "4px auto 0", borderRadius: 14, boxShadow: "0 4px 16px rgba(74,50,20,0.28)" }} />
           <p style={{ color: INK, opacity: 0.85, marginTop: 6, lineHeight: 1.5 }}>
             Read the editor's clue, fly to the right place, get the shot.
             {" "}
@@ -2734,79 +2734,6 @@ function Frame({ children }) {
         {children}
       </div>
     </div>
-  );
-}
-// Hand-drawn travel collage for the start screen (globe, camera, suitcase,
-// compass, a postage stamp and a dashed flight path with a little plane).
-function TravelCollage() {
-  const ink = INK, gold = GOLD, coral = CORAL, green = GREEN, paper = PAPER;
-  return (
-    <svg viewBox="0 0 440 132" role="img"
-      aria-label="A collage of travel things: a globe, a camera, a suitcase, a compass and a postage stamp, with a plane tracing a dashed path"
-      style={{ width: "100%", maxWidth: 470, display: "block", margin: "10px auto 4px" }}>
-      {/* dashed flight path across the top */}
-      <path d="M16 46 Q220 2 424 50" fill="none" stroke={coral} strokeWidth="1.6" strokeDasharray="5 5" opacity="0.7" />
-      <g transform="translate(322 12) rotate(20)">
-        <path d="M-2 6 L18 6 L26 1 L21 8 L26 15 L18 9 L-2 9 L-6 7.5 Z" fill={ink} />
-      </g>
-
-      {/* GLOBE */}
-      <g transform="translate(58 84)">
-        <circle r="34" fill={paper} stroke={ink} strokeWidth="2.4" />
-        <path d="M-24 -12 q10 -6 20 -2 q7 4 1 10 q-10 5 -20 0 q-6 -4 -1 -8 Z" fill={green} opacity="0.75" />
-        <path d="M6 6 q11 -3 16 4 q3 6 -4 9 q-10 3 -15 -4 q-3 -6 3 -9 Z" fill={green} opacity="0.75" />
-        <ellipse rx="34" ry="11" fill="none" stroke={ink} strokeWidth="1.2" opacity="0.5" />
-        <ellipse rx="13" ry="34" fill="none" stroke={ink} strokeWidth="1.2" opacity="0.5" />
-        <ellipse rx="27" ry="34" fill="none" stroke={ink} strokeWidth="1" opacity="0.32" />
-        <g transform="translate(12 -8)">
-          <path d="M0 0 C-6 -8 -6 -15 0 -15 C6 -15 6 -8 0 0 Z" fill={coral} stroke={ink} strokeWidth="0.9" />
-          <circle cy="-9" r="2.2" fill={paper} />
-        </g>
-      </g>
-
-      {/* CAMERA */}
-      <g transform="translate(146 46)">
-        <rect x="0" y="12" width="72" height="46" rx="7" fill={paper} stroke={ink} strokeWidth="2.4" />
-        <rect x="18" y="3" width="22" height="11" rx="2.5" fill={paper} stroke={ink} strokeWidth="2" />
-        <circle cx="36" cy="36" r="15.5" fill={paper} stroke={ink} strokeWidth="2.4" />
-        <circle cx="36" cy="36" r="8.5" fill="none" stroke={ink} strokeWidth="1.6" />
-        <circle cx="36" cy="36" r="3" fill={ink} />
-        <circle cx="60" cy="22" r="3.2" fill={gold} stroke={ink} strokeWidth="1" />
-        <rect x="7" y="4" width="10" height="7" rx="1.5" fill={coral} stroke={ink} strokeWidth="1.2" />
-      </g>
-
-      {/* SUITCASE */}
-      <g transform="translate(232 58)">
-        <path d="M15 6 q8 -11 18 0" fill="none" stroke={ink} strokeWidth="2.4" />
-        <rect x="0" y="6" width="48" height="42" rx="6" fill={paper} stroke={ink} strokeWidth="2.4" />
-        <line x1="12" y1="6" x2="12" y2="48" stroke={ink} strokeWidth="1.4" opacity="0.7" />
-        <line x1="36" y1="6" x2="36" y2="48" stroke={ink} strokeWidth="1.4" opacity="0.7" />
-        <rect x="9" y="22" width="6" height="8" rx="1" fill={gold} stroke={ink} strokeWidth="0.8" />
-        <circle cx="26" cy="18" r="5" fill={coral} opacity="0.85" stroke={ink} strokeWidth="0.8" />
-        <circle cx="30" cy="34" r="4" fill={green} opacity="0.85" stroke={ink} strokeWidth="0.8" />
-      </g>
-
-      {/* COMPASS */}
-      <g transform="translate(324 80)">
-        <circle r="30" fill={paper} stroke={ink} strokeWidth="2.4" />
-        <circle r="24" fill="none" stroke={ink} strokeWidth="1" opacity="0.5" />
-        {[...Array(8)].map((_, i) => { const a = (i / 8) * Math.PI * 2; return <line key={i} x1={Math.cos(a) * 24} y1={Math.sin(a) * 24} x2={Math.cos(a) * 29} y2={Math.sin(a) * 29} stroke={ink} strokeWidth="1.2" />; })}
-        <path d="M0 -20 L5 0 L0 4 L-5 0 Z" fill={coral} stroke={ink} strokeWidth="0.8" />
-        <path d="M0 20 L5 0 L0 -4 L-5 0 Z" fill={paper} stroke={ink} strokeWidth="0.8" />
-        <circle r="2.6" fill={ink} />
-        <text x="0" y="-14" textAnchor="middle" fontSize="7.5" fontWeight="700" fill={ink}>N</text>
-      </g>
-
-      {/* POSTAGE STAMP */}
-      <g transform="translate(392 46) rotate(8)">
-        <rect x="-2" y="-2" width="44" height="52" fill={gold} opacity="0.9" />
-        <rect x="2" y="2" width="36" height="44" fill={paper} stroke={ink} strokeWidth="1" />
-        <g transform="translate(20 30)" stroke={ink} strokeWidth="1.5" fill="none" strokeLinejoin="round">
-          <path d="M0 -16 L-6 14 M0 -16 L6 14 M-4 3 L4 3 M-7 14 L7 14 M-2.6 -6 L2.6 -6" />
-        </g>
-        <path d="M14 -8 l1.2 2.6 l2.8 .2 l-2.1 1.9 l.7 2.8 l-2.6 -1.5 l-2.6 1.5 l.7 -2.8 l-2.1 -1.9 l2.8 -.2 Z" fill={coral} opacity="0.85" />
-      </g>
-    </svg>
   );
 }
 // Big obvious success/failure popup that pauses play until the player clicks on.
