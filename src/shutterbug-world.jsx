@@ -552,8 +552,14 @@ const ALL_CAPITALS = Object.values(CAPITAL_OF);
 function quizQuestionFor(l) {
   const cat = CATEGORIES[l.category];
   const types = ["continent", "category", "photo"];        // always available
-  if (!(l.countries && l.countries.length > 1)) types.push("country"); // skip border landmarks
+  const border = l.countries && l.countries.length > 1;    // Niagara-style: two right answers
+  if (!border) types.push("country");
   if (CAPITAL_OF[l.country]) types.push("capital");
+  if (!border && COUNTRY_FLAG[l.country]) types.push("flag");
+  // Countries whose polygon crosses the antimeridian draw as a smear when boxed
+  // (far-east Russia, the Aleutians, Fiji's split), so they sit the shape quiz out.
+  if (!border && wcPath(l.country) && !["Russia", "United States", "Fiji"].includes(l.country)) types.push("shape");
+  if (!border && COUNTRY_GREETING[l.country]) types.push("greeting");
   const kind = types[Math.floor(Math.random() * types.length)];
   if (kind === "continent") {
     const opts = shuffleArr([l.continent, ...pickN(QUIZ_CONTINENTS, 3, new Set([l.continent]))]);
@@ -569,6 +575,39 @@ function quizQuestionFor(l) {
     return { kind, prompt: `Which country is ${l.subject} in?`, photo: null,
       options: opts.map((o) => ({ label: o, correct: o === l.country })),
       explain: `${l.subject} is in ${l.country}.` };
+  }
+  if (kind === "flag") {
+    // Show the flag big; name the country. Same-continent distractors.
+    const sameCont = [...new Set(LOCATIONS.filter((x) => x.continent === l.continent).map((x) => x.country))];
+    const others = pickN(sameCont, 3, new Set([l.country]));
+    const filled = others.length >= 3 ? others : [...others, ...pickN([...new Set(LOCATIONS.map((x) => x.country))], 3 - others.length, new Set([l.country, ...others]))];
+    const opts = shuffleArr([l.country, ...filled]);
+    return { kind, prompt: "Which country does this flag belong to?", photo: null, bigEmoji: COUNTRY_FLAG[l.country],
+      options: opts.map((o) => ({ label: o, correct: o === l.country })),
+      explain: `${COUNTRY_FLAG[l.country]} is the flag of ${l.country}.` };
+  }
+  if (kind === "shape") {
+    // The country's outline, drawn as a mystery silhouette.
+    const withShape = [...new Set(LOCATIONS.filter((x) => x.continent === l.continent).map((x) => x.country))];
+    const others = pickN(withShape, 3, new Set([l.country]));
+    const filled = others.length >= 3 ? others : [...others, ...pickN([...new Set(LOCATIONS.map((x) => x.country))], 3 - others.length, new Set([l.country, ...others]))];
+    const opts = shuffleArr([l.country, ...filled]);
+    return { kind, prompt: "Which country is this shape?", photo: null, shape: wcPath(l.country),
+      options: opts.map((o) => ({ label: o, correct: o === l.country })),
+      explain: `That's the shape of ${l.country} — ${l.subject} is there.` };
+  }
+  if (kind === "greeting") {
+    const g = COUNTRY_GREETING[l.country];
+    // Distractor greetings from other countries, never the same word (many
+    // countries share "Hola") and each text offered once.
+    const pool = [...new Set(Object.entries(COUNTRY_GREETING)
+      .filter(([c, v]) => c !== l.country && v.text !== g.text)
+      .map(([, v]) => v.text))];
+    const opts = shuffleArr([g.text, ...pickN(pool, 3)]);
+    const mean = greetingMeaning(g);
+    return { kind, prompt: `How do people say hello in ${l.country}?`, photo: null,
+      options: opts.map((o) => ({ label: o, correct: o === g.text })),
+      explain: `In ${l.country} they say “${g.text}” (${g.language})${mean ? ` — it means ${quoteGloss(mean)}` : "."}` };
   }
   if (kind === "capital") {
     const answer = CAPITAL_OF[l.country];
@@ -898,6 +937,26 @@ function ReadAloud({ text, label = "Read it to me" }) {
     </button>
   );
 }
+// A mystery-country silhouette for the shape quiz. The outline paths are complex,
+// so the viewBox is fitted at mount from the browser's own getBBox measurement.
+function ShapeView({ d }) {
+  const ref = useRef(null);
+  useEffect(() => {
+    const path = ref.current;
+    if (!path) return;
+    try {
+      const b = path.getBBox();
+      const pad = Math.max(b.width, b.height) * 0.07;
+      path.ownerSVGElement.setAttribute("viewBox", `${b.x - pad} ${b.y - pad} ${b.width + 2 * pad} ${b.height + 2 * pad}`);
+    } catch { /* ignore */ }
+  }, [d]);
+  return (
+    <svg role="img" aria-label="A mystery country's outline" style={{ width: "100%", maxWidth: 300, height: 190, display: "block", margin: "0 auto" }}>
+      <path ref={ref} d={d} fillRule="evenodd" fill={OCEAN} stroke={INK} strokeWidth="1" vectorEffect="non-scaling-stroke" />
+    </svg>
+  );
+}
+
 // Little 🔊 button that speaks a greeting aloud; hidden if speech is unavailable.
 function SpeakButton({ greeting }) {
   if (!speechAvailable || !greeting?.text) return null;
@@ -1979,6 +2038,14 @@ export default function ShutterbugWorld() {
           {q.photo && (
             <div style={{ margin: "0 auto 14px", maxWidth: 380, borderRadius: 8, overflow: "hidden", border: `1px solid ${PAPER_LINE}` }}>
               <Photo photo={q.photo} alt="Quiz landmark" size={360} full />
+            </div>
+          )}
+          {q.bigEmoji && (
+            <div aria-hidden="true" style={{ textAlign: "center", fontSize: 96, lineHeight: 1.1, margin: "0 0 10px" }}>{q.bigEmoji}</div>
+          )}
+          {q.shape && (
+            <div style={{ margin: "0 auto 12px", background: "#fff", border: `1px solid ${PAPER_LINE}`, borderRadius: 8, padding: 10, maxWidth: 340 }}>
+              <ShapeView d={q.shape} />
             </div>
           )}
           <h2 style={{ fontFamily: "ui-sans-serif, system-ui", fontWeight: 800, fontSize: 20, color: INK, textAlign: "center", margin: "0 0 16px", lineHeight: 1.35 }}>{q.prompt}</h2>
