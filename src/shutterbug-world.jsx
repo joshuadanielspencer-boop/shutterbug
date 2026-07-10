@@ -874,6 +874,30 @@ function speakGreeting(g) {
     window.speechSynthesis.speak(u);
   } catch { /* speech is a nice-to-have; never break gameplay */ }
 }
+// Read any English game text aloud (the editor's clue, a fact) — for travellers
+// who can't read yet, or are still learning. A touch slower than default.
+function speakText(text) {
+  try {
+    if (!speechAvailable || !text) return;
+    const u = new SpeechSynthesisUtterance(String(text));
+    u.lang = "en-US";
+    u.rate = 0.92;
+    window.speechSynthesis.cancel();
+    window.speechSynthesis.speak(u);
+  } catch { /* speech is a nice-to-have; never break gameplay */ }
+}
+// "Read it to me" — a labelled pill, bigger than the greeting's inline 🔊 so a
+// pre-reader can find it (the label is for the grown-up showing them once).
+function ReadAloud({ text, label = "Read it to me" }) {
+  if (!speechAvailable || !text) return null;
+  return (
+    <button onClick={(e) => { e.stopPropagation(); speakText(text); }} aria-label={label} title={label}
+      style={{ background: "none", border: `1px solid ${OCEAN}`, borderRadius: 12, cursor: "pointer",
+        fontSize: 11, fontWeight: 700, color: OCEAN, padding: "2px 9px", lineHeight: 1.4 }}>
+      🔊 {label}
+    </button>
+  );
+}
 // Little 🔊 button that speaks a greeting aloud; hidden if speech is unavailable.
 function SpeakButton({ greeting }) {
   if (!speechAvailable || !greeting?.text) return null;
@@ -1273,6 +1297,7 @@ export default function ShutterbugWorld() {
 
   // Dismiss the result popup and do what its button promised.
   function continueFromResult() {
+    try { if (speechAvailable) window.speechSynthesis.cancel(); } catch { /* ignore */ }
     const kind = pending?.kind;
     setPending(null);
     if (kind === "correct") {
@@ -2422,7 +2447,10 @@ export default function ShutterbugWorld() {
             </>
           ) : (
           <div style={{ background: PAPER, border: `1px dashed ${CORAL}`, borderRadius: 6, padding: "14px 16px", position: "relative" }}>
-            <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.22em", color: CORAL, marginBottom: 8 }}>✎ TELEGRAM — FROM THE EDITOR</div>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, marginBottom: 8 }}>
+              <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.22em", color: CORAL }}>✎ TELEGRAM — FROM THE EDITOR</span>
+              <ReadAloud text={(isCatAsg || namesSubject) ? `Bring me a photo of ${promptSubject}. ${clue}` : clue} />
+            </div>
             {(isCatAsg || namesSubject) ? (
               <>
                 <p style={{ margin: 0, color: INK, lineHeight: 1.5, fontSize: 15 }}>Bring me a photo of <b>{promptSubject}</b>.{showTypeBadge && badgeCat && <> <CategoryBadge category={badgeCat} size="sm" style={{ verticalAlign: "middle" }} /></>}</p>
@@ -3039,7 +3067,10 @@ function ResultModal({ data, onContinue, reduced }) {
         <p style={{ color: INK, fontSize: 15, lineHeight: 1.5, margin: "0 auto", maxWidth: 340 }}>{data.subtitle}</p>
         {data.fact && (
           <div style={{ marginTop: 14, background: "#fff", border: `1px dashed ${accent}`, borderRadius: 10, padding: "10px 12px", textAlign: "left" }}>
-            <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 10, letterSpacing: "0.18em", color: accent, marginBottom: 4 }}>📖 DID YOU KNOW?</div>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, marginBottom: 4 }}>
+              <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 10, letterSpacing: "0.18em", color: accent }}>📖 DID YOU KNOW?</span>
+              <ReadAloud text={data.fact} label="Read" />
+            </div>
             <div style={{ color: INK, fontSize: 13, lineHeight: 1.45 }}>{data.fact}</div>
           </div>
         )}
