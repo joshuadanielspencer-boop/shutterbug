@@ -229,16 +229,16 @@ export const COUNTRY_PEOPLE = {
 
   // ---- Asia (reviewed batch; Japan & India in the pilot above) ----------
   "China": {
-    src: "https://commons.wikimedia.org/wiki/Special:FilePath/A%20woman%20with%20Chinese%20clothes.jpg?width=500",
-    source: "https://commons.wikimedia.org/wiki/File:A%20woman%20with%20Chinese%20clothes.jpg",
-    credit: "Peachyeung316", license: "CC BY-SA 4.0",
-    caption: "A woman in Hong Kong wearing a qipao (cheongsam), a fitted Chinese silk dress",
+    src: "https://commons.wikimedia.org/wiki/Special:FilePath/%E6%9B%B2%E9%98%9C%E5%B8%AB%E7%AF%84%E5%A4%A7%E5%AD%A6%E3%81%AE%E7%8C%97%E8%98%AD%E9%83%A8%E3%81%AE%E8%8A%B1%E6%9C%9D%E7%A5%AD%E3%82%8A%E3%81%AB%E9%96%A2%E3%81%99%E3%82%8B%E9%83%A8%E6%B4%BB.jpg?width=800",
+    source: "https://commons.wikimedia.org/wiki/File:%E6%9B%B2%E9%98%9C%E5%B8%AB%E7%AF%84%E5%A4%A7%E5%AD%A6%E3%81%AE%E7%8C%97%E8%98%AD%E9%83%A8%E3%81%AE%E8%8A%B1%E6%9C%9D%E7%A5%AD%E3%82%8A%E3%81%AB%E9%96%A2%E3%81%99%E3%82%8B%E9%83%A8%E6%B4%BB.jpg",
+    credit: "Allervous", license: "CC BY-SA 4.0",
+    caption: "Young people wearing hanfu at a Huazhao (Flower Festival) gathering in China",
   },
   "South Korea": {
-    src: "https://commons.wikimedia.org/wiki/Special:FilePath/Hanbok%20(female%20and%20male).jpg?width=500",
-    source: "https://commons.wikimedia.org/wiki/File:Hanbok%20(female%20and%20male).jpg",
-    credit: "Korea.net / KOCIS", license: "CC BY 2.0",
-    caption: "A woman and man in hanbok, South Korea's colourful traditional clothing",
+    src: "https://commons.wikimedia.org/wiki/Special:FilePath/Korea%20Spring%20of%20Insadong%2010%20%2813326749133%29.jpg?width=800",
+    source: "https://commons.wikimedia.org/wiki/File:Korea_Spring_of_Insadong_10_(13326749133).jpg",
+    credit: "Korea.net / Korean Culture and Information Service (Jeon Han)", license: "CC BY-SA 2.0",
+    caption: "Women in colourful hanbok at the Insadong hanbok parade in Seoul, South Korea",
   },
   "Thailand": {
     src: "https://commons.wikimedia.org/wiki/Special:FilePath/4%20Couple%20in%20traditional%20thai%20dress.jpg?width=500",
@@ -271,10 +271,10 @@ export const COUNTRY_PEOPLE = {
     caption: "A Khmer classical dancer in a golden Apsara crown and pleated silk sampot, Siem Reap",
   },
   "Myanmar": {
-    src: "https://commons.wikimedia.org/wiki/Special:FilePath/2016%20Rangun%2C%20Park%20Maha%20Bandula%2C%20Kobiety%20w%20tradycyjnych%20strojach.jpg?width=500",
-    source: "https://commons.wikimedia.org/wiki/File:2016%20Rangun%2C%20Park%20Maha%20Bandula%2C%20Kobiety%20w%20tradycyjnych%20strojach.jpg",
-    credit: "Marcin Konsek", license: "CC BY-SA 4.0",
-    caption: "Women in Yangon wearing Myanmar's traditional wrap skirt, the longyi",
+    src: "https://commons.wikimedia.org/wiki/Special:FilePath/Mandalay%20Thingyan%20Rehearsal%202012.JPG?width=800",
+    source: "https://commons.wikimedia.org/wiki/File:Mandalay_Thingyan_Rehearsal_2012.JPG",
+    credit: "Htoo Tay Zar", license: "CC BY-SA 3.0",
+    caption: "Dancers in Burmese dress rehearse a traditional dance for the Thingyan water festival in Mandalay",
   },
   "Iran": {
     src: "https://commons.wikimedia.org/wiki/Special:FilePath/Qashqai%20nomad%20woman.jpg?width=500",
@@ -301,10 +301,10 @@ export const COUNTRY_PEOPLE = {
     caption: "Men in the barong tagalog, an embroidered Filipino dress shirt, at a wedding",
   },
   "Russia": {
-    src: "https://commons.wikimedia.org/wiki/Special:FilePath/Traditional%20Russian%20Folk%20Costumes%2001.JPG?width=500",
-    source: "https://commons.wikimedia.org/wiki/File:Traditional%20Russian%20Folk%20Costumes%2001.JPG",
-    credit: "Ninaras", license: "CC BY 4.0",
-    caption: "Performers in bright Russian folk dress with the sarafan jumper at a St Petersburg festival",
+    src: "https://commons.wikimedia.org/wiki/Special:FilePath/The%20Russian%20folk%20folkloric%20ensemble%20RASPEV%20%28chant%29%20will%20be%20performing%20in%202021%20in%20the%20Museum-Reservation%20of%20the%20Manor%20%22Muranovo%22%2C%20named%20after%20Fyodor%20Ivanovich%20Tyutchev.jpg?width=800",
+    source: "https://commons.wikimedia.org/wiki/File:The_Russian_folk_folkloric_ensemble_RASPEV_(chant)_will_be_performing_in_2021_in_the_Museum-Reservation_of_the_Manor_%22Muranovo%22,_named_after_Fyodor_Ivanovich_Tyutchev.jpg",
+    credit: "WikiMaxChe", license: "CC BY-SA 4.0",
+    caption: "The RASPEV folk ensemble in sarafans and headscarves at a folk festival near Moscow",
   },
   "Turkey": {
     src: "https://commons.wikimedia.org/wiki/Special:FilePath/Turkish%20folk%20dancers%20(1085290934).jpg?width=500",
@@ -319,22 +319,22 @@ export const COUNTRY_PEOPLE = {
     caption: "A girl in Emirati traditional dress holds a falcon at a heritage festival in Abu Dhabi",
   },
   "Uzbekistan": {
-    src: "https://commons.wikimedia.org/wiki/Special:FilePath/Uzbek%20girl%20in%20traditional%20clothing.jpg?width=500",
-    source: "https://commons.wikimedia.org/wiki/File:Uzbek%20girl%20in%20traditional%20clothing.jpg",
-    credit: "Elamanovaelvina", license: "CC BY-SA 4.0",
-    caption: "A girl in Uzbekistan in a chopon robe of adras silk and an embroidered do'ppi cap",
+    src: "https://commons.wikimedia.org/wiki/Special:FilePath/Navruz%20Dance%20in%20the%20Spring%20Whirlwind.png?width=800",
+    source: "https://commons.wikimedia.org/wiki/File:Navruz_Dance_in_the_Spring_Whirlwind.png",
+    credit: "Canontsigan", license: "CC BY-SA 4.0",
+    caption: "Women in atlas silk ikat dress dancing and playing doira drums at a Navruz celebration in Bukhara",
   },
   "Sri Lanka": {
-    src: "https://commons.wikimedia.org/wiki/Special:FilePath/Traditional%20Sri%20Lankan%20Kandyan%20dress.jpg?width=500",
-    source: "https://commons.wikimedia.org/wiki/File:Traditional%20Sri%20Lankan%20Kandyan%20dress.jpg",
-    credit: "Rangani Kaushalya Meddepola", license: "CC BY-SA 4.0",
-    caption: "A young woman in Sri Lanka's Kandyan osariya, a sari with a lacy blouse and waist frill",
+    src: "https://commons.wikimedia.org/wiki/Special:FilePath/Water%20Carrier%20Dancers.jpg?width=800",
+    source: "https://commons.wikimedia.org/wiki/File:Water_Carrier_Dancers.jpg",
+    credit: "Iamironviper", license: "CC BY-SA 4.0",
+    caption: "Performers of the traditional Water Carrier Dance (Kothala Paliya) at a Sri Lankan perahera festival",
   },
   "Taiwan": {
-    src: "https://commons.wikimedia.org/wiki/Special:FilePath/Ilisin%20-%20Women%20in%20Traditional%20Attire.jpg?width=500",
-    source: "https://commons.wikimedia.org/wiki/File:Ilisin%20-%20Women%20in%20Traditional%20Attire.jpg",
+    src: "https://commons.wikimedia.org/wiki/Special:FilePath/Ilisin%20-%20Young%20Girls%20Singing.jpg?width=800",
+    source: "https://commons.wikimedia.org/wiki/File:Ilisin_-_Young_Girls_Singing.jpg",
     credit: "Kevshen", license: "CC BY-SA 4.0",
-    caption: "Amis women of eastern Taiwan in traditional dress for the Ilisin harvest festival",
+    caption: "Young Amis women in traditional dress sing at the Ilisin harvest festival in eastern Taiwan",
   },
   "Singapore": {
     src: "https://commons.wikimedia.org/wiki/Special:FilePath/Kebaya%201.jpg?width=500",
@@ -543,6 +543,50 @@ export const COUNTRY_PEOPLE = {
     source: "https://commons.wikimedia.org/wiki/File:Vanuatu-humans-of-vanuatu-2.jpg",
     credit: "Graham Crumb / Imagicity.com", license: "CC BY-SA 3.0",
     caption: "Ni-Vanuatu women dance in woven fibre tops and grass skirts, tapping bamboo poles to the beat",
+  },
+
+  // ---- Countries added after the original pipeline (landscape, reviewed) ----
+  "Belize": {
+    src: "https://commons.wikimedia.org/wiki/Special:FilePath/Garifuna%20dancers%20in%20Dangriga%2C%20Belize.jpg?width=800",
+    source: "https://commons.wikimedia.org/wiki/File:Garifuna_dancers_in_Dangriga,_Belize.jpg",
+    credit: "Rick Goldman", license: "CC BY-SA 2.0",
+    caption: "Garifuna women dancing in traditional dress in Dangriga, Belize",
+  },
+  "Costa Rica": {
+    src: "https://commons.wikimedia.org/wiki/Special:FilePath/Dances%20-%20Tortuguero%20-%20Costa%20Rica.jpg?width=800",
+    source: "https://commons.wikimedia.org/wiki/File:Dances_-_Tortuguero_-_Costa_Rica.jpg",
+    credit: "Mimostralia", license: "CC BY-SA 4.0",
+    caption: "Young folk dancers in colourful traje típico at Tortuguero, Costa Rica",
+  },
+  "Haiti": {
+    src: "https://commons.wikimedia.org/wiki/Special:FilePath/Kanaval%20in%20Jacmel%20Haiti%202014%2018.jpg?width=800",
+    source: "https://commons.wikimedia.org/wiki/File:Kanaval_in_Jacmel_Haiti_2014_18.jpg",
+    credit: "HOPE Art", license: "CC BY 2.0",
+    caption: "Costumed masqueraders in papier-mâché animal masks and satin robes at the Jacmel Kanaval, Haiti",
+  },
+  "Honduras": {
+    src: "https://commons.wikimedia.org/wiki/Special:FilePath/Mujeres%20traje%20t%C3%ADpico%20Honduras.jpg?width=800",
+    source: "https://commons.wikimedia.org/wiki/File:Mujeres_traje_típico_Honduras.jpg",
+    credit: "HDickerman79", license: "CC BY-SA 4.0",
+    caption: "Dancers in Honduran folk dress (traje típico) at a festival",
+  },
+  "Jamaica": {
+    src: "https://commons.wikimedia.org/wiki/Special:FilePath/John%20Canoe%20Dancers%20Jamaica%201975%20Dec%20ver06.jpg?width=800",
+    source: "https://commons.wikimedia.org/wiki/File:John_Canoe_Dancers_Jamaica_1975_Dec_ver06.jpg",
+    credit: "WikiPedant (Gary J. Wood)", license: "CC BY-SA 4.0",
+    caption: "Jonkonnu (John Canoe) masqueraders in costume at Christmas in Kingston, Jamaica",
+  },
+  "Nicaragua": {
+    src: "https://commons.wikimedia.org/wiki/Special:FilePath/Torovenado%20de%20Masaya.jpg?width=800",
+    source: "https://commons.wikimedia.org/wiki/File:Torovenado_de_Masaya.jpg",
+    credit: "Jorge Mejía Peralta", license: "CC BY 2.0",
+    caption: "A masked dancer in the traditional Torovenado folk festival in Masaya, Nicaragua",
+  },
+  "Trinidad and Tobago": {
+    src: "https://commons.wikimedia.org/wiki/Special:FilePath/MoKo%20Jumbie.jpg?width=800",
+    source: "https://commons.wikimedia.org/wiki/File:MoKo_Jumbie.jpg",
+    credit: "Abreauna", license: "CC BY 4.0",
+    caption: "Moko jumbie stilt-dancers in flowing costume at a street festival in Trinidad",
   },
 };
 

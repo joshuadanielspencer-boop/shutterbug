@@ -369,6 +369,15 @@ const CAT_LOCS = (() => {
 // inherently confusing (playtest feedback). Category missions on Antarctica
 // become specific "photograph <this place>" missions instead.
 const NUMWORD = ["no", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine"];
+// Some greeting glosses already open with a curly quote ("Wah gwaan" → “What's going
+// on?” — a casual hello). Wrapping those again printed ““What's going on?” …”, so quote
+// only when the gloss doesn't quote itself, and don't add a period after one.
+const quoteGloss = (mean) => {
+  if (!mean) return "";
+  const selfQuoted = mean.trimStart().startsWith("\u201C");
+  if (selfQuoted) return mean.replace(/\.$/, "");
+  return `\u201C${mean.replace(/\.$/, "")}.\u201D`;
+};
 // Thin wrapper over the shared rule in src/missions.js (which `npm test` exercises):
 // a category mission is fair only if this continent has 2+ members of the category,
 // and — when the country step is in play — 2+ countries that actually hold one.
@@ -2387,7 +2396,7 @@ export default function ShutterbugWorld() {
                   <span aria-hidden="true">💬 </span>Local greeting: “{currentLoc.greeting.text}”
                   {currentLoc.greeting.language ? ` — ${currentLoc.greeting.language}` : ""}
                   {currentLoc.greeting.pronunciation ? ` (${currentLoc.greeting.pronunciation})` : ""}
-                  {greetingMeaning(currentLoc.greeting) ? `, “${greetingMeaning(currentLoc.greeting)}.”` : ""}
+                  {greetingMeaning(currentLoc.greeting) ? `, ${quoteGloss(greetingMeaning(currentLoc.greeting))}` : ""}
                   <SpeakButton greeting={currentLoc.greeting} />
                 </div>
               )}
@@ -2448,7 +2457,7 @@ export default function ShutterbugWorld() {
                       <div style={{ fontSize: 13, color: OCEAN, lineHeight: 1.5 }}>
                         <span aria-hidden="true">💬 </span>Here they say <b>“{g.text}”</b>
                         {g.pronunciation ? ` (${g.pronunciation})` : ""} in {g.language}
-                        {mean ? ` — it means “${mean}.”` : "."}
+                        {mean ? ` — it means ${quoteGloss(mean)}.` : "."}
                         <SpeakButton greeting={g} />
                       </div>
                     );
@@ -2936,7 +2945,7 @@ function LandmarkModal({ p, onClose, reduced }) {
             <span aria-hidden="true">💬 </span>Local greeting: “{p.greeting.text}”
             {p.greeting.language ? ` — ${p.greeting.language}` : ""}
             {p.greeting.pronunciation ? ` (${p.greeting.pronunciation})` : ""}
-            {greetingMeaning(p.greeting) ? `, “${greetingMeaning(p.greeting)}”` : ""}
+            {greetingMeaning(p.greeting) ? `, ${quoteGloss(p.greeting && greetingMeaning(p.greeting))}` : ""}
             <SpeakButton greeting={p.greeting} />
           </div>
         )}
@@ -3101,8 +3110,12 @@ function PeoplePhoto({ people }) {
   if (!people) return null;
   return (
     <figure style={{ margin: "10px 0 0", textAlign: "left" }}>
+      {/* NOT loading="lazy": the image sits inside this overflow:hidden frame, and a
+          lazy image clipped by its container never intersects the viewport, so it
+          never loads — the card showed an empty grey box. It's one image, and the
+          player has already flown here, so eager is right anyway. */}
       <div style={{ width: "100%", aspectRatio: "16 / 9", borderRadius: 4, overflow: "hidden", background: "#DCE9EC" }}>
-        <img src={people.src} alt={people.caption} loading="lazy"
+        <img src={people.src} alt={people.caption} decoding="async"
           style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "50% 30%", display: "block" }} />
       </div>
       <figcaption style={{ fontSize: 11, color: INK, opacity: 0.7, marginTop: 4, lineHeight: 1.4 }}>
