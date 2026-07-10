@@ -7,6 +7,7 @@ import { LOCATIONS } from "../src/data/locations.js";
 import { CATEGORIES, CATEGORY_ORDER, KIND_META } from "../src/data/categories.js";
 import { WORLD_COUNTRIES, COUNTRY_CONTINENT } from "../src/data/worldmap.js";
 import { COUNTRY_INFO } from "../src/data/countries.js";
+import { categoryCountries, categoryMissionOK } from "../src/missions.js";
 
 const CONTINENTS = [
   "North America", "South America", "Europe", "Africa", "Asia", "Oceania", "Antarctica",
@@ -178,5 +179,59 @@ describe("country registry (COUNTRY_INFO)", () => {
   it("capitals are distinct (a duplicate would make a quiz question unanswerable)", () => {
     const caps = Object.entries(COUNTRY_INFO).filter(([, i]) => i.quizCapital !== false).map(([, i]) => i.capital);
     expect(new Set(caps).size, "duplicate capital in the quiz pool").toBe(caps.length);
+  });
+});
+
+describe("category missions are answerable", () => {
+  // The real bug: "In AFRICA, find any desert" offered Algeria — which genuinely
+  // contains the Sahara — but the game's Algeria entry is a rock formation, so the
+  // pick was rejected. These tests run the SHIPPING rule (src/missions.js), not a copy.
+  const LAYER_CONTINENTS = ["North America", "South America", "Europe", "Africa", "Asia", "Oceania"];
+
+  it("a mission offered with a country step only offers countries that qualify", () => {
+    for (const cont of LAYER_CONTINENTS) {
+      for (const cat of CATEGORY_ORDER) {
+        if (!categoryMissionOK(cat, cont, true)) continue;   // not offered there — fine
+        const offered = categoryCountries(cont, cat);
+        expect(offered.length, `${cat} on ${cont}`).toBeGreaterThanOrEqual(2);
+        for (const country of offered) {
+          const holds = LOCATIONS.some(
+            (l) => l.continent === cont && l.category === cat &&
+              (l.countries && l.countries.length ? l.countries : [l.country]).includes(country)
+          );
+          expect(holds, `${cont}: "${country}" offered for "${cat}" but holds none`).toBe(true);
+        }
+      }
+    }
+  });
+
+  it("the Algeria/Sahara case stays fixed: Africa's desert mission never offers Algeria", () => {
+    // Algeria's entry (Tassili n'Ajjer) is categorised "rock", so it must not appear.
+    expect(categoryCountries("Africa", "desert")).not.toContain("Algeria");
+    // …and the mission is still offerable, with real choices.
+    expect(categoryMissionOK("desert", "Africa", true)).toBe(true);
+  });
+
+  it("a one-country category is never offered with a country step", () => {
+    for (const cont of LAYER_CONTINENTS) {
+      for (const cat of CATEGORY_ORDER) {
+        if (categoryCountries(cont, cat).length === 1) {
+          expect(categoryMissionOK(cat, cont, true), `${cat} on ${cont} is a coin flip`).toBe(false);
+        }
+      }
+    }
+  });
+
+  it("a single-member category is never a category mission at all", () => {
+    for (const cont of [...LAYER_CONTINENTS, "Antarctica"]) {
+      for (const cat of CATEGORY_ORDER) {
+        const n = LOCATIONS.filter((l) => l.continent === cont && l.category === cat).length;
+        if (n === 1) expect(categoryMissionOK(cat, cont, false), `${cat} on ${cont}`).toBe(false);
+      }
+    }
+  });
+
+  it("Antarctica is never a category mission", () => {
+    for (const cat of CATEGORY_ORDER) expect(categoryMissionOK(cat, "Antarctica", false)).toBe(false);
   });
 });

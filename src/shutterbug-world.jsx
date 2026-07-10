@@ -4,6 +4,7 @@ import { WORLD_COUNTRIES, COUNTRY_CONTINENT } from "./data/worldmap.js";
 import { WORLD_COUNTRIES_ROBINSON } from "./data/worldmap-robinson.js";
 import { COUNTRY_INFO, COUNTRY_LAYER_CONTINENTS } from "./data/countries.js";
 import { COUNTRY_PEOPLE, greetingMeaning } from "./data/culture.js";
+import { categoryCountries, categoryMissionOK as missionOK } from "./missions.js";
 import { robinson, eqToRobinson, ROBINSON_W, ROBINSON_H } from "./robinson.js";
 import { CATEGORIES, CATEGORY_ORDER, KIND_META, kindOf } from "./data/categories.js";
 import { listProfiles, lastProfileName, getProfile, createProfile, setLastProfile,
@@ -367,8 +368,12 @@ const CAT_LOCS = (() => {
 // "mountain" or "desert" at a glance, so the category framing there is
 // inherently confusing (playtest feedback). Category missions on Antarctica
 // become specific "photograph <this place>" missions instead.
-const categoryMissionOK = (category, continent) =>
-  continent !== "Antarctica" && ((CAT_LOCS[category] && CAT_LOCS[category][continent]) || []).length >= 2;
+const NUMWORD = ["no", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine"];
+// Thin wrapper over the shared rule in src/missions.js (which `npm test` exercises):
+// a category mission is fair only if this continent has 2+ members of the category,
+// and — when the country step is in play — 2+ countries that actually hold one.
+const categoryMissionOK = (category, continent, mode = null) =>
+  missionOK(category, continent, !!(mode && usesCountryLayer(mode, continent)));
 
 // Turn a list of anchor locations into mission objects + per-step city options.
 // Each anchor becomes either a category mission ("any X on this continent") or a
@@ -402,8 +407,13 @@ function makeAssignmentPlan(mode, anchors, order) {
   const assignmentObjs = [], options = [];
   for (const anchor of anchors) {
     const continent = anchor.continent;
-    if (Math.random() < mode.catShare && categoryMissionOK(anchor.category, continent)) {
-      assignmentObjs.push({ type: "category", category: anchor.category, continent, anchorId: anchor.id, countries: usesCountryLayer(mode, continent) ? pickCountries(continent, [anchor.country]) : null });
+    if (Math.random() < mode.catShare && categoryMissionOK(anchor.category, continent, mode)) {
+      // Every offered country really has one of these — no plausible-but-rejected decoys.
+      const valid = categoryCountries(continent, anchor.category);
+      const countries = usesCountryLayer(mode, continent)
+        ? shuffle(valid).slice(0, Math.max(2, Math.min(mode.countryOpts, valid.length)))
+        : null;
+      assignmentObjs.push({ type: "category", category: anchor.category, continent, anchorId: anchor.id, countries });
       options.push(buildOptions(anchor));
     } else {
       assignmentObjs.push({ type: "specific", targetId: anchor.id, continent, countries: usesCountryLayer(mode, continent) ? pickCountries(continent, countriesOf(anchor)) : null });
@@ -999,6 +1009,7 @@ export default function ShutterbugWorld() {
 
     const usedAnchors = new Set(), usedCatCont = new Set(), reqs = [];
     for (const cont of slots) {
+      // The Grand Tour flies straight to the city step, so no country-layer check.
       const catsHere = CATEGORY_ORDER.filter((c) => categoryMissionOK(c, cont)
         && CAT_LOCS[c][cont].some((id) => !usedAnchors.has(id)) && !usedCatCont.has(c + "|" + cont));
       let req = null;
@@ -1424,9 +1435,12 @@ export default function ShutterbugWorld() {
         plan = { ids: own.slice().sort(() => Math.random() - 0.5), wide: false };
       } else {
         const far = spacedFor(CONTINENT_META[pickedContinent].box);
+        // Neighbours nearest the country you actually flew to (for a category mission
+        // that may not be the anchor's country), so the padded pins are plausibly local.
+        const here = own.length ? BY_ID[own[0]] : target;
         const near = LOCATIONS
           .filter((l) => l.continent === pickedContinent && !own.includes(l.id))
-          .sort((x, y) => kmBetween(target, x) - kmBetween(target, y));
+          .sort((x, y) => kmBetween(here, x) - kmBetween(here, y));
         const chosen = own.map((id) => BY_ID[id]);
         for (const l of near) { if (chosen.length >= 3) break; if (far(l, chosen)) chosen.push(l); }
         for (const l of near) { if (chosen.length >= 3) break; if (!chosen.includes(l)) chosen.push(l); }
@@ -2216,8 +2230,14 @@ export default function ShutterbugWorld() {
   const namesSubject = !isTour && !isCatAsg && tier === "easy";
   const showTypeBadge = !isTour && (isCatAsg || tier !== "hard");
   const badgeCat = isCatAsg ? asg.category : (target ? target.category : null);
+  // Category clue. When the country step is in play we say exactly how many countries
+  // on the map qualify, because only those are offered — a player shouldn't have to
+  // guess whether the game counts, say, Algeria's stretch of the Sahara as "a desert".
+  const catCount = isCatAsg && asg.countries ? asg.countries.length : 0;
   const clue = isTour ? "" : (isCatAsg
-    ? `In ${asg.continent.toUpperCase()}, find any ${catMeta.noun} and photograph it — you pick which one!`
+    ? (catCount
+        ? `In ${asg.continent.toUpperCase()}, ${NUMWORD[catCount] || catCount} countries on your map have a ${catMeta.noun}. Fly to any of them and photograph it — you pick which one!`
+        : `In ${asg.continent.toUpperCase()}, find any ${catMeta.noun} on the editor's list and photograph it — you pick which one!`)
     : (target ? (target[tier] || target.hard) : ""));
   const inCountry = phase === "country";
   const inCity = phase === "city";
@@ -2383,15 +2403,7 @@ export default function ShutterbugWorld() {
                   <span aria-hidden="true">📖 </span>{COUNTRY_INFO[currentLoc.country].blurb}
                 </div>
               )}
-              {!pickedCountry && COUNTRY_PEOPLE[currentLoc.country] && (
-                <figure style={{ margin: "10px 0 0", textAlign: "left" }}>
-                  <img src={COUNTRY_PEOPLE[currentLoc.country].src} alt={COUNTRY_PEOPLE[currentLoc.country].caption}
-                    style={{ width: "100%", borderRadius: 4, display: "block" }} loading="lazy" />
-                  <figcaption style={{ fontSize: 11, color: INK, opacity: 0.7, marginTop: 4, lineHeight: 1.4 }}>
-                    {COUNTRY_PEOPLE[currentLoc.country].caption} · {COUNTRY_PEOPLE[currentLoc.country].credit} ({COUNTRY_PEOPLE[currentLoc.country].license})
-                  </figcaption>
-                </figure>
-              )}
+              {!pickedCountry && <PeoplePhoto people={COUNTRY_PEOPLE[currentLoc.country]} />}
               {isExplore && (
                 <div style={{ marginTop: 10, textAlign: "left" }}>
                   <div style={{ textAlign: "center", marginBottom: 8 }}><CategoryBadge category={currentLoc.category} size="sm" /></div>
@@ -2429,15 +2441,7 @@ export default function ShutterbugWorld() {
                   people in traditional dress, once one is added to COUNTRY_PEOPLE). */}
               {pickedCountry && (COUNTRY_GREETING[pickedCountry] || COUNTRY_PEOPLE[pickedCountry]) && (
                 <div style={{ marginTop: 10, background: PAPER, border: `1px solid ${PAPER_LINE}`, borderRadius: 6, padding: 10, textAlign: "left" }}>
-                  {COUNTRY_PEOPLE[pickedCountry] && (
-                    <figure style={{ margin: "0 0 8px" }}>
-                      <img src={COUNTRY_PEOPLE[pickedCountry].src} alt={COUNTRY_PEOPLE[pickedCountry].caption}
-                        style={{ width: "100%", borderRadius: 4, display: "block" }} loading="lazy" />
-                      <figcaption style={{ fontSize: 11, color: INK, opacity: 0.7, marginTop: 4, lineHeight: 1.4 }}>
-                        {COUNTRY_PEOPLE[pickedCountry].caption} · {COUNTRY_PEOPLE[pickedCountry].credit} ({COUNTRY_PEOPLE[pickedCountry].license})
-                      </figcaption>
-                    </figure>
-                  )}
+                  <PeoplePhoto people={COUNTRY_PEOPLE[pickedCountry]} />
                   {COUNTRY_GREETING[pickedCountry] && (() => {
                     const g = COUNTRY_GREETING[pickedCountry]; const mean = greetingMeaning(g);
                     return (
@@ -3086,6 +3090,25 @@ function AvatarEditor({ name, initial, onSave, onClose }) {
         </div>
       </div>
     </div>
+  );
+}
+
+// The culture card's photo of people in traditional dress. It renders in a fixed
+// landscape frame (16:9) so a portrait source can never push the rest of the card
+// off-screen. Sources are landscape wherever one could be found; `object-position`
+// biases the crop upward so faces survive on the few that aren't.
+function PeoplePhoto({ people }) {
+  if (!people) return null;
+  return (
+    <figure style={{ margin: "10px 0 0", textAlign: "left" }}>
+      <div style={{ width: "100%", aspectRatio: "16 / 9", borderRadius: 4, overflow: "hidden", background: "#DCE9EC" }}>
+        <img src={people.src} alt={people.caption} loading="lazy"
+          style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "50% 30%", display: "block" }} />
+      </div>
+      <figcaption style={{ fontSize: 11, color: INK, opacity: 0.7, marginTop: 4, lineHeight: 1.4 }}>
+        {people.caption} · {people.credit} ({people.license})
+      </figcaption>
+    </figure>
   );
 }
 
