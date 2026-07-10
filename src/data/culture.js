@@ -93,6 +93,12 @@ export const GREETING_MEANING = {
   "Assalomu alaykum": "Peace be upon you",
   "Xin chào": "Hello",
   "Molo": "Hello",
+  "Сәлем (Sälem)": "Hello",
+  "Jó napot": "Good day",
+  "Bună ziua": "Hello / Good day",
+  "عسلامة (Aslema)": "Hello",
+  "আসসালামু আলাইকুম (Assalamu alaikum)": "Peace be upon you",
+  "Mba'éichapa": "How are you? (the everyday Guaraní hello)",
 };
 
 // Freely-licensed photo of people in traditional/cultural dress, keyed by
@@ -693,6 +699,62 @@ export const COUNTRY_PEOPLE = {
     source: "https://commons.wikimedia.org/wiki/File:Pacific_Partnership_2022_visits_Francis_Primary_School_(7408289).jpg",
     credit: "U.S. Navy / Petty Officer 3rd Class Raphael McCorey", license: "Public domain",
     caption: "Students perform a traditional dance in grass skirts at a school in the Solomon Islands",
+  },
+
+  // ---- Headline-countries batch (landscape, reviewed) ----
+  "Malaysia": {
+    src: "https://commons.wikimedia.org/wiki/Special:FilePath/Malaysian%20Muslim%20dance%20%2829161038635%29.jpg?width=800",
+    source: "https://commons.wikimedia.org/wiki/File:Malaysian_Muslim_dance_(29161038635).jpg",
+    credit: "Thomas Quine", license: "CC BY 2.0",
+    caption: "Dancers in traditional Malay dress performing at the Sarawak Cultural Village",
+  },
+  "Kazakhstan": {
+    src: "https://commons.wikimedia.org/wiki/Special:FilePath/Nauryz%20celebration.jpg?width=800",
+    source: "https://commons.wikimedia.org/wiki/File:Nauryz_celebration.jpg",
+    credit: "Talgat Orynbayev", license: "CC BY-SA 4.0",
+    caption: "Girls in Kazakh traditional dress at a Nauryz new-year celebration",
+  },
+  "Hungary": {
+    src: "https://commons.wikimedia.org/wiki/Special:FilePath/MatyoFotoThalerTamas.jpg?width=800",
+    source: "https://commons.wikimedia.org/wiki/File:MatyoFotoThalerTamas.jpg",
+    credit: "Thaler Tamas", license: "CC BY-SA 4.0",
+    caption: "A festival procession in embroidered Matyó folk dress, Hungary",
+  },
+  "Romania": {
+    src: "https://commons.wikimedia.org/wiki/Special:FilePath/Romanian%20teens%20in%20traditional%20clothes%20are%20dancing.jpg?width=800",
+    source: "https://commons.wikimedia.org/wiki/File:Romanian_teens_in_traditional_clothes_are_dancing.jpg",
+    credit: "ShadowNighy", license: "CC BY-SA 4.0",
+    caption: "Teenagers dancing in Romanian folk costume with embroidered blouses",
+  },
+  "Denmark": {
+    src: "https://commons.wikimedia.org/wiki/Special:FilePath/Keld%20Gydum-IMG%204003%20%C3%A5benthus%20frederikshavn%20havn%20cropped.JPG?width=800",
+    source: "https://commons.wikimedia.org/wiki/File:Keld_Gydum-IMG_4003_%C3%A5benthus_frederikshavn_havn_cropped.JPG",
+    credit: "Keld Gydum", license: "CC BY-SA 2.5 dk",
+    caption: "Danish folk dancers in traditional dress at a harbour festival in Frederikshavn",
+  },
+  "Tunisia": {
+    src: "https://commons.wikimedia.org/wiki/Special:FilePath/Fille%20mariage%20Djerba.jpg?width=800",
+    source: "https://commons.wikimedia.org/wiki/File:Fille_mariage_Djerba.jpg",
+    credit: "Souad Anane Lesina", license: "CC BY-SA 3.0",
+    caption: "A girl in traditional Tunisian dress and gold jewellery at a wedding celebration on Djerba",
+  },
+  "Bangladesh": {
+    src: "https://commons.wikimedia.org/wiki/Special:FilePath/Mangal%20Shobhajatra%201.jpg?width=800",
+    source: "https://commons.wikimedia.org/wiki/File:Mangal_Shobhajatra_1.jpg",
+    credit: "Mustmamun", license: "CC BY-SA 4.0",
+    caption: "Colourful masks at the Mangal Shobhajatra parade for Pohela Boishakh, the Bengali New Year, in Dhaka",
+  },
+  "Uruguay": {
+    src: "https://commons.wikimedia.org/wiki/Special:FilePath/Desfile%20de%20Llamadas%202020%20-%20Barrio%20Sur%20-%20Montevideo%20-%20Uruguay%20200214-1020898-jikatu%20%2849538521121%29.jpg?width=800",
+    source: "https://commons.wikimedia.org/wiki/File:Desfile_de_Llamadas_2020_-_Barrio_Sur_-_Montevideo_-_Uruguay_200214-1020898-jikatu_(49538521121).jpg",
+    credit: "Jimmy Baikovicius", license: "CC BY-SA 2.0",
+    caption: "Candombe drummers in comparsa dress at the Llamadas parade in Montevideo",
+  },
+  "Paraguay": {
+    src: "https://commons.wikimedia.org/wiki/Special:FilePath/Danza%20de%20la%20botella.jpg?width=800",
+    source: "https://commons.wikimedia.org/wiki/File:Danza_de_la_botella.jpg",
+    credit: "Overkill53", license: "CC BY-SA 4.0",
+    caption: "Dancers balancing bottles on their heads in Paraguay's traditional bottle dance",
   },
 };
 

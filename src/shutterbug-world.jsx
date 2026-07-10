@@ -1562,10 +1562,14 @@ export default function ShutterbugWorld() {
       } else {
         const far = spacedFor(CONTINENT_META[pickedContinent].box);
         // Neighbours nearest the country you actually flew to (for a category mission
-        // that may not be the anchor's country), so the padded pins are plausibly local.
+        // that may not be the anchor's country), so the padded pins are plausibly local
+        // — but never so close they sit on top of a pin already shown. Colonia del
+        // Sacramento is only ~56 km from Buenos Aires across the Río de la Plata;
+        // without the distance floor the pad would draw one pin over the other.
         const here = own.length ? BY_ID[own[0]] : target;
         const near = LOCATIONS
-          .filter((l) => l.continent === pickedContinent && !own.includes(l.id))
+          .filter((l) => l.continent === pickedContinent && !own.includes(l.id)
+            && own.every((id) => kmBetween(BY_ID[id], l) > 120))
           .sort((x, y) => kmBetween(here, x) - kmBetween(here, y));
         const chosen = own.map((id) => BY_ID[id]);
         for (const l of near) { if (chosen.length >= 3) break; if (far(l, chosen)) chosen.push(l); }
