@@ -619,23 +619,77 @@ const SFX = (() => {
     const t = c.currentTime;
     list.forEach((f, i) => tone(c, t + i * step, f, dur, peak, type));
   };
+  // A tone with a pitch glide — the workhorse for anything that should feel alive.
+  const slide = (c, t, f0, f1, dur, peak, type = "sine") => {
+    const o = c.createOscillator();
+    const g = c.createGain();
+    o.type = type;
+    o.frequency.setValueAtTime(f0, t);
+    o.frequency.exponentialRampToValueAtTime(Math.max(20, f1), t + dur);
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(peak, t + 0.015);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g); g.connect(master);
+    o.start(t); o.stop(t + dur + 0.02);
+  };
   // Every effect is wrapped so an audio hiccup can never break gameplay.
   const safe = (fn) => { try { const c = ac(); if (c) fn(c); } catch { /* ignore */ } };
   return {
-    // Camera shutter: two quick noise clicks (mirror up, shutter close).
-    shutter() { safe((c) => { const t = c.currentTime; burst(c, t, 0.045, "highpass", 1800, 0.32); burst(c, t + 0.06, 0.05, "highpass", 1300, 0.26); }); },
-    // Airplane fly-by: filtered noise whose band sweeps up then down (~0.8s).
-    plane() { safe((c) => { const t = c.currentTime; const { f } = burst(c, t, 0.8, "bandpass", 500, 0.11); f.Q.value = 0.9; f.frequency.setValueAtTime(300, t); f.frequency.linearRampToValueAtTime(1150, t + 0.4); f.frequency.linearRampToValueAtTime(380, t + 0.8); }); },
-    // Correct shot: bright rising three-note chime (C–E–G).
-    success() { safe((c) => notes(c, [523.25, 659.25, 783.99], 0.085, 0.22, 0.3, "triangle")); },
-    // Trip complete: a longer four-note fanfare up to the octave.
-    win() { safe((c) => notes(c, [523.25, 659.25, 783.99, 1046.5], 0.11, 0.34, 0.32, "triangle")); },
-    // Wrong subject: low descending two-note buzz.
-    fail() { safe((c) => { const t = c.currentTime; tone(c, t, 196, 0.18, 0.26, "square"); tone(c, t + 0.13, 155.56, 0.3, 0.24, "square"); }); },
+    // Camera shutter: mirror-slap click, shutter close, then the soft rising
+    // whirr of the film advance — the full "kerchunk-zzip" of an old SLR.
+    shutter() { safe((c) => { const t = c.currentTime;
+      burst(c, t, 0.03, "highpass", 2400, 0.34);
+      burst(c, t + 0.045, 0.05, "highpass", 1400, 0.3);
+      const { f } = burst(c, t + 0.12, 0.22, "bandpass", 900, 0.1);
+      f.Q.value = 3; f.frequency.setValueAtTime(700, t + 0.12); f.frequency.linearRampToValueAtTime(1900, t + 0.34);
+    }); },
+    // Airplane: a low engine rumble under a swept jet whoosh that passes by.
+    plane() { safe((c) => { const t = c.currentTime;
+      const lo = burst(c, t, 0.9, "lowpass", 220, 0.1);
+      lo.f.frequency.setValueAtTime(160, t); lo.f.frequency.linearRampToValueAtTime(90, t + 0.9);
+      const { f } = burst(c, t, 0.85, "bandpass", 500, 0.12);
+      f.Q.value = 0.9; f.frequency.setValueAtTime(320, t);
+      f.frequency.linearRampToValueAtTime(1300, t + 0.4); f.frequency.linearRampToValueAtTime(380, t + 0.85);
+    }); },
+    // Correct shot: rising C–E–G chime with a bell-like octave shimmer on top.
+    success() { safe((c) => { const t = c.currentTime;
+      notes(c, [523.25, 659.25, 783.99], 0.085, 0.22, 0.28, "triangle");
+      tone(c, t + 0.17, 1567.98, 0.3, 0.1, "sine");
+    }); },
+    // Trip complete: a four-note fanfare that lands on a held C-major chord.
+    win() { safe((c) => { const t = c.currentTime;
+      notes(c, [523.25, 659.25, 783.99, 1046.5], 0.11, 0.3, 0.3, "triangle");
+      [523.25, 659.25, 783.99, 1046.5].forEach((f) => tone(c, t + 0.44, f, 0.7, 0.09, "sine"));
+    }); },
+    // Wrong subject: a soft two-note "wah-wah" slide — clearly wrong, never harsh.
+    fail() { safe((c) => { const t = c.currentTime;
+      slide(c, t, 220, 185, 0.2, 0.22, "sawtooth");
+      slide(c, t + 0.16, 185, 140, 0.32, 0.2, "sawtooth");
+    }); },
     // Out of days: slow sad descending minor line.
     lose() { safe((c) => notes(c, [440, 349.23, 261.63], 0.17, 0.42, 0.26, "sine")); },
-    // Passport stamp / new record: quick high sparkle.
-    stamp() { safe((c) => { const t = c.currentTime; tone(c, t, 1568, 0.12, 0.22, "triangle"); tone(c, t + 0.07, 2093, 0.16, 0.2, "triangle"); }); },
+    // Passport stamp / new record: a felt-pad THUNK, then the ink sparkle.
+    stamp() { safe((c) => { const t = c.currentTime;
+      slide(c, t, 180, 70, 0.14, 0.4, "sine");
+      burst(c, t, 0.05, "lowpass", 400, 0.22);
+      tone(c, t + 0.1, 1568, 0.12, 0.2, "triangle");
+      tone(c, t + 0.17, 2093, 0.16, 0.18, "triangle");
+    }); },
+    // Streak chime: climbs a pentatonic ladder as the run grows, so every catch
+    // sounds a little more triumphant than the last (caps after two octaves).
+    streak(n = 1) { safe((c) => { const t = c.currentTime;
+      const PENT = [523.25, 587.33, 659.25, 783.99, 880];
+      const i = Math.min(Math.max(n, 1) - 1, 9);
+      const f = PENT[i % 5] * (i >= 5 ? 2 : 1);
+      tone(c, t, f, 0.1, 0.28, "triangle");
+      tone(c, t + 0.09, f * 1.5, 0.14, 0.24, "triangle");
+      tone(c, t + 0.2, f * 2, 0.26, 0.16, "sine");
+    }); },
+    // New badge: a bright bugle-style flourish, distinct from the stamp.
+    badge() { safe((c) => { const t = c.currentTime;
+      notes(c, [587.33, 587.33, 880], 0.09, 0.16, 0.26, "triangle");
+      [880, 1108.73, 1318.51].forEach((f) => tone(c, t + 0.3, f, 0.55, 0.1, "sine"));
+    }); },
   };
 })();
 
@@ -729,7 +783,7 @@ export default function ShutterbugWorld() {
   const prefersReduced = typeof window !== "undefined" && window.matchMedia
     ? window.matchMedia("(prefers-reduced-motion: reduce)").matches : false;
 
-  const sfx = (name) => { if (soundOn && SFX[name]) SFX[name](); };
+  const sfx = (name, ...args) => { if (soundOn && SFX[name]) SFX[name](...args); };
 
   useEffect(() => () => timer.current && clearTimeout(timer.current), []);
 
@@ -1081,7 +1135,7 @@ export default function ShutterbugWorld() {
           setLastResult({ isBest: res.isBest, bestStreak: res.best });
           const earned = achievements(getProfile(profileName)).filter((a) => a.earned && !beforeEarned.has(a.id));
           setNewBadges(earned);
-          if (res.isBest || earned.length) sfx("stamp");
+          if (earned.length) sfx("badge"); else if (res.isBest) sfx("stamp");
           refreshProfiles();
           return;
         }
@@ -1110,7 +1164,7 @@ export default function ShutterbugWorld() {
           setLastResult({ isBest: res.isBest, dailyBest: res.best, dailyFirst: res.first });
           const earned = achievements(getProfile(profileName)).filter((a) => a.earned && !beforeEarned.has(a.id));
           setNewBadges(earned);
-          if (res.isBest || earned.length) sfx("stamp");
+          if (earned.length) sfx("badge"); else if (res.isBest) sfx("stamp");
           refreshProfiles();
           return;
         }
@@ -1118,7 +1172,7 @@ export default function ShutterbugWorld() {
         setLastResult(res);
         const earnedNow = achievements(getProfile(profileName)).filter((a) => a.earned && !beforeEarned.has(a.id));
         setNewBadges(earnedNow);
-        if (res.isBest || res.isBestTime || earnedNow.length) sfx("stamp");
+        if (earnedNow.length) sfx("badge"); else if (res.isBest || res.isBestTime) sfx("stamp");
         refreshProfiles();
       }
     }
@@ -1322,7 +1376,7 @@ export default function ShutterbugWorld() {
         setScore((s) => s + gain);
         setAlbum((al) => (al.some((x) => x.id === clicked.id) ? al
           : [...al, { id: clicked.id, subject: clicked.subject, flag: clicked.flag, city: clicked.city, country: clicked.country, continent: clicked.continent, category: clicked.category, fact: clicked.fact, icon: clicked.icon, photo: clicked.photo, greeting: clicked.greeting }]));
-        sfx("success");
+        sfx("streak", ns);
         setPending({ kind: "streak-correct", tone: "good", emoji: "🔥", title: `Streak ${ns}!`,
           subtitle: `${clicked.subject} — +${gain} points. Keep the run alive!`,
           fact: clicked.fact, photo: clicked.photo, category: clicked.category, buttonLabel: "Next assignment ✈" });
