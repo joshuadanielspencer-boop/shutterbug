@@ -869,8 +869,18 @@ export default function ShutterbugWorld() {
   const timer = useRef(null);
   const refreshProfiles = () => setProfiles(listProfiles());
 
-  const prefersReduced = typeof window !== "undefined" && window.matchMedia
-    ? window.matchMedia("(prefers-reduced-motion: reduce)").matches : false;
+  // Animations: on/off is a game setting. It defaults to the OS "reduce
+  // motion" preference but the ✨ toggle can override in either direction
+  // (persisted). prefersReduced drives every JS animation path.
+  const [animOn, setAnimOn] = useState(() => {
+    try { const v = localStorage.getItem("shutterbug.anim"); if (v) return v === "on"; } catch { /* ignore */ }
+    return !(typeof window !== "undefined" && window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+  });
+  useEffect(() => {
+    try { localStorage.setItem("shutterbug.anim", animOn ? "on" : "off"); } catch { /* ignore */ }
+    if (typeof document !== "undefined") document.body.classList.toggle("sbw-no-anim", !animOn);
+  }, [animOn]);
+  const prefersReduced = !animOn;
 
   const sfx = (name, ...args) => { if (soundOn && SFX[name]) SFX[name](...args); };
 
@@ -2187,6 +2197,11 @@ export default function ShutterbugWorld() {
                 style={{ background: "none", border: "none", cursor: "pointer", fontSize: 15, lineHeight: 1, padding: 2, color: INK, opacity: musicOn ? 0.75 : 0.45 }}>
                 {musicOn ? "🎵" : <span style={{ textDecoration: "line-through" }}>🎵</span>}
               </button>
+              <button onClick={() => setAnimOn((v) => !v)}
+                aria-label={animOn ? "Turn animations off" : "Turn animations on"} aria-pressed={animOn} title={animOn ? "Animations on" : "Animations off"}
+                style={{ background: "none", border: "none", cursor: "pointer", fontSize: 15, lineHeight: 1, padding: 2, color: INK, opacity: animOn ? 0.75 : 0.45 }}>
+                {animOn ? "✨" : <span style={{ textDecoration: "line-through" }}>✨</span>}
+              </button>
               {isExplore ? (
                 <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 13, fontWeight: 700, color: OCEAN }} title="Places you've discovered">📸 {album.length} discovered</span>
               ) : (<>
@@ -2293,9 +2308,30 @@ export default function ShutterbugWorld() {
                   <span aria-hidden="true">💬 </span>Local greeting: “{currentLoc.greeting.text}”
                   {currentLoc.greeting.language ? ` — ${currentLoc.greeting.language}` : ""}
                   {currentLoc.greeting.pronunciation ? ` (${currentLoc.greeting.pronunciation})` : ""}
-                  {greetingMeaning(currentLoc.greeting) ? `, “${greetingMeaning(currentLoc.greeting)}”` : ""}
+                  {greetingMeaning(currentLoc.greeting) ? `, “${greetingMeaning(currentLoc.greeting)}.”` : ""}
                   <SpeakButton greeting={currentLoc.greeting} />
                 </div>
+              )}
+              {/* Easy mode has no country step, so the country lesson (capital,
+                  blurb, and how people dress and say hello) appears here, with
+                  the shot you just took. Medium/Hard saw it at the country step. */}
+              {!pickedCountry && COUNTRY_INFO[currentLoc.country] && (
+                <div style={{ marginTop: 10, background: PAPER, border: `1px solid ${PAPER_LINE}`, borderRadius: 6, padding: "8px 10px", fontSize: 12, color: INK, lineHeight: 1.45, textAlign: "left" }}>
+                  <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.06em", color: GREEN, fontWeight: 700, marginBottom: 5 }}>
+                    <span aria-hidden="true">★ </span>Capital: {COUNTRY_INFO[currentLoc.country].capital}
+                    <span style={{ color: INK, opacity: 0.55, fontWeight: 400 }}> · {COUNTRY_INFO[currentLoc.country].region}</span>
+                  </div>
+                  <span aria-hidden="true">📖 </span>{COUNTRY_INFO[currentLoc.country].blurb}
+                </div>
+              )}
+              {!pickedCountry && COUNTRY_PEOPLE[currentLoc.country] && (
+                <figure style={{ margin: "10px 0 0", textAlign: "left" }}>
+                  <img src={COUNTRY_PEOPLE[currentLoc.country].src} alt={COUNTRY_PEOPLE[currentLoc.country].caption}
+                    style={{ width: "100%", borderRadius: 4, display: "block" }} loading="lazy" />
+                  <figcaption style={{ fontSize: 11, color: INK, opacity: 0.7, marginTop: 4, lineHeight: 1.4 }}>
+                    {COUNTRY_PEOPLE[currentLoc.country].caption} · {COUNTRY_PEOPLE[currentLoc.country].credit} ({COUNTRY_PEOPLE[currentLoc.country].license})
+                  </figcaption>
+                </figure>
               )}
               {isExplore && (
                 <div style={{ marginTop: 10, textAlign: "left" }}>
@@ -2569,6 +2605,29 @@ export default function ShutterbugWorld() {
         </div>
       </div>
 
+
+      {pending && <ResultModal data={pending} onContinue={continueFromResult} reduced={prefersReduced} />}
+      {albumView && <LandmarkModal p={albumView} onClose={() => setAlbumView(null)} reduced={prefersReduced} />}
+    </Frame>
+  );
+}
+
+// ---------- small presentational helpers ----------
+// Very faded sepia world map filling the whole window, behind everything.
+function SepiaMapBackground() {
+  return (
+    <div aria-hidden="true" style={{ position: "fixed", inset: 0, zIndex: 0, overflow: "hidden", pointerEvents: "none",
+      background: "radial-gradient(125% 125% at 50% 28%, #E6D8B6 0%, #CDB98F 55%, #B09669 100%)" }}>
+      <svg viewBox="0 0 360 180" preserveAspectRatio="xMidYMid slice" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", opacity: 0.2 }}>
+        {WORLD_COUNTRIES.map((c) => (<path key={c.name} d={c.d} fill="#7A5C31" fillRule="evenodd" />))}
+      </svg>
+      <div style={{ position: "absolute", inset: 0, background: "radial-gradient(125% 125% at 50% 38%, transparent 55%, rgba(74,50,20,0.4) 100%)" }} />
+    </div>
+  );
+}
+function Frame({ children }) {
+  return (
+    <div style={{ minHeight: "100%", position: "relative", padding: 18, fontFamily: "ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif" }}>
       <style>{`
         /* Whole-continent highlight when hovering or keyboard-focusing a region. */
         .sbw-cont{ outline: none; }
@@ -2615,33 +2674,15 @@ export default function ShutterbugWorld() {
           85%{ opacity: 1 }
           100%{ opacity: 0; transform: translateY(108vh) rotate(var(--spin, 540deg)) }
         }
-        @media (prefers-reduced-motion: reduce){
-          .sbw-ping{ animation: none } .sbw-plane-group{ display: none } .sbw-flash{ animation: none; opacity: 0 } .sbw-pop{ animation: none }
-          .sbw-develop{ animation: none } .sbw-confetti{ animation: none; opacity: 0 }
-        }
+        /* Animations off (in-game ✨ toggle; defaults to the OS reduce-motion
+           preference but can be overridden either way). */
+        body.sbw-no-anim .sbw-ping{ animation: none }
+        body.sbw-no-anim .sbw-plane-group{ display: none }
+        body.sbw-no-anim .sbw-flash{ animation: none; opacity: 0 }
+        body.sbw-no-anim .sbw-pop{ animation: none }
+        body.sbw-no-anim .sbw-develop{ animation: none }
+        body.sbw-no-anim .sbw-confetti{ animation: none; opacity: 0 }
       `}</style>
-      {pending && <ResultModal data={pending} onContinue={continueFromResult} reduced={prefersReduced} />}
-      {albumView && <LandmarkModal p={albumView} onClose={() => setAlbumView(null)} reduced={prefersReduced} />}
-    </Frame>
-  );
-}
-
-// ---------- small presentational helpers ----------
-// Very faded sepia world map filling the whole window, behind everything.
-function SepiaMapBackground() {
-  return (
-    <div aria-hidden="true" style={{ position: "fixed", inset: 0, zIndex: 0, overflow: "hidden", pointerEvents: "none",
-      background: "radial-gradient(125% 125% at 50% 28%, #E6D8B6 0%, #CDB98F 55%, #B09669 100%)" }}>
-      <svg viewBox="0 0 360 180" preserveAspectRatio="xMidYMid slice" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", opacity: 0.2 }}>
-        {WORLD_COUNTRIES.map((c) => (<path key={c.name} d={c.d} fill="#7A5C31" fillRule="evenodd" />))}
-      </svg>
-      <div style={{ position: "absolute", inset: 0, background: "radial-gradient(125% 125% at 50% 38%, transparent 55%, rgba(74,50,20,0.4) 100%)" }} />
-    </div>
-  );
-}
-function Frame({ children }) {
-  return (
-    <div style={{ minHeight: "100%", position: "relative", padding: 18, fontFamily: "ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif" }}>
       <SepiaMapBackground />
       <div style={{ position: "relative", zIndex: 1, maxWidth: 1080, margin: "0 auto", background: PAPER, borderRadius: 14, padding: 22, border: `1px solid ${PAPER_LINE}`,
         boxShadow: "0 12px 34px rgba(74,50,20,0.32)",
