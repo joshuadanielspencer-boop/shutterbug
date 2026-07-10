@@ -257,11 +257,13 @@ const CONTINENT_META = (() => {
     const minX = Math.min(...xs), maxX = Math.max(...xs), minY = Math.min(...ys), maxY = Math.max(...ys);
     const cx = (minX + maxX) / 2, cy = (minY + maxY) / 2;
     if (c === "Asia") {
-      // Asia's landmarks span ~115° of longitude but ~70° of latitude; the forced
-      // square showed the Arctic, half of Africa and all of Australia just to fit.
-      // Hug the content instead (same rectangular treatment as Oceania below).
-      const w = Math.max(40, (maxX - minX) * 1.08);
-      const h = Math.max(40, (maxY - minY) * 1.14);
+      // Asia's landmarks span ~132° of longitude but only ~65° of latitude, so a
+      // square box showed the Arctic, half of Africa and all of Australia just to
+      // fit. Hug the content tightly: the west edge lands ~27°E (Europe/Africa just
+      // at the margin), the north trims into Russia, and the south stops above
+      // Australia while still keeping Indonesia in frame.
+      const w = Math.max(40, (maxX - minX) * 1.03);
+      const h = Math.max(40, (maxY - minY) * 1.05);
       meta[c] = { mode: "equirect", box: { x: cx - w / 2, y: cy - h / 2, w, h }, cx, cy };
       continue;
     }
