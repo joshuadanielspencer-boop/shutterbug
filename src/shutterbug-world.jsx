@@ -984,7 +984,6 @@ export default function ShutterbugWorld() {
   const [confirmRemove, setConfirmRemove] = useState(false); // passport delete confirmation
   const [avatarEdit, setAvatarEdit] = useState(false);        // avatar editor open (start screen)
   const [modeInfo, setModeInfo] = useState(null);             // which start-screen ⓘ is open
-  const [showHelp, setShowHelp] = useState(false);            // "How to play" reveal
   const [showScores, setShowScores] = useState(false);        // high-scores reveal
   const [researched, setResearched] = useState({}); // assignment step -> revealed research note (Research button)
   const [cityPlan, setCityPlan] = useState(null); // country-layer city step: { ids, wide } (wide = continent view for thin countries)
@@ -1654,21 +1653,6 @@ export default function ShutterbugWorld() {
               so no text heading is needed here. */}
           <img src={`${BASE}splash.jpg`} alt="Shutterbug — A World Photo Safari"
             style={{ width: "100%", maxWidth: 620, height: "auto", display: "block", margin: "4px auto 0", borderRadius: 14, boxShadow: "0 4px 16px rgba(74,50,20,0.28)" }} />
-          <p style={{ color: INK, opacity: 0.85, marginTop: 6, lineHeight: 1.5 }}>
-            Read the editor's clue, fly to the right place, get the shot.
-            {" "}
-            <button onClick={() => setShowHelp((v) => !v)} aria-expanded={showHelp}
-              style={{ background: "none", border: "none", color: OCEAN, fontWeight: 700, cursor: "pointer", fontSize: 14, padding: 0, textDecoration: "underline" }}>
-              How to play{showHelp ? " ▴" : " ▾"}
-            </button>
-          </p>
-          {showHelp && (
-            <p style={{ color: INK, opacity: 0.8, margin: "4px auto 0", lineHeight: 1.5, fontSize: 14, maxWidth: 560, background: PAPER, border: `1px solid ${PAPER_LINE}`, borderRadius: 8, padding: "10px 14px" }}>
-              You're a travelling photographer. Your editor wires an assignment; you read the clue,
-              fly to the right city, and photograph the right subject before your travel days run out.
-              Every correct shot teaches a bit of world geography — and stamps your passport.
-            </p>
-          )}
           </div>
 
           {/* One centred column: traveller, then a picture-first grid of mode cards
@@ -1678,7 +1662,7 @@ export default function ShutterbugWorld() {
           <div style={{ maxWidth: 640, margin: "0 auto" }}>
 
           <div style={{ marginTop: 22 }}>
-            <Field label="Traveller">
+            <Field label="Traveler">
               <div style={{ display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap", maxWidth: 460, margin: "0 auto" }}>
                 {profiles.map((p) => {
                   const active = p.name === profileName;
@@ -1699,7 +1683,7 @@ export default function ShutterbugWorld() {
               </div>
               <form onSubmit={(e) => { e.preventDefault(); const p = createProfile(newName); if (p) { setProfileName(p.name); setNewName(""); refreshProfiles(); } }}
                 style={{ display: "flex", gap: 8, justifyContent: "center", marginTop: 10, flexWrap: "wrap" }}>
-                <input value={newName} onChange={(e) => setNewName(e.target.value)} maxLength={20} placeholder="New traveller's name" aria-label="New traveller's name"
+                <input value={newName} onChange={(e) => setNewName(e.target.value)} maxLength={20} placeholder="New traveler's name" aria-label="New traveler's name"
                   disabled={!canSave}
                   style={{ padding: "8px 12px", borderRadius: 8, border: `1.5px solid ${PAPER_LINE}`, fontSize: 14, width: 180, background: "#fff", color: INK }} />
                 <button type="submit" disabled={!newName.trim() || !canSave}
@@ -1715,7 +1699,7 @@ export default function ShutterbugWorld() {
                   </button>
                   <button onClick={() => setAvatarEdit(true)}
                     style={{ padding: "7px 16px", borderRadius: 8, border: `1.5px solid ${OCEAN}`, background: "transparent", color: OCEAN, fontWeight: 700, fontSize: 13, cursor: "pointer" }}>
-                    🎨 Style my traveller
+                    🎨 Style my traveler
                   </button>
                 </span>
               ) : (
@@ -2008,7 +1992,7 @@ export default function ShutterbugWorld() {
       return (
         <Frame>
           <div style={{ maxWidth: 620, margin: "0 auto", textAlign: "center" }}>
-            <p style={{ color: INK }}>No traveller selected yet.</p>
+            <p style={{ color: INK }}>No traveler selected yet.</p>
             <button onClick={() => setScreen("start")} style={primaryBtn}>Back to start</button>
           </div>
         </Frame>
@@ -2025,7 +2009,7 @@ export default function ShutterbugWorld() {
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", flexWrap: "wrap", gap: 10 }}>
             <div>
               <Stamp>Passport</Stamp>
-              <h2 style={{ fontFamily: "ui-sans-serif, system-ui", fontWeight: 900, fontSize: 28, color: INK, margin: "8px 0 0", display: "flex", alignItems: "center", gap: 10 }}><Avatar spec={avatarFor(profile)} size={44} title={`${profile.name}'s traveller`} /> {profile.name}</h2>
+              <h2 style={{ fontFamily: "ui-sans-serif, system-ui", fontWeight: 900, fontSize: 28, color: INK, margin: "8px 0 0", display: "flex", alignItems: "center", gap: 10 }}><Avatar spec={avatarFor(profile)} size={44} title={`${profile.name}'s traveler`} /> {profile.name}</h2>
             </div>
             <button onClick={() => { setConfirmRemove(false); setScreen("start"); }} className="sbw-noprint" style={{ padding: "9px 18px", borderRadius: 8, border: `1.5px solid ${INK}`, background: "transparent", color: INK, fontWeight: 700, cursor: "pointer" }}>← Back</button>
           </div>
@@ -2181,7 +2165,7 @@ export default function ShutterbugWorld() {
             ) : (
               <button onClick={() => setConfirmRemove(true)}
                 style={{ padding: "8px 16px", borderRadius: 8, border: `1.5px solid ${PAPER_LINE}`, background: "transparent", color: INK, opacity: 0.7, fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
-                Remove this traveller…
+                Remove this traveler…
               </button>
             )}
           </div>
@@ -2978,11 +2962,11 @@ function AvatarEditor({ name, initial, onSave, onClose }) {
     </button>
   );
   return (
-    <div role="dialog" aria-modal="true" aria-label={`Style ${name}'s traveller`}
+    <div role="dialog" aria-modal="true" aria-label={`Style ${name}'s traveler`}
       style={{ position: "fixed", inset: 0, background: "rgba(16,38,46,0.62)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 70, padding: 16 }}>
       <div className="sbw-pop" style={{ background: PAPER, borderRadius: 12, padding: 20, width: "min(92vw, 380px)", maxHeight: "90vh", overflowY: "auto", textAlign: "center", border: `1px solid ${PAPER_LINE}` }}>
         <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.2em", color: CORAL }}>🎨 STYLE YOUR TRAVELLER</div>
-        <div style={{ margin: "12px 0 4px" }}><Avatar spec={spec} size={104} title={`${name}'s traveller`} /></div>
+        <div style={{ margin: "12px 0 4px" }}><Avatar spec={spec} size={104} title={`${name}'s traveler`} /></div>
         {AVATAR_DIMS.map((d) => (
           <div key={d.key} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, padding: "6px 0", borderTop: `1px solid ${PAPER_LINE}` }}>
             <span style={{ fontWeight: 700, color: INK, fontSize: 13, width: 86, textAlign: "left" }}>{d.label}</span>
