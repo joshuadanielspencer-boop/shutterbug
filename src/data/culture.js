@@ -588,6 +588,56 @@ export const COUNTRY_PEOPLE = {
     credit: "Abreauna", license: "CC BY 4.0",
     caption: "Moko jumbie stilt-dancers in flowing costume at a street festival in Trinidad",
   },
+
+  // ---- Countries added after the original pipeline (landscape, reviewed) ----
+  "Benin": {
+    src: "https://commons.wikimedia.org/wiki/Special:FilePath/DANSE%20EGUNGUN%20AU%20BENIN%2001.jpg?width=800",
+    source: "https://commons.wikimedia.org/wiki/File:DANSE_EGUNGUN_AU_BENIN_01.jpg",
+    credit: "Ahya ATINDEHOU", license: "CC BY-SA 4.0",
+    caption: "Egungun masqueraders in full sequined ancestral costumes at a festival in Benin",
+  },
+  "Cameroon": {
+    src: "https://commons.wikimedia.org/wiki/Special:FilePath/Danse%20Folklorique%20en%20Pays%20Bamilek%C3%A9.jpg?width=800",
+    source: "https://commons.wikimedia.org/wiki/File:Danse_Folklorique_en_Pays_Bamilek%C3%A9.jpg",
+    credit: "Sidoine Mbogni", license: "CC BY-SA 4.0",
+    caption: "Dancers in traditional Bamileke dress at an open-air folk dance in Dschang, western Cameroon",
+  },
+  "Côte d'Ivoire": {
+    src: "https://commons.wikimedia.org/wiki/Special:FilePath/Zahouli.jpg?width=800",
+    source: "https://commons.wikimedia.org/wiki/File:Zahouli.jpg",
+    credit: "MKwadyo", license: "CC BY-SA 4.0",
+    caption: "A Zaouli dancer in a carved mask and raffia costume, a Guro tradition of Côte d'Ivoire",
+  },
+  "Dem. Rep. Congo": {
+    src: "https://commons.wikimedia.org/wiki/Special:FilePath/Justin%20makangara%20RDC%20%2821%29.JPG?width=800",
+    source: "https://commons.wikimedia.org/wiki/File:Justin_makangara_RDC_(21).JPG",
+    credit: "Justin Makangara", license: "CC BY-SA 4.0",
+    caption: "Performers in cowrie-shell ceremonial costumes and feather headdresses in Kinshasa, DR Congo",
+  },
+  "Nigeria": {
+    src: "https://commons.wikimedia.org/wiki/Special:FilePath/Mounted%20female%20member%20of%20Sallah%20procession%2C%20Durbar%2C%20Bida%2C%20Nigeria.png?width=800",
+    source: "https://commons.wikimedia.org/wiki/File:Mounted_female_member_of_Sallah_procession,_Durbar,_Bida,_Nigeria.png",
+    credit: "Jean Borgatti (Smithsonian NMAfA)", license: "Public domain",
+    caption: "A woman in traditional dress rides in the Sallah Durbar procession in Bida, Nigeria",
+  },
+  "Senegal": {
+    src: "https://commons.wikimedia.org/wiki/Special:FilePath/%22Ndawrabine%22%20%28S%C3%A9n%C3%A9gal%29%20Wiki%20Loves%20Africa%202026%20au%20S%C3%A9n%C3%A9gal.jpg?width=800",
+    source: "https://commons.wikimedia.org/wiki/File:%22Ndawrabine%22_(S%C3%A9n%C3%A9gal)_Wiki_Loves_Africa_2026_au_S%C3%A9n%C3%A9gal.jpg",
+    credit: "Général Abdoulaye Fall", license: "CC BY-SA 4.0",
+    caption: "A woman in a grand boubou and headwrap at a Ndawrabine dance performance, Senegal",
+  },
+  "Uganda": {
+    src: "https://commons.wikimedia.org/wiki/Special:FilePath/Performers%20dancing%20and%20singing%20at%20the%20Kabaka%20Coronation%20Anniversary%2C%20Buganda%20Kingdom%2002.jpg?width=800",
+    source: "https://commons.wikimedia.org/wiki/File:Performers_dancing_and_singing_at_the_Kabaka_Coronation_Anniversary,_Buganda_Kingdom_02.jpg",
+    credit: "Ssemmanda will", license: "CC BY-SA 4.0",
+    caption: "Performers in bark-cloth (olubugo) regalia at the Kabaka's coronation-anniversary celebration, Uganda",
+  },
+  "Zambia": {
+    src: "https://commons.wikimedia.org/wiki/Special:FilePath/HH%20at%20the%20Kuomboka%20ceremony.jpg?width=800",
+    source: "https://commons.wikimedia.org/wiki/File:HH_at_the_Kuomboka_ceremony.jpg",
+    credit: "Jae zambia", license: "CC BY-SA 4.0",
+    caption: "Men in Lozi ceremonial dress at the Kuomboka ceremony in Zambia's Western Province",
+  },
 };
 
 // The English gloss for a greeting object (or null if none is known).
