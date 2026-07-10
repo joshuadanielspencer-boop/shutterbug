@@ -693,6 +693,27 @@ const SFX = (() => {
   };
 })();
 
+// The start screen's mode cards. Each card wears a real landmark photo from
+// the game's own (verified, freely-licensed) collection; blurbs appear only
+// when a card's ⓘ is tapped, keeping the screen picture-first.
+const MODE_CARDS = [
+  { id: "assignments", name: "Assignments", emoji: "📸", photoId: "paris",
+    blurb: "One editor's clue at a time — fly to the right place and photograph the right subject before your days run out." },
+  { id: "tour", name: "Grand Tour", emoji: "🧳", photoId: "beijing",
+    blurb: "A whole itinerary of targets across continents on one shared day budget — plan an efficient route and shoot them in any order." },
+  { id: "explore", name: "Explore", emoji: "🧭", photoId: "galapagos",
+    blurb: "No timer, no score — roam the world, drill into any country, and read every place's story, culture card, and clues. Everywhere you visit is stamped in your passport." },
+  { id: "quiz", name: "Quiz", emoji: "🧠", photoId: "xian",
+    blurb: "Ten fast multiple-choice questions — name the landmark from its photo, place it on the map, or know the capital. Build a streak for bonus points." },
+  { id: "streak", name: "Streak", emoji: "🔥", photoId: "kilauea",
+    blurb: "Endless assignments, no day budget — but one wrong photograph ends the run. Every correct shot is worth more than the last." },
+  { id: "daily", name: "Daily Challenge", emoji: "📅", photoId: "uyuni",
+    blurb: "The same five assignments for every traveller today, played at Medium — one shared board per day, so scores really compare." },
+  { id: "expeditions", name: "Expeditions", emoji: "🗺️", photoId: "serengeti",
+    blurb: "Curated photo journeys — wildlife, volcanoes, peaks, waterfalls, ancient wonders, world heritage — each a guided tour with a lesson." },
+];
+const cardThumb = (id) => { const l = BY_ID[id]; if (!l?.photo?.src) return null; const src = l.photo.src; return src.includes("?") ? src : src + "?width=480"; };
+
 // ---- Generative background music (Web Audio) -------------------------------
 // A quiet, kalimba-like pattern in C-major pentatonic over a slow bass root,
 // composed live by a look-ahead scheduler — so it never audibly loops, ships
@@ -859,6 +880,9 @@ export default function ShutterbugWorld() {
   const [newBadges, setNewBadges] = useState([]); // achievements newly earned this game
   const [confirmRemove, setConfirmRemove] = useState(false); // passport delete confirmation
   const [avatarEdit, setAvatarEdit] = useState(false);        // avatar editor open (start screen)
+  const [modeInfo, setModeInfo] = useState(null);             // which start-screen ⓘ is open
+  const [showHelp, setShowHelp] = useState(false);            // "How to play" reveal
+  const [showScores, setShowScores] = useState(false);        // high-scores reveal
   const [researched, setResearched] = useState({}); // assignment step -> revealed research note (Research button)
   const [cityPlan, setCityPlan] = useState(null); // country-layer city step: { ids, wide } (wide = continent view for thin countries)
   const [quiz, setQuiz] = useState(null); // Quiz mode: { questions, i, answeredIdx, score, correctCount, streak, done, best }
@@ -1615,17 +1639,27 @@ export default function ShutterbugWorld() {
           <p style={{ fontFamily: "ui-monospace, monospace", letterSpacing: "0.28em", textTransform: "uppercase", fontSize: 12, color: CORAL, margin: 0 }}>A World Photo Safari</p>
           <TravelCollage />
           <p style={{ color: INK, opacity: 0.85, marginTop: 6, lineHeight: 1.5 }}>
-            You're a travelling photographer. Your editor wires an assignment; you read the clue,
-            fly to the right city, and photograph the right subject before your travel days run out.
-            Every correct shot teaches a bit of world geography.
+            Read the editor's clue, fly to the right place, get the shot.
+            {" "}
+            <button onClick={() => setShowHelp((v) => !v)} aria-expanded={showHelp}
+              style={{ background: "none", border: "none", color: OCEAN, fontWeight: 700, cursor: "pointer", fontSize: 14, padding: 0, textDecoration: "underline" }}>
+              How to play{showHelp ? " ▴" : " ▾"}
+            </button>
           </p>
+          {showHelp && (
+            <p style={{ color: INK, opacity: 0.8, margin: "4px auto 0", lineHeight: 1.5, fontSize: 14, maxWidth: 560, background: PAPER, border: `1px solid ${PAPER_LINE}`, borderRadius: 8, padding: "10px 14px" }}>
+              You're a travelling photographer. Your editor wires an assignment; you read the clue,
+              fly to the right city, and photograph the right subject before your travel days run out.
+              Every correct shot teaches a bit of world geography — and stamps your passport.
+            </p>
+          )}
           </div>
 
-          {/* Two columns on wide screens: the setup controls on the left, the
-              high-score board on the right so it's visible without scrolling.
-              Stacks on narrow screens (flexWrap). */}
-          <div style={{ display: "flex", gap: 24, alignItems: "flex-start", justifyContent: "center", flexWrap: "wrap", marginTop: 8, textAlign: "center" }}>
-            <div style={{ flex: "1 1 440px", maxWidth: 560, minWidth: 300 }}>
+          {/* One centred column: traveller, then a picture-first grid of mode cards
+              (each wearing a landmark photo from the game's own collection), then
+              difficulty stamps and one big launch button. Long explanations live
+              behind each card's ⓘ. */}
+          <div style={{ maxWidth: 640, margin: "0 auto" }}>
 
           <div style={{ marginTop: 22 }}>
             <Field label="Traveller">
@@ -1676,84 +1710,109 @@ export default function ShutterbugWorld() {
             </Field>
           </div>
 
-          <div style={{ marginTop: 22 }}>
-            <Field label="Mode">
-              <Toggle options={[["assignments", "Assignments"], ["tour", "Grand Tour"], ["explore", "Explore 🧭"], ["quiz", "Quiz 🧠"]]} value={gameMode} onChange={setGameMode} />
-            </Field>
-            <p style={{ fontSize: 12, color: INK, opacity: 0.7, margin: "8px auto 0", maxWidth: 430, lineHeight: 1.45 }}>
-              {gameMode === "quiz"
-                ? "Quiz: ten fast multiple-choice questions — name the landmark from its photo, place it on a continent or in a country, or spot its type. Build a streak for bonus points."
-                : gameMode === "explore"
-                ? "Explore: no timer, no score — roam the whole world, drill into any country, and click any place to read its story, culture card, and clues. Everywhere you visit is stamped in your passport."
-                : gameMode === "tour"
-                ? "Grand Tour: a whole itinerary of targets across continents on one shared day budget — plan an efficient route and photograph them in any order."
-                : "Assignments: one editor's clue at a time — fly to the right place and photograph the right subject before your days run out."}
-            </p>
+          {/* ---- Pick a way to play: photo cards ---- */}
+          <div style={{ marginTop: 24 }}>
+            <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.22em", color: INK, opacity: 0.65, marginBottom: 10 }}>PICK A WAY TO PLAY</div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(146px, 1fr))", gap: 10 }}>
+              {MODE_CARDS.map((c) => {
+                const active = gameMode === c.id;
+                const src = cardThumb(c.photoId);
+                const played = c.id === "daily" && profileName && canSave ? dailyPlayed(profileName, dailyKey()) : null;
+                return (
+                  <div key={c.id} style={{ position: "relative" }}>
+                    <button onClick={() => { setGameMode(c.id); setModeInfo(null); }} aria-pressed={active}
+                      style={{ position: "relative", display: "block", width: "100%", height: 108, borderRadius: 12, overflow: "hidden", cursor: "pointer",
+                        border: active ? `3px solid ${CORAL}` : `1.5px solid ${PAPER_LINE}`, padding: 0, background: "#20343B", textAlign: "left",
+                        boxShadow: active ? "0 4px 14px rgba(233,106,76,0.35)" : "0 2px 8px rgba(74,50,20,0.18)" }}>
+                      {src && <img src={src} alt="" aria-hidden="true" loading="lazy"
+                        style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", opacity: active ? 1 : 0.88 }} />}
+                      <span aria-hidden="true" style={{ position: "absolute", inset: 0, background: "linear-gradient(180deg, rgba(16,38,46,0) 35%, rgba(16,38,46,0.82) 100%)" }} />
+                      <span style={{ position: "absolute", left: 9, bottom: 7, color: "#fff", fontWeight: 800, fontSize: 14, textShadow: "0 1px 3px rgba(0,0,0,0.6)" }}>
+                        <span aria-hidden="true" style={{ fontSize: "1.25em", marginRight: 5, verticalAlign: "-0.1em" }}>{c.emoji}</span>{c.name}
+                      </span>
+                      {active && <span aria-hidden="true" style={{ position: "absolute", top: 6, left: 8, background: CORAL, color: "#fff", fontWeight: 900, fontSize: 12, width: 20, height: 20, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center" }}>✓</span>}
+                      {played && <span style={{ position: "absolute", top: 6, right: 30, background: GOLD, color: INK, fontWeight: 800, fontSize: 10, padding: "2px 7px", borderRadius: 10 }}>best {played.score}</span>}
+                    </button>
+                    <button onClick={() => setModeInfo((m) => (m === c.id ? null : c.id))} aria-expanded={modeInfo === c.id} aria-label={`About ${c.name}`}
+                      style={{ position: "absolute", top: 5, right: 5, width: 21, height: 21, borderRadius: "50%", border: "none", cursor: "pointer",
+                        background: "rgba(255,255,255,0.9)", color: INK, fontWeight: 900, fontSize: 12, lineHeight: 1 }}>
+                      ?
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+            {modeInfo && (
+              <p role="status" style={{ fontSize: 13, color: INK, background: PAPER, border: `1px solid ${PAPER_LINE}`, borderRadius: 8, padding: "9px 12px", margin: "10px auto 0", maxWidth: 560, lineHeight: 1.5, textAlign: "left" }}>
+                <b>{MODE_CARDS.find((c) => c.id === modeInfo)?.emoji} {MODE_CARDS.find((c) => c.id === modeInfo)?.name}:</b>{" "}
+                {MODE_CARDS.find((c) => c.id === modeInfo)?.blurb}
+              </p>
+            )}
           </div>
 
-          {gameMode !== "explore" && gameMode !== "quiz" && (
-          <div style={{ marginTop: 22 }}>
-            <Field label="Difficulty">
+          {/* ---- Difficulty stamps (only for the modes that use them) ---- */}
+          {(gameMode === "assignments" || gameMode === "tour" || gameMode === "streak") && (
+            <div style={{ marginTop: 18 }}>
+              <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.22em", color: INK, opacity: 0.65, marginBottom: 8 }}>
+                DIFFICULTY
+                <button onClick={() => setModeInfo((m) => (m === "difficulty" ? null : "difficulty"))} aria-expanded={modeInfo === "difficulty"} aria-label="About the difficulty levels"
+                  style={{ marginLeft: 7, width: 18, height: 18, borderRadius: "50%", border: `1px solid ${INK}`, background: "transparent", color: INK, fontWeight: 900, fontSize: 10, lineHeight: 1, cursor: "pointer", verticalAlign: "-3px" }}>?</button>
+              </div>
               <Toggle options={MODE_ORDER.map((k) => [k, MODES[k].label])} value={difficulty} onChange={setDifficulty} />
-            </Field>
-            <p style={{ fontSize: 12, color: INK, opacity: 0.7, margin: "8px auto 0", maxWidth: 430, lineHeight: 1.45 }}>{MODES[difficulty].blurb}</p>
-          </div>
+              {modeInfo === "difficulty" && (
+                <p role="status" style={{ fontSize: 13, color: INK, background: PAPER, border: `1px solid ${PAPER_LINE}`, borderRadius: 8, padding: "9px 12px", margin: "10px auto 0", maxWidth: 560, lineHeight: 1.5, textAlign: "left" }}>
+                  <b>{MODES[difficulty].label}:</b> {MODES[difficulty].blurb}
+                </p>
+              )}
+            </div>
           )}
 
-          <button onClick={gameMode === "quiz" ? startQuiz : gameMode === "explore" ? startExplore : gameMode === "tour" ? startTour : startGame} style={primaryBtn}>{gameMode === "quiz" ? "Start the quiz 🧠" : gameMode === "explore" ? "Start exploring 🧭" : gameMode === "tour" ? "Start the Grand Tour ✈" : "Begin the assignment ✈"}</button>
-          <div style={{ display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap", marginTop: 12 }}>
-            <button onClick={() => setScreen("expeditions")}
-              style={{ padding: "9px 18px", borderRadius: 10, border: `1.5px solid ${OCEAN}`, background: "transparent", color: OCEAN, fontWeight: 800, fontSize: 14, cursor: "pointer" }}>
-              🗺️ Themed Expeditions →
-            </button>
-            <button onClick={startStreak} title="Endless assignments — one wrong photo ends the run"
-              style={{ padding: "9px 18px", borderRadius: 10, border: `1.5px solid ${CORAL}`, background: "transparent", color: CORAL, fontWeight: 800, fontSize: 14, cursor: "pointer" }}>
-              🔥 Streak / Survival
-            </button>
-            {(() => {
-              const played = profileName && canSave ? dailyPlayed(profileName, dailyKey()) : null;
-              return (
-                <button onClick={startDaily} title="The same five assignments for every traveller today (played at Medium)"
-                  style={{ padding: "9px 18px", borderRadius: 10, border: `1.5px solid ${GREEN}`, background: "transparent", color: GREEN, fontWeight: 800, fontSize: 14, cursor: "pointer" }}>
-                  📅 Daily Challenge{played ? ` · your best ${played.score}` : ""}
-                </button>
-              );
-            })()}
-          </div>
-            </div>
+          {/* ---- One launch button, labelled for the chosen card ---- */}
+          <button
+            onClick={gameMode === "quiz" ? startQuiz : gameMode === "explore" ? startExplore : gameMode === "tour" ? startTour
+              : gameMode === "streak" ? startStreak : gameMode === "daily" ? startDaily
+              : gameMode === "expeditions" ? () => setScreen("expeditions") : startGame}
+            style={primaryBtn}>
+            {gameMode === "quiz" ? "Start the quiz 🧠" : gameMode === "explore" ? "Start exploring 🧭" : gameMode === "tour" ? "Start the Grand Tour ✈"
+              : gameMode === "streak" ? "Start the run 🔥" : gameMode === "daily" ? "Play today's challenge 📅"
+              : gameMode === "expeditions" ? "Choose an expedition →" : "Begin the assignment ✈"}
+          </button>
 
-            <div style={{ flex: "0 1 340px", minWidth: 260, marginTop: 22 }}>
-          {canSave && (() => {
-            const leaders = topScores(5);
-            if (!leaders.length) return null;
-            return (
-              <div style={{ maxWidth: 400, marginInline: "auto", background: PAPER, border: `1px solid ${PAPER_LINE}`, borderRadius: 10, padding: "14px 16px", textAlign: "left" }}>
-                <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.2em", color: CORAL, marginBottom: 8, textAlign: "center" }}><span aria-hidden="true" style={{ fontSize: 15 }}>🏆</span> HIGH SCORES</div>
-                {leaders.map((r, i) => {
-                  // Second line: the editor-rank earned on that run · difficulty (and
-                  // mode, if Grand Tour) · completion time.
-                  const bits = [];
-                  if (r.rank) bits.push(r.rank);
-                  bits.push((MODES[r.difficulty]?.label || r.difficulty || "") + (r.mode === "tour" ? " · Grand Tour" : ""));
-                  if (r.timeMs > 0) bits.push("⏱ " + fmtTime(r.timeMs));
-                  return (
-                  <div key={r.name + i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, padding: "7px 2px", borderTop: i ? `1px solid ${PAPER_LINE}` : "none" }}>
-                    <span style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
-                      <span style={{ fontFamily: "ui-monospace, monospace", fontWeight: 800, fontSize: 14, color: i === 0 ? GOLD : INK, opacity: i === 0 ? 1 : 0.6, width: 16, textAlign: "right", flex: "none" }}>{i + 1}</span>
-                      <Avatar spec={r.avatar || defaultAvatar(r.name)} size={28} />
-                      <span style={{ minWidth: 0 }}>
-                        <span style={{ fontWeight: 700, color: INK, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "block" }}>{r.name}</span>
-                        <span style={{ fontSize: 11, color: INK, opacity: 0.6, lineHeight: 1.3 }}>{bits.join(" · ")}</span>
-                      </span>
-                    </span>
-                    <span style={{ fontFamily: "ui-monospace, monospace", fontWeight: 800, color: CORAL, flex: "none" }}>{r.score}</span>
+          {/* ---- High scores, tucked behind a toggle ---- */}
+          {canSave && topScores(1).length > 0 && (
+            <div style={{ marginTop: 16 }}>
+              <button onClick={() => setShowScores((v) => !v)} aria-expanded={showScores}
+                style={{ padding: "8px 18px", borderRadius: 10, border: `1.5px solid ${GOLD}`, background: showScores ? GOLD : "transparent", color: showScores ? INK : "#8A6A14", fontWeight: 800, fontSize: 13, cursor: "pointer" }}>
+                🏆 High scores{showScores ? " ▴" : " ▾"}
+              </button>
+              {showScores && (() => {
+                const leaders = topScores(5);
+                return (
+                  <div style={{ maxWidth: 400, margin: "12px auto 0", background: PAPER, border: `1px solid ${PAPER_LINE}`, borderRadius: 10, padding: "14px 16px", textAlign: "left" }}>
+                    {leaders.map((r, i) => {
+                      const bits = [];
+                      if (r.rank) bits.push(r.rank);
+                      bits.push((MODES[r.difficulty]?.label || r.difficulty || "") + (r.mode === "tour" ? " · Grand Tour" : ""));
+                      if (r.timeMs > 0) bits.push("⏱ " + fmtTime(r.timeMs));
+                      return (
+                      <div key={r.name + i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, padding: "7px 2px", borderTop: i ? `1px solid ${PAPER_LINE}` : "none" }}>
+                        <span style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+                          <span style={{ fontFamily: "ui-monospace, monospace", fontWeight: 800, fontSize: 14, color: i === 0 ? GOLD : INK, opacity: i === 0 ? 1 : 0.6, width: 16, textAlign: "right", flex: "none" }}>{i + 1}</span>
+                          <Avatar spec={r.avatar || defaultAvatar(r.name)} size={28} />
+                          <span style={{ minWidth: 0 }}>
+                            <span style={{ fontWeight: 700, color: INK, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "block" }}>{r.name}</span>
+                            <span style={{ fontSize: 11, color: INK, opacity: 0.6, lineHeight: 1.3 }}>{bits.join(" · ")}</span>
+                          </span>
+                        </span>
+                        <span style={{ fontFamily: "ui-monospace, monospace", fontWeight: 800, color: CORAL, flex: "none" }}>{r.score}</span>
+                      </div>
+                      );
+                    })}
                   </div>
-                  );
-                })}
-              </div>
-            );
-          })()}
+                );
+              })()}
             </div>
+          )}
           </div>
         </div>
         {avatarEdit && profileName && (
