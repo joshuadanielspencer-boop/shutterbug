@@ -8,6 +8,7 @@ import { CATEGORIES, CATEGORY_ORDER, KIND_META } from "../src/data/categories.js
 import { WORLD_COUNTRIES, COUNTRY_CONTINENT } from "../src/data/worldmap.js";
 import { COUNTRY_INFO } from "../src/data/countries.js";
 import { categoryCountries, categoryMissionOK } from "../src/missions.js";
+import { COUNTRY_PEOPLE, GREETING_MEANING } from "../src/data/culture.js";
 
 const CONTINENTS = [
   "North America", "South America", "Europe", "Africa", "Asia", "Oceania", "Antarctica",
@@ -233,5 +234,37 @@ describe("category missions are answerable", () => {
 
   it("Antarctica is never a category mission", () => {
     for (const cat of CATEGORY_ORDER) expect(categoryMissionOK(cat, "Antarctica", false)).toBe(false);
+  });
+});
+
+describe("culture cards", () => {
+  const FREE = /^(cc[ -]?by([ -]sa)?[ -0-9.]*|cc0|public domain)/i;
+  const visitable = [...new Set(LOCATIONS.map((l) => l.country))].filter((c) => c !== "Antarctica");
+
+  it("every visitable country has a photo of its people", () => {
+    // Sweden shipped without one once, because the country was added to
+    // locations.js long after the culture pipeline had "finished".
+    for (const c of visitable) expect(COUNTRY_PEOPLE[c], `no culture photo for "${c}"`).toBeTruthy();
+  });
+
+  it("no orphan photos for countries nobody can visit", () => {
+    for (const c of Object.keys(COUNTRY_PEOPLE)) expect(visitable, `orphan photo "${c}"`).toContain(c);
+  });
+
+  it("every photo is a freely-licensed Commons file with credit and caption", () => {
+    for (const [c, p] of Object.entries(COUNTRY_PEOPLE)) {
+      expect(p.src, c).toMatch(/^https:\/\/commons\.wikimedia\.org\/wiki\/Special:FilePath\//);
+      expect(p.source, c).toMatch(/^https:\/\/commons\.wikimedia\.org\/wiki\/File:/);
+      expect(p.credit, c).toBeTruthy();
+      expect(p.caption && p.caption.length > 10, `${c} caption`).toBe(true);
+      expect(p.license, `${c} licence "${p.license}"`).toMatch(FREE);
+    }
+  });
+
+  it("every greeting used in the game has an English gloss", () => {
+    for (const l of LOCATIONS) {
+      if (!l.greeting?.text) continue;
+      expect(GREETING_MEANING[l.greeting.text], `no gloss for "${l.greeting.text}" (${l.country})`).toBeTruthy();
+    }
   });
 });

@@ -2457,7 +2457,7 @@ export default function ShutterbugWorld() {
                       <div style={{ fontSize: 13, color: OCEAN, lineHeight: 1.5 }}>
                         <span aria-hidden="true">💬 </span>Here they say <b>“{g.text}”</b>
                         {g.pronunciation ? ` (${g.pronunciation})` : ""} in {g.language}
-                        {mean ? ` — it means ${quoteGloss(mean)}.` : "."}
+                        {mean ? ` — it means ${quoteGloss(mean)}` : "."}
                         <SpeakButton greeting={g} />
                       </div>
                     );
