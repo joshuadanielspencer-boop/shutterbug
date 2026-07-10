@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useMemo } from "react";
 import { LOCATIONS } from "./data/locations.js";
 import { WORLD_COUNTRIES, COUNTRY_CONTINENT } from "./data/worldmap.js";
 import { WORLD_COUNTRIES_ROBINSON } from "./data/worldmap-robinson.js";
@@ -1654,6 +1654,7 @@ export default function ShutterbugWorld() {
       const r = rankFor(pct);
       return (
         <Frame>
+          {pct >= 1 && <Confetti reduced={prefersReduced} />}
           <div style={{ maxWidth: 560, margin: "0 auto", textAlign: "center" }}>
             <Stamp>Quiz complete</Stamp>
             <div style={{ fontSize: 52, margin: "10px 0" }} aria-hidden="true">{pct >= 0.9 ? "🏆" : pct >= 0.5 ? "🎉" : "📚"}</div>
@@ -1718,6 +1719,7 @@ export default function ShutterbugWorld() {
     const perfect = step + 1 >= assignments.length && streak > 0;
     return (
       <Frame>
+        {(perfect || (lastResult?.isBest && streak >= 3)) && <Confetti reduced={prefersReduced} />}
         <div style={{ maxWidth: 600, margin: "0 auto", textAlign: "center" }}>
           <Stamp>{perfect ? "Perfect run!" : "Run over"}</Stamp>
           <div style={{ fontSize: 54, margin: "10px 0" }} aria-hidden="true">{perfect ? "🏆" : streak >= 5 ? "🔥" : "💥"}</div>
@@ -1769,6 +1771,7 @@ export default function ShutterbugWorld() {
     const r = rankFor(pct);
     return (
       <Frame>
+        {totalTargets > 0 && album.length >= totalTargets && <Confetti reduced={prefersReduced} />}
         <div style={{ maxWidth: 640, margin: "0 auto", textAlign: "center" }}>
           <Stamp>{isDaily ? `Daily Challenge · ${dailyKey()}` : "Roll Developed"}</Stamp>
           <h2 style={{ fontFamily: "ui-sans-serif, system-ui", fontWeight: 900, letterSpacing: "0.08em", fontSize: 30, color: INK, margin: "10px 0 4px" }}>{album.length} / {totalTargets} shots filed</h2>
@@ -2162,7 +2165,10 @@ export default function ShutterbugWorld() {
             <div style={{ marginTop: 12, background: "#fff", border: `1px solid ${PAPER_LINE}`, borderRadius: 8, padding: 14, textAlign: "center" }}>
               <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.18em", color: INK, opacity: 0.6 }}>YOUR SHOT</div>
               <div style={{ margin: "8px 0", position: "relative", overflow: "hidden", borderRadius: 4 }}>
-                <Photo photo={currentLoc.photo} icon={currentLoc.icon} alt={currentLoc.subject} size={230} full />
+                {/* The film "develops": washed-out and grey at first, colour blooming in. */}
+                <div key={`dev${flashKey}`} className={prefersReduced ? undefined : "sbw-develop"}>
+                  <Photo photo={currentLoc.photo} icon={currentLoc.icon} alt={currentLoc.subject} size={230} full />
+                </div>
                 {flashKey > 0 && !prefersReduced && <div key={flashKey} className="sbw-flash" />}
               </div>
               <PhotoCredit photo={currentLoc.photo} style={{ textAlign: "center", marginTop: 0, marginBottom: 4 }} />
@@ -2351,13 +2357,23 @@ export default function ShutterbugWorld() {
                 );
               })()}
 
-              {/* flight to the chosen continent (Robinson coords) */}
+              {/* flight to the chosen continent (Robinson coords): a great-circle-ish
+                  arc — the route bows toward the pole like a real flight path, and the
+                  plane banks along it (offset-rotate defaults to auto). */}
               {flying && (() => {
                 const a = eqToRobinson(flying.fromX, flying.fromY), b = eqToRobinson(flying.toX, flying.toY);
+                const dx = b.x - a.x, dy = b.y - a.y;
+                const dist = Math.hypot(dx, dy) || 1;
+                // Perpendicular that points map-north, scaled to the hop length.
+                let nx = -dy / dist, ny = dx / dist;
+                if (ny > 0) { nx = -nx; ny = -ny; }
+                const lift = Math.min(38, dist * 0.22);
+                const cx = (a.x + b.x) / 2 + nx * lift, cy = (a.y + b.y) / 2 + ny * lift;
+                const d = `M${a.x} ${a.y} Q${cx} ${cy} ${b.x} ${b.y}`;
                 return (
                 <g className="sbw-plane-group">
-                  <line x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke={CORAL} strokeWidth="1" strokeDasharray="3 3" opacity="0.8" />
-                  <g style={{ animation: "sbw-fly 0.85s ease-in-out forwards", offsetPath: `path('M${a.x} ${a.y} L${b.x} ${b.y}')` }}>
+                  <path d={d} fill="none" stroke={CORAL} strokeWidth="1" strokeDasharray="3 3" opacity="0.8" />
+                  <g style={{ animation: "sbw-fly 0.85s ease-in-out forwards", offsetPath: `path('${d}')` }}>
                     {/* scaleY cancels the map's vertical stretch so the plane isn't squished tall */}
                     <text fontSize="9" fill={CORAL} transform={`scale(1 ${(box.h / box.w).toFixed(3)})`}>✈</text>
                   </g>
@@ -2472,8 +2488,22 @@ export default function ShutterbugWorld() {
         /* Result popup pop-in. */
         .sbw-pop{ animation: sbw-pop 0.22s cubic-bezier(.2,.8,.3,1.2); }
         @keyframes sbw-pop{ 0%{ transform: scale(0.82); opacity: 0 } 100%{ transform: scale(1); opacity: 1 } }
+        /* Photo develops like film: washed-out grey blooming into full colour. */
+        .sbw-develop{ animation: sbw-develop 1.5s ease-out both; }
+        @keyframes sbw-develop{
+          0%{ filter: brightness(2.1) saturate(0) contrast(0.75) sepia(0.35) }
+          40%{ filter: brightness(1.35) saturate(0.4) contrast(0.9) sepia(0.25) }
+          100%{ filter: none }
+        }
+        .sbw-confetti{ position: absolute; top: -4vh; opacity: 0; animation-name: sbw-confetti-fall; animation-timing-function: linear; animation-fill-mode: forwards; }
+        @keyframes sbw-confetti-fall{
+          0%{ opacity: 1; transform: translateY(0) rotate(0deg) }
+          85%{ opacity: 1 }
+          100%{ opacity: 0; transform: translateY(108vh) rotate(var(--spin, 540deg)) }
+        }
         @media (prefers-reduced-motion: reduce){
           .sbw-ping{ animation: none } .sbw-plane-group{ display: none } .sbw-flash{ animation: none; opacity: 0 } .sbw-pop{ animation: none }
+          .sbw-develop{ animation: none } .sbw-confetti{ animation: none; opacity: 0 }
         }
       `}</style>
       {pending && <ResultModal data={pending} onContinue={continueFromResult} reduced={prefersReduced} />}
@@ -2703,6 +2733,36 @@ function LandmarkModal({ p, onClose, reduced }) {
     </div>
   );
 }
+// Celebration confetti for a flawless result: paper pieces in the game's
+// palette tumble down once and fade out. Not rendered under reduced motion.
+function Confetti({ reduced }) {
+  const pieces = useMemo(() => {
+    if (reduced) return [];
+    const COLORS = [CORAL, GOLD, GREEN, OCEAN, "#8E6FC1"];
+    return Array.from({ length: 60 }, (_, i) => ({
+      left: Math.random() * 100,
+      delay: Math.random() * 0.9,
+      dur: 2.4 + Math.random() * 1.6,
+      size: 7 + Math.random() * 7,
+      color: COLORS[i % COLORS.length],
+      spin: (Math.random() < 0.5 ? -1 : 1) * Math.round(360 + Math.random() * 540),
+      round: Math.random() < 0.3,
+    }));
+  }, [reduced]);
+  if (!pieces.length) return null;
+  return (
+    <div aria-hidden="true" style={{ position: "fixed", inset: 0, overflow: "hidden", pointerEvents: "none", zIndex: 60 }}>
+      {pieces.map((c, i) => (
+        <span key={i} className="sbw-confetti" style={{
+          left: `${c.left}%`, width: c.size, height: c.size * (c.round ? 1 : 0.6),
+          background: c.color, borderRadius: c.round ? "50%" : 1,
+          animationDuration: `${c.dur}s`, animationDelay: `${c.delay}s`,
+          "--spin": `${c.spin}deg` }} />
+      ))}
+    </div>
+  );
+}
+
 function Stamp({ children }) {
   return <span style={{ display: "inline-block", fontFamily: "ui-monospace, monospace", fontSize: 10, letterSpacing: "0.22em", textTransform: "uppercase", color: CORAL, border: `1.5px solid ${CORAL}`, borderRadius: 4, padding: "3px 8px", transform: "rotate(-2deg)" }}>{children}</span>;
 }
