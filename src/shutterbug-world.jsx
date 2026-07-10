@@ -2331,8 +2331,8 @@ export default function ShutterbugWorld() {
                     Shown at the image's own aspect ratio — cover-cropping cut wide
                     subjects (all of Victoria Falls) down to a slice. */}
                 <div key={`dev${flashKey}`} className={prefersReduced ? undefined : "sbw-develop"}>
-                  <img src={withWidth(currentLoc.photo?.src, 1200)} alt={currentLoc.subject}
-                    style={{ width: "100%", maxHeight: 460, objectFit: "contain", display: "block", borderRadius: 4, background: "#10262E" }} />
+                  <img src={withWidth(currentLoc.photo?.src, 1600)} alt={currentLoc.subject}
+                    style={{ width: "100%", maxHeight: 560, objectFit: "contain", display: "block", borderRadius: 4, background: "#10262E" }} />
                 </div>
                 {flashKey > 0 && !prefersReduced && <div key={flashKey} className="sbw-flash" />}
               </div>
@@ -2771,13 +2771,13 @@ function ResultModal({ data, onContinue, reduced }) {
     <div role="dialog" aria-modal="true" aria-label={data.title}
       style={{ position: "fixed", inset: 0, background: "rgba(16,38,46,0.62)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16, zIndex: 50 }}>
       <div className={reduced ? "" : "sbw-pop"}
-        style={{ background: PAPER, borderRadius: 16, border: `3px solid ${accent}`, boxShadow: "0 14px 44px rgba(0,0,0,0.35)", maxWidth: 420, width: "100%", padding: "26px 22px", textAlign: "center" }}>
+        style={{ background: PAPER, borderRadius: 16, border: `3px solid ${accent}`, boxShadow: "0 14px 44px rgba(0,0,0,0.35)", maxWidth: 560, width: "100%", padding: "26px 22px", textAlign: "center" }}>
         <div style={{ fontSize: 56, lineHeight: 1 }} aria-hidden="true">{data.emoji}</div>
         <h2 style={{ fontFamily: "ui-sans-serif, system-ui", fontWeight: 900, fontSize: 26, color: accent, margin: "10px 0 6px" }}>{data.title}</h2>
         {data.category && <div style={{ marginBottom: 10 }}><CategoryBadge category={data.category} /></div>}
         {data.photo?.src && (
-          <div style={{ margin: "0 auto 10px", maxWidth: 360, borderRadius: 8, overflow: "hidden", border: `2px solid ${accent}`, background: "#10262E" }}>
-            <img src={withWidth(data.photo.src, 1200)} alt="" style={{ width: "100%", maxHeight: 300, objectFit: "contain", display: "block" }} />
+          <div style={{ margin: "0 auto 10px", maxWidth: 500, borderRadius: 8, overflow: "hidden", border: `2px solid ${accent}`, background: "#10262E" }}>
+            <img src={withWidth(data.photo.src, 1600)} alt="" style={{ width: "100%", maxHeight: 440, objectFit: "contain", display: "block" }} />
           </div>
         )}
         <p style={{ color: INK, fontSize: 15, lineHeight: 1.5, margin: "0 auto", maxWidth: 340 }}>{data.subtitle}</p>
