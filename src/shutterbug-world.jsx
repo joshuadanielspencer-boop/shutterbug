@@ -253,8 +253,20 @@ const CONTINENT_META = (() => {
     const xs = locs.map((l) => (wrap && l.x < 180 ? l.x + 360 : l.x)), ys = locs.map((l) => l.y);
     const minX = Math.min(...xs), maxX = Math.max(...xs), minY = Math.min(...ys), maxY = Math.max(...ys);
     const cx = (minX + maxX) / 2, cy = (minY + maxY) / 2;
+    if (wrap) {
+      // Oceania sprawls ~120° of longitude (Australia to Rapa Nui) but only ~64° of
+      // latitude. Forcing it into a SQUARE — as every other continent is — made the
+      // square as tall as it was wide, so the map had to show the north Pacific rim
+      // and the Antarctic coast just to fit, and squeezed the country labels into
+      // the middle. Its box hugs the content instead; the frame takes the box's
+      // aspect ratio, so nothing is distorted.
+      const w = Math.max(40, (maxX - minX) * 1.10);
+      const h = Math.max(40, (maxY - minY) * 1.28);
+      meta[c] = { mode: "wrap", box: { x: cx - w / 2, y: cy - h / 2, w, h }, cx, cy };
+      continue;
+    }
     const side = Math.min(360, Math.max(40, Math.max(maxX - minX, maxY - minY) * 1.35));
-    meta[c] = { mode: wrap ? "wrap" : "equirect", box: { x: cx - side / 2, y: cy - side / 2, w: side, h: side }, cx, cy };
+    meta[c] = { mode: "equirect", box: { x: cx - side / 2, y: cy - side / 2, w: side, h: side }, cx, cy };
   }
   return meta;
 })();
@@ -2262,11 +2274,17 @@ export default function ShutterbugWorld() {
   // across the antimeridian for Pacific-centred Oceania, else the plain map coords).
   const pinXY = (l) => plateMode === "polar" ? antPlate(l.id)
     : { x: (plateMode === "wrap" && l.x < 180) ? l.x + 360 : l.x, y: l.y };
-  // The map always fills a SQUARE frame (preserveAspectRatio="none"): the world map
-  // is stretched to fill it; each continent box is already square so it fills
-  // cleanly. Pins are ellipses whose radii scale with the box (rx∝box.w, ry∝box.h),
-  // so they stay perfectly ROUND and a steady on-screen size at every zoom level.
-  const pinR = (k) => ({ rx: k * box.w, ry: k * box.h });
+  // The world map fills a SQUARE frame (preserveAspectRatio="none"), stretched to
+  // fit. Zoomed in, the frame instead takes the BOX's aspect ratio, so a continent
+  // whose content isn't square (Oceania) is shown undistorted rather than padded
+  // out with ocean. Square boxes — every other continent, and every country zoom —
+  // are unaffected: their aspect is 1.
+  const aspect = zoomed ? box.w / box.h : 1;
+  const frameAspect = zoomed ? `${box.w} / ${box.h}` : "1 / 1";
+  // Pins are ellipses sized so they render as perfect CIRCLES of a steady on-screen
+  // size at every zoom. On-screen rx = rx_user·(W/box.w) and ry = ry_user·(H/box.h);
+  // setting ry_user = k·box.h·(W/H) makes both equal k·W. W/H is the frame aspect.
+  const pinR = (k) => ({ rx: k * box.w, ry: k * box.h * aspect });
   const busy = !!flying || !!pending || (!isExplore && days <= 0);
   return (
     <Frame>
@@ -2494,7 +2512,7 @@ export default function ShutterbugWorld() {
 
         {/* Map */}
         <div style={{ flex: "2 1 520px", minWidth: 400 }}>
-          <div style={{ position: "relative", aspectRatio: "1 / 1", maxWidth: 620, marginInline: "auto", borderRadius: 10, overflow: "hidden", border: `2px solid ${INK}`, boxShadow: "0 6px 0 rgba(16,38,46,0.15)" }}>
+          <div style={{ position: "relative", aspectRatio: frameAspect, maxWidth: 620, marginInline: "auto", borderRadius: 10, overflow: "hidden", border: `2px solid ${INK}`, boxShadow: "0 6px 0 rgba(16,38,46,0.15)" }}>
             <svg viewBox={`${box.x} ${box.y} ${box.w} ${box.h}`} preserveAspectRatio="none" style={{ width: "100%", height: "100%", display: "block", background: zoomed ? "#0b1a2e" : PAPER }}>
               <defs>
                 <pattern id="sea" width="360" height="180" patternUnits="userSpaceOnUse">
@@ -2542,9 +2560,37 @@ export default function ShutterbugWorld() {
 
               {/* Country step (Medium/Hard): clickable country regions over the
                   continent relief, each labelled — pick the one the clue points to. */}
-              {inCountry && ((asg && asg.countries) || LAYER_COUNTRY_LIST[pickedContinent] || []).map((country) => {
+              {inCountry && (() => {
+                const list = (asg && asg.countries) || LAYER_COUNTRY_LIST[pickedContinent] || [];
+                // Melanesia's markers sit a few degrees apart, so their labels used to
+                // print on top of one another. Walk them left-to-right and lift each
+                // label just far enough to clear the labels already placed — testing
+                // the real rectangles, so a distant country (New Zealand, far south)
+                // never gets bumped up merely for sharing a column with Fiji.
+                const CHAR_W = 0.018, LANE = 0.042, LH = 0.032; // box.w / box.h units
+                const placed = [];
+                const laneOf = {};
+                for (const country of [...list].sort((a, b) => {
+                  const A = COUNTRY_META[countryKey(pickedContinent, a)], B = COUNTRY_META[countryKey(pickedContinent, b)];
+                  return (A ? A.cx : 0) - (B ? B.cx : 0);
+                })) {
+                  const cm = COUNTRY_META[countryKey(pickedContinent, country)];
+                  if (!cm) continue;
+                  const halfW = (country.length * CHAR_W * box.w) / 2;
+                  const hits = (r) => placed.some((q) => r.l < q.r && r.r > q.l && r.t < q.b && r.b > q.t);
+                  let lane = 0, rect;
+                  do {
+                    const yBase = cm.cy - (0.036 + lane * LANE) * box.h;
+                    rect = { l: cm.cx - halfW, r: cm.cx + halfW, t: yBase - LH * box.h, b: yBase };
+                    lane++;
+                  } while (hits(rect) && lane < 6);
+                  placed.push(rect);
+                  laneOf[country] = lane - 1;
+                }
+                return list.map((country) => {
                 const cm = COUNTRY_META[countryKey(pickedContinent, country)];
                 if (!cm) return null;
+                const lane = laneOf[country] || 0;
                 // On a Pacific-wrapped continent (Oceania) the equirectangular country
                 // outlines don't line up with the plate (and many "countries" are one
                 // tiny island), so show a clickable marker + label instead of an outline.
@@ -2562,11 +2608,28 @@ export default function ShutterbugWorld() {
                     {(!wrapPlate && d)
                       ? <path d={d} fillRule="evenodd" fill="rgba(244,236,216,0.16)" stroke={PAPER} strokeWidth="0.9" vectorEffect="non-scaling-stroke" />
                       : <ellipse cx={cm.cx} cy={cm.cy} {...pinR(0.028)} fill="rgba(240,165,0,0.55)" stroke={PAPER} strokeWidth="1" vectorEffect="non-scaling-stroke" />}
-                    {showLabel && <text x={cm.cx} y={cm.cy + (wrapPlate ? -0.03 * box.h : 0)} fontSize={0.03 * box.h} fontFamily="ui-monospace, monospace" fontWeight="800" fill={INK} textAnchor="middle"
-                      style={{ paintOrder: "stroke", stroke: PAPER, strokeWidth: 0.012 * box.h }}>{country}</text>}
+                    {/* label drawn in a later pass, so no marker can cover it */}
+                    {showLabel && !wrapPlate && <text x={cm.cx} y={cm.cy} fontSize={0.03 * box.h} fontFamily="ui-monospace, monospace" fontWeight="800" fill={INK} textAnchor="middle"
+                      style={{ paintOrder: "stroke", stroke: PAPER, strokeWidth: 0.012 * box.h, pointerEvents: "none" }}>{country}</text>}
                   </g>
                 );
-              })}
+                }).concat(plateMode === "wrap" ? list.map((country) => {
+                  const cm = COUNTRY_META[countryKey(pickedContinent, country)];
+                  if (!cm) return null;
+                  const lane = laneOf[country] || 0;
+                  const y = cm.cy - (0.036 + lane * LANE) * box.h;
+                  return (
+                    <g key={"lbl" + country} style={{ pointerEvents: "none" }}>
+                      {lane > 0 && (
+                        <line x1={cm.cx} y1={cm.cy - 0.03 * box.h} x2={cm.cx} y2={y + 0.006 * box.h}
+                          stroke={PAPER} strokeWidth="1" vectorEffect="non-scaling-stroke" opacity="0.8" />
+                      )}
+                      <text x={cm.cx} y={y} fontSize={0.03 * box.h} fontFamily="ui-monospace, monospace" fontWeight="800" fill={INK} textAnchor="middle"
+                        style={{ paintOrder: "stroke", stroke: PAPER, strokeWidth: 0.012 * box.h }}>{country}</text>
+                    </g>
+                  );
+                }) : []);
+              })()}
 
               {/* departure city marker on the world map (Robinson coords) */}
               {!zoomed && currentLoc && (() => {
