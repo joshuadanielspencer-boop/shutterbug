@@ -308,8 +308,18 @@ export function passportData(profile) {
       visited: false, mastered: false, correct: 0, facts: [],
     });
     if (st.v > 0 || st.c > 0) c.visited = true;
-    if (st.c > 0) { c.mastered = true; c.correct += st.c; c.facts.push({ subject: l.subject, fact: l.fact }); }
+    if (st.c > 0) {
+      c.mastered = true; c.correct += st.c;
+      c.facts.push({ subject: l.subject, fact: l.fact });
+      // The first mastered landmark's photo becomes this country's "sticker".
+      if (!c.photo) c.photo = { ...l.photo, subject: l.subject };
+      c.locsMastered = (c.locsMastered || 0) + 1;
+    }
   }
+  // How many landmarks each country holds in total (mastered or not), so the
+  // sticker book can show "2 / 3 places" per country slot.
+  const countryLocTotals = {};
+  for (const l of LOCATIONS) countryLocTotals[l.country] = (countryLocTotals[l.country] || 0) + 1;
   const totalCountries = new Set(LOCATIONS.map((l) => l.country)).size;
   const list = Object.values(countries).sort((a, b) => a.country.localeCompare(b.country));
 
@@ -329,6 +339,8 @@ export function passportData(profile) {
 
   return {
     countries: list,
+    byCountry: Object.fromEntries(list.map((c) => [c.country, c])),
+    countryLocTotals,
     visitedCount: list.filter((c) => c.visited).length,
     masteredCount: list.filter((c) => c.mastered).length,
     totalCountries,

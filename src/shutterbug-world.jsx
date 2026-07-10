@@ -281,6 +281,21 @@ const WC_BY_NAME = Object.fromEntries(WORLD_COUNTRIES.map((c) => [c.name, c.d]))
 // tiny island — so it simply shows a marker with no border, which is fine.)
 const WC_ALIAS = { "United States": "United States of America" };
 const wcPath = (country) => WC_BY_NAME[country] || WC_BY_NAME[WC_ALIAS[country]];
+// The sticker book's fixed page layout: every country in the game, grouped by
+// continent — including countries the traveller hasn't touched yet, so the empty
+// slots show what's left to collect.
+const STICKER_PAGES = (() => {
+  const seen = {};
+  for (const l of LOCATIONS) {
+    if (!seen[l.country]) seen[l.country] = { country: l.country, flag: l.flag, continent: l.continent };
+  }
+  const pages = CONTINENTS.map((cont) => ({
+    continent: cont,
+    countries: Object.values(seen).filter((c) => c.continent === cont).sort((a, b) => a.country.localeCompare(b.country)),
+  })).filter((p) => p.countries.length);
+  return pages;
+})();
+
 const COUNTRY_FLAG = {}; // country -> flag emoji (first landmark's flag)
 for (const l of LOCATIONS) if (!COUNTRY_FLAG[l.country]) COUNTRY_FLAG[l.country] = l.flag;
 // country -> a representative local greeting (first landmark that has one), so the
@@ -2110,7 +2125,7 @@ export default function ShutterbugWorld() {
               <Stamp>Passport</Stamp>
               <h2 style={{ fontFamily: "ui-sans-serif, system-ui", fontWeight: 900, fontSize: 28, color: INK, margin: "8px 0 0", display: "flex", alignItems: "center", gap: 10 }}><Avatar spec={avatarFor(profile)} size={44} title={`${profile.name}'s traveller`} /> {profile.name}</h2>
             </div>
-            <button onClick={() => { setConfirmRemove(false); setScreen("start"); }} style={{ padding: "9px 18px", borderRadius: 8, border: `1.5px solid ${INK}`, background: "transparent", color: INK, fontWeight: 700, cursor: "pointer" }}>← Back</button>
+            <button onClick={() => { setConfirmRemove(false); setScreen("start"); }} className="sbw-noprint" style={{ padding: "9px 18px", borderRadius: 8, border: `1.5px solid ${INK}`, background: "transparent", color: INK, fontWeight: 700, cursor: "pointer" }}>← Back</button>
           </div>
 
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 16 }}>
@@ -2187,29 +2202,65 @@ export default function ShutterbugWorld() {
             ))}
           </div>
 
-          <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.18em", color: INK, opacity: 0.6, margin: "22px 0 10px" }}>STAMPS</div>
-          {pp.countries.length === 0 ? (
-            <p style={{ color: INK, opacity: 0.7 }}>No stamps yet — fly out and photograph a landmark to earn your first!</p>
-          ) : (
-            <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-              {pp.countries.map((c) => (
-                <div key={c.country} style={{ width: 184, background: "#fff", border: `2px ${c.mastered ? "solid" : "dashed"} ${c.mastered ? CORAL : PAPER_LINE}`, borderRadius: 8, padding: 12, transform: `rotate(${(c.country.charCodeAt(0) % 5) - 2}deg)` }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <span style={{ fontSize: 34 }} aria-hidden="true">{c.flag}</span>
-                    <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 10, letterSpacing: "0.1em", color: c.mastered ? CORAL : INK, opacity: c.mastered ? 1 : 0.55 }}>{c.mastered ? "★ MASTERED" : "✓ VISITED"}</span>
-                  </div>
-                  <div style={{ fontWeight: 800, color: INK, marginTop: 6 }}>{c.country}</div>
-                  <div style={{ fontSize: 11, color: INK, opacity: 0.6 }}>{c.continent}{c.mastered ? ` · ${c.correct} shot${c.correct === 1 ? "" : "s"}` : ""}</div>
-                  {c.mastered && c.facts[0] && (
-                    <div style={{ fontSize: 11, color: INK, opacity: 0.75, lineHeight: 1.35, marginTop: 6 }}>{c.facts[0].fact}</div>
-                  )}
+          {/* ---- STICKER BOOK: one page per continent, one slot per country. ----
+               A mastered country's slot fills with the photo the traveller actually
+               earned there — the gaps are the invitation to keep flying. */}
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", margin: "26px 0 4px", flexWrap: "wrap", gap: 8 }}>
+            <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.18em", color: INK, opacity: 0.6 }}>STICKER BOOK</span>
+            <button onClick={() => window.print()} className="sbw-noprint"
+              style={{ padding: "6px 14px", borderRadius: 8, border: `1.5px solid ${INK}`, background: "transparent", color: INK, fontWeight: 700, fontSize: 12, cursor: "pointer" }}>
+              🖨 Print passport
+            </button>
+          </div>
+          {STICKER_PAGES.map(({ continent, countries }) => {
+            const done = countries.filter((c) => pp.byCountry[c.country]?.mastered).length;
+            return (
+              <section key={continent} style={{ marginTop: 14, breakInside: "avoid" }}>
+                <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 8 }}>
+                  <span style={{ fontWeight: 900, color: INK, fontSize: 16 }}>{continent}</span>
+                  <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 12, color: done === countries.length ? GREEN : INK, opacity: done === countries.length ? 1 : 0.6 }}>
+                    {done}/{countries.length} countries{done === countries.length ? " · page complete! ⭐" : ""}
+                  </span>
+                  <span aria-hidden="true" style={{ flex: 1, borderBottom: `1px dashed ${PAPER_LINE}` }} />
                 </div>
-              ))}
-            </div>
-          )}
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(148px, 1fr))", gap: 10, alignItems: "start" }}>
+                  {countries.map((slot) => {
+                    const st = pp.byCountry[slot.country];
+                    const total = pp.countryLocTotals[slot.country] || 0;
+                    const state = st?.mastered ? "mastered" : st?.visited ? "visited" : "locked";
+                    return (
+                      <div key={slot.country} style={{
+                        background: "#fff", borderRadius: 8, padding: 9, minHeight: 92,
+                        border: state === "mastered" ? `2px solid ${CORAL}` : `2px dashed ${PAPER_LINE}`,
+                        opacity: state === "locked" ? 0.55 : 1,
+                        transform: state === "mastered" ? `rotate(${(slot.country.charCodeAt(0) % 5) - 2}deg)` : "none",
+                        breakInside: "avoid" }}>
+                        {state === "mastered" && st.photo && (
+                          <div style={{ width: "100%", aspectRatio: "16 / 9", borderRadius: 4, overflow: "hidden", background: "#DCE9EC", marginBottom: 6 }}>
+                            <img src={st.photo.src} alt={st.photo.subject} decoding="async"
+                              style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+                          </div>
+                        )}
+                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                          <span aria-hidden="true" style={{ fontSize: 22, filter: state === "locked" ? "grayscale(1)" : "none" }}>{slot.flag}</span>
+                          <span style={{ fontWeight: 800, color: INK, fontSize: 12.5, lineHeight: 1.15 }}>{slot.country}</span>
+                        </div>
+                        <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 10, letterSpacing: "0.06em", marginTop: 4,
+                          color: state === "mastered" ? CORAL : INK, opacity: state === "mastered" ? 1 : 0.55 }}>
+                          {state === "mastered" ? `★ ${st.locsMastered}/${total} place${total === 1 ? "" : "s"} shot`
+                            : state === "visited" ? "✓ visited — no shot yet"
+                            : `${total} place${total === 1 ? "" : "s"} to find`}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </section>
+            );
+          })}
 
           {/* Remove traveller — two-step so it can't be clicked by accident. */}
-          <div style={{ marginTop: 28, paddingTop: 16, borderTop: `1px solid ${PAPER_LINE}`, textAlign: "center" }}>
+          <div className="sbw-noprint" style={{ marginTop: 28, paddingTop: 16, borderTop: `1px solid ${PAPER_LINE}`, textAlign: "center" }}>
             {confirmRemove ? (
               <div>
                 <p style={{ color: INK, fontWeight: 700, margin: "0 0 4px" }}>Remove {profile.name}?</p>
@@ -2808,6 +2859,12 @@ function Frame({ children }) {
           0%{ opacity: 1; transform: translateY(0) rotate(0deg) }
           85%{ opacity: 1 }
           100%{ opacity: 0; transform: translateY(108vh) rotate(var(--spin, 540deg)) }
+        }
+        /* Print: the passport doubles as a homeschool record. Hide the chrome,
+           keep the colours, and don't split a sticker across two pages. */
+        @media print {
+          .sbw-noprint { display: none !important; }
+          body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
         }
         /* Animations off (in-game ✨ toggle; defaults to the OS reduce-motion
            preference but can be overridden either way). */
