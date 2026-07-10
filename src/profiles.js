@@ -78,6 +78,17 @@ export function createProfile(rawName) {
   return s.profiles[name];
 }
 
+// Save the traveller's avatar (a small spec object the Avatar component
+// renders; see AVATAR_PARTS in the game component). null clears it back to
+// the name-derived default.
+export function setAvatar(name, avatar) {
+  const s = read();
+  const p = s.profiles[name];
+  if (!p) return;
+  p.avatar = avatar || null;
+  write(s);
+}
+
 export function setLastProfile(name) {
   const s = read();
   if (name === null || s.profiles[name]) {
@@ -168,7 +179,7 @@ export function dailyTop(dateKey, n = 5) {
   const rows = [];
   for (const p of Object.values(s.profiles)) {
     const d = p.daily && p.daily[dateKey];
-    if (d && d.score > 0) rows.push({ name: p.name, score: d.score, rank: d.rank, timeMs: d.timeMs || 0 });
+    if (d && d.score > 0) rows.push({ name: p.name, avatar: p.avatar || null, score: d.score, rank: d.rank, timeMs: d.timeMs || 0 });
   }
   rows.sort((a, b) => b.score - a.score || a.timeMs - b.timeMs);
   return rows.slice(0, n);
@@ -278,7 +289,7 @@ export function topScores(n = 5) {
     for (const [d, v] of Object.entries(p.best || {})) if (v > max) { max = v; diff = d; }
     if (max > 0) {
       const meta = (p.bestMeta && p.bestMeta[diff]) || {};
-      rows.push({ name: p.name, score: max, difficulty: diff, rank: meta.rank || null, timeMs: meta.timeMs || 0, mode: meta.mode || null });
+      rows.push({ name: p.name, avatar: p.avatar || null, score: max, difficulty: diff, rank: meta.rank || null, timeMs: meta.timeMs || 0, mode: meta.mode || null });
     }
   }
   rows.sort((a, b) => b.score - a.score);

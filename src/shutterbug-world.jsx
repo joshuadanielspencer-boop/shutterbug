@@ -7,7 +7,7 @@ import { COUNTRY_PEOPLE, greetingMeaning } from "./data/culture.js";
 import { robinson, eqToRobinson, ROBINSON_W, ROBINSON_H } from "./robinson.js";
 import { CATEGORIES, CATEGORY_ORDER, KIND_META, kindOf } from "./data/categories.js";
 import { listProfiles, lastProfileName, getProfile, createProfile, setLastProfile,
-  deleteProfile, recordGame, recordExplore, recordQuiz, recordStreak, recordDaily, dailyTop, dailyPlayed,
+  deleteProfile, setAvatar, recordGame, recordExplore, recordQuiz, recordStreak, recordDaily, dailyTop, dailyPlayed,
   weightedOrder, freshFirst, passportData, achievements, topScores, storageAvailable } from "./profiles.js";
 
 // Base URL the app is served from ("/" at a domain root, "/<repo>/" on a GitHub
@@ -770,6 +770,7 @@ export default function ShutterbugWorld() {
   const [lastResult, setLastResult] = useState(null); // {isBest, isBestTime} after a recorded game
   const [newBadges, setNewBadges] = useState([]); // achievements newly earned this game
   const [confirmRemove, setConfirmRemove] = useState(false); // passport delete confirmation
+  const [avatarEdit, setAvatarEdit] = useState(false);        // avatar editor open (start screen)
   const [researched, setResearched] = useState({}); // assignment step -> revealed research note (Research button)
   const [cityPlan, setCityPlan] = useState(null); // country-layer city step: { ids, wide } (wide = continent view for thin countries)
   const [quiz, setQuiz] = useState(null); // Quiz mode: { questions, i, answeredIdx, score, correctCount, streak, done, best }
@@ -1529,9 +1530,10 @@ export default function ShutterbugWorld() {
                   const active = p.name === profileName;
                   return (
                     <button key={p.name} onClick={() => { setProfileName(p.name); setLastProfile(p.name); }} aria-pressed={active}
-                      style={{ padding: "7px 14px", borderRadius: 20, cursor: "pointer", fontWeight: 700, fontSize: 13,
+                      style={{ padding: "5px 14px 5px 6px", borderRadius: 20, cursor: "pointer", fontWeight: 700, fontSize: 13,
+                        display: "inline-flex", alignItems: "center", gap: 7,
                         border: `1.5px solid ${INK}`, background: active ? INK : "transparent", color: active ? PAPER : INK }}>
-                      {active ? "🧳 " : ""}{p.name}
+                      <Avatar spec={avatarFor(p)} size={22} />{p.name}
                     </button>
                   );
                 })}
@@ -1552,10 +1554,16 @@ export default function ShutterbugWorld() {
                 </button>
               </form>
               {profileName ? (
-                <button onClick={() => { setConfirmRemove(false); setScreen("passport"); }}
-                  style={{ marginTop: 10, padding: "7px 16px", borderRadius: 8, border: `1.5px solid ${CORAL}`, background: "transparent", color: CORAL, fontWeight: 700, fontSize: 13, cursor: "pointer" }}>
-                  📕 {profileName}'s passport
-                </button>
+                <span style={{ display: "inline-flex", gap: 8, marginTop: 10, flexWrap: "wrap", justifyContent: "center" }}>
+                  <button onClick={() => { setConfirmRemove(false); setScreen("passport"); }}
+                    style={{ padding: "7px 16px", borderRadius: 8, border: `1.5px solid ${CORAL}`, background: "transparent", color: CORAL, fontWeight: 700, fontSize: 13, cursor: "pointer" }}>
+                    📕 {profileName}'s passport
+                  </button>
+                  <button onClick={() => setAvatarEdit(true)}
+                    style={{ padding: "7px 16px", borderRadius: 8, border: `1.5px solid ${OCEAN}`, background: "transparent", color: OCEAN, fontWeight: 700, fontSize: 13, cursor: "pointer" }}>
+                    🎨 Style my traveller
+                  </button>
+                </span>
               ) : (
                 <p style={{ fontSize: 12, color: INK, opacity: 0.6, margin: "8px 2px 0" }}>
                   {canSave ? "Guest games aren't saved. Add a name to keep scores and stamps." : "This browser can't save progress, so games won't be recorded."}
@@ -1626,8 +1634,9 @@ export default function ShutterbugWorld() {
                   if (r.timeMs > 0) bits.push("⏱ " + fmtTime(r.timeMs));
                   return (
                   <div key={r.name + i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, padding: "7px 2px", borderTop: i ? `1px solid ${PAPER_LINE}` : "none" }}>
-                    <span style={{ display: "flex", alignItems: "baseline", gap: 10, minWidth: 0 }}>
+                    <span style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
                       <span style={{ fontFamily: "ui-monospace, monospace", fontWeight: 800, fontSize: 14, color: i === 0 ? GOLD : INK, opacity: i === 0 ? 1 : 0.6, width: 16, textAlign: "right", flex: "none" }}>{i + 1}</span>
+                      <Avatar spec={r.avatar || defaultAvatar(r.name)} size={28} />
                       <span style={{ minWidth: 0 }}>
                         <span style={{ fontWeight: 700, color: INK, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "block" }}>{r.name}</span>
                         <span style={{ fontSize: 11, color: INK, opacity: 0.6, lineHeight: 1.3 }}>{bits.join(" · ")}</span>
@@ -1643,6 +1652,11 @@ export default function ShutterbugWorld() {
             </div>
           </div>
         </div>
+        {avatarEdit && profileName && (
+          <AvatarEditor name={profileName} initial={getProfile(profileName)?.avatar}
+            onSave={(spec) => { setAvatar(profileName, spec); setAvatarEdit(false); refreshProfiles(); sfx("stamp"); }}
+            onClose={() => setAvatarEdit(false)} />
+        )}
       </Frame>
     );
   }
@@ -1800,8 +1814,9 @@ export default function ShutterbugWorld() {
                 <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.2em", color: GREEN, marginBottom: 8, textAlign: "center" }}>📅 TODAY'S BOARD</div>
                 {rows.map((row, i) => (
                   <div key={row.name + i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, padding: "5px 2px", borderTop: i ? `1px solid ${PAPER_LINE}` : "none" }}>
-                    <span style={{ display: "flex", gap: 10, alignItems: "baseline", minWidth: 0 }}>
+                    <span style={{ display: "flex", gap: 10, alignItems: "center", minWidth: 0 }}>
                       <span style={{ fontFamily: "ui-monospace, monospace", fontWeight: 800, fontSize: 13, color: i === 0 ? GOLD : INK, opacity: i === 0 ? 1 : 0.6, width: 14, textAlign: "right" }}>{i + 1}</span>
+                      <Avatar spec={row.avatar || defaultAvatar(row.name)} size={24} />
                       <span style={{ fontWeight: 700, color: INK, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{row.name}</span>
                       {row.timeMs > 0 && <span style={{ fontSize: 11, color: INK, opacity: 0.5 }}>⏱ {fmtTime(row.timeMs)}</span>}
                     </span>
@@ -1895,7 +1910,7 @@ export default function ShutterbugWorld() {
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", flexWrap: "wrap", gap: 10 }}>
             <div>
               <Stamp>Passport</Stamp>
-              <h2 style={{ fontFamily: "ui-sans-serif, system-ui", fontWeight: 900, fontSize: 28, color: INK, margin: "8px 0 0" }}>🧳 {profile.name}</h2>
+              <h2 style={{ fontFamily: "ui-sans-serif, system-ui", fontWeight: 900, fontSize: 28, color: INK, margin: "8px 0 0", display: "flex", alignItems: "center", gap: 10 }}><Avatar spec={avatarFor(profile)} size={44} title={`${profile.name}'s traveller`} /> {profile.name}</h2>
             </div>
             <button onClick={() => { setConfirmRemove(false); setScreen("start"); }} style={{ padding: "9px 18px", borderRadius: 8, border: `1.5px solid ${INK}`, background: "transparent", color: INK, fontWeight: 700, cursor: "pointer" }}>← Back</button>
           </div>
@@ -2067,7 +2082,7 @@ export default function ShutterbugWorld() {
         {/* Field journal panel */}
         <div style={{ flex: "1 1 340px", minWidth: 300 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-            <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 12, letterSpacing: "0.18em", color: INK, opacity: 0.7 }}>{isExplore ? "🧭 EXPLORE" : isStreak ? "🔥 SURVIVAL" : isTour ? `GRAND TOUR · ${tourReqs.filter((r) => r.done).length}/${tourReqs.length} filed` : `${isDaily ? "📅 DAILY · " : ""}ASSIGNMENT ${step + 1}/${assignments.length}`}</span>
+            <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 12, letterSpacing: "0.18em", color: INK, opacity: 0.7, display: "inline-flex", alignItems: "center", gap: 7 }}>{profileName && <Avatar spec={avatarFor(getProfile(profileName))} size={22} />}{isExplore ? "🧭 EXPLORE" : isStreak ? "🔥 SURVIVAL" : isTour ? `GRAND TOUR · ${tourReqs.filter((r) => r.done).length}/${tourReqs.length} filed` : `${isDaily ? "📅 DAILY · " : ""}ASSIGNMENT ${step + 1}/${assignments.length}`}</span>
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
               <button onClick={() => setSoundOn((s) => !s)} aria-label={soundOn ? "Turn sound off" : "Turn sound on"} aria-pressed={soundOn} title={soundOn ? "Sound on" : "Sound off"}
                 style={{ background: "none", border: "none", cursor: "pointer", fontSize: 15, lineHeight: 1, padding: 2, color: INK, opacity: 0.75 }}>
@@ -2733,6 +2748,148 @@ function LandmarkModal({ p, onClose, reduced }) {
     </div>
   );
 }
+// ===========================================================================
+// TRAVELLER AVATARS — a layered SVG portrait built from a tiny spec object
+// { skin, hair, hairColor, hat, shirt } (all indices), stored per profile in
+// localStorage. Profiles that never opened the editor get a stable default
+// derived from their name, so every board shows a face from day one.
+// ===========================================================================
+const AVATAR_SKIN = ["#F7D7C4", "#EFC3A4", "#D9A184", "#B97F5E", "#8E5B3F", "#6A4430"];
+const AVATAR_HAIRC = ["#2B2118", "#5C4030", "#8A6238", "#C99C4F", "#C4483F", "#9AA0A3"];
+const AVATAR_SHIRT = ["#E96A4C", "#2E6E75", "#3E8E5A", "#D9A036", "#8E6FC1"];
+const AVATAR_HAIR = ["none", "short", "buzz", "curly", "long"];
+const AVATAR_HAT = ["none", "safari", "cap", "beret", "beanie"];
+const AVATAR_DIMS = [
+  { key: "skin", label: "Skin", n: AVATAR_SKIN.length, swatch: (i) => AVATAR_SKIN[i] },
+  { key: "hair", label: "Hair", n: AVATAR_HAIR.length, name: (i) => AVATAR_HAIR[i] },
+  { key: "hairColor", label: "Hair colour", n: AVATAR_HAIRC.length, swatch: (i) => AVATAR_HAIRC[i] },
+  { key: "hat", label: "Hat", n: AVATAR_HAT.length, name: (i) => AVATAR_HAT[i] },
+  { key: "shirt", label: "Shirt", n: AVATAR_SHIRT.length, swatch: (i) => AVATAR_SHIRT[i] },
+];
+function defaultAvatar(name) {
+  // hashStr is unsigned 32-bit — shifts must be >>> or big hashes go negative.
+  const h = hashStr("av:" + String(name || "?"));
+  return { skin: h % 6, hair: 1 + ((h >>> 3) % 4), hairColor: (h >>> 6) % 6, hat: (h >>> 10) % 5, shirt: (h >>> 13) % 5 };
+}
+const avatarFor = (profile) => (profile && profile.avatar) || defaultAvatar(profile && profile.name);
+
+function Avatar({ spec, size = 24, title }) {
+  const v = { ...defaultAvatar("?"), ...(spec || {}) };
+  const pick = (arr, i) => arr[(((i || 0) % arr.length) + arr.length) % arr.length]; // negative-safe
+  const skin = pick(AVATAR_SKIN, v.skin);
+  const hairC = pick(AVATAR_HAIRC, v.hairColor);
+  const shirt = pick(AVATAR_SHIRT, v.shirt);
+  const hair = pick(AVATAR_HAIR, v.hair);
+  const hat = pick(AVATAR_HAT, v.hat);
+  const clip = `sbw-av-${size}-${v.skin}${v.hair}${v.hairColor}${v.hat}${v.shirt}`;
+  return (
+    <svg width={size} height={size} viewBox="0 0 64 64" role={title ? "img" : undefined}
+      aria-hidden={title ? undefined : "true"} style={{ flex: "none", verticalAlign: "middle" }}>
+      {title && <title>{title}</title>}
+      <defs><clipPath id={clip}><circle cx="32" cy="32" r="31" /></clipPath></defs>
+      <circle cx="32" cy="32" r="31" fill="#DCE9EC" stroke="#10262E" strokeWidth="1.5" />
+      <g clipPath={`url(#${clip})`}>
+        {/* shoulders + shirt */}
+        <path d="M12,64 C12,47 23,43 32,43 C41,43 52,47 52,64 Z" fill={shirt} />
+        {/* camera on the chest — they are a photographer, after all */}
+        <rect x="26" y="50" width="12" height="9" rx="2" fill="#3A3A3A" />
+        <rect x="26" y="50" width="12" height="2.6" rx="1.3" fill="#C9C9C9" />
+        <circle cx="32" cy="55" r="2.8" fill="#222" />
+        <circle cx="32" cy="55" r="1.5" fill="#6FA8B8" />
+        {/* long hair falls BEHIND the head */}
+        {hair === "long" && (<g fill={hairC}>
+          <rect x="16.5" y="22" width="8" height="24" rx="4" />
+          <rect x="39.5" y="22" width="8" height="24" rx="4" />
+        </g>)}
+        {/* head */}
+        <circle cx="32" cy="28" r="13" fill={skin} />
+        {/* hair caps over the head */}
+        {(hair === "short" || hair === "long") && <path d="M19.6,24 A13,13 0 0 1 44.4,24 Z" fill={hairC} />}
+        {hair === "buzz" && <path d="M21.1,21 A13,13 0 0 1 42.9,21 Z" fill={hairC} />}
+        {hair === "curly" && (<g fill={hairC}>
+          <path d="M19.6,24 A13,13 0 0 1 44.4,24 Z" />
+          <circle cx="22" cy="19" r="4.4" /><circle cx="32" cy="14.5" r="5" /><circle cx="42" cy="19" r="4.4" />
+        </g>)}
+        {/* face */}
+        <circle cx="27" cy="28.5" r="1.4" fill="#10262E" />
+        <circle cx="37" cy="28.5" r="1.4" fill="#10262E" />
+        <path d="M27,33 Q32,37 37,33" fill="none" stroke="#10262E" strokeWidth="1.6" strokeLinecap="round" />
+        {/* hat sits on top of everything */}
+        {hat === "safari" && (<g>
+          <path d="M23,18.5 Q23,9.5 32,9.5 Q41,9.5 41,18.5 Z" fill="#C8A96A" />
+          <rect x="23" y="15.8" width="18" height="2.7" fill="#7A5A34" />
+          <ellipse cx="32" cy="18.7" rx="16" ry="3.4" fill="#C8A96A" />
+        </g>)}
+        {hat === "cap" && (<g>
+          <path d="M20.5,18.5 A11.5,11.5 0 0 1 43.5,18.5 Z" fill="#E96A4C" />
+          <ellipse cx="42" cy="18.6" rx="8.5" ry="2.2" fill="#C24E33" />
+          <circle cx="32" cy="10" r="1.4" fill="#C24E33" />
+        </g>)}
+        {hat === "beret" && (<g transform="rotate(-8 31 15.5)">
+          <ellipse cx="31" cy="15.5" rx="11.5" ry="4.8" fill="#2E6E75" />
+          <circle cx="31" cy="10.5" r="1.4" fill="#2E6E75" />
+        </g>)}
+        {hat === "beanie" && (<g>
+          <path d="M20.5,19.5 A11.5,11.5 0 0 1 43.5,19.5 Z" fill="#3E8E5A" />
+          <rect x="20.5" y="17.4" width="23" height="4.2" rx="2.1" fill="#2F6E46" />
+          <circle cx="32" cy="8.8" r="2.6" fill="#2F6E46" />
+        </g>)}
+      </g>
+    </svg>
+  );
+}
+
+// The editor: one row of ◀ ▶ steppers per dimension, live preview, randomize.
+// Everything is a real button, so it is fully keyboard-operable.
+function AvatarEditor({ name, initial, onSave, onClose }) {
+  const [spec, setSpec] = useState(() => {
+    const raw = { ...defaultAvatar(name), ...(initial || {}) };
+    for (const d of AVATAR_DIMS) raw[d.key] = (((raw[d.key] || 0) % d.n) + d.n) % d.n; // negative-safe
+    return raw;
+  });
+  const bump = (key, n, dir) => setSpec((sp) => ({ ...sp, [key]: (sp[key] + dir + n) % n }));
+  const roll = () => setSpec({
+    skin: Math.floor(Math.random() * AVATAR_SKIN.length),
+    hair: Math.floor(Math.random() * AVATAR_HAIR.length),
+    hairColor: Math.floor(Math.random() * AVATAR_HAIRC.length),
+    hat: Math.floor(Math.random() * AVATAR_HAT.length),
+    shirt: Math.floor(Math.random() * AVATAR_SHIRT.length),
+  });
+  const arrow = (label, onClick) => (
+    <button onClick={onClick} aria-label={label}
+      style={{ width: 30, height: 30, borderRadius: 8, border: `1.5px solid ${INK}`, background: "transparent", color: INK, fontWeight: 800, cursor: "pointer", fontSize: 14 }}>
+      {label.startsWith("Previous") ? "◀" : "▶"}
+    </button>
+  );
+  return (
+    <div role="dialog" aria-modal="true" aria-label={`Style ${name}'s traveller`}
+      style={{ position: "fixed", inset: 0, background: "rgba(16,38,46,0.62)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 70, padding: 16 }}>
+      <div className="sbw-pop" style={{ background: PAPER, borderRadius: 12, padding: 20, width: "min(92vw, 380px)", maxHeight: "90vh", overflowY: "auto", textAlign: "center", border: `1px solid ${PAPER_LINE}` }}>
+        <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.2em", color: CORAL }}>🎨 STYLE YOUR TRAVELLER</div>
+        <div style={{ margin: "12px 0 4px" }}><Avatar spec={spec} size={104} title={`${name}'s traveller`} /></div>
+        {AVATAR_DIMS.map((d) => (
+          <div key={d.key} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, padding: "6px 0", borderTop: `1px solid ${PAPER_LINE}` }}>
+            <span style={{ fontWeight: 700, color: INK, fontSize: 13, width: 86, textAlign: "left" }}>{d.label}</span>
+            <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              {arrow(`Previous ${d.label.toLowerCase()}`, () => bump(d.key, d.n, -1))}
+              <span style={{ width: 58, fontSize: 12, color: INK, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 5 }}>
+                {d.swatch && <span aria-hidden="true" style={{ width: 15, height: 15, borderRadius: "50%", background: d.swatch(spec[d.key] % d.n), border: `1px solid ${INK}` }} />}
+                {d.name ? d.name(spec[d.key] % d.n) : `${(spec[d.key] % d.n) + 1}/${d.n}`}
+              </span>
+              {arrow(`Next ${d.label.toLowerCase()}`, () => bump(d.key, d.n, 1))}
+            </span>
+          </div>
+        ))}
+        <div style={{ display: "flex", gap: 8, justifyContent: "center", marginTop: 14, flexWrap: "wrap" }}>
+          <button onClick={roll} style={{ padding: "9px 14px", borderRadius: 8, border: `1.5px solid ${INK}`, background: "transparent", color: INK, fontWeight: 700, cursor: "pointer" }}>🎲 Surprise me</button>
+          <button onClick={() => onSave(spec)} style={{ padding: "9px 18px", borderRadius: 8, border: "none", background: GREEN, color: "#fff", fontWeight: 800, cursor: "pointer" }}>Save</button>
+          <button onClick={onClose} style={{ padding: "9px 14px", borderRadius: 8, border: `1.5px solid ${INK}`, background: "transparent", color: INK, fontWeight: 700, cursor: "pointer" }}>Cancel</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // Celebration confetti for a flawless result: paper pieces in the game's
 // palette tumble down once and fade out. Not rendered under reduced motion.
 function Confetti({ reduced }) {
