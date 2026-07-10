@@ -753,11 +753,12 @@ const MODE_CARDS = [
     blurb: "Ten fast multiple-choice questions — name the landmark from its photo, place it on the map, or know the capital. Build a streak for bonus points." },
   { id: "streak", name: "Streak", emoji: "🔥", photoId: "kilauea",
     blurb: "Endless assignments, no day budget — but one wrong photograph ends the run. Every correct shot is worth more than the last." },
-  { id: "daily", name: "Daily Challenge", emoji: "📅", photoId: "uyuni",
-    blurb: "The same five assignments for every traveller today, played at Medium — one shared board per day, so scores really compare." },
-  { id: "expeditions", name: "Expeditions", emoji: "🗺️", photoId: "serengeti",
-    blurb: "Curated photo journeys — wildlife, volcanoes, peaks, waterfalls, ancient wonders, world heritage — each a guided tour with a lesson." },
 ];
+// The Grand Tour's itinerary choices: a classic random tour, or one of the themed
+// expeditions (each a curated tour with a lesson). Shown as chips under the cards
+// when the Grand Tour card is selected — themed tours are a flavour of Grand Tour,
+// not a separate mode.
+const TOUR_THEMES = [{ id: "classic", title: "Classic", emoji: "🎲", lesson: "A round-the-world itinerary drawn fresh from the whole collection — targets across the continents on one shared day budget." }, ...EXPEDITIONS];
 const cardThumb = (id) => { const l = BY_ID[id]; if (!l?.photo?.src) return null; const src = l.photo.src; return src.includes("?") ? src : src + "?width=480"; };
 
 // ---- Generative background music (Web Audio) -------------------------------
@@ -887,7 +888,12 @@ function SpeakButton({ greeting }) {
 
 export default function ShutterbugWorld() {
   const [screen, setScreen] = useState("start"); // start | play | end | passport
-  const [difficulty, setDifficulty] = useState("easy");
+  const [difficulty, setDifficulty] = useState(() => {
+    try { const v = localStorage.getItem("shutterbug.diff"); if (v && MODES[v]) return v; } catch { /* ignore */ }
+    return "easy";
+  });
+  useEffect(() => { try { localStorage.setItem("shutterbug.diff", difficulty); } catch { /* ignore */ } }, [difficulty]);
+  const [tourTheme, setTourTheme] = useState("classic"); // Grand Tour itinerary choice
 
   const [assignments, setAssignments] = useState([]); // target location ids (the photos to file)
   const [optionsByStep, setOptionsByStep] = useState([]); // per assignment: [targetId, ...decoyIds] on its continent
@@ -1760,14 +1766,32 @@ export default function ShutterbugWorld() {
             </Field>
           </div>
 
+          {/* ---- Today's Challenge: a daily ritual, not a mode — one slim banner. ---- */}
+          {(() => {
+            const played = profileName && canSave ? dailyPlayed(profileName, dailyKey()) : null;
+            return (
+              <div style={{ marginTop: 22, display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", justifyContent: "space-between",
+                background: "#EAF6EF", border: `1.5px solid ${GREEN}`, borderRadius: 10, padding: "10px 14px", textAlign: "left" }}>
+                <span style={{ minWidth: 0 }}>
+                  <span style={{ fontWeight: 800, color: INK, fontSize: 14 }}><span aria-hidden="true">📅 </span>Today's Challenge</span>
+                  <span style={{ fontSize: 12, color: INK, opacity: 0.7, display: "block" }}>
+                    The same five assignments for every traveller today (Medium).{played ? ` Your best today: ${played.score}.` : ""}
+                  </span>
+                </span>
+                <button onClick={startDaily} style={{ padding: "8px 18px", borderRadius: 8, border: "none", background: GREEN, color: "#fff", fontWeight: 800, fontSize: 13, cursor: "pointer", flex: "none" }}>
+                  Play ▸
+                </button>
+              </div>
+            );
+          })()}
+
           {/* ---- Pick a way to play: photo cards ---- */}
-          <div style={{ marginTop: 24 }}>
+          <div style={{ marginTop: 18 }}>
             <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.22em", color: INK, opacity: 0.65, marginBottom: 10 }}>PICK A WAY TO PLAY</div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(146px, 1fr))", gap: 10 }}>
               {MODE_CARDS.map((c) => {
                 const active = gameMode === c.id;
                 const src = cardThumb(c.photoId);
-                const played = c.id === "daily" && profileName && canSave ? dailyPlayed(profileName, dailyKey()) : null;
                 return (
                   <div key={c.id} style={{ position: "relative" }}>
                     <button onClick={() => { setGameMode(c.id); setModeInfo(null); }} aria-pressed={active}
@@ -1781,7 +1805,6 @@ export default function ShutterbugWorld() {
                         <span aria-hidden="true" style={{ fontSize: "1.25em", marginRight: 5, verticalAlign: "-0.1em" }}>{c.emoji}</span>{c.name}
                       </span>
                       {active && <span aria-hidden="true" style={{ position: "absolute", top: 6, left: 8, background: CORAL, color: "#fff", fontWeight: 900, fontSize: 12, width: 20, height: 20, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center" }}>✓</span>}
-                      {played && <span style={{ position: "absolute", top: 6, right: 30, background: GOLD, color: INK, fontWeight: 800, fontSize: 10, padding: "2px 7px", borderRadius: 10 }}>best {played.score}</span>}
                     </button>
                     <button onClick={() => setModeInfo((m) => (m === c.id ? null : c.id))} aria-expanded={modeInfo === c.id} aria-label={`About ${c.name}`}
                       style={{ position: "absolute", top: 5, right: 5, width: 21, height: 21, borderRadius: "50%", border: "none", cursor: "pointer",
@@ -1799,6 +1822,28 @@ export default function ShutterbugWorld() {
               </p>
             )}
           </div>
+
+          {/* ---- Grand Tour itinerary: classic, or one of the themed expeditions. ---- */}
+          {gameMode === "tour" && (
+            <div style={{ marginTop: 18 }}>
+              <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.22em", color: INK, opacity: 0.65, marginBottom: 8 }}>ITINERARY</div>
+              <div style={{ display: "flex", gap: 7, flexWrap: "wrap", justifyContent: "center" }}>
+                {TOUR_THEMES.map((t) => {
+                  const on = tourTheme === t.id;
+                  return (
+                    <button key={t.id} onClick={() => setTourTheme(t.id)} aria-pressed={on}
+                      style={{ padding: "6px 13px", borderRadius: 16, cursor: "pointer", fontWeight: 700, fontSize: 12.5,
+                        border: `1.5px solid ${on ? CORAL : INK}`, background: on ? CORAL : "transparent", color: on ? "#fff" : INK }}>
+                      <span aria-hidden="true">{t.emoji} </span>{t.title}
+                    </button>
+                  );
+                })}
+              </div>
+              <p style={{ fontSize: 12.5, color: INK, opacity: 0.75, margin: "9px auto 0", maxWidth: 520, lineHeight: 1.45 }}>
+                {TOUR_THEMES.find((t) => t.id === tourTheme)?.lesson}
+              </p>
+            </div>
+          )}
 
           {/* ---- Difficulty stamps (only for the modes that use them) ---- */}
           {(gameMode === "assignments" || gameMode === "tour" || gameMode === "streak") && (
@@ -1819,13 +1864,13 @@ export default function ShutterbugWorld() {
 
           {/* ---- One launch button, labelled for the chosen card ---- */}
           <button
-            onClick={gameMode === "quiz" ? startQuiz : gameMode === "explore" ? startExplore : gameMode === "tour" ? startTour
-              : gameMode === "streak" ? startStreak : gameMode === "daily" ? startDaily
-              : gameMode === "expeditions" ? () => setScreen("expeditions") : startGame}
+            onClick={gameMode === "quiz" ? startQuiz : gameMode === "explore" ? startExplore
+              : gameMode === "tour" ? () => (tourTheme === "classic" ? startTour() : startExpedition(EXPEDITIONS.find((e) => e.id === tourTheme)))
+              : gameMode === "streak" ? startStreak : startGame}
             style={primaryBtn}>
-            {gameMode === "quiz" ? "Start the quiz 🧠" : gameMode === "explore" ? "Start exploring 🧭" : gameMode === "tour" ? "Start the Grand Tour ✈"
-              : gameMode === "streak" ? "Start the run 🔥" : gameMode === "daily" ? "Play today's challenge 📅"
-              : gameMode === "expeditions" ? "Choose an expedition →" : "Begin the assignment ✈"}
+            {gameMode === "quiz" ? "Start the quiz 🧠" : gameMode === "explore" ? "Start exploring 🧭"
+              : gameMode === "tour" ? (tourTheme === "classic" ? "Start the Grand Tour ✈" : `Start the ${TOUR_THEMES.find((t) => t.id === tourTheme)?.title} 🗺️`)
+              : gameMode === "streak" ? "Start the run 🔥" : "Begin the assignment ✈"}
           </button>
 
           {/* ---- High scores, tucked behind a toggle ---- */}
@@ -2071,34 +2116,6 @@ export default function ShutterbugWorld() {
   }
 
   // ---------- THEMED EXPEDITIONS PICKER ----------
-  if (screen === "expeditions") {
-    return (
-      <Frame>
-        <div style={{ maxWidth: 640, margin: "0 auto" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-            <Stamp>Themed Expeditions 🗺️</Stamp>
-            <button onClick={() => setScreen("start")} style={{ background: "none", border: "none", color: INK, opacity: 0.7, fontWeight: 700, cursor: "pointer", fontSize: 13 }}>← Back</button>
-          </div>
-          <p style={{ color: INK, opacity: 0.8, marginTop: 0, lineHeight: 1.5 }}>Pick a themed round-the-world trip. Each is a guided Grand Tour with a short lesson — photograph the theme's stars across the continents on one shared day budget. Uses your chosen difficulty ({MODES[difficulty].label}).</p>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(240px,1fr))", gap: 12, marginTop: 16 }}>
-            {EXPEDITIONS.map((exp) => {
-              const members = LOCATIONS.filter(exp.pick);
-              const conts = new Set(members.map((l) => l.continent)).size;
-              return (
-                <button key={exp.id} onClick={() => startExpedition(exp)}
-                  style={{ textAlign: "left", background: "#fff", border: `1.5px solid ${PAPER_LINE}`, borderRadius: 12, padding: 14, cursor: "pointer" }}>
-                  <div style={{ fontSize: 30 }} aria-hidden="true">{exp.emoji}</div>
-                  <div style={{ fontWeight: 800, color: INK, marginTop: 4, fontSize: 16 }}>{exp.title}</div>
-                  <div style={{ fontSize: 11, color: OCEAN, fontWeight: 700, marginTop: 2 }}>{members.length} places · {conts} continents</div>
-                  <p style={{ fontSize: 12.5, color: INK, opacity: 0.8, lineHeight: 1.45, margin: "6px 0 0" }}>{exp.lesson}</p>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      </Frame>
-    );
-  }
 
   if (screen === "passport") {
     const profile = getProfile(profileName);
