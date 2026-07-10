@@ -2232,7 +2232,7 @@ export default function ShutterbugWorld() {
     <Frame>
       <div style={{ display: "flex", gap: 16, alignItems: "flex-start", flexWrap: "wrap" }}>
         {/* Field journal panel */}
-        <div style={{ flex: "1 1 340px", minWidth: 300 }}>
+        <div style={{ flex: "1 1 360px", minWidth: 320 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
             <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 12, letterSpacing: "0.18em", color: INK, opacity: 0.7, display: "inline-flex", alignItems: "center", gap: 7 }}>{profileName && <Avatar spec={avatarFor(getProfile(profileName))} size={22} />}{isExplore ? "🧭 EXPLORE" : isTour ? `GRAND TOUR · ${tourReqs.filter((r) => r.done).length}/${tourReqs.length} filed` : `ASSIGNMENT ${step + 1}/${assignments.length}`}</span>
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -2405,8 +2405,9 @@ export default function ShutterbugWorld() {
         </div>
 
         {/* Map */}
-        <div style={{ flex: "2 1 520px", minWidth: 400 }}>
-          <div style={{ position: "relative", aspectRatio: frameAspect, maxWidth: 620, marginInline: "auto", borderRadius: 10, overflow: "hidden", border: `2px solid ${INK}`, boxShadow: "0 6px 0 rgba(16,38,46,0.15)" }}>
+        <div style={{ flex: "3 1 620px", minWidth: 440 }}>
+          {/* Desktop-first: the map is the star, so let it grow to ~840px wide. */}
+          <div style={{ position: "relative", aspectRatio: frameAspect, maxWidth: 840, marginInline: "auto", borderRadius: 10, overflow: "hidden", border: `2px solid ${INK}`, boxShadow: "0 6px 0 rgba(16,38,46,0.15)" }}>
             <svg viewBox={`${box.x} ${box.y} ${box.w} ${box.h}`} preserveAspectRatio="none" style={{ width: "100%", height: "100%", display: "block", background: zoomed ? "#0b1a2e" : PAPER }}>
               <defs>
                 <pattern id="sea" width="360" height="180" patternUnits="userSpaceOnUse">
@@ -2461,69 +2462,77 @@ export default function ShutterbugWorld() {
                 // label just far enough to clear the labels already placed — testing
                 // the real rectangles, so a distant country (New Zealand, far south)
                 // never gets bumped up merely for sharing a column with Fiji.
-                const CHAR_W = 0.018, LANE = 0.042, LH = 0.032; // box.w / box.h units
+                // Lay out every country label so none overlaps. Each label wants to
+                // sit just above its country; if that spot is taken it steps up, then
+                // down, then further up/down (alternating, so the stack stays compact
+                // and near the country and doesn't run off the top of the plate). Size
+                // estimates err GENEROUS — monospace advance + the paint-order stroke
+                // halo + a gap — so what the layout thinks fits really does.
+                const CHAR_W = 0.0195, STEP = 0.05, PAD = 0.006 * box.w; // box.w / box.h units
+                const topLim = box.y + 0.018 * box.h, botLim = box.y + box.h - 0.018 * box.h;
                 const placed = [];
-                const laneOf = {};
+                const yOf = {};              // country -> chosen text baseline y
+                const baseY = (cm) => cm.cy - 0.032 * box.h; // its preferred spot
                 for (const country of [...list].sort((a, b) => {
                   const A = COUNTRY_META[countryKey(pickedContinent, a)], B = COUNTRY_META[countryKey(pickedContinent, b)];
                   return (A ? A.cx : 0) - (B ? B.cx : 0);
                 })) {
                   const cm = COUNTRY_META[countryKey(pickedContinent, country)];
                   if (!cm) continue;
-                  const halfW = (country.length * CHAR_W * box.w) / 2;
-                  const hits = (r) => placed.some((q) => r.l < q.r && r.r > q.l && r.t < q.b && r.b > q.t);
-                  let lane = 0, rect;
-                  do {
-                    const yBase = cm.cy - (0.036 + lane * LANE) * box.h;
-                    rect = { l: cm.cx - halfW, r: cm.cx + halfW, t: yBase - LH * box.h, b: yBase };
-                    lane++;
-                  } while (hits(rect) && lane < 6);
-                  placed.push(rect);
-                  laneOf[country] = lane - 1;
+                  const halfW = (country.length * CHAR_W * box.w) / 2 + PAD;
+                  const top = (y) => y - 0.034 * box.h, bot = (y) => y + 0.010 * box.h; // label's visual box
+                  const hits = (y) => placed.some((q) => cm.cx - halfW < q.r && cm.cx + halfW > q.l && top(y) < q.b && bot(y) > q.t);
+                  const within = (y) => top(y) >= topLim && bot(y) <= botLim;
+                  const cands = [baseY(cm)];
+                  for (let k = 1; k <= 9; k++) { cands.push(cm.cy - (0.032 + k * STEP) * box.h); cands.push(cm.cy + (0.030 + (k - 1) * STEP) * box.h); }
+                  let y = cands.find((c) => within(c) && !hits(c));
+                  if (y === undefined) y = cands.find((c) => !hits(c)) ?? baseY(cm); // last resort
+                  placed.push({ l: cm.cx - halfW, r: cm.cx + halfW, t: top(y), b: bot(y) });
+                  yOf[country] = y;
                 }
-                return list.map((country) => {
-                const cm = COUNTRY_META[countryKey(pickedContinent, country)];
-                if (!cm) return null;
-                const lane = laneOf[country] || 0;
-                // On a Pacific-wrapped continent (Oceania) the equirectangular country
-                // outlines don't line up with the plate (and many "countries" are one
-                // tiny island), so show a clickable marker + label instead of an outline.
                 const wrapPlate = plateMode === "wrap";
-                const d = wcPath(country);
                 // Hard mode hides the names on outline continents — tell them apart by
-                // shape + the hover highlight. Marker (Oceania) steps keep labels, as
-                // there's no country shape to recognise there.
-                const showLabel = wrapPlate || mode.clue !== "hard";
-                return (
-                  <g key={country} className="sbw-country" role="button" tabIndex={busy ? -1 : 0}
-                     aria-label={`Choose ${country}`} onClick={() => pickCountry(country)}
-                     onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); pickCountry(country); } }}
-                     style={{ cursor: busy ? "default" : "pointer" }}>
-                    {(!wrapPlate && d)
-                      ? <path d={d} fillRule="evenodd" fill="rgba(244,236,216,0.16)" stroke={PAPER} strokeWidth="0.9" vectorEffect="non-scaling-stroke" />
-                      : <ellipse cx={cm.cx} cy={cm.cy} {...pinR(0.028)} fill="rgba(240,165,0,0.55)" stroke={PAPER} strokeWidth="1" vectorEffect="non-scaling-stroke" />}
-                    {/* label drawn in a later pass, so no marker can cover it; lifted
-                        slightly so it floats clear of the country's border stroke */}
-                    {showLabel && !wrapPlate && <text x={cm.cx} y={cm.cy - 0.022 * box.h} fontSize={0.03 * box.h} fontFamily="ui-monospace, monospace" fontWeight="800" fill={INK} textAnchor="middle"
-                      style={{ paintOrder: "stroke", stroke: PAPER, strokeWidth: 0.012 * box.h, pointerEvents: "none" }}>{country}</text>}
-                  </g>
-                );
-                }).concat(plateMode === "wrap" ? list.map((country) => {
+                // shape + the hover highlight. Marker (Oceania) steps keep labels.
+                const showLabels = wrapPlate || mode.clue !== "hard";
+                // First pass: the clickable country region (outline or marker), no
+                // text — labels come in a second pass so no region can cover a label.
+                const regions = list.map((country) => {
                   const cm = COUNTRY_META[countryKey(pickedContinent, country)];
                   if (!cm) return null;
-                  const lane = laneOf[country] || 0;
-                  const y = cm.cy - (0.036 + lane * LANE) * box.h;
+                  const d = wcPath(country);
+                  return (
+                    <g key={country} className="sbw-country" role="button" tabIndex={busy ? -1 : 0}
+                       aria-label={`Choose ${country}`} onClick={() => pickCountry(country)}
+                       onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); pickCountry(country); } }}
+                       style={{ cursor: busy ? "default" : "pointer" }}>
+                      {(!wrapPlate && d)
+                        ? <path d={d} fillRule="evenodd" fill="rgba(244,236,216,0.16)" stroke={PAPER} strokeWidth="0.9" vectorEffect="non-scaling-stroke" />
+                        : <ellipse cx={cm.cx} cy={cm.cy} {...pinR(0.028)} fill="rgba(240,165,0,0.55)" stroke={PAPER} strokeWidth="1" vectorEffect="non-scaling-stroke" />}
+                    </g>
+                  );
+                });
+                // Second pass, EVERY continent: labels lifted into collision-free
+                // lanes (computed above) with a hairline leader back to the country,
+                // so no two country names ever overlap on any continent map.
+                const labels = showLabels ? list.map((country) => {
+                  const cm = COUNTRY_META[countryKey(pickedContinent, country)];
+                  if (!cm) return null;
+                  const y = yOf[country] ?? baseY(cm);
+                  const moved = Math.abs(y - baseY(cm)) > 0.006 * box.h; // needs a leader?
+                  const above = y < cm.cy;
                   return (
                     <g key={"lbl" + country} style={{ pointerEvents: "none" }}>
-                      {lane > 0 && (
-                        <line x1={cm.cx} y1={cm.cy - 0.03 * box.h} x2={cm.cx} y2={y + 0.006 * box.h}
+                      {moved && (
+                        <line x1={cm.cx} y1={above ? cm.cy - 0.03 * box.h : cm.cy + 0.02 * box.h}
+                          x2={cm.cx} y2={above ? y + 0.006 * box.h : y - 0.026 * box.h}
                           stroke={PAPER} strokeWidth="1" vectorEffect="non-scaling-stroke" opacity="0.8" />
                       )}
                       <text x={cm.cx} y={y} fontSize={0.03 * box.h} fontFamily="ui-monospace, monospace" fontWeight="800" fill={INK} textAnchor="middle"
                         style={{ paintOrder: "stroke", stroke: PAPER, strokeWidth: 0.012 * box.h }}>{country}</text>
                     </g>
                   );
-                }) : []);
+                }) : [];
+                return regions.concat(labels);
               })()}
 
               {/* departure city marker on the world map (Robinson coords) */}
@@ -2712,7 +2721,7 @@ function Frame({ children }) {
         body.sbw-no-anim .sbw-confetti{ animation: none; opacity: 0 }
       `}</style>
       <SepiaMapBackground />
-      <div style={{ position: "relative", zIndex: 1, maxWidth: 1080, margin: "0 auto", background: PAPER, borderRadius: 14, padding: 22, border: `1px solid ${PAPER_LINE}`,
+      <div style={{ position: "relative", zIndex: 1, maxWidth: 1320, margin: "0 auto", background: PAPER, borderRadius: 14, padding: 22, border: `1px solid ${PAPER_LINE}`,
         boxShadow: "0 12px 34px rgba(74,50,20,0.32)",
         backgroundImage: `repeating-linear-gradient(0deg, transparent, transparent 27px, ${PAPER_LINE}55 27px, ${PAPER_LINE}55 28px)` }}>
         {children}
