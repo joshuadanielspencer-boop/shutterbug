@@ -7,7 +7,9 @@ import { COUNTRY_PEOPLE, greetingMeaning } from "./data/culture.js";
 import { categoryCountries, categoryMissionOK as missionOK } from "./missions.js";
 import { robinson, eqToRobinson, ROBINSON_W, ROBINSON_H } from "./robinson.js";
 import { CATEGORIES, CATEGORY_ORDER, KIND_META, kindOf } from "./data/categories.js";
-import { GRANDPA, INTRO_BEATS, SENDOFF_BEATS, NOTE_HEADER, GUIDEBOOK } from "./data/grandpa.js";
+import { ANECDOTES } from "./data/anecdotes.js";
+import { GRANDPA, INTRO_BEATS, SENDOFF_BEATS, NOTE_HEADER, GUIDEBOOK,
+  HOMECOMING_INTRO, WRONG_REACTIONS, ACHIEVEMENT_INTRO, DREAM_FULFILLED } from "./data/grandpa.js";
 import { listProfiles, lastProfileName, getProfile, createProfile, setLastProfile,
   deleteProfile, setAvatar, setProfileFlag, recordGame, recordExplore, recordQuiz,
   weightedOrder, freshFirst, passportData, achievements, topScores, storageAvailable } from "./profiles.js";
@@ -646,9 +648,11 @@ function quizQuestionFor(l) {
     explain: `This is ${l.subject}, in ${l.country} (${l.continent}). ${l.fact}` };
 }
 // A quiz = n questions from n distinct locations (freshest first for variety).
+// Each question carries its location id so the homecoming visit can look up
+// Grandpa's anecdote for that place.
 function buildQuiz(order, n = 10) {
   const chosen = order.slice(0, Math.min(n, order.length)).map((id) => BY_ID[id]).filter(Boolean);
-  return chosen.map(quizQuestionFor);
+  return chosen.map((l) => ({ ...quizQuestionFor(l), id: l.id }));
 }
 
 // Milliseconds → "m:ss".
@@ -997,6 +1001,7 @@ export default function ShutterbugWorld() {
   const [quiz, setQuiz] = useState(null); // Quiz mode: { questions, i, answeredIdx, score, correctCount, streak, done, best }
   const [expedition, setExpedition] = useState(null); // active themed expedition {id,title,emoji,lesson} (a curated Grand Tour)
   const [guestMet, setGuestMet] = useState(false); // has a guest (no profile) met Grandpa Nigel this session?
+  const [dreamPending, setDreamPending] = useState(false); // Grandpa's dream just fulfilled — show the win scene
   const pendingRunRef = useRef(null); // start action to run after the intro story
   const recorded = useRef(false);
   const startRef = useRef(0); // ms timestamp the current game began
@@ -1054,6 +1059,15 @@ export default function ShutterbugWorld() {
   // with Grandpa Nigel's story (once per profile / once per guest session).
   // Afterward the chosen expedition launches straight away. ----
   const hasMetNigel = () => (profileName ? !!getProfile(profileName)?.metNigel : guestMet);
+  // Grandpa's dream is "fulfilled" once you've brought him the world: a stamp on
+  // at least 6 of the 7 continents and 30+ countries mastered. A one-time
+  // triumphant scene plays; everything stays playable afterward.
+  function dreamFulfilled(profile) {
+    if (!profile) return false;
+    const pp = passportData(profile);
+    const touched = Object.values(pp.continents).filter((v) => v.mastered > 0).length;
+    return touched >= 6 && pp.masteredCount >= 30;
+  }
   function beginWithStory(run) {
     if (hasMetNigel()) { run(); return; }
     pendingRunRef.current = run;
@@ -1289,6 +1303,9 @@ export default function ShutterbugWorld() {
   function nextQuiz() {
     if (!quiz || quiz.answeredIdx === null) return;
     if (quiz.i + 1 >= quiz.questions.length) {
+      // The homecoming visit is part of an expedition, not a standalone Quiz —
+      // it isn't scored on the quiz leaderboard; it hands off to the results.
+      if (quiz.homecoming) { setQuiz(null); setScreen("end"); return; }
       setElapsedMs(Date.now() - startRef.current);
       let best = null;
       if (profileName) { best = recordQuiz(profileName, { score: quiz.score, correct: quiz.correctCount, total: quiz.questions.length }); refreshProfiles(); }
@@ -1297,6 +1314,17 @@ export default function ShutterbugWorld() {
     } else {
       setQuiz({ ...quiz, i: quiz.i + 1, answeredIdx: null });
     }
+  }
+
+  // The homecoming: back from an expedition, Grandpa asks about the places you
+  // photographed this trip (seeded from the album), then it hands off to the
+  // results screen. Anecdote on a right answer; a gentle line on a wrong one.
+  function startHomecoming() {
+    const ids = album.map((p) => p.id);
+    if (!ids.length) { setScreen("end"); return; }
+    const questions = buildQuiz(ids, Math.min(5, ids.length));
+    setQuiz({ questions, i: 0, answeredIdx: null, score: 0, correctCount: 0, streak: 0, lastGain: 0, done: false, best: null, homecoming: true });
+    setScreen("homecoming");
   }
 
   // Dismiss the result popup and do what its button promised.
@@ -1311,7 +1339,7 @@ export default function ShutterbugWorld() {
       setPickedCountry(null);
       setMsg({ type: "info", text: "New assignment! Read the clue and pick the continent." });
     } else if (kind === "win" || kind === "lose" || kind === "tour-win" || kind === "tour-lose") {
-      setScreen("end");
+      startHomecoming();   // visit Grandpa first; the homecoming hands off to the results
     } else if (kind === "wrong" && phase === "city") {
       setCurrent(null);    // clear the wrong shot; back to "pick a city"
       setRevealed(false);
@@ -1356,6 +1384,9 @@ export default function ShutterbugWorld() {
         setNewBadges(earnedNow);
         if (earnedNow.length) sfx("badge"); else if (res.isBest || res.isBestTime) sfx("stamp");
         refreshProfiles();
+        // First time the dream is complete, queue Grandpa's triumphant scene.
+        const updated = getProfile(profileName);
+        if (updated && !updated.dreamDone && dreamFulfilled(updated)) setDreamPending(true);
       }
     }
     if (screen === "start") recorded.current = false;
@@ -1658,6 +1689,12 @@ export default function ShutterbugWorld() {
     return <StoryScreen beats={INTRO_BEATS} reduced={prefersReduced} ctaLabel="Take the camera 📷" onDone={finishStory} />;
   }
 
+  // ---------- DREAM FULFILLED (one-time win scene; game continues after) ----------
+  if (screen === "dream") {
+    return <StoryScreen beats={DREAM_FULFILLED} reduced={prefersReduced} ctaLabel="Keep exploring the world 🌍"
+      onDone={() => { if (profileName) setProfileFlag(profileName, "dreamDone", true); setDreamPending(false); refreshProfiles(); setScreen("start"); }} />;
+  }
+
   if (screen === "start") {
     return (
       <Frame>
@@ -1859,8 +1896,9 @@ export default function ShutterbugWorld() {
     );
   }
 
-  // ---------- QUIZ SCREEN ----------
-  if (screen === "quiz" && quiz) {
+  // ---------- QUIZ SCREEN (also the homecoming visit) ----------
+  if ((screen === "quiz" || screen === "homecoming") && quiz) {
+    const home = !!quiz.homecoming;
     if (quiz.done) {
       const pct = quiz.questions.length ? quiz.correctCount / quiz.questions.length : 0;
       const r = rankFor(pct);
@@ -1884,12 +1922,22 @@ export default function ShutterbugWorld() {
     }
     const q = quiz.questions[quiz.i];
     const answered = quiz.answeredIdx !== null;
+    const loc = home ? BY_ID[q.id] : null;
     return (
       <Frame>
         <div style={{ maxWidth: 560, margin: "0 auto" }}>
+          {home && (
+            <div style={{ display: "flex", alignItems: "center", gap: 12, background: PAPER, border: `1px solid ${PAPER_LINE}`, borderRadius: 12, padding: "12px 14px", marginBottom: 14 }}>
+              <div aria-hidden="true" style={{ width: 52, height: 52, flex: "none", borderRadius: "50%", background: "radial-gradient(circle at 50% 38%, #F3E4C6, #D8B98A)", border: `2px solid ${GOLD}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28 }}>{GRANDPA.emoji}</div>
+              <div>
+                <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 10, letterSpacing: "0.16em", color: CORAL }}>HOME AGAIN · {GRANDPA.name.toUpperCase()}</div>
+                <div style={{ color: INK, fontSize: 13.5, lineHeight: 1.4, marginTop: 2 }}>{quiz.i === 0 ? HOMECOMING_INTRO : "And this one — do you remember?"}</div>
+              </div>
+            </div>
+          )}
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-            <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 12, letterSpacing: "0.18em", color: INK, opacity: 0.7 }}>🧠 QUESTION {quiz.i + 1}/{quiz.questions.length}</span>
-            <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 13, fontWeight: 700, color: CORAL }}>{quiz.score} pts{quiz.streak > 1 ? ` · 🔥${quiz.streak}` : ""}</span>
+            <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 12, letterSpacing: "0.18em", color: INK, opacity: 0.7 }}>{home ? "🖼" : "🧠"} QUESTION {quiz.i + 1}/{quiz.questions.length}</span>
+            <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 13, fontWeight: 700, color: CORAL }}>{home ? `${quiz.correctCount} right` : `${quiz.score} pts${quiz.streak > 1 ? ` · 🔥${quiz.streak}` : ""}`}</span>
           </div>
           {q.photo && (
             <div style={{ margin: "0 auto 14px", maxWidth: 380, borderRadius: 8, overflow: "hidden", border: `1px solid ${PAPER_LINE}` }}>
@@ -1920,14 +1968,30 @@ export default function ShutterbugWorld() {
               );
             })}
           </div>
-          {answered && (
-            <div style={{ marginTop: 14, background: PAPER, border: `1px solid ${PAPER_LINE}`, borderRadius: 8, padding: "10px 12px", fontSize: 13, color: INK, lineHeight: 1.5 }}>
-              <b style={{ color: q.options[quiz.answeredIdx].correct ? GREEN : CORAL }}>{q.options[quiz.answeredIdx].correct ? `Correct!${quiz.lastGain ? ` +${quiz.lastGain}` : ""}` : "Not quite."}</b> {q.explain}
-            </div>
-          )}
+          {answered && (() => {
+            const wasCorrect = q.options[quiz.answeredIdx].correct;
+            if (home) {
+              const tidbit = (loc && ANECDOTES[loc.id]) || (loc && loc.fact) || "";
+              const wrongLine = WRONG_REACTIONS[quiz.i % WRONG_REACTIONS.length];
+              return (
+                <div style={{ marginTop: 14, background: wasCorrect ? "#EAF6EF" : PAPER, border: `1px solid ${wasCorrect ? GREEN : PAPER_LINE}`, borderRadius: 10, padding: "12px 14px", fontSize: 13.5, color: INK, lineHeight: 1.55 }}>
+                  <span aria-hidden="true" style={{ marginRight: 6 }}>{GRANDPA.emoji}</span>
+                  <b style={{ color: wasCorrect ? GREEN : CORAL }}>{wasCorrect ? "That's the one!" : wrongLine}</b>{" "}
+                  {wasCorrect ? tidbit : q.explain}
+                </div>
+              );
+            }
+            return (
+              <div style={{ marginTop: 14, background: PAPER, border: `1px solid ${PAPER_LINE}`, borderRadius: 8, padding: "10px 12px", fontSize: 13, color: INK, lineHeight: 1.5 }}>
+                <b style={{ color: wasCorrect ? GREEN : CORAL }}>{wasCorrect ? `Correct!${quiz.lastGain ? ` +${quiz.lastGain}` : ""}` : "Not quite."}</b> {q.explain}
+              </div>
+            );
+          })()}
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 16 }}>
-            <button onClick={() => { setQuiz(null); setGameMode("assignments"); setScreen("start"); }} style={{ background: "none", border: "none", color: INK, opacity: 0.6, fontSize: 13, cursor: "pointer", fontWeight: 700 }}>← Quit</button>
-            {answered && <button onClick={nextQuiz} style={{ ...primaryBtn, margin: 0, padding: "10px 22px" }}>{quiz.i + 1 >= quiz.questions.length ? "See results" : "Next question →"}</button>}
+            {home
+              ? <button onClick={() => { setQuiz(null); setScreen("end"); }} style={{ background: "none", border: "none", color: INK, opacity: 0.6, fontSize: 13, cursor: "pointer", fontWeight: 700 }}>Skip to results →</button>
+              : <button onClick={() => { setQuiz(null); setGameMode("assignments"); setScreen("start"); }} style={{ background: "none", border: "none", color: INK, opacity: 0.6, fontSize: 13, cursor: "pointer", fontWeight: 700 }}>← Quit</button>}
+            {answered && <button onClick={nextQuiz} style={{ ...primaryBtn, margin: 0, padding: "10px 22px" }}>{quiz.i + 1 >= quiz.questions.length ? (home ? "Show him the rest →" : "See results") : "Next question →"}</button>}
           </div>
         </div>
       </Frame>
@@ -1978,6 +2042,9 @@ export default function ShutterbugWorld() {
                   </span>
                 ))}
               </div>
+              <p style={{ color: INK, fontSize: 13.5, lineHeight: 1.5, margin: "10px auto 0", maxWidth: 420, fontStyle: "italic", opacity: 0.9 }}>
+                <span aria-hidden="true">{GRANDPA.emoji} </span>{ACHIEVEMENT_INTRO} {newBadges.length > 1 ? `you've gone and earned ${newBadges.length} keepsakes! I'm putting every one in the album.` : `"${newBadges[0].name}" — that's going straight in the album, that is.`}
+              </p>
             </div>
           )}
 
@@ -1985,6 +2052,15 @@ export default function ShutterbugWorld() {
             {album.map((p, i) => (<Polaroid key={`${p.id}-${i}`} p={p} />))}
           </div>
 
+          {dreamPending && (
+            <div style={{ marginTop: 24, textAlign: "center" }}>
+              <div style={{ background: "linear-gradient(160deg, #1C3A5E, #16324E)", color: "#F4E3B8", borderRadius: 12, padding: "14px 18px", maxWidth: 460, margin: "0 auto" }}>
+                <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.18em", marginBottom: 6 }}>🌍 YOU'VE BROUGHT HIM THE WORLD</div>
+                <p style={{ margin: 0, fontSize: 14, lineHeight: 1.5, color: "#fff" }}>Grandpa Nigel has something to say to you…</p>
+                <button onClick={() => setScreen("dream")} style={{ ...primaryBtn, marginTop: 14, background: GOLD, color: INK, boxShadow: "0 4px 0 #A9861E" }}>Go and see Grandpa →</button>
+              </div>
+            </div>
+          )}
           <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap", marginTop: 26 }}>
             <button onClick={() => setScreen("start")} style={primaryBtn}>New assignment</button>
             {profileName && (
