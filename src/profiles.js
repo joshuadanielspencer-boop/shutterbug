@@ -142,6 +142,9 @@ export function recordGame(name, { difficulty, score, timeMs = 0, won = false, r
 
   p.games = (p.games || 0) + 1;
   p.lastPlayed = Date.now();
+  // Remember the most recent trip's outcome so Grandpa can comment on it at the
+  // start of the next expedition (see the meet screen).
+  p.lastRun = { won: !!won, difficulty, score, mode, at: Date.now() };
   p.best = p.best || {};
   const prevBest = p.best[difficulty] || 0;
   const isBest = score > prevBest;

@@ -10,7 +10,7 @@ import { CATEGORIES, CATEGORY_ORDER, KIND_META, kindOf } from "./data/categories
 import { ANECDOTES } from "./data/anecdotes.js";
 import { GRANDPA, INTRO_BEATS, SENDOFF_BEATS, NOTE_HEADER, GUIDEBOOK,
   HOMECOMING_INTRO, WRONG_REACTIONS, ACHIEVEMENT_INTRO, DREAM_FULFILLED,
-  END_WIN, END_LOSE } from "./data/grandpa.js";
+  END_WIN, END_LOSE, MEET_LINES, MEET_RUN, MEET_ASK } from "./data/grandpa.js";
 import { listProfiles, lastProfileName, getProfile, createProfile, setLastProfile,
   deleteProfile, renameProfile, setAvatar, setProfileFlag, recordGame, recordExplore, recordQuiz,
   weightedOrder, freshFirst, passportData, achievements, topScores, storageAvailable } from "./profiles.js";
@@ -1067,7 +1067,9 @@ export default function ShutterbugWorld() {
   const [confirmRemove, setConfirmRemove] = useState(false); // passport delete confirmation
   const [passportPage, setPassportPage] = useState("id"); // passport booklet page: id | stamps | collections | badges
   const [avatarEdit, setAvatarEdit] = useState(false);        // avatar editor open (start screen)
-  const [modeInfo, setModeInfo] = useState(null);             // which start-screen ⓘ is open
+  const [createOpen, setCreateOpen] = useState(false);        // "Create New Traveler" modal open
+  const [meetInfo, setMeetInfo] = useState(null);             // { line, comment } shown on the meet-Grandpa screen
+  const [modeInfo, setModeInfo] = useState(null);             // which mode-select ⓘ is open
   const [showScores, setShowScores] = useState(false);        // high-scores reveal
   const [researched, setResearched] = useState({}); // assignment step -> revealed research note (Research button)
   const [cityPlan, setCityPlan] = useState(null); // country-layer city step: { ids, wide } (wide = continent view for thin countries)
@@ -1159,6 +1161,54 @@ export default function ShutterbugWorld() {
     const run = pendingRunRef.current;
     pendingRunRef.current = null;
     if (run) run(); else setScreen("start");
+  }
+  // From the splash "Continue/Begin your adventure" button: go to the meet-Grandpa
+  // screen (where the mode + difficulty are chosen). A brand-new traveller sees
+  // Grandpa's one-time intro story first, then lands on the meet screen.
+  function enterMeetScreen() {
+    // Pick Grandpa's line + his nod to the last trip once, so they don't reshuffle
+    // as the player fiddles with mode/difficulty.
+    const line = MEET_LINES[Math.floor(Math.random() * MEET_LINES.length)];
+    const profile = profileName ? getProfile(profileName) : null;
+    const lr = profile && profile.lastRun;
+    let pool;
+    if (!lr || !(profile.games > 0)) pool = MEET_RUN.firstTime;
+    else if (lr.won) pool = Math.random() < 0.4 ? MEET_RUN.great : MEET_RUN.good;
+    else pool = MEET_RUN.rough;
+    const comment = pool[Math.floor(Math.random() * pool.length)];
+    setMeetInfo({ line, comment });
+    setScreen("meet");
+  }
+  function goToMeet() {
+    if (!hasChosen) { setPromptTraveler(true); return; }
+    startMusicMaybe();
+    if (hasMetNigel()) { enterMeetScreen(); return; }
+    pendingRunRef.current = enterMeetScreen; // after the intro story, land on the meet screen
+    setScreen("intro");
+  }
+  // Create a brand-new traveller and set off in one go (from the Create modal).
+  // Uses the created name directly so it doesn't depend on not-yet-flushed state.
+  // A new profile can't have met Grandpa, so the intro story always plays first,
+  // then the meet screen. Returns false if the name is blank or already taken.
+  function createAndBegin(name, spec) {
+    const p = createProfile(name);
+    if (!p) return false;
+    if (spec) setAvatar(p.name, spec);
+    setProfileName(p.name); setLastProfile(p.name); setHasChosen(true); setPromptTraveler(false);
+    refreshProfiles(); sfx("stamp");
+    setCreateOpen(false); startMusicMaybe();
+    pendingRunRef.current = enterMeetScreen; // after the one-time intro, land on the meet screen
+    setScreen("intro");
+    return true;
+  }
+  // The meet screen's "Set off" — launch whatever mode/difficulty were chosen
+  // there. The intro story (if any) already played on the way in, so these start
+  // the run directly.
+  function setOff() {
+    if (gameMode === "quiz") return startQuiz();
+    if (gameMode === "explore") return startExplore();
+    if (gameMode === "tour") return tourTheme === "classic" ? startTour() : startExpedition(EXPEDITIONS.find((e) => e.id === tourTheme));
+    return startGame();
   }
 
   function startGame() {
@@ -1826,74 +1876,26 @@ export default function ShutterbugWorld() {
       onDone={() => { if (profileName) setProfileFlag(profileName, "dreamDone", true); setDreamPending(false); refreshProfiles(); setScreen("start"); }} />;
   }
 
-  if (screen === "start") {
+  // ---------- MEET GRANDPA (pre-game): he says something, nods to your last trip,
+  // then asks what adventure you're after — where the mode + difficulty are chosen.
+  if (screen === "meet") {
+    const prof = profileName ? getProfile(profileName) : null;
+    const showRunNote = !!(prof && prof.games > 0 && meetInfo?.comment);
     return (
       <Frame>
-        <div style={{ maxWidth: 960, margin: "0 auto", textAlign: "center", padding: "8px 4px" }}>
-          <div style={{ maxWidth: 620, margin: "0 auto" }}>
-          {/* Hand-illustrated splash — the title and tagline live in the artwork,
-              so no text heading is needed here. */}
-          <img src={`${BASE}splash.jpg`} alt="Shutterbug — A World Photo Safari"
-            style={{ width: "100%", maxWidth: 620, height: "auto", display: "block", margin: "4px auto 0", borderRadius: 14, boxShadow: "0 4px 16px rgba(74,50,20,0.28)" }} />
+        <div style={{ maxWidth: 640, margin: "0 auto", padding: "4px 4px 8px" }}>
+          {/* Grandpa greets you */}
+          <div style={{ display: "flex", alignItems: "flex-start", gap: 16, background: PAPER, border: `2px solid ${GOLD}`, borderRadius: 16, padding: "16px 18px" }}>
+            <NigelPortrait size={132} style={{ flex: "none" }} />
+            <div style={{ textAlign: "left" }}>
+              <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 12, letterSpacing: "0.16em", color: CORAL, marginBottom: 6 }}>{GRANDPA.name.toUpperCase()}</div>
+              <p style={{ margin: 0, color: INK, fontSize: 17, lineHeight: 1.5 }}>{meetInfo?.line}</p>
+              {showRunNote && <p style={{ margin: "10px 0 0", color: INK, opacity: 0.85, fontSize: 15, lineHeight: 1.5, fontStyle: "italic" }}>{meetInfo.comment}</p>}
+              <p style={{ margin: "12px 0 0", color: INK, fontWeight: 800, fontSize: 16 }}>{MEET_ASK}</p>
+            </div>
           </div>
 
-          {/* One centred column: traveller, then a picture-first grid of mode cards
-              (each wearing a landmark photo from the game's own collection), then
-              difficulty stamps and one big launch button. Long explanations live
-              behind each card's ⓘ. */}
-          <div style={{ maxWidth: 640, margin: "0 auto" }}>
-
-          <div style={{ marginTop: 22 }}>
-            <Field label="Traveler">
-              <div style={{ display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap", maxWidth: 460, margin: "0 auto" }}>
-                {profiles.map((p) => {
-                  const active = p.name === profileName;
-                  return (
-                    <button key={p.name} onClick={() => { startMusicMaybe(); setProfileName(p.name); setLastProfile(p.name); setHasChosen(true); setPromptTraveler(false); }} aria-pressed={active}
-                      style={{ padding: "5px 14px 5px 6px", borderRadius: 20, cursor: "pointer", fontWeight: 700, fontSize: 13,
-                        display: "inline-flex", alignItems: "center", gap: 7,
-                        border: `1.5px solid ${INK}`, background: active ? INK : "transparent", color: active ? PAPER : INK }}>
-                      <Avatar spec={avatarFor(p)} size={22} />{p.name}
-                    </button>
-                  );
-                })}
-                <button onClick={() => { startMusicMaybe(); setProfileName(null); setLastProfile(null); setHasChosen(true); setPromptTraveler(false); }} aria-pressed={hasChosen && profileName === null}
-                  style={{ padding: "7px 14px", borderRadius: 20, cursor: "pointer", fontWeight: 700, fontSize: 13,
-                    border: `1.5px dashed ${INK}`, background: (hasChosen && profileName === null) ? INK : "transparent", color: (hasChosen && profileName === null) ? PAPER : INK }}>
-                  Guest
-                </button>
-              </div>
-              <form onSubmit={(e) => { e.preventDefault(); const p = createProfile(newName); if (p) { setProfileName(p.name); setHasChosen(true); setPromptTraveler(false); setNewName(""); refreshProfiles(); } }}
-                style={{ display: "flex", gap: 8, justifyContent: "center", marginTop: 10, flexWrap: "wrap" }}>
-                <input value={newName} onChange={(e) => setNewName(e.target.value)} maxLength={20} placeholder="New traveler's name" aria-label="New traveler's name"
-                  disabled={!canSave}
-                  style={{ padding: "8px 12px", borderRadius: 8, border: `1.5px solid ${PAPER_LINE}`, fontSize: 14, width: 180, background: "#fff", color: INK }} />
-                <button type="submit" disabled={!newName.trim() || !canSave}
-                  style={{ padding: "8px 14px", borderRadius: 8, border: "none", cursor: newName.trim() && canSave ? "pointer" : "default", fontWeight: 700, fontSize: 14, background: GREEN, color: "#fff", opacity: newName.trim() && canSave ? 1 : 0.5 }}>
-                  ＋ Add
-                </button>
-              </form>
-              {profileName ? (
-                <span style={{ display: "inline-flex", gap: 8, marginTop: 10, flexWrap: "wrap", justifyContent: "center" }}>
-                  <button onClick={() => { setConfirmRemove(false); setScreen("passport"); }}
-                    style={{ padding: "7px 16px", borderRadius: 8, border: `1.5px solid ${CORAL}`, background: "transparent", color: CORAL, fontWeight: 700, fontSize: 13, cursor: "pointer" }}>
-                    📕 {profileName}'s passport
-                  </button>
-                  <button onClick={() => setAvatarEdit(true)}
-                    style={{ padding: "7px 16px", borderRadius: 8, border: `1.5px solid ${OCEAN}`, background: "transparent", color: OCEAN, fontWeight: 700, fontSize: 13, cursor: "pointer" }}>
-                    🧳 Customize traveler
-                  </button>
-                </span>
-              ) : (
-                <p style={{ fontSize: 12, color: INK, opacity: 0.6, margin: "8px 2px 0" }}>
-                  {canSave ? "Guest games aren't saved. Add a name to keep scores and stamps." : "This browser can't save progress, so games won't be recorded."}
-                </p>
-              )}
-            </Field>
-          </div>
-
-
-          {/* ---- Pick a way to play: photo cards ---- */}
+          {/* Pick a way to play */}
           <div style={{ marginTop: 18 }}>
             <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.22em", color: INK, opacity: 0.65, marginBottom: 10 }}>PICK A WAY TO PLAY</div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(146px, 1fr))", gap: 10 }}>
@@ -1902,7 +1904,7 @@ export default function ShutterbugWorld() {
                 const src = cardThumb(c.photoId);
                 return (
                   <div key={c.id} style={{ position: "relative" }}>
-                    <button onClick={() => { startMusicMaybe(); setGameMode(c.id); setModeInfo(null); }} aria-pressed={active}
+                    <button onClick={() => { setGameMode(c.id); setModeInfo(null); }} aria-pressed={active}
                       style={{ position: "relative", display: "block", width: "100%", height: 108, borderRadius: 12, overflow: "hidden", cursor: "pointer",
                         border: active ? `3px solid ${CORAL}` : `1.5px solid ${PAPER_LINE}`, padding: 0, background: "#20343B", textAlign: "left",
                         boxShadow: active ? "0 4px 14px rgba(233,106,76,0.35)" : "0 2px 8px rgba(74,50,20,0.18)" }}>
@@ -1916,14 +1918,12 @@ export default function ShutterbugWorld() {
                     </button>
                     <button onClick={() => setModeInfo((m) => (m === c.id ? null : c.id))} aria-expanded={modeInfo === c.id} aria-label={`About ${c.name}`}
                       style={{ position: "absolute", top: 5, right: 5, width: 21, height: 21, borderRadius: "50%", border: "none", cursor: "pointer",
-                        background: "rgba(255,255,255,0.9)", color: INK, fontWeight: 900, fontSize: 12, lineHeight: 1 }}>
-                      ?
-                    </button>
+                        background: "rgba(255,255,255,0.9)", color: INK, fontWeight: 900, fontSize: 12, lineHeight: 1 }}>?</button>
                   </div>
                 );
               })}
             </div>
-            {modeInfo && (
+            {modeInfo && MODE_CARDS.find((c) => c.id === modeInfo) && (
               <p role="status" style={{ fontSize: 13, color: INK, background: PAPER, border: `1px solid ${PAPER_LINE}`, borderRadius: 8, padding: "9px 12px", margin: "10px auto 0", maxWidth: 560, lineHeight: 1.5, textAlign: "left" }}>
                 <b>{MODE_CARDS.find((c) => c.id === modeInfo)?.emoji} {MODE_CARDS.find((c) => c.id === modeInfo)?.name}:</b>{" "}
                 {MODE_CARDS.find((c) => c.id === modeInfo)?.blurb}
@@ -1931,7 +1931,7 @@ export default function ShutterbugWorld() {
             )}
           </div>
 
-          {/* ---- Grand Tour itinerary: classic, or one of the themed expeditions. ---- */}
+          {/* Grand Tour itinerary */}
           {gameMode === "tour" && (
             <div style={{ marginTop: 18 }}>
               <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.22em", color: INK, opacity: 0.65, marginBottom: 8 }}>ITINERARY</div>
@@ -1953,7 +1953,7 @@ export default function ShutterbugWorld() {
             </div>
           )}
 
-          {/* ---- Difficulty stamps (only for the modes that use them) ---- */}
+          {/* Difficulty */}
           {(gameMode === "assignments" || gameMode === "tour") && (
             <div style={{ marginTop: 18 }}>
               <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.22em", color: INK, opacity: 0.65, marginBottom: 8 }}>
@@ -1970,22 +1970,94 @@ export default function ShutterbugWorld() {
             </div>
           )}
 
-          {/* ---- One launch button, labelled for the chosen card ---- */}
+          {/* Set off / back */}
+          <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap", marginTop: 8 }}>
+            <button onClick={setOff} style={primaryBtn}>
+              {gameMode === "quiz" ? "Start the quiz 🧠" : gameMode === "explore" ? "Start exploring 🧭"
+                : gameMode === "tour" ? (tourTheme === "classic" ? "Set off on the Grand Tour ✈" : `Set off: ${TOUR_THEMES.find((t) => t.id === tourTheme)?.title} 🗺️`)
+                : "Set off with the camera 📷"}
+            </button>
+          </div>
+          <button onClick={() => setScreen("start")}
+            style={{ marginTop: 14, background: "none", border: "none", color: INK, opacity: 0.6, fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
+            ← Back to travelers
+          </button>
+        </div>
+      </Frame>
+    );
+  }
+
+  if (screen === "start") {
+    return (
+      <Frame>
+        <div style={{ maxWidth: 960, margin: "0 auto", textAlign: "center", padding: "8px 4px" }}>
+          <div style={{ maxWidth: 720, margin: "0 auto" }}>
+          {/* Hand-illustrated splash — the title and tagline live in the artwork,
+              so no text heading is needed here. */}
+          <img src={`${BASE}splash.jpg`} alt="Shutterbug — A World Photo Safari"
+            style={{ width: "100%", maxWidth: 720, height: "auto", display: "block", margin: "4px auto 0", borderRadius: 14, boxShadow: "0 4px 16px rgba(74,50,20,0.28)" }} />
+          </div>
+
+          {/* One centred column: traveller, then a picture-first grid of mode cards
+              (each wearing a landmark photo from the game's own collection), then
+              difficulty stamps and one big launch button. Long explanations live
+              behind each card's ⓘ. */}
+          <div style={{ maxWidth: 640, margin: "0 auto" }}>
+
+          <div style={{ marginTop: 22 }}>
+            <Field label="Select Traveler">
+              <div style={{ display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap", maxWidth: 480, margin: "0 auto" }}>
+                {profiles.map((p) => {
+                  const active = p.name === profileName;
+                  return (
+                    <button key={p.name} onClick={() => { startMusicMaybe(); setProfileName(p.name); setLastProfile(p.name); setHasChosen(true); setPromptTraveler(false); }} aria-pressed={active}
+                      style={{ padding: "5px 14px 5px 6px", borderRadius: 20, cursor: "pointer", fontWeight: 700, fontSize: 13,
+                        display: "inline-flex", alignItems: "center", gap: 7,
+                        border: `1.5px solid ${INK}`, background: active ? INK : "transparent", color: active ? PAPER : INK }}>
+                      <Avatar spec={avatarFor(p)} size={22} />{p.name}
+                    </button>
+                  );
+                })}
+                <button onClick={() => { startMusicMaybe(); setProfileName(null); setLastProfile(null); setHasChosen(true); setPromptTraveler(false); }} aria-pressed={hasChosen && profileName === null}
+                  style={{ padding: "7px 14px", borderRadius: 20, cursor: "pointer", fontWeight: 700, fontSize: 13,
+                    border: `1.5px dashed ${INK}`, background: (hasChosen && profileName === null) ? INK : "transparent", color: (hasChosen && profileName === null) ? PAPER : INK }}>
+                  Guest
+                </button>
+                {/* New traveller: opens the Create modal (name + design + begin). */}
+                <button onClick={() => { startMusicMaybe(); setCreateOpen(true); }} disabled={!canSave} title={canSave ? "Create a new traveler" : "This browser can't save progress"}
+                  style={{ padding: "7px 14px", borderRadius: 20, cursor: canSave ? "pointer" : "default", fontWeight: 800, fontSize: 13,
+                    border: `1.5px solid ${GREEN}`, background: "transparent", color: GREEN, opacity: canSave ? 1 : 0.5 }}>
+                  ＋ New traveler
+                </button>
+              </div>
+              {profileName ? (
+                <span style={{ display: "inline-flex", gap: 8, marginTop: 10, flexWrap: "wrap", justifyContent: "center" }}>
+                  <button onClick={() => { setConfirmRemove(false); setScreen("passport"); }}
+                    style={{ padding: "7px 16px", borderRadius: 8, border: `1.5px solid ${CORAL}`, background: "transparent", color: CORAL, fontWeight: 700, fontSize: 13, cursor: "pointer" }}>
+                    📕 {profileName}'s passport
+                  </button>
+                  <button onClick={() => setAvatarEdit(true)}
+                    style={{ padding: "7px 16px", borderRadius: 8, border: `1.5px solid ${OCEAN}`, background: "transparent", color: OCEAN, fontWeight: 700, fontSize: 13, cursor: "pointer" }}>
+                    🧳 Customize traveler
+                  </button>
+                </span>
+              ) : (
+                <p style={{ fontSize: 12, color: INK, opacity: 0.6, margin: "8px 2px 0" }}>
+                  {canSave ? "Guest games aren't saved. Add a name to keep scores and stamps." : "This browser can't save progress, so games won't be recorded."}
+                </p>
+              )}
+            </Field>
+          </div>
+
+
+          {/* ---- Start button: pick a way to play and difficulty now live on the
+               meet-Grandpa screen, so the splash stays calm and picture-first. ---- */}
           {(() => {
-            const run = gameMode === "quiz" ? startQuiz : gameMode === "explore" ? startExplore
-              : gameMode === "tour" ? () => beginWithStory(() => (tourTheme === "classic" ? startTour() : startExpedition(EXPEDITIONS.find((e) => e.id === tourTheme))))
-              : () => beginWithStory(startGame);
-            // A returning traveller (has met Grandpa or logged a trip) "continues"
-            // their adventure; a new one "begins" it.
             const prof = profileName ? getProfile(profileName) : null;
             const returning = !!prof && (prof.metNigel || (prof.games || 0) > 0);
-            const label = gameMode === "quiz" ? "Start the quiz 🧠" : gameMode === "explore" ? "Start exploring 🧭"
-              : gameMode === "tour" ? (tourTheme === "classic" ? "Start the Grand Tour ✈" : `Start the ${TOUR_THEMES.find((t) => t.id === tourTheme)?.title} 🗺️`)
-              : returning ? "Continue adventure! ✈" : "Begin Your Adventure ✈";
+            const label = returning ? "Continue your adventure ✈" : "Begin your adventure ✈";
             return (
-              <button onClick={() => { if (!hasChosen) { setPromptTraveler(true); return; } run(); }} style={primaryBtn}>
-                {label}
-              </button>
+              <button onClick={goToMeet} style={primaryBtn}>{label}</button>
             );
           })()}
           {promptTraveler && (
@@ -2041,6 +2113,9 @@ export default function ShutterbugWorld() {
             }}
             onRemove={() => { deleteProfile(profileName); setAvatarEdit(false); setProfileName(null); setHasChosen(false); refreshProfiles(); }}
             onClose={() => setAvatarEdit(false)} />
+        )}
+        {createOpen && (
+          <CreateTravelerModal onSubmit={createAndBegin} onClose={() => setCreateOpen(false)} />
         )}
       </Frame>
     );
@@ -3431,6 +3506,67 @@ function AvatarEditor({ name, initial, onSave, onClose, onRename, onRemove }) {
             )}
           </div>
         )}
+      </div>
+    </div>
+  );
+}
+
+// "Create New Traveler" — name the traveller, design their avatar, and set off,
+// all from one popup. onCreate(name, spec) saves the profile (returns false if
+// the name is blank or taken); onBegin() launches straight into the adventure.
+function CreateTravelerModal({ onSubmit, onClose }) {
+  const [name, setName] = useState("");
+  const [err, setErr] = useState("");
+  const [spec, setSpec] = useState(() => defaultAvatar(String(Math.random())));
+  const bump = (key, n, dir) => setSpec((sp) => ({ ...sp, [key]: (((sp[key] || 0) + dir) % n + n) % n }));
+  const roll = () => setSpec({
+    skin: Math.floor(Math.random() * AVATAR_SKIN.length), hair: Math.floor(Math.random() * AVATAR_HAIR.length),
+    hairColor: Math.floor(Math.random() * AVATAR_HAIRC.length), glasses: Math.floor(Math.random() * AVATAR_GLASSES.length),
+    hat: Math.floor(Math.random() * AVATAR_HAT.length), shirt: Math.floor(Math.random() * AVATAR_SHIRT.length),
+  });
+  const arrow = (label, onClick) => (
+    <button onClick={onClick} aria-label={label}
+      style={{ width: 30, height: 30, borderRadius: 8, border: `1.5px solid ${INK}`, background: "transparent", color: INK, fontWeight: 800, cursor: "pointer", fontSize: 14 }}>
+      {label.startsWith("Previous") ? "◀" : "▶"}
+    </button>
+  );
+  const begin = () => {
+    if (!name.trim()) { setErr("Give your traveler a name first."); return; }
+    const ok = onSubmit(name.trim(), spec);
+    if (!ok) { setErr("That name is taken — pick another."); return; }
+  };
+  return (
+    <div role="dialog" aria-modal="true" aria-label="Create a new traveler"
+      style={{ position: "fixed", inset: 0, background: "rgba(16,38,46,0.62)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 70, padding: 16 }}>
+      <div className="sbw-pop" style={{ background: PAPER, borderRadius: 12, padding: 20, width: "min(92vw, 380px)", maxHeight: "92vh", overflowY: "auto", textAlign: "center", border: `1px solid ${PAPER_LINE}` }}>
+        <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.2em", color: CORAL }}>🧳 CREATE NEW TRAVELER</div>
+        <div style={{ margin: "12px 0 4px" }}><Avatar spec={spec} size={104} title="Your new traveler" /></div>
+        <div style={{ margin: "6px 0 8px", textAlign: "left" }}>
+          <label htmlFor="sbw-newname" style={{ fontFamily: "ui-monospace, monospace", fontSize: 10, letterSpacing: "0.14em", color: INK, opacity: 0.6 }}>NAME</label>
+          <input id="sbw-newname" value={name} maxLength={20} autoFocus placeholder="Traveler's name"
+            onChange={(e) => { setName(e.target.value); setErr(""); }}
+            onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); begin(); } }}
+            style={{ display: "block", width: "100%", boxSizing: "border-box", marginTop: 4, padding: "9px 11px", borderRadius: 8, border: `1.5px solid ${PAPER_LINE}`, fontSize: 15, background: "#fff", color: INK }} />
+          {err && <p role="alert" style={{ color: CORAL, fontSize: 12, fontWeight: 700, margin: "5px 0 0" }}>{err}</p>}
+        </div>
+        {AVATAR_DIMS.map((d) => (
+          <div key={d.key} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, padding: "6px 0", borderTop: `1px solid ${PAPER_LINE}` }}>
+            <span style={{ fontWeight: 700, color: INK, fontSize: 13, width: 86, textAlign: "left" }}>{d.label}</span>
+            <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              {arrow(`Previous ${d.label.toLowerCase()}`, () => bump(d.key, d.n, -1))}
+              <span style={{ width: 58, fontSize: 12, color: INK, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 5 }}>
+                {d.swatch && <span aria-hidden="true" style={{ width: 15, height: 15, borderRadius: "50%", background: d.swatch(((spec[d.key] || 0) % d.n + d.n) % d.n), border: `1px solid ${INK}` }} />}
+                {d.name ? d.name(((spec[d.key] || 0) % d.n + d.n) % d.n) : `${((spec[d.key] || 0) % d.n + d.n) % d.n + 1}/${d.n}`}
+              </span>
+              {arrow(`Next ${d.label.toLowerCase()}`, () => bump(d.key, d.n, 1))}
+            </span>
+          </div>
+        ))}
+        <div style={{ display: "flex", gap: 8, justifyContent: "center", marginTop: 12, flexWrap: "wrap" }}>
+          <button onClick={roll} style={{ padding: "9px 14px", borderRadius: 8, border: `1.5px solid ${INK}`, background: "transparent", color: INK, fontWeight: 700, cursor: "pointer" }}>🎲 Surprise me</button>
+          <button onClick={onClose} style={{ padding: "9px 14px", borderRadius: 8, border: `1.5px solid ${INK}`, background: "transparent", color: INK, fontWeight: 700, cursor: "pointer" }}>Cancel</button>
+        </div>
+        <button onClick={begin} style={{ ...primaryBtn, marginTop: 14, width: "100%" }}>Begin your adventure ✈</button>
       </div>
     </div>
   );
