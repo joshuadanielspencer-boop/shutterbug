@@ -46,7 +46,7 @@ export const NOTE_HEADER = "✎ A NOTE FROM GRANDPA NIGEL";
 
 // His name for the ½-day hint (was 'the newsroom').
 export const GUIDEBOOK = {
-  button: "Check Grandpa's guidebook",
+  button: "Research Grandpa's assignment",
   tipFree: "Thumb through Grandpa's old guidebook — free on Easy",
   tipCost: "Thumb through Grandpa's old guidebook for a strong hint (½ travel day)",
   notesLabel: "From Grandpa's guidebook:",

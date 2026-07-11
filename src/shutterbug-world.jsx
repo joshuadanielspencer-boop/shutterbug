@@ -985,9 +985,14 @@ export default function ShutterbugWorld() {
   const [tourOptions, setTourOptions] = useState({}); // Grand Tour: continent -> [city ids to show there]
 
   // Player profiles (localStorage). profileName === null means "Guest — no saving".
+  // Nobody is auto-selected at launch (hasChosen === false) so a player can't
+  // accidentally continue someone else's saved game; they must pick a traveller
+  // (or Guest) first. hasChosen distinguishes "Guest picked" from "nothing picked".
   const [canSave] = useState(() => storageAvailable());
   const [profiles, setProfiles] = useState(() => (canSave ? listProfiles() : []));
-  const [profileName, setProfileName] = useState(() => (canSave ? lastProfileName() : null));
+  const [profileName, setProfileName] = useState(null);
+  const [hasChosen, setHasChosen] = useState(false);
+  const [promptTraveler, setPromptTraveler] = useState(false); // nudge to pick a traveller
   const [newName, setNewName] = useState("");
   const [lastResult, setLastResult] = useState(null); // {isBest, isBestTime} after a recorded game
   const [newBadges, setNewBadges] = useState([]); // achievements newly earned this game
@@ -1001,6 +1006,8 @@ export default function ShutterbugWorld() {
   const [quiz, setQuiz] = useState(null); // Quiz mode: { questions, i, answeredIdx, score, correctCount, streak, done, best }
   const [expedition, setExpedition] = useState(null); // active themed expedition {id,title,emoji,lesson} (a curated Grand Tour)
   const [guestMet, setGuestMet] = useState(false); // has a guest (no profile) met Grandpa Nigel this session?
+  const [countryPopup, setCountryPopup] = useState(null); // culture card popup shown on arrival in a country
+  const poppedCountryRef = useRef(null); // country whose arrival popup already showed this leg
   const [dreamPending, setDreamPending] = useState(false); // Grandpa's dream just fulfilled — show the win scene
   const pendingRunRef = useRef(null); // start action to run after the intro story
   const recorded = useRef(false);
@@ -1337,6 +1344,7 @@ export default function ShutterbugWorld() {
       setPhase("continent");       // ...back to the world map for the next continent
       setPickedContinent(null);    // current stays = the city just shot, so the next flight departs from there
       setPickedCountry(null);
+      poppedCountryRef.current = null; // let the next leg's country pop its card
       setMsg({ type: "info", text: "New assignment! Read the clue and pick the continent." });
     } else if (kind === "win" || kind === "lose" || kind === "tour-win" || kind === "tour-lose") {
       startHomecoming();   // visit Grandpa first; the homecoming hands off to the results
@@ -1510,6 +1518,8 @@ export default function ShutterbugWorld() {
       setPhase("city");
       setCurrent(null);
       setRevealed(false);
+      // Pop the culture card the moment you land in the country.
+      if (COUNTRY_INFO[country] && poppedCountryRef.current !== country) { poppedCountryRef.current = country; setCountryPopup(country); }
       setMsg({ type: "info", text: `Arrived in ${country}. Now photograph Grandpa's subject.` });
     } else {
       const nd = Math.round((days - 0.5) * 10) / 10; // a wrong country costs half a day
@@ -1718,7 +1728,7 @@ export default function ShutterbugWorld() {
                 {profiles.map((p) => {
                   const active = p.name === profileName;
                   return (
-                    <button key={p.name} onClick={() => { setProfileName(p.name); setLastProfile(p.name); }} aria-pressed={active}
+                    <button key={p.name} onClick={() => { setProfileName(p.name); setLastProfile(p.name); setHasChosen(true); setPromptTraveler(false); }} aria-pressed={active}
                       style={{ padding: "5px 14px 5px 6px", borderRadius: 20, cursor: "pointer", fontWeight: 700, fontSize: 13,
                         display: "inline-flex", alignItems: "center", gap: 7,
                         border: `1.5px solid ${INK}`, background: active ? INK : "transparent", color: active ? PAPER : INK }}>
@@ -1726,13 +1736,13 @@ export default function ShutterbugWorld() {
                     </button>
                   );
                 })}
-                <button onClick={() => { setProfileName(null); setLastProfile(null); }} aria-pressed={profileName === null}
+                <button onClick={() => { setProfileName(null); setLastProfile(null); setHasChosen(true); setPromptTraveler(false); }} aria-pressed={hasChosen && profileName === null}
                   style={{ padding: "7px 14px", borderRadius: 20, cursor: "pointer", fontWeight: 700, fontSize: 13,
-                    border: `1.5px dashed ${INK}`, background: profileName === null ? INK : "transparent", color: profileName === null ? PAPER : INK }}>
+                    border: `1.5px dashed ${INK}`, background: (hasChosen && profileName === null) ? INK : "transparent", color: (hasChosen && profileName === null) ? PAPER : INK }}>
                   Guest
                 </button>
               </div>
-              <form onSubmit={(e) => { e.preventDefault(); const p = createProfile(newName); if (p) { setProfileName(p.name); setNewName(""); refreshProfiles(); } }}
+              <form onSubmit={(e) => { e.preventDefault(); const p = createProfile(newName); if (p) { setProfileName(p.name); setHasChosen(true); setPromptTraveler(false); setNewName(""); refreshProfiles(); } }}
                 style={{ display: "flex", gap: 8, justifyContent: "center", marginTop: 10, flexWrap: "wrap" }}>
                 <input value={newName} onChange={(e) => setNewName(e.target.value)} maxLength={20} placeholder="New traveler's name" aria-label="New traveler's name"
                   disabled={!canSave}
@@ -1840,15 +1850,28 @@ export default function ShutterbugWorld() {
           )}
 
           {/* ---- One launch button, labelled for the chosen card ---- */}
-          <button
-            onClick={gameMode === "quiz" ? startQuiz : gameMode === "explore" ? startExplore
+          {(() => {
+            const run = gameMode === "quiz" ? startQuiz : gameMode === "explore" ? startExplore
               : gameMode === "tour" ? () => beginWithStory(() => (tourTheme === "classic" ? startTour() : startExpedition(EXPEDITIONS.find((e) => e.id === tourTheme))))
-              : () => beginWithStory(startGame)}
-            style={primaryBtn}>
-            {gameMode === "quiz" ? "Start the quiz 🧠" : gameMode === "explore" ? "Start exploring 🧭"
+              : () => beginWithStory(startGame);
+            // A returning traveller (has met Grandpa or logged a trip) "continues"
+            // their adventure; a new one "begins" it.
+            const prof = profileName ? getProfile(profileName) : null;
+            const returning = !!prof && (prof.metNigel || (prof.games || 0) > 0);
+            const label = gameMode === "quiz" ? "Start the quiz 🧠" : gameMode === "explore" ? "Start exploring 🧭"
               : gameMode === "tour" ? (tourTheme === "classic" ? "Start the Grand Tour ✈" : `Start the ${TOUR_THEMES.find((t) => t.id === tourTheme)?.title} 🗺️`)
-              : "Begin the assignment ✈"}
-          </button>
+              : returning ? "Continue adventure! ✈" : "Begin Your Adventure ✈";
+            return (
+              <button onClick={() => { if (!hasChosen) { setPromptTraveler(true); return; } run(); }} style={primaryBtn}>
+                {label}
+              </button>
+            );
+          })()}
+          {promptTraveler && (
+            <p role="alert" style={{ color: CORAL, fontWeight: 700, fontSize: 14, margin: "10px 0 0" }}>
+              ☝️ Pick a traveler above (or tap <b>Guest</b>) to begin!
+            </p>
+          )}
 
           {/* ---- High scores, tucked behind a toggle ---- */}
           {canSave && topScores(1).length > 0 && (
@@ -1928,7 +1951,7 @@ export default function ShutterbugWorld() {
         <div style={{ maxWidth: 560, margin: "0 auto" }}>
           {home && (
             <div style={{ display: "flex", alignItems: "center", gap: 12, background: PAPER, border: `1px solid ${PAPER_LINE}`, borderRadius: 12, padding: "12px 14px", marginBottom: 14 }}>
-              <div aria-hidden="true" style={{ width: 52, height: 52, flex: "none", borderRadius: "50%", background: "radial-gradient(circle at 50% 38%, #F3E4C6, #D8B98A)", border: `2px solid ${GOLD}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28 }}>{GRANDPA.emoji}</div>
+              <NigelPortrait size={54} style={{ borderWidth: 2 }} />
               <div>
                 <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 10, letterSpacing: "0.16em", color: CORAL }}>HOME AGAIN · {GRANDPA.name.toUpperCase()}</div>
                 <div style={{ color: INK, fontSize: 13.5, lineHeight: 1.4, marginTop: 2 }}>{quiz.i === 0 ? HOMECOMING_INTRO : "And this one — do you remember?"}</div>
@@ -2362,31 +2385,14 @@ export default function ShutterbugWorld() {
       <div style={{ display: "flex", gap: 16, alignItems: "flex-start", flexWrap: "wrap" }}>
         {/* Field journal panel */}
         <div style={{ flex: "1 1 360px", minWidth: 320 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-            <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 12, letterSpacing: "0.18em", color: INK, opacity: 0.7, display: "inline-flex", alignItems: "center", gap: 7 }}>{profileName && <Avatar spec={avatarFor(getProfile(profileName))} size={22} />}{isExplore ? "🧭 EXPLORE" : isTour ? `GRAND TOUR · ${tourReqs.filter((r) => r.done).length}/${tourReqs.length} filed` : `ASSIGNMENT ${step + 1}/${assignments.length}`}</span>
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <button onClick={() => setSoundOn((s) => !s)} aria-label={soundOn ? "Turn sound off" : "Turn sound on"} aria-pressed={soundOn} title={soundOn ? "Sound on" : "Sound off"}
-                style={{ background: "none", border: "none", cursor: "pointer", fontSize: 15, lineHeight: 1, padding: 2, color: INK, opacity: 0.75 }}>
-                {soundOn ? "🔊" : "🔇"}
-              </button>
-              <button onClick={() => setMusicOn((m) => { const v = !m; if (v) MUSIC.start(); else MUSIC.stop(); return v; })}
-                aria-label={musicOn ? "Turn music off" : "Turn music on"} aria-pressed={musicOn} title={musicOn ? "Music on" : "Music off"}
-                style={{ background: "none", border: "none", cursor: "pointer", fontSize: 15, lineHeight: 1, padding: 2, color: INK, opacity: musicOn ? 0.75 : 0.45 }}>
-                {musicOn ? "🎵" : <span style={{ textDecoration: "line-through" }}>🎵</span>}
-              </button>
-              <button onClick={() => setAnimOn((v) => !v)}
-                aria-label={animOn ? "Turn animations off" : "Turn animations on"} aria-pressed={animOn} title={animOn ? "Animations on" : "Animations off"}
-                style={{ background: "none", border: "none", cursor: "pointer", fontSize: 15, lineHeight: 1, padding: 2, color: INK, opacity: animOn ? 0.75 : 0.45 }}>
-                {animOn ? "✨" : <span style={{ textDecoration: "line-through" }}>✨</span>}
-              </button>
-              {isExplore ? (
-                <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 13, fontWeight: 700, color: OCEAN }} title="Places you've discovered">📸 {album.length} discovered</span>
-              ) : (<>
-                <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 13, fontWeight: 700, color: INK, opacity: 0.75 }} title="Time on this trip">⏱ {fmtTime(Math.max(0, liveNow - startRef.current))}</span>
-                <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 13, fontWeight: 700, color: days <= 1 ? CORAL : INK }}>◷ {days} day{days === 1 ? "" : "s"} left</span>
-              </>)}
+          {/* Tour/Explore keep a slim top label; Assignments folds its counter
+              into the note header below. The timer + toggles live in the bottom bar. */}
+          {(isExplore || isTour) && (
+            <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 10, fontFamily: "ui-monospace, monospace", fontSize: 12, letterSpacing: "0.18em", color: INK, opacity: 0.7 }}>
+              {profileName && <Avatar spec={avatarFor(getProfile(profileName))} size={22} />}
+              {isExplore ? "🧭 EXPLORE" : `GRAND TOUR · ${tourReqs.filter((r) => r.done).length}/${tourReqs.length} filed`}
             </div>
-          </div>
+          )}
 
           {isExplore ? (
             <div style={{ background: PAPER, border: `1px dashed ${OCEAN}`, borderRadius: 6, padding: "12px 14px" }}>
@@ -2421,7 +2427,7 @@ export default function ShutterbugWorld() {
             </>
           ) : (
           <div style={{ background: PAPER, border: `1px dashed ${CORAL}`, borderRadius: 6, padding: "14px 16px", position: "relative" }}>
-            <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.22em", color: CORAL, marginBottom: 8 }}>{NOTE_HEADER}</div>
+            <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.22em", color: CORAL, marginBottom: 8 }}>✎ {GRANDPA.name.toUpperCase()}'S ASSIGNMENT {step + 1}/{assignments.length}</div>
             {(isCatAsg || namesSubject) ? (
               <>
                 <p style={{ margin: 0, color: INK, lineHeight: 1.5, fontSize: 15 }}>Bring me a photo of <b>{promptSubject}</b>.{showTypeBadge && badgeCat && <> <CategoryBadge category={badgeCat} size="sm" style={{ verticalAlign: "middle" }} /></>}</p>
@@ -2479,7 +2485,9 @@ export default function ShutterbugWorld() {
               <PhotoCredit photo={currentLoc.photo} style={{ textAlign: "center", marginTop: 0, marginBottom: 4 }} />
               <div style={{ fontWeight: 700, color: INK }}><span style={{ fontSize: "1.5em", verticalAlign: "-0.08em" }}>{currentLoc.flag}</span> {currentLoc.city}, {currentLoc.country}</div>
               <div style={{ fontSize: 13, color: INK, opacity: 0.7, marginTop: 2 }}>{currentLoc.subject}</div>
-              <CountryCard country={currentLoc.country} />
+              {/* Country-layer arrivals already saw the culture card as a popup;
+                  easy mode (no country step) and Explore show it here with the shot. */}
+              {(!pickedCountry || isExplore) && <CountryCard country={currentLoc.country} />}
               {isExplore && (
                 <div style={{ marginTop: 10, textAlign: "left" }}>
                   <div style={{ textAlign: "center", marginBottom: 8 }}><CategoryBadge category={currentLoc.category} size="sm" /></div>
@@ -2504,7 +2512,6 @@ export default function ShutterbugWorld() {
               <div style={{ fontSize: 13, color: INK, opacity: 0.8, marginTop: 6, lineHeight: 1.45 }}>
                 {isTour ? "Photograph any target on your itinerary that's here, then fly on." : "Click the right city on the map to photograph Grandpa's subject."}
               </div>
-              <CountryCard country={ctxCountry} />
               {isTour && (
                 <button onClick={() => { if (!busy) { setPhase("continent"); setRevealed(false); setMsg({ type: "info", text: "Pick the next continent to fly to." }); } }} disabled={busy}
                   style={{ marginTop: 10, padding: "8px 16px", borderRadius: 8, border: `1.5px solid ${OCEAN}`, background: "transparent", color: OCEAN, fontWeight: 700, fontSize: 13, cursor: busy ? "default" : "pointer" }}>
@@ -2528,6 +2535,20 @@ export default function ShutterbugWorld() {
                 {isTour
                   ? "Pick a continent to fly to — farther flights cost more days. Group nearby targets to save days!"
                   : `${current ? `Departing ${currentLoc.flag} ${currentLoc.city}. ` : ""}Read the clue, then click the continent it points to — farther flights cost more travel days.`}
+              </div>
+            </div>
+          )}
+          {/* Album — the trip's photos so far, under the journal boxes. */}
+          {album.length > 0 && (
+            <div style={{ marginTop: 14 }}>
+              <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.18em", color: INK, opacity: 0.6, marginBottom: 6 }}>ALBUM <span style={{ opacity: 0.7, letterSpacing: 0 }}>— tap a photo to revisit it</span></div>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                {album.map((p, i) => (
+                  <button key={`${p.id}-${i}`} onClick={() => setAlbumView(p)} title={`${p.subject} — ${p.city}`} aria-label={`Revisit ${p.subject}, ${p.city}`}
+                    style={{ width: 46, height: 52, background: "#fff", border: `1px solid ${PAPER_LINE}`, borderRadius: 3, padding: 0, display: "flex", alignItems: "center", justifyContent: "center", transform: "rotate(-3deg)", cursor: "pointer" }}>
+                    <Photo photo={p.photo} icon={p.icon} alt={p.subject} size={34} />
+                  </button>
+                ))}
               </div>
             </div>
           )}
@@ -2748,26 +2769,39 @@ export default function ShutterbugWorld() {
             </svg>
 
           </div>
-          {/* Album strip — under the map so the layout is symmetric. */}
-          {album.length > 0 && (
-            <div style={{ marginTop: 12 }}>
-              <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.18em", color: INK, opacity: 0.6, marginBottom: 6 }}>ALBUM <span style={{ opacity: 0.7, letterSpacing: 0 }}>— tap a photo to revisit it</span></div>
-              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                {album.map((p, i) => (
-                  <button key={`${p.id}-${i}`} onClick={() => setAlbumView(p)} title={`${p.subject} — ${p.city}`} aria-label={`Revisit ${p.subject}, ${p.city}`}
-                    style={{ width: 46, height: 52, background: "#fff", border: `1px solid ${PAPER_LINE}`, borderRadius: 3, padding: 0, display: "flex", alignItems: "center", justifyContent: "center", transform: "rotate(-3deg)", cursor: "pointer" }}>
-                    <Photo photo={p.photo} icon={p.icon} alt={p.subject} size={34} />
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
         </div>
       </div>
 
+      {/* Bottom control bar: traveller, timer, day budget, and the sound / music /
+          animation toggles — kept out of the way at the foot of the screen. */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 16, flexWrap: "wrap", marginTop: 20, paddingTop: 12, borderTop: `1px solid ${PAPER_LINE}` }}>
+        {profileName && <Avatar spec={avatarFor(getProfile(profileName))} size={22} title={`${profileName}'s traveler`} />}
+        {isExplore
+          ? <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 13, fontWeight: 700, color: OCEAN }} title="Places you've discovered">📸 {album.length} discovered</span>
+          : (<>
+              <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 13, fontWeight: 700, color: INK, opacity: 0.75 }} title="Time on this trip">⏱ {fmtTime(Math.max(0, liveNow - startRef.current))}</span>
+              <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 13, fontWeight: 700, color: days <= 1 ? CORAL : INK }}>◷ {days} day{days === 1 ? "" : "s"} left</span>
+            </>)}
+        <span aria-hidden="true" style={{ width: 1, height: 18, background: PAPER_LINE }} />
+        <button onClick={() => setSoundOn((s) => !s)} aria-label={soundOn ? "Turn sound off" : "Turn sound on"} aria-pressed={soundOn} title={soundOn ? "Sound on" : "Sound off"}
+          style={{ background: "none", border: "none", cursor: "pointer", fontSize: 17, lineHeight: 1, padding: 2, color: INK, opacity: 0.75 }}>
+          {soundOn ? "🔊" : "🔇"}
+        </button>
+        <button onClick={() => setMusicOn((m) => { const v = !m; if (v) MUSIC.start(); else MUSIC.stop(); return v; })}
+          aria-label={musicOn ? "Turn music off" : "Turn music on"} aria-pressed={musicOn} title={musicOn ? "Music on" : "Music off"}
+          style={{ background: "none", border: "none", cursor: "pointer", fontSize: 17, lineHeight: 1, padding: 2, color: INK, opacity: musicOn ? 0.75 : 0.45 }}>
+          {musicOn ? "🎵" : <span style={{ textDecoration: "line-through" }}>🎵</span>}
+        </button>
+        <button onClick={() => setAnimOn((v) => !v)}
+          aria-label={animOn ? "Turn animations off" : "Turn animations on"} aria-pressed={animOn} title={animOn ? "Animations on" : "Animations off"}
+          style={{ background: "none", border: "none", cursor: "pointer", fontSize: 17, lineHeight: 1, padding: 2, color: INK, opacity: animOn ? 0.75 : 0.45 }}>
+          {animOn ? "✨" : <span style={{ textDecoration: "line-through" }}>✨</span>}
+        </button>
+      </div>
 
       {pending && <ResultModal data={pending} onContinue={continueFromResult} reduced={prefersReduced} />}
       {albumView && <LandmarkModal p={albumView} onClose={() => setAlbumView(null)} reduced={prefersReduced} />}
+      {countryPopup && <CountryPopup country={countryPopup} onClose={() => setCountryPopup(null)} reduced={prefersReduced} />}
     </Frame>
   );
 }
@@ -3196,6 +3230,24 @@ function CountryCard({ country }) {
   );
 }
 
+// Shown the moment you arrive in a country: the culture card (people, flag,
+// greeting, capital, blurb) pops up, then dismisses — on the button, a tap
+// outside, or automatically after a few seconds.
+function CountryPopup({ country, onClose, reduced }) {
+  if (!country) return null;
+  return (
+    <div role="dialog" aria-modal="true" aria-label={`You've arrived in ${country}`} onClick={onClose}
+      style={{ position: "fixed", inset: 0, background: "rgba(16,38,46,0.55)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16, zIndex: 60 }}>
+      <div className={reduced ? "" : "sbw-pop"} onClick={(e) => e.stopPropagation()}
+        style={{ background: PAPER, borderRadius: 16, border: `3px solid ${CORAL}`, boxShadow: "0 14px 44px rgba(0,0,0,0.35)", maxWidth: 420, width: "100%", padding: "16px 18px", maxHeight: "88vh", overflowY: "auto" }}>
+        <div style={{ textAlign: "center", fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.18em", color: CORAL }}>✈ YOU'VE ARRIVED IN…</div>
+        <CountryCard country={country} />
+        <button onClick={onClose} style={{ ...primaryBtn, marginTop: 14, width: "100%", padding: "11px 0" }}>Got it — let's find the shot →</button>
+      </div>
+    </div>
+  );
+}
+
 // Celebration confetti for a flawless result: paper pieces in the game's
 // palette tumble down once and fade out. Not rendered under reduced motion.
 function Confetti({ reduced }) {
@@ -3272,6 +3324,16 @@ function GradualText({ text, reduced, onDone, cps = 42, style }) {
   );
 }
 
+// Grandpa Nigel's portrait — the real illustration (public/nigel.png), shown
+// whenever you're with him (story screen, homecoming visit, win scene).
+function NigelPortrait({ size = 108, style }) {
+  return (
+    <div aria-hidden="true" style={{ width: size, height: size, flex: "none", borderRadius: "50%", overflow: "hidden", border: `3px solid ${GOLD}`, background: "#F3E4C6", boxShadow: "0 4px 14px rgba(74,50,20,0.3)", ...style }}>
+      <img src={`${BASE}nigel.png`} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+    </div>
+  );
+}
+
 // The story screen: Grandpa Nigel speaks his beats one at a time at reading
 // speed; the "camera" button stays disabled until he has finished. A stand-in
 // portrait sits in for art the user will drop in later (public/grandpa.png).
@@ -3281,10 +3343,7 @@ function StoryScreen({ beats, reduced, ctaLabel, onDone, onSkip }) {
   return (
     <Frame>
       <div style={{ maxWidth: 560, margin: "0 auto", padding: "6px 4px", textAlign: "center" }}>
-        {/* Stand-in portrait — replace with public/grandpa.png when the art is ready. */}
-        <div aria-hidden="true" style={{ width: 108, height: 108, margin: "0 auto 4px", borderRadius: "50%", background: "radial-gradient(circle at 50% 38%, #F3E4C6, #D8B98A)", border: `3px solid ${GOLD}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 56, boxShadow: "0 4px 14px rgba(74,50,20,0.3)" }}>
-          {GRANDPA.emoji}
-        </div>
+        <NigelPortrait size={116} style={{ margin: "0 auto 4px" }} />
         <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.2em", color: CORAL, marginBottom: 14 }}>{GRANDPA.name.toUpperCase()}</div>
 
         <div style={{ background: PAPER, border: `1px solid ${PAPER_LINE}`, borderRadius: 12, padding: "18px 20px", textAlign: "left", minHeight: 180 }}>
