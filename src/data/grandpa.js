@@ -159,6 +159,19 @@ export const MEET_RUN = {
 // Grandpa's lead-in to choosing a mode + difficulty on the meet screen.
 export const MEET_ASK = "Now then — what sort of adventure are we after today?";
 
+// When the traveller has newly unlocked something, Grandpa announces it on the
+// meet screen. Keyed by the unlock id (see profiles.js → unlocks()).
+export const UNLOCK_LINES = {
+  medium: "You've got a trip under your belt now — I reckon you're ready for a tougher clue. Medium's open to you!",
+  quiz: "And here's a treat: fancy a quick Quiz between expeditions? It's yours to play now.",
+  tour: "Fifteen places in the album! That's a proper photographer. The Grand Tour is open — a whole itinerary in one trip.",
+  hard: "Stamps on three continents — you know your way around the globe now. If you're brave, Hard mode is unlocked. No hints, mind!",
+  expeditions: "Twenty-five places! Extraordinary. I've unlocked the Themed Expeditions — curated grand tours, each with a little lesson.",
+};
+// When the traveller's press rank goes up, Grandpa tips his hat. Filled with the
+// new rank title.
+export const RANKUP_LINE = (title) => `And would you look — the paper's promoted you to ${title}! Wear it proudly.`;
+
 // The triumphant close, shown once the Dream is fulfilled (wired in a later
 // pass). Warm and proud; the game keeps playing afterward.
 export const DREAM_FULFILLED = [

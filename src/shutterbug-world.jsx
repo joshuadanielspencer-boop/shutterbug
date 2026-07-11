@@ -11,10 +11,12 @@ import { ANECDOTES } from "./data/anecdotes.js";
 import { TUNES, tuneKeyFor } from "./data/tunes.js";
 import { GRANDPA, INTRO_BEATS, SENDOFF_BEATS, NOTE_HEADER, GUIDEBOOK,
   HOMECOMING_INTRO, WRONG_REACTIONS, ACHIEVEMENT_INTRO, DREAM_FULFILLED,
-  END_WIN, END_LOSE, MEET_LINES, MEET_RUN, MEET_ASK } from "./data/grandpa.js";
+  END_WIN, END_LOSE, MEET_LINES, MEET_RUN, MEET_ASK, UNLOCK_LINES, RANKUP_LINE } from "./data/grandpa.js";
 import { listProfiles, lastProfileName, getProfile, createProfile, setLastProfile,
   deleteProfile, renameProfile, setAvatar, setProfileFlag, recordGame, recordExplore, recordQuiz,
-  weightedOrder, freshFirst, passportData, achievements, topScores, storageAvailable } from "./profiles.js";
+  weightedOrder, freshFirst, passportData, achievements, topScores, storageAvailable,
+  careerRank, unlocks, UNLOCK_REQ } from "./profiles.js";
+import { MR_O, MR_O_FACTS } from "./data/mr-o.js";
 
 // Base URL the app is served from ("/" at a domain root, "/<repo>/" on a GitHub
 // Pages project site). Prefix runtime asset URLs with it so the relief map plates
@@ -1192,6 +1194,18 @@ export default function ShutterbugWorld() {
   const [expedition, setExpedition] = useState(null); // active themed expedition {id,title,emoji,lesson} (a curated Grand Tour)
   const [guestMet, setGuestMet] = useState(false); // has a guest (no profile) met Grandpa Nigel this session?
   const [countryPopup, setCountryPopup] = useState(null); // culture card popup shown on arrival in a country
+  const [mrO, setMrO] = useState(null); // Mr. O's "Oh, did you know?" bubble (a fact string, or null)
+  const mrOSeen = useRef([]); // indices shown this session, so he doesn't repeat
+  // Mr. O pops up ~30% of the time on touching down at a new continent, with a
+  // fresh geography fact (non-blocking bubble; auto-dismisses).
+  const maybeMrO = () => {
+    if (Math.random() > 0.3) return;
+    let pool = MR_O_FACTS.map((_, i) => i).filter((i) => !mrOSeen.current.includes(i));
+    if (!pool.length) { mrOSeen.current = []; pool = MR_O_FACTS.map((_, i) => i); }
+    const i = pool[Math.floor(Math.random() * pool.length)];
+    mrOSeen.current.push(i);
+    setMrO(MR_O_FACTS[i]);
+  };
   const poppedCountryRef = useRef(null); // country whose arrival popup already showed this leg
   const [dreamPending, setDreamPending] = useState(false); // Grandpa's dream just fulfilled — show the win scene
   const pendingRunRef = useRef(null); // start action to run after the intro story
@@ -1298,7 +1312,28 @@ export default function ShutterbugWorld() {
     else if (lr.won) pool = Math.random() < 0.4 ? MEET_RUN.great : MEET_RUN.good;
     else pool = MEET_RUN.rough;
     const comment = pool[Math.floor(Math.random() * pool.length)];
-    setMeetInfo({ line, comment });
+
+    // Rank-up + newly-unlocked news (saved travellers only). On the very first
+    // meet we baseline silently; after that, Grandpa announces what's new.
+    const news = [];
+    if (profile) {
+      const u = unlocks(profile);
+      const rank = careerRank(profile);
+      const ANN = ["medium", "quiz", "tour", "hard", "expeditions"];
+      const nowUnlocked = ANN.filter((k) => u[k]);
+      const seen = profile.seenUnlocks;
+      const seenRank = typeof profile.seenRank === "number" ? profile.seenRank : rank.tier;
+      if (Array.isArray(seen)) {
+        if (rank.tier > seenRank) news.push(RANKUP_LINE(rank.title));
+        for (const k of nowUnlocked) if (!seen.includes(k) && UNLOCK_LINES[k]) news.push(UNLOCK_LINES[k]);
+      }
+      setProfileFlag(profile.name, "seenUnlocks", nowUnlocked);
+      setProfileFlag(profile.name, "seenRank", rank.tier);
+      // Don't leave a locked mode/difficulty selected from a previous session.
+      if (!u[gameMode]) setGameMode("assignments");
+      if (!u[difficulty]) setDifficulty("easy");
+    }
+    setMeetInfo({ line, comment, news });
     setScreen("meet");
   }
   function goToMeet() {
@@ -1327,10 +1362,14 @@ export default function ShutterbugWorld() {
   // there. The intro story (if any) already played on the way in, so these start
   // the run directly.
   function setOff() {
-    if (gameMode === "quiz") return startQuiz();
+    const u = unlocks(profileName ? getProfile(profileName) : null);
+    if (gameMode === "quiz" && u.quiz) return startQuiz();
     if (gameMode === "explore") return startExplore();
-    if (gameMode === "tour") return tourTheme === "classic" ? startTour() : startExpedition(EXPEDITIONS.find((e) => e.id === tourTheme));
-    return startGame();
+    if (gameMode === "tour" && u.tour) {
+      const themed = tourTheme !== "classic" && u.expeditions;
+      return themed ? startExpedition(EXPEDITIONS.find((e) => e.id === tourTheme)) : startTour();
+    }
+    return startGame(); // assignments (always unlocked) — also the safe fallback
   }
 
   function startGame() {
@@ -1692,6 +1731,7 @@ export default function ShutterbugWorld() {
         setFlying(null); setPickedContinent(cont); setPickedCountry(null); setCityPlan(null);
         setPhase(useCountry ? "country" : "city"); setCurrent(null); setRevealed(false);
         setMsg({ type: "info", text: useCountry ? `Welcome to ${cont}! Pick a country to explore.` : `Welcome to ${cont}! Click any place to learn about it.` });
+        maybeMrO();
       };
       if (prefersReduced) { finalize(); return; }
       music("travelJig");
@@ -1721,6 +1761,7 @@ export default function ShutterbugWorld() {
         setMsg(here
           ? { type: "info", text: `Touched down in ${cont} (${costTxt}). ${here} target${here === 1 ? "" : "s"} on your list ${here === 1 ? "is" : "are"} here. ${where}` }
           : { type: "warn", text: `Touched down in ${cont} (${costTxt}) — but nothing on your list is here. Fly on when ready.` });
+        maybeMrO();
       };
       if (prefersReduced) { finalize(); return; }
       music("travelJig");
@@ -1747,7 +1788,7 @@ export default function ShutterbugWorld() {
         setCurrent(null);   // arrived on the continent; no city picked yet
         setRevealed(false);
         if (nd <= 0) outOfDays(`You reached ${cont}, but the trip's budget is spent.`);
-        else setMsg({ type: "info", text: `Touched down in ${cont} (${costTxt}). ${useCountry ? "Now pick the right country." : "Now pick the right city."}` });
+        else { setMsg({ type: "info", text: `Touched down in ${cont} (${costTxt}). ${useCountry ? "Now pick the right country." : "Now pick the right city."}` }); maybeMrO(); }
       };
       if (prefersReduced) { finalize(); return; }
       music("travelJig");
@@ -2012,6 +2053,8 @@ export default function ShutterbugWorld() {
   if (screen === "meet") {
     const prof = profileName ? getProfile(profileName) : null;
     const showRunNote = !!(prof && prof.games > 0 && meetInfo?.comment);
+    const u = unlocks(prof);
+    const news = meetInfo?.news || [];
     return (
       <Frame>
         <div style={{ maxWidth: 640, margin: "0 auto", padding: "4px 4px 8px" }}>
@@ -2026,40 +2069,65 @@ export default function ShutterbugWorld() {
             </div>
           </div>
 
+          {/* Newly unlocked! — Grandpa's announcements */}
+          {news.length > 0 && (
+            <div style={{ marginTop: 12, background: "#EAF6EF", border: `2px solid ${GREEN}`, borderRadius: 12, padding: "12px 16px" }}>
+              <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.16em", color: GREEN, fontWeight: 700, marginBottom: 6 }}>🔓 NEWLY UNLOCKED!</div>
+              {news.map((n, i) => (
+                <p key={i} style={{ margin: i ? "6px 0 0" : 0, color: INK, fontSize: 14.5, lineHeight: 1.45 }}>
+                  <span aria-hidden="true">{GRANDPA.emoji} </span>{n}
+                </p>
+              ))}
+            </div>
+          )}
+
           {/* Pick a way to play */}
           <div style={{ marginTop: 18 }}>
             <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.22em", color: INK, opacity: 0.65, marginBottom: 10 }}>PICK A WAY TO PLAY</div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(146px, 1fr))", gap: 10 }}>
               {MODE_CARDS.map((c) => {
                 const active = gameMode === c.id;
+                const locked = !u[c.id];
                 const src = cardThumb(c.photoId);
                 return (
                   <div key={c.id} style={{ position: "relative" }}>
-                    <button onClick={() => { setGameMode(c.id); setModeInfo(null); }} aria-pressed={active}
+                    <button onClick={() => { if (locked) { setModeInfo(c.id); return; } setGameMode(c.id); setModeInfo(null); }} aria-pressed={active}
+                      aria-label={locked ? `${c.name} — locked. ${UNLOCK_REQ[c.id] || ""}` : c.name}
                       style={{ position: "relative", display: "block", width: "100%", height: 108, borderRadius: 12, overflow: "hidden", cursor: "pointer",
                         border: active ? `3px solid ${CORAL}` : `1.5px solid ${PAPER_LINE}`, padding: 0, background: "#20343B", textAlign: "left",
                         boxShadow: active ? "0 4px 14px rgba(233,106,76,0.35)" : "0 2px 8px rgba(74,50,20,0.18)" }}>
                       {src && <img src={src} alt="" aria-hidden="true" loading="lazy"
-                        style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", opacity: active ? 1 : 0.88 }} />}
+                        style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", opacity: locked ? 0.3 : (active ? 1 : 0.88), filter: locked ? "grayscale(1)" : "none" }} />}
                       <span aria-hidden="true" style={{ position: "absolute", inset: 0, background: "linear-gradient(180deg, rgba(16,38,46,0) 35%, rgba(16,38,46,0.82) 100%)" }} />
                       <span style={{ position: "absolute", left: 9, bottom: 7, color: "#fff", fontWeight: 800, fontSize: 14, textShadow: "0 1px 3px rgba(0,0,0,0.6)" }}>
                         <span aria-hidden="true" style={{ fontSize: "1.25em", marginRight: 5, verticalAlign: "-0.1em" }}>{c.emoji}</span>{c.name}
                       </span>
-                      {active && <span aria-hidden="true" style={{ position: "absolute", top: 6, left: 8, background: CORAL, color: "#fff", fontWeight: 900, fontSize: 12, width: 20, height: 20, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center" }}>✓</span>}
+                      {active && !locked && <span aria-hidden="true" style={{ position: "absolute", top: 6, left: 8, background: CORAL, color: "#fff", fontWeight: 900, fontSize: 12, width: 20, height: 20, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center" }}>✓</span>}
+                      {locked && (
+                        <span style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", color: "#fff", textAlign: "center", padding: "0 8px" }}>
+                          <span aria-hidden="true" style={{ fontSize: 26 }}>🔒</span>
+                          <span style={{ fontSize: 10.5, fontWeight: 700, lineHeight: 1.25, marginTop: 3, textShadow: "0 1px 2px rgba(0,0,0,0.8)" }}>{UNLOCK_REQ[c.id]}</span>
+                        </span>
+                      )}
                     </button>
-                    <button onClick={() => setModeInfo((m) => (m === c.id ? null : c.id))} aria-expanded={modeInfo === c.id} aria-label={`About ${c.name}`}
-                      style={{ position: "absolute", top: 5, right: 5, width: 21, height: 21, borderRadius: "50%", border: "none", cursor: "pointer",
-                        background: "rgba(255,255,255,0.9)", color: INK, fontWeight: 900, fontSize: 12, lineHeight: 1 }}>?</button>
+                    {!locked && (
+                      <button onClick={() => setModeInfo((m) => (m === c.id ? null : c.id))} aria-expanded={modeInfo === c.id} aria-label={`About ${c.name}`}
+                        style={{ position: "absolute", top: 5, right: 5, width: 21, height: 21, borderRadius: "50%", border: "none", cursor: "pointer",
+                          background: "rgba(255,255,255,0.9)", color: INK, fontWeight: 900, fontSize: 12, lineHeight: 1 }}>?</button>
+                    )}
                   </div>
                 );
               })}
             </div>
-            {modeInfo && MODE_CARDS.find((c) => c.id === modeInfo) && (
-              <p role="status" style={{ fontSize: 13, color: INK, background: PAPER, border: `1px solid ${PAPER_LINE}`, borderRadius: 8, padding: "9px 12px", margin: "10px auto 0", maxWidth: 560, lineHeight: 1.5, textAlign: "left" }}>
-                <b>{MODE_CARDS.find((c) => c.id === modeInfo)?.emoji} {MODE_CARDS.find((c) => c.id === modeInfo)?.name}:</b>{" "}
-                {MODE_CARDS.find((c) => c.id === modeInfo)?.blurb}
-              </p>
-            )}
+            {modeInfo && MODE_CARDS.find((c) => c.id === modeInfo) && (() => {
+              const c = MODE_CARDS.find((x) => x.id === modeInfo);
+              const locked = !u[c.id];
+              return (
+                <p role="status" style={{ fontSize: 13, color: INK, background: PAPER, border: `1px solid ${locked ? CORAL : PAPER_LINE}`, borderRadius: 8, padding: "9px 12px", margin: "10px auto 0", maxWidth: 560, lineHeight: 1.5, textAlign: "left" }}>
+                  <b>{c.emoji} {c.name}:</b> {locked ? `🔒 Locked — ${UNLOCK_REQ[c.id]} to unlock it.` : c.blurb}
+                </p>
+              );
+            })()}
           </div>
 
           {/* Grand Tour itinerary */}
@@ -2069,16 +2137,19 @@ export default function ShutterbugWorld() {
               <div style={{ display: "flex", gap: 7, flexWrap: "wrap", justifyContent: "center" }}>
                 {TOUR_THEMES.map((t) => {
                   const on = tourTheme === t.id;
+                  const locked = t.id !== "classic" && !u.expeditions; // themed expeditions unlock at 25 places
                   return (
-                    <button key={t.id} onClick={() => setTourTheme(t.id)} aria-pressed={on}
-                      style={{ padding: "6px 13px", borderRadius: 16, cursor: "pointer", fontWeight: 700, fontSize: 12.5,
+                    <button key={t.id} onClick={() => { if (locked) return; setTourTheme(t.id); }} aria-pressed={on}
+                      aria-label={locked ? `${t.title} — locked. ${UNLOCK_REQ.expeditions}` : t.title} title={locked ? `🔒 ${UNLOCK_REQ.expeditions} to unlock` : ""}
+                      style={{ padding: "6px 13px", borderRadius: 16, cursor: locked ? "default" : "pointer", fontWeight: 700, fontSize: 12.5, opacity: locked ? 0.45 : 1,
                         border: `1.5px solid ${on ? CORAL : INK}`, background: on ? CORAL : "transparent", color: on ? "#fff" : INK }}>
-                      <span aria-hidden="true">{t.emoji} </span>{t.title}
+                      {locked && <span aria-hidden="true">🔒 </span>}<span aria-hidden="true">{t.emoji} </span>{t.title}
                     </button>
                   );
                 })}
               </div>
               <p style={{ fontSize: 12.5, color: INK, opacity: 0.75, margin: "9px auto 0", maxWidth: 520, lineHeight: 1.45 }}>
+                {!u.expeditions && <span style={{ color: CORAL, fontWeight: 700 }}>🔒 Themed expeditions unlock once you've photographed 25 places. </span>}
                 {TOUR_THEMES.find((t) => t.id === tourTheme)?.lesson}
               </p>
             </div>
@@ -2092,9 +2163,27 @@ export default function ShutterbugWorld() {
                 <button onClick={() => setModeInfo((m) => (m === "difficulty" ? null : "difficulty"))} aria-expanded={modeInfo === "difficulty"} aria-label="About the difficulty levels"
                   style={{ marginLeft: 7, width: 18, height: 18, borderRadius: "50%", border: `1px solid ${INK}`, background: "transparent", color: INK, fontWeight: 900, fontSize: 10, lineHeight: 1, cursor: "pointer", verticalAlign: "-3px" }}>?</button>
               </div>
-              <Toggle options={MODE_ORDER.map((k) => [k, MODES[k].label])} value={difficulty} onChange={setDifficulty} />
+              <div style={{ display: "inline-flex", border: `1.5px solid ${INK}`, borderRadius: 8, overflow: "hidden" }}>
+                {MODE_ORDER.map((k) => {
+                  const locked = !u[k];
+                  const on = difficulty === k;
+                  return (
+                    <button key={k} onClick={() => { if (locked) { setModeInfo("difficulty"); return; } setDifficulty(k); }}
+                      aria-pressed={on} aria-label={locked ? `${MODES[k].label} — locked. ${UNLOCK_REQ[k] || ""}` : MODES[k].label}
+                      style={{ padding: "8px 18px", border: "none", cursor: "pointer", fontWeight: 700, fontSize: 14,
+                        background: on && !locked ? INK : "transparent", color: locked ? "#9A8E77" : (on ? PAPER : INK) }}>
+                      {locked && <span aria-hidden="true">🔒 </span>}{MODES[k].label}
+                    </button>
+                  );
+                })}
+              </div>
               {modeInfo === "difficulty" && (
                 <p role="status" style={{ fontSize: 13, color: INK, background: PAPER, border: `1px solid ${PAPER_LINE}`, borderRadius: 8, padding: "9px 12px", margin: "10px auto 0", maxWidth: 560, lineHeight: 1.5, textAlign: "left" }}>
+                  {MODE_ORDER.filter((k) => !u[k]).length > 0 && (
+                    <span style={{ display: "block", color: CORAL, fontWeight: 700, marginBottom: 6 }}>
+                      🔒 {MODE_ORDER.filter((k) => !u[k]).map((k) => `${MODES[k].label}: ${UNLOCK_REQ[k]}`).join(" · ")}
+                    </span>
+                  )}
                   <b>{MODES[difficulty].label}:</b> {MODES[difficulty].blurb}
                 </p>
               )}
@@ -2465,6 +2554,7 @@ export default function ShutterbugWorld() {
     const bt = profile.bestTime || {};
     const badges = achievements(profile);
     const earnedBadges = badges.filter((b) => b.earned).length;
+    const rank = careerRank(profile);
     return (
       <Frame>
         <div style={{ maxWidth: 840, margin: "0 auto" }}>
@@ -2485,10 +2575,19 @@ export default function ShutterbugWorld() {
               <div style={{ textAlign: "left", minWidth: 0 }}>
                 <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 9, letterSpacing: "0.16em", opacity: 0.65 }}>TRAVELER</div>
                 <div style={{ fontWeight: 900, fontSize: 22, color: "#fff", lineHeight: 1.1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{profile.name}</div>
-                <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, opacity: 0.8, marginTop: 3 }}>Stamps {pp.masteredCount}/{pp.totalCountries} · Trips {profile.games || 0}</div>
+                <div style={{ fontWeight: 800, fontSize: 13, color: GOLD, marginTop: 2 }}>★ {rank.title}</div>
+                <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, opacity: 0.8, marginTop: 3 }}>Stamps {pp.masteredCount}/{pp.totalCountries} · Trips {profile.games || 0} · {rank.have} places shot</div>
               </div>
               {earnedBadges > 0 && <div style={{ marginLeft: "auto", textAlign: "center", flex: "none" }}><div style={{ fontSize: 24 }}>🏅</div><div style={{ fontFamily: "ui-monospace, monospace", fontSize: 10, opacity: 0.85 }}>{earnedBadges}</div></div>}
             </div>
+            {rank.next && (
+              <div style={{ marginTop: 8 }}>
+                <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 10, opacity: 0.7, marginBottom: 3 }}>{rank.nextNeed - rank.have} more place{rank.nextNeed - rank.have === 1 ? "" : "s"} to <b style={{ color: "#fff" }}>{rank.next}</b></div>
+                <div style={{ height: 6, background: "rgba(244,227,184,0.18)", borderRadius: 4, overflow: "hidden" }}>
+                  <div style={{ width: `${Math.min(100, Math.round((rank.have / rank.nextNeed) * 100))}%`, height: "100%", background: GOLD }} />
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Page tabs */}
@@ -3178,6 +3277,7 @@ export default function ShutterbugWorld() {
       {pending && <ResultModal data={pending} onContinue={continueFromResult} reduced={prefersReduced} />}
       {albumView && <LandmarkModal p={albumView} onClose={() => setAlbumView(null)} reduced={prefersReduced} />}
       {countryPopup && <CountryPopup country={countryPopup} onClose={() => setCountryPopup(null)} reduced={prefersReduced} />}
+      {mrO && <MrOBubble fact={mrO} onClose={() => setMrO(null)} reduced={prefersReduced} />}
     </Frame>
   );
 }
@@ -3794,6 +3894,28 @@ function CountryPopup({ country, onClose, reduced }) {
         <div style={{ textAlign: "center", fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.18em", color: CORAL }}>✈ YOU'VE ARRIVED IN…</div>
         <CountryCard country={country} />
         <button onClick={onClose} style={{ ...primaryBtn, marginTop: 14, width: "100%", padding: "11px 0" }}>Got it — let's find the shot →</button>
+      </div>
+    </div>
+  );
+}
+
+// Mr. O — the eager geography kid. A small, NON-blocking bubble that slides in at
+// the bottom-left with an "Oh! Did you know…?" fact, then dismisses itself after a
+// few seconds (or on tap). It never covers the map controls or steals a click.
+function MrOBubble({ fact, onClose, reduced }) {
+  useEffect(() => {
+    const id = setTimeout(onClose, 9000); // auto-dismiss
+    return () => clearTimeout(id);
+  }, [fact, onClose]);
+  return (
+    <div style={{ position: "fixed", left: 12, bottom: 12, zIndex: 55, maxWidth: 340, pointerEvents: "none" }}>
+      <div className={reduced ? "" : "sbw-pop"} onClick={onClose}
+        style={{ display: "flex", alignItems: "flex-end", gap: 8, pointerEvents: "auto", cursor: "pointer" }}>
+        <div aria-hidden="true" style={{ fontSize: 44, lineHeight: 1, flex: "none", filter: "drop-shadow(0 2px 3px rgba(0,0,0,0.25))" }}>{MR_O.emoji}</div>
+        <div style={{ background: "#fff", border: `2px solid ${OCEAN}`, borderRadius: "14px 14px 14px 3px", padding: "10px 13px", boxShadow: "0 6px 18px rgba(16,38,46,0.28)" }}>
+          <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 10, letterSpacing: "0.12em", color: OCEAN, fontWeight: 700, marginBottom: 3 }}>{MR_O.name.toUpperCase()} · {MR_O.lead.toUpperCase()}</div>
+          <div style={{ color: INK, fontSize: 13.5, lineHeight: 1.45 }}>{fact}</div>
+        </div>
       </div>
     </div>
   );

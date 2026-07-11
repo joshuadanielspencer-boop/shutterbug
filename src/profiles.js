@@ -372,6 +372,60 @@ export function achievements(profile) {
   return list;
 }
 
+// ---- Career rank + unlocks ------------------------------------------------
+// A traveller's PERSISTENT rank grows with how many distinct places they've
+// photographed (mastered) across all their trips — separate from the per-trip
+// "how did this run go" title on the results screen. It's their press card.
+export function distinctMastered(profile) {
+  const loc = (profile && profile.loc) || {};
+  let n = 0;
+  for (const id in loc) if (loc[id] && loc[id].c > 0) n++;
+  return n;
+}
+const PRESS_RANKS = [
+  { need: 0, title: "Cub Reporter" },
+  { need: 10, title: "Field Stringer" },
+  { need: 25, title: "Roving Correspondent" },
+  { need: 50, title: "Bureau Chief" },
+  { need: 100, title: "Globe Editor" },
+  { need: 200, title: "Photographer Laureate" },
+];
+export function careerRank(profile) {
+  const have = distinctMastered(profile);
+  let i = 0;
+  for (let k = 0; k < PRESS_RANKS.length; k++) if (have >= PRESS_RANKS[k].need) i = k;
+  const next = PRESS_RANKS[i + 1] || null;
+  return { tier: i, title: PRESS_RANKS[i].title, have, next: next ? next.title : null, nextNeed: next ? next.need : null };
+}
+
+// Which modes / difficulties / itineraries this profile has unlocked. New
+// travellers start simple; more opens up as they collect the world, so the game
+// reveals itself gradually (Grandpa narrates each unlock on the meet screen).
+// Guests (no profile) get everything — they can't progress, so nothing to gate.
+export const UNLOCK_REQ = {
+  medium: "Finish your first expedition",
+  quiz: "Finish your first expedition",
+  tour: "Photograph 15 places",
+  hard: "Earn stamps on 3 continents",
+  expeditions: "Photograph 25 places",
+};
+export function unlocks(profile) {
+  if (!profile) return { assignments: true, explore: true, quiz: true, tour: true, easy: true, medium: true, hard: true, expeditions: true };
+  const mastered = distinctMastered(profile);
+  const games = profile.games || 0;
+  const contTouched = Object.values(continentTotals(passportData(profile).countries)).filter((v) => v.mastered > 0).length;
+  return {
+    assignments: true,
+    explore: true,
+    easy: true,
+    quiz: games >= 1,
+    medium: games >= 1,
+    tour: mastered >= 15,
+    hard: contTouched >= 3,
+    expeditions: mastered >= 25,
+  };
+}
+
 function continentTotals(list) {
   const all = {};
   for (const l of LOCATIONS) all[l.continent] = (all[l.continent] || new Set()).add(l.country);
