@@ -8,6 +8,7 @@ import { categoryCountries, categoryMissionOK as missionOK } from "./missions.js
 import { robinson, eqToRobinson, ROBINSON_W, ROBINSON_H } from "./robinson.js";
 import { CATEGORIES, CATEGORY_ORDER, KIND_META, kindOf } from "./data/categories.js";
 import { ANECDOTES } from "./data/anecdotes.js";
+import { TUNES, tuneKeyFor } from "./data/tunes.js";
 import { GRANDPA, INTRO_BEATS, SENDOFF_BEATS, NOTE_HEADER, GUIDEBOOK,
   HOMECOMING_INTRO, WRONG_REACTIONS, ACHIEVEMENT_INTRO, DREAM_FULFILLED,
   END_WIN, END_LOSE, MEET_LINES, MEET_RUN, MEET_ASK } from "./data/grandpa.js";
@@ -141,12 +142,12 @@ function PhotoCredit({ photo, style }) {
 // efficient routes and ½-point extra credit per correct homecoming review
 // question (see dayBonus / QUIZ_BONUS below).
 const MODES = {
-  easy:   { label: "Easy",   assignments: 3, cityDecoys: 2, daysPer: 3, points: 3, slack: 5, labels: "all",   clue: "easy",   catShare: 0.22, countryOpts: 3, research: "free",
-            blurb: "Clues spell out the place · fly straight to the city · all pins labelled · free Research hints." },
-  medium: { label: "Medium", assignments: 5, cityDecoys: 3, daysPer: 3, points: 2, slack: 5, labels: "smart", clue: "medium", catShare: 0.08, countryOpts: 5, research: "half",
-            blurb: "Clues name the continent but hide the country · pick the country, then the city · Research costs ½ day." },
-  hard:   { label: "Hard",   assignments: 7, cityDecoys: 4, daysPer: 2, points: 1, slack: 4, labels: "smart", clue: "hard",   catShare: 0.04, countryOpts: 7, research: "off",
-            blurb: "Pure-context clues — no place names · country names hidden on the map · no Research · more, tighter trips." },
+  easy:   { label: "Easy",   assignments: 5, cityDecoys: 2, daysPer: 3, points: 3, slack: 6, labels: "all",   clue: "easy",   catShare: 0.22, countryOpts: 3, research: "free",  hints: true,
+            blurb: "A short 5-shot trip. Clues name the country, every pin is labelled, a category badge tells you what kind of place it is, wrong guesses get warm/cold hints, and Research is free." },
+  medium: { label: "Medium", assignments: 9, cityDecoys: 3, daysPer: 3, points: 2, slack: 6, labels: "smart", clue: "medium", catShare: 0.08, countryOpts: 5, research: "half", hints: true,
+            blurb: "A 9-shot expedition. Clues name the continent but hide the country; labels appear on hover; a category badge still helps; Research costs ½ a day." },
+  hard:   { label: "Hard",   assignments: 14, cityDecoys: 4, daysPer: 2, points: 1, slack: 5, labels: "smart", clue: "hard",   catShare: 0.04, countryOpts: 7, research: "off",  hints: false,
+            blurb: "A long 14-shot grand expedition for experts. Pure-context clues — no place names, no country labels on the map, no category badge, no warm/cold hints, and no Research. You're on your own." },
 };
 // A small efficiency reward: +1 point per 2 full travel days you bank, capped so
 // it never dominates the shot points. QUIZ_BONUS is the ½-point extra credit each
@@ -832,7 +833,12 @@ const cardThumb = (id) => { const l = BY_ID[id]; if (!l?.photo?.src) return null
 // (a click handler) to satisfy autoplay rules, especially on iPad Safari.
 // finale() ends the loop and plays a short, jaunty flourish for the results.
 const MUSIC = (() => {
-  let ctx = null, master = null, timer = null, nextBeat = 0, running = false;
+  // Two buses share one context: `master` is the overall level for everything;
+  // `jigBus` carries ONLY the looping Scottish jig (drone + melody) so it can
+  // fade out on its own when the player reaches the map, while one-shots (the
+  // 4-second travel jig, the country-arrival tunes, the results flourish) keep
+  // playing through `master`.
+  let ctx = null, master = null, jigBus = null, timer = null, nextBeat = 0, running = false;
   let drone = []; // sustained bagpipe drone oscillators, torn down on stop()
   const ac = () => {
     try {
@@ -843,8 +849,11 @@ const MUSIC = (() => {
         ctx = new AC();
         master = ctx.createGain();
         master.gain.value = 0.0001;
+        jigBus = ctx.createGain();
+        jigBus.gain.value = 0.0001;
+        jigBus.connect(master);
         const soften = ctx.createBiquadFilter();
-        soften.type = "lowpass"; soften.frequency.value = 2600; // rounds off the reedy edges
+        soften.type = "lowpass"; soften.frequency.value = 2800; // rounds off the reedy edges
         master.connect(soften); soften.connect(ctx.destination);
       }
       if (ctx.state === "suspended") ctx.resume();
@@ -854,6 +863,69 @@ const MUSIC = (() => {
   // D Mixolydian around the chanter's range. 0 = rest.
   const N = { D4: 293.66, E4: 329.63, Fs4: 369.99, G4: 392.0, A4: 440.0, B4: 493.88,
     Cn5: 523.25, D5: 587.33, E5: 659.25, Fs5: 739.99, G5: 783.99, A5: 880.0 };
+  // ---- Multi-timbre voice (used by the country tunes + jig) ----
+  const SEMI = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
+  const noteFreq = (name) => {
+    if (!name || name === "r") return 0;
+    const m = /^([A-G])([#b]?)(-?\d)$/.exec(name);
+    if (!m) return 0;
+    let s = SEMI[m[1]]; if (m[2] === "#") s++; if (m[2] === "b") s--;
+    const midi = s + (parseInt(m[3], 10) + 1) * 12; // C4 = MIDI 60
+    return 440 * Math.pow(2, (midi - 69) / 12);
+  };
+  // timbre → oscillator + filter + envelope shape. `sustain` = organ/reed hold;
+  // otherwise a plucked decay. `partial` adds a soft octave-ish overtone.
+  const TIMBRE = {
+    reed:    { osc: "sawtooth", lp: 2000, atk: 0.014, sustain: true },
+    brass:   { osc: "sawtooth", lp: 1600, atk: 0.02, sustain: true },
+    flute:   { osc: "sine", lp: 3000, atk: 0.05, sustain: true },
+    koto:    { osc: "triangle", lp: 3200, atk: 0.005, partial: 2 },
+    guitar:  { osc: "triangle", lp: 2600, atk: 0.006 },
+    oud:     { osc: "sawtooth", lp: 1500, atk: 0.008 },
+    sitar:   { osc: "sawtooth", lp: 2400, atk: 0.006, partial: 3 },
+    steel:   { osc: "triangle", lp: 3600, atk: 0.003, partial: 2.4 },
+    kalimba: { osc: "sine", lp: 2800, atk: 0.004, partial: 2 },
+    pluck:   { osc: "triangle", lp: 2600, atk: 0.005 },
+    uke:     { osc: "triangle", lp: 2800, atk: 0.006 },
+    bell:    { osc: "sine", lp: 5000, atk: 0.004, partial: 2.4, long: true },
+    music:   { osc: "sine", lp: 4000, atk: 0.004, partial: 2 },
+  };
+  const voice = (t, f, peak, dur, timbre, dest) => {
+    const T = TIMBRE[timbre] || TIMBRE.music;
+    const o = ctx.createOscillator(); o.type = T.osc; o.frequency.value = f;
+    const lp = ctx.createBiquadFilter(); lp.type = "lowpass"; lp.frequency.value = T.lp; lp.Q.value = 0.6;
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(peak, t + T.atk);
+    const rel = T.long ? dur * 2.2 : dur;
+    if (T.sustain) { g.gain.setValueAtTime(peak, t + dur * 0.7); g.gain.exponentialRampToValueAtTime(0.0001, t + dur); }
+    else { g.gain.exponentialRampToValueAtTime(0.0001, t + rel); }
+    o.connect(lp); lp.connect(g); g.connect(dest);
+    o.start(t); o.stop(t + rel + 0.05);
+    if (T.partial) {
+      const o2 = ctx.createOscillator(); o2.type = "sine"; o2.frequency.value = f * T.partial;
+      const g2 = ctx.createGain(); g2.gain.setValueAtTime(0.0001, t);
+      g2.gain.exponentialRampToValueAtTime(peak * 0.2, t + T.atk);
+      g2.gain.exponentialRampToValueAtTime(0.0001, t + dur * 0.6);
+      o2.connect(g2); g2.connect(dest); o2.start(t); o2.stop(t + dur * 0.7 + 0.05);
+    }
+  };
+  // Play a country/region tune (from src/data/tunes.js) once, onto `master`.
+  const playTune = (key) => {
+    const t = TUNES[key] || TUNES.generic;
+    const start = ctx.currentTime + 0.06;
+    let at = start;
+    if (key === "southasia") { // a low tonic drone under the sitar line
+      for (const f of [146.83, 220.0]) voice(start, f, 0.05, 6.5, "reed", master);
+    }
+    for (const [name, beats] of t.seq) {
+      const dur = beats * t.spb;
+      const f = noteFreq(name);
+      if (f) voice(at, f, 0.14, Math.max(0.12, dur * 0.95), t.timbre, master);
+      at += dur;
+    }
+    return at - start;
+  };
   // An original 8-bar jig phrase, six eighth-notes per bar (grouped 3+3). The
   // first note of each triplet group is accented, giving the jig its bounce.
   const MELODY = [
@@ -887,7 +959,7 @@ const MUSIC = (() => {
       while (nextBeat < ahead) {
         const f = MELODY[idx % MELODY.length];
         const onDownbeat = (idx % 3) === 0;
-        if (f) reed(nextBeat, f, (onDownbeat ? 0.13 : 0.09), onDownbeat ? EIGHTH * 1.1 : EIGHTH * 0.85);
+        if (f) voice(nextBeat, f, (onDownbeat ? 0.13 : 0.09), onDownbeat ? EIGHTH * 1.1 : EIGHTH * 0.85, "reed", jigBus);
         idx += 1;
         nextBeat += EIGHTH;
       }
@@ -898,30 +970,71 @@ const MUSIC = (() => {
       const o = ctx.createOscillator(); o.type = "sawtooth"; o.frequency.value = f;
       const lp = ctx.createBiquadFilter(); lp.type = "lowpass"; lp.frequency.value = 700;
       const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.05, t + 0.5);
-      o.connect(lp); lp.connect(g); g.connect(master); o.start(t);
+      o.connect(lp); lp.connect(g); g.connect(jigBus); o.start(t);
       drone.push({ o, g });
     }
   };
   const stopDrone = () => { const t = ctx ? ctx.currentTime : 0; for (const d of drone) { try { d.g.gain.setTargetAtTime(0.0001, t, 0.15); d.o.stop(t + 0.5); } catch { /* ignore */ } } drone = []; };
+  // Bring master up to the audible level (one-shots need it even when the jig
+  // loop is faded out at the map).
+  const wake = (c) => { master.gain.cancelScheduledValues(c.currentTime); master.gain.setTargetAtTime(0.16, c.currentTime, 0.3); };
   return {
+    // Start (or resume) the looping Scottish jig — splash + meet screens.
     start() {
       try {
-        const c = ac(); if (!c || running) return;
+        const c = ac(); if (!c) return;
+        wake(c);
+        jigBus.gain.cancelScheduledValues(c.currentTime);
+        jigBus.gain.setTargetAtTime(1.0, c.currentTime, 0.5); // fade the jig in
+        if (running) return;
         running = true;
-        master.gain.cancelScheduledValues(c.currentTime);
-        master.gain.setTargetAtTime(0.13, c.currentTime, 0.5); // fade in
         nextBeat = Math.max(nextBeat, c.currentTime + 0.15);
         startDrone(c.currentTime + 0.1);
         if (!timer) timer = setInterval(schedule, 200);
         schedule();
       } catch { /* ignore */ }
     },
+    // Fade the jig loop out (at the map) but keep the context + master alive so
+    // the travel jig and country tunes can still play.
+    fadeJig() {
+      try {
+        running = false;
+        if (timer) { clearInterval(timer); timer = null; }
+        stopDrone();
+        if (ctx && jigBus) jigBus.gain.setTargetAtTime(0.0001, ctx.currentTime, 0.6);
+      } catch { /* ignore */ }
+    },
+    // Full stop (leaving to the passport): silence everything.
     stop() {
       try {
         running = false;
         if (timer) { clearInterval(timer); timer = null; }
         stopDrone();
-        if (ctx && master) master.gain.setTargetAtTime(0.0001, ctx.currentTime, 0.25); // fade out
+        if (ctx && jigBus) jigBus.gain.setTargetAtTime(0.0001, ctx.currentTime, 0.25);
+        if (ctx && master) master.gain.setTargetAtTime(0.0001, ctx.currentTime, 0.3);
+      } catch { /* ignore */ }
+    },
+    // ~4-second lively jig over a flight, on master (independent of the loop).
+    travelJig() {
+      try {
+        const c = ac(); if (!c) return;
+        wake(c);
+        const t0 = c.currentTime + 0.04;
+        const n = Math.floor(4.0 / EIGHTH);
+        for (let i = 0; i < n; i++) {
+          const f = MELODY[i % MELODY.length];
+          if (f) voice(t0 + i * EIGHTH, f, i % 3 === 0 ? 0.12 : 0.085, EIGHTH * 0.95, "reed", master);
+        }
+        // a light low pulse on the downbeats for lift
+        for (let i = 0; i < n; i += 6) voice(t0 + i * EIGHTH, 146.83, 0.06, EIGHTH * 3, "reed", master);
+      } catch { /* ignore */ }
+    },
+    // A country/region tune (5–9 s) on arrival, on master.
+    countryTune(country, continent) {
+      try {
+        const c = ac(); if (!c) return;
+        wake(c);
+        playTune(tuneKeyFor(country, continent));
       } catch { /* ignore */ }
     },
     // End-of-run flourish: stop the loop, then a brief celebratory jig run that
@@ -932,14 +1045,13 @@ const MUSIC = (() => {
         if (timer) { clearInterval(timer); timer = null; }
         stopDrone();
         const c = ac(); if (!c) return;
-        master.gain.cancelScheduledValues(c.currentTime);
-        master.gain.setValueAtTime(0.15, c.currentTime);
+        wake(c);
+        if (jigBus) jigBus.gain.setTargetAtTime(0.0001, c.currentTime, 0.2);
         const t0 = c.currentTime + 0.05;
         const run = [N.D4, N.E4, N.Fs4, N.G4, N.A4, N.B4, N.A4, N.D5, N.Cn5, N.B4, N.A4, N.Fs4];
-        run.forEach((f, i) => reed(t0 + i * 0.13, f, i % 3 === 0 ? 0.14 : 0.1, 0.14));
-        // Final held chord: D major (D–F#–A–D).
-        const tc = t0 + run.length * 0.13;
-        [N.D4, N.Fs4, N.A4, N.D5].forEach((f) => reed(tc, f, 0.11, 1.8));
+        run.forEach((f, i) => voice(t0 + i * 0.13, f, i % 3 === 0 ? 0.14 : 0.1, 0.14, "reed", master));
+        const tc = t0 + run.length * 0.13; // final D-major chord
+        [N.D4, N.Fs4, N.A4, N.D5].forEach((f) => voice(tc, f, 0.11, 1.8, "reed", master));
         master.gain.setTargetAtTime(0.0001, tc + 1.4, 0.5); // let it ring, then fade
       } catch { /* ignore */ }
     },
@@ -1039,8 +1151,9 @@ export default function ShutterbugWorld() {
   // jig going if it's already playing (and start-screen clicks kick it off).
   useEffect(() => {
     if (screen === "passport") MUSIC.stop();
-    else if (screen === "end") MUSIC.finale();
-  }, [screen]);
+    else if (screen === "play") MUSIC.fadeJig();          // reach the map → jig fades out
+    else if (screen === "end") { if (musicOn) MUSIC.finale(); else MUSIC.stop(); }
+  }, [screen]); // eslint-disable-line react-hooks/exhaustive-deps
   // Start the splash jig on the player's first interaction (autoplay rules need a
   // gesture, so we can't begin it on load — the first tap does it).
   const startMusicMaybe = () => { if (musicOn) MUSIC.start(); };
@@ -1085,6 +1198,14 @@ export default function ShutterbugWorld() {
   const recorded = useRef(false);
   const startRef = useRef(0); // ms timestamp the current game began
   const timer = useRef(null);
+  const flightFinalizeRef = useRef(null); // the pending "land the plane" fn, so a tap can skip the 4s flight
+  // Tap during a flight to land early (skip the 4-second animation).
+  const skipFlight = () => {
+    if (!flying || !flightFinalizeRef.current) return;
+    if (timer.current) { clearTimeout(timer.current); timer.current = null; }
+    const fn = flightFinalizeRef.current; flightFinalizeRef.current = null;
+    fn();
+  };
   const refreshProfiles = () => setProfiles(listProfiles());
 
   // Animations: on/off is a game setting. It defaults to the OS "reduce
@@ -1101,6 +1222,7 @@ export default function ShutterbugWorld() {
   const prefersReduced = !animOn;
 
   const sfx = (name, ...args) => { if (soundOn && SFX[name]) SFX[name](...args); };
+  const music = (name, ...args) => { if (musicOn && MUSIC[name]) MUSIC[name](...args); };
 
   useEffect(() => () => timer.current && clearTimeout(timer.current), []);
 
@@ -1212,7 +1334,7 @@ export default function ShutterbugWorld() {
   }
 
   function startGame() {
-    if (musicOn) MUSIC.start();
+    // music continues from the splash/meet screen and fades out at the map
     const mode = modePlan(difficulty);
     const profile = profileName ? getProfile(profileName) : null;
     // Weighted order surfaces the active player's missed/unmastered places more
@@ -1254,7 +1376,7 @@ export default function ShutterbugWorld() {
   // ---- Grand Tour: build an itinerary of targets across continents on one shared ----
   // ---- day budget, fulfilled in any order. ----
   function startTour() {
-    if (musicOn) MUSIC.start();
+    // music continues from the splash/meet screen and fades out at the map
     const tm = TOUR_MODES[difficulty];
     const profile = profileName ? getProfile(profileName) : null;
     const order = weightedOrder(profile).map((id) => BY_ID[id]);
@@ -1330,7 +1452,7 @@ export default function ShutterbugWorld() {
   // country, click any place to read its full story (fact, culture card, all three
   // clue tiers). Everywhere you visit is stamped into the passport. ----
   function startExplore() {
-    if (musicOn) MUSIC.start();
+    // music continues from the splash/meet screen and fades out at the map
     setGameMode("explore"); setExpedition(null);
     setTourReqs([]); setTourOptions({});
     setAssignments([]); setOptionsByStep([]); setStep(0);
@@ -1416,7 +1538,7 @@ export default function ShutterbugWorld() {
 
   // ---- Quiz mode: 10 multiple-choice geography questions built from the data. ----
   function startQuiz() {
-    if (musicOn) MUSIC.start();
+    // music continues from the splash/meet screen and fades out at the map
     const profile = profileName ? getProfile(profileName) : null;
     const questions = buildQuiz(freshFirst(profile), 10); // freshest places first, for variety
     setQuiz({ questions, i: 0, answeredIdx: null, score: 0, correctCount: 0, streak: 0, lastGain: 0, done: false, best: null });
@@ -1572,8 +1694,10 @@ export default function ShutterbugWorld() {
         setMsg({ type: "info", text: useCountry ? `Welcome to ${cont}! Pick a country to explore.` : `Welcome to ${cont}! Click any place to learn about it.` });
       };
       if (prefersReduced) { finalize(); return; }
+      music("travelJig");
+      flightFinalizeRef.current = finalize;
       setFlying({ fromX: from.x, fromY: from.y, toX: to.x, toY: to.y });
-      timer.current = setTimeout(finalize, 850);
+      timer.current = setTimeout(() => { flightFinalizeRef.current = null; finalize(); }, 4000);
       return;
     }
     if (gameMode === "tour") {
@@ -1599,8 +1723,10 @@ export default function ShutterbugWorld() {
           : { type: "warn", text: `Touched down in ${cont} (${costTxt}) — but nothing on your list is here. Fly on when ready.` });
       };
       if (prefersReduced) { finalize(); return; }
+      music("travelJig");
+      flightFinalizeRef.current = finalize;
       setFlying({ fromX: from.x, fromY: from.y, toX: to.x, toY: to.y });
-      timer.current = setTimeout(finalize, 850);
+      timer.current = setTimeout(() => { flightFinalizeRef.current = null; finalize(); }, 4000);
       return;
     }
     if (!target) return;
@@ -1624,8 +1750,10 @@ export default function ShutterbugWorld() {
         else setMsg({ type: "info", text: `Touched down in ${cont} (${costTxt}). ${useCountry ? "Now pick the right country." : "Now pick the right city."}` });
       };
       if (prefersReduced) { finalize(); return; }
+      music("travelJig");
+      flightFinalizeRef.current = finalize;
       setFlying({ fromX: from.x, fromY: from.y, toX: to.x, toY: to.y });
-      timer.current = setTimeout(finalize, 850);
+      timer.current = setTimeout(() => { flightFinalizeRef.current = null; finalize(); }, 4000);
     } else {
       const nd = Math.round((days - cost) * 10) / 10; // a wrong continent is a wasted flight
       setDays(nd);
@@ -1633,7 +1761,7 @@ export default function ShutterbugWorld() {
       if (nd <= 0) outOfDays(`${cont} wasn't right, and that was your last day.`);
       else setPending({ kind: "wrong", tone: "bad", emoji: "❌", title: "Not that continent",
         subtitle: `Grandpa's subject isn't in ${cont}. A wasted flight there and back cost you ${cost} day${cost === 1 ? "" : "s"} — read his note and try again.`,
-        hint: `Try looking ${compass(CONTINENT_PIN[cont], CONTINENT_PIN[target.continent])} of ${cont}.`,
+        hint: MODES[difficulty].hints ? `Try looking ${compass(CONTINENT_PIN[cont], CONTINENT_PIN[target.continent])} of ${cont}.` : null,
         buttonLabel: "Try again" });
     }
   }
@@ -1645,6 +1773,7 @@ export default function ShutterbugWorld() {
       setPickedCountry(country);
       setCityPlan({ ids: ((COUNTRY_LOCS[pickedContinent] && COUNTRY_LOCS[pickedContinent][country]) || []).slice().sort(() => Math.random() - 0.5), wide: false });
       setPhase("city"); setCurrent(null); setRevealed(false);
+      music("countryTune", country, pickedContinent); // a few seconds of local music on arrival
       setMsg({ type: "info", text: `${country} — click any place to learn about it.` });
       return;
     }
@@ -1658,6 +1787,7 @@ export default function ShutterbugWorld() {
       setPickedCountry(country);
       setPhase("city"); setCurrent(null); setRevealed(false);
       if (COUNTRY_INFO[country] && poppedCountryRef.current !== country) { poppedCountryRef.current = country; setCountryPopup(country); }
+      music("countryTune", country, pickedContinent); // a few seconds of local music on arrival
       const targetHere = tourReqs.some((r) => !r.done && (COUNTRY_LOCS[pickedContinent]?.[country] || []).some((id) => r.kind === "category" ? BY_ID[id].category === r.category : r.targetId === id));
       setMsg({ type: targetHere ? "info" : "warn", text: targetHere ? `Arrived in ${country}. Photograph your target here!` : `Arrived in ${country} — but no target on your list is here. Pick another country, or fly on.` });
       return;
@@ -1688,6 +1818,7 @@ export default function ShutterbugWorld() {
       setRevealed(false);
       // Pop the culture card the moment you land in the country.
       if (COUNTRY_INFO[country] && poppedCountryRef.current !== country) { poppedCountryRef.current = country; setCountryPopup(country); }
+      music("countryTune", country, pickedContinent); // a few seconds of local music on arrival
       setMsg({ type: "info", text: `Arrived in ${country}. Now photograph Grandpa's subject.` });
     } else {
       const nd = Math.round((days - 0.5) * 10) / 10; // a wrong country costs half a day
@@ -1702,7 +1833,7 @@ export default function ShutterbugWorld() {
         const goal = a && a.type === "category" ? (a.countries || [])[0] : (countriesOf(target)[0]);
         setPending({ kind: "wrongcountry", tone: "bad", emoji: "❌", title: "Not that country",
           subtitle: `${why} Half a day gone — read the clue and the country notes, then try again.`,
-          hint: goal ? `The country you're after starts with “${goal[0]}”.` : null,
+          hint: (MODES[difficulty].hints && goal) ? `The country you're after starts with “${goal[0]}”.` : null,
           buttonLabel: "Try again" });
       }
     }
@@ -1846,7 +1977,7 @@ export default function ShutterbugWorld() {
       }
     } else {
       const wantTxt = a.type === "category" ? `a ${CATEGORIES[a.category].noun}` : target.subject;
-      const km = a.type === "specific" ? kmBetween(clicked, target) : null;
+      const km = (MODES[difficulty].hints && a.type === "specific") ? kmBetween(clicked, target) : null;
       const warmth = km === null ? null
         : km < 400 ? "You're very warm — the right pin is close to where you just shot!"
         : km < 1500 ? "You're warm — the right pin isn't far from there."
@@ -2214,7 +2345,7 @@ export default function ShutterbugWorld() {
           })()}
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 16 }}>
             {home
-              ? <button onClick={endHomecoming} style={{ background: "none", border: "none", color: INK, opacity: 0.6, fontSize: 13, cursor: "pointer", fontWeight: 700 }}>Skip to results →</button>
+              ? <span />/* the homecoming review must be answered in full — no skip */
               : <button onClick={() => { setQuiz(null); setGameMode("assignments"); setScreen("start"); }} style={{ background: "none", border: "none", color: INK, opacity: 0.6, fontSize: 13, cursor: "pointer", fontWeight: 700 }}>← Quit</button>}
             {answered && <button onClick={nextQuiz} style={{ ...primaryBtn, margin: 0, padding: "10px 22px" }}>{quiz.i + 1 >= quiz.questions.length ? (home ? "Show him the rest →" : "See results") : "Next question →"}</button>}
           </div>
@@ -2300,7 +2431,10 @@ export default function ShutterbugWorld() {
             </div>
           )}
           <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap", marginTop: 26 }}>
-            <button onClick={() => setScreen("start")} style={primaryBtn}>New assignment</button>
+            <button onClick={() => { startMusicMaybe(); enterMeetScreen(); }} style={primaryBtn}>Continue your adventure ✈</button>
+            <button onClick={() => { startMusicMaybe(); setScreen("start"); }} style={{ ...primaryBtn, background: "transparent", color: INK, border: `2px solid ${INK}`, boxShadow: "none" }}>
+              🏠 Return to main screen
+            </button>
             {profileName && (
               <button onClick={() => { setConfirmRemove(false); setScreen("passport"); }} style={{ ...primaryBtn, background: "transparent", color: CORAL, border: `2px solid ${CORAL}`, boxShadow: "none" }}>
                 📕 View passport
@@ -2948,9 +3082,9 @@ export default function ShutterbugWorld() {
                 return (
                 <g className="sbw-plane-group">
                   <path d={d} fill="none" stroke={CORAL} strokeWidth="1" strokeDasharray="3 3" opacity="0.8" />
-                  <g style={{ animation: "sbw-fly 0.85s ease-in-out forwards", offsetPath: `path('${d}')` }}>
+                  <g style={{ animation: "sbw-fly 4s ease-in-out forwards", offsetPath: `path('${d}')` }}>
                     {/* scaleY cancels the map's vertical stretch so the plane isn't squished tall */}
-                    <text fontSize="9" fill={CORAL} transform={`scale(1 ${(box.h / box.w).toFixed(3)})`}>✈</text>
+                    <text fontSize="18" fill={CORAL} transform={`scale(1 ${(box.h / box.w).toFixed(3)})`}>✈</text>
                   </g>
                 </g>
                 );
@@ -3003,6 +3137,13 @@ export default function ShutterbugWorld() {
                 );
               })}
             </svg>
+            {/* Tap anywhere on the map during a flight to land early. */}
+            {flying && (
+              <button onClick={skipFlight} aria-label="Skip the flight"
+                style={{ position: "absolute", inset: 0, background: "transparent", border: "none", cursor: "pointer", zIndex: 5 }}>
+                <span style={{ position: "absolute", bottom: 8, right: 10, background: "rgba(16,38,46,0.7)", color: "#fff", fontSize: 11, fontWeight: 700, padding: "3px 9px", borderRadius: 12, fontFamily: "ui-monospace, monospace" }}>tap to skip ▸</span>
+              </button>
+            )}
 
           </div>
         </div>

@@ -312,6 +312,12 @@ export const COUNTRY_PEOPLE = {
     credit: "WikiMaxChe", license: "CC BY-SA 4.0",
     caption: "The RASPEV folk ensemble in sarafans and headscarves at a folk festival near Moscow",
   },
+  "Saudi Arabia": {
+    src: "https://commons.wikimedia.org/wiki/Special:FilePath/Saudi_Ardha_(Najdi_Sword_Dance)_in_At-Turaif_district,_Diriyah,_Saudi_Arabia.jpg?width=800",
+    source: "https://commons.wikimedia.org/wiki/File:Saudi_Ardha_(Najdi_Sword_Dance)_in_At-Turaif_district,_Diriyah,_Saudi_Arabia.jpg",
+    credit: "Ahad.F", license: "CC BY-SA 4.0",
+    caption: "Men in traditional dress performing the Ardha, the Najdi sword dance, in Diriyah, Saudi Arabia",
+  },
   "Turkey": {
     src: "https://commons.wikimedia.org/wiki/Special:FilePath/Turkish%20folk%20dancers%20(1085290934).jpg?width=800",
     source: "https://commons.wikimedia.org/wiki/File:Turkish%20folk%20dancers%20(1085290934).jpg",
