@@ -7,8 +7,9 @@ import { COUNTRY_PEOPLE, greetingMeaning } from "./data/culture.js";
 import { categoryCountries, categoryMissionOK as missionOK } from "./missions.js";
 import { robinson, eqToRobinson, ROBINSON_W, ROBINSON_H } from "./robinson.js";
 import { CATEGORIES, CATEGORY_ORDER, KIND_META, kindOf } from "./data/categories.js";
+import { GRANDPA, INTRO_BEATS, SENDOFF_BEATS, NOTE_HEADER, GUIDEBOOK } from "./data/grandpa.js";
 import { listProfiles, lastProfileName, getProfile, createProfile, setLastProfile,
-  deleteProfile, setAvatar, recordGame, recordExplore, recordQuiz,
+  deleteProfile, setAvatar, setProfileFlag, recordGame, recordExplore, recordQuiz,
   weightedOrder, freshFirst, passportData, achievements, topScores, storageAvailable } from "./profiles.js";
 
 // Base URL the app is served from ("/" at a domain root, "/<repo>/" on a GitHub
@@ -532,7 +533,7 @@ const rankFor = (pct) => {
   if (pct >= 0.7) return { title: "Senior Photojournalist", note: "Sharp eye, sharp instincts." };
   if (pct >= 0.5) return { title: "Staff Photographer", note: "Solid, dependable coverage." };
   if (pct >= 0.25) return { title: "Field Intern", note: "You got the shots that counted." };
-  return { title: "Trainee", note: "Read the editor's clues more closely next time." };
+  return { title: "Trainee", note: "Read Grandpa's notes more closely next time." };
 };
 
 // ===========================================================================
@@ -782,7 +783,7 @@ const SFX = (() => {
 // when a card's ⓘ is tapped, keeping the screen picture-first.
 const MODE_CARDS = [
   { id: "assignments", name: "Assignments", emoji: "📸", photoId: "paris",
-    blurb: "One editor's clue at a time — fly to the right place and photograph the right subject before your days run out." },
+    blurb: "One of Grandpa's dreams at a time — fly to the right place and photograph the right subject before your travel days run out." },
   { id: "tour", name: "Grand Tour", emoji: "🧳", photoId: "beijing",
     blurb: "A whole itinerary of targets across continents on one shared day budget — plan an efficient route and shoot them in any order." },
   { id: "explore", name: "Explore", emoji: "🧭", photoId: "galapagos",
@@ -987,6 +988,7 @@ export default function ShutterbugWorld() {
   const [lastResult, setLastResult] = useState(null); // {isBest, isBestTime} after a recorded game
   const [newBadges, setNewBadges] = useState([]); // achievements newly earned this game
   const [confirmRemove, setConfirmRemove] = useState(false); // passport delete confirmation
+  const [passportPage, setPassportPage] = useState("id"); // passport booklet page: id | stamps | collections | badges
   const [avatarEdit, setAvatarEdit] = useState(false);        // avatar editor open (start screen)
   const [modeInfo, setModeInfo] = useState(null);             // which start-screen ⓘ is open
   const [showScores, setShowScores] = useState(false);        // high-scores reveal
@@ -994,6 +996,8 @@ export default function ShutterbugWorld() {
   const [cityPlan, setCityPlan] = useState(null); // country-layer city step: { ids, wide } (wide = continent view for thin countries)
   const [quiz, setQuiz] = useState(null); // Quiz mode: { questions, i, answeredIdx, score, correctCount, streak, done, best }
   const [expedition, setExpedition] = useState(null); // active themed expedition {id,title,emoji,lesson} (a curated Grand Tour)
+  const [guestMet, setGuestMet] = useState(false); // has a guest (no profile) met Grandpa Nigel this session?
+  const pendingRunRef = useRef(null); // start action to run after the intro story
   const recorded = useRef(false);
   const startRef = useRef(0); // ms timestamp the current game began
   const timer = useRef(null);
@@ -1046,6 +1050,22 @@ export default function ShutterbugWorld() {
     : (pickedCountry && COUNTRY_LOCS[pickedContinent] && COUNTRY_LOCS[pickedContinent][pickedCountry]) ? COUNTRY_LOCS[pickedContinent][pickedCountry]
     : (optionsByStep[step] || []);
 
+  // --- Story frame: the very first expedition a traveller sets out on opens
+  // with Grandpa Nigel's story (once per profile / once per guest session).
+  // Afterward the chosen expedition launches straight away. ----
+  const hasMetNigel = () => (profileName ? !!getProfile(profileName)?.metNigel : guestMet);
+  function beginWithStory(run) {
+    if (hasMetNigel()) { run(); return; }
+    pendingRunRef.current = run;
+    setScreen("intro");
+  }
+  function finishStory() {
+    if (profileName) setProfileFlag(profileName, "metNigel", true); else setGuestMet(true);
+    const run = pendingRunRef.current;
+    pendingRunRef.current = null;
+    if (run) run(); else setScreen("start");
+  }
+
   function startGame() {
     if (musicOn) MUSIC.start();
     const mode = modePlan(difficulty);
@@ -1080,7 +1100,7 @@ export default function ShutterbugWorld() {
     setCityPlan(null);
     startRef.current = Date.now();
     recorded.current = false;
-    setMsg({ type: "info", text: "Read the editor's clue, then pick the right continent on the map." });
+    setMsg({ type: "info", text: "Read Grandpa's note, then pick the right continent on the map." });
     setFlying(null);
     setGameMode("assignments"); setExpedition(null);
     setScreen("play");
@@ -1419,7 +1439,7 @@ export default function ShutterbugWorld() {
       sfx("fail");
       if (nd <= 0) outOfDays(`${cont} wasn't right, and that was your last day.`);
       else setPending({ kind: "wrong", tone: "bad", emoji: "❌", title: "Not that continent",
-        subtitle: `The editor's subject isn't in ${cont}. A wasted flight there and back cost you ${cost} day${cost === 1 ? "" : "s"} — read the clue and try again.`,
+        subtitle: `Grandpa's subject isn't in ${cont}. A wasted flight there and back cost you ${cost} day${cost === 1 ? "" : "s"} — read his note and try again.`,
         hint: `Try looking ${compass(CONTINENT_PIN[cont], CONTINENT_PIN[target.continent])} of ${cont}.`,
         buttonLabel: "Try again" });
     }
@@ -1459,14 +1479,14 @@ export default function ShutterbugWorld() {
       setPhase("city");
       setCurrent(null);
       setRevealed(false);
-      setMsg({ type: "info", text: `Arrived in ${country}. Now photograph the editor's subject.` });
+      setMsg({ type: "info", text: `Arrived in ${country}. Now photograph Grandpa's subject.` });
     } else {
       const nd = Math.round((days - 0.5) * 10) / 10; // a wrong country costs half a day
       setDays(nd);
       sfx("fail");
       const why = a && a.type === "category"
         ? `We don't have a ${CATEGORIES[a.category].noun} on file to photograph in ${country} — try another country.`
-        : `The editor's subject isn't in ${country}.`;
+        : `Grandpa's subject isn't in ${country}.`;
       if (nd <= 0) outOfDays(`${country} wasn't right, and that was your last day.`);
       else {
         // Gentle nudge: the first letter of a country that IS right.
@@ -1493,8 +1513,8 @@ export default function ShutterbugWorld() {
     const t = a.type === "category" ? loc(a.anchorId) : loc(a.targetId);
     const catNoun = CATEGORIES[t.category].noun;
     const text = a.type === "category"
-      ? `The newsroom suggests ${t.city}, ${t.country} ${t.flag} in ${t.continent} — its ${catNoun}, ${t.subject}, would be a perfect shot.`
-      : `The editor's subject is ${t.subject} — in ${t.city}, ${t.country} ${t.flag} (${t.continent}).`;
+      ? `Grandpa's guidebook suggests ${t.city}, ${t.country} ${t.flag} in ${t.continent} — its ${catNoun}, ${t.subject}, would be a perfect shot.`
+      : `Grandpa's after ${t.subject} — in ${t.city}, ${t.country} ${t.flag} (${t.continent}).`;
     setResearched((r) => ({ ...r, [step]: text }));
     if (researchCost > 0) setDays((d) => Math.round((d - researchCost) * 10) / 10);
     sfx("success");
@@ -1632,6 +1652,11 @@ export default function ShutterbugWorld() {
   // ---------- SCREENS ----------
   const isTour = gameMode === "tour";
   const isExplore = gameMode === "explore";
+
+  // ---------- STORY / INTRO SCREEN (Grandpa Nigel's send-off) ----------
+  if (screen === "intro") {
+    return <StoryScreen beats={INTRO_BEATS} reduced={prefersReduced} ctaLabel="Take the camera 📷" onDone={finishStory} />;
+  }
 
   if (screen === "start") {
     return (
@@ -1780,8 +1805,8 @@ export default function ShutterbugWorld() {
           {/* ---- One launch button, labelled for the chosen card ---- */}
           <button
             onClick={gameMode === "quiz" ? startQuiz : gameMode === "explore" ? startExplore
-              : gameMode === "tour" ? () => (tourTheme === "classic" ? startTour() : startExpedition(EXPEDITIONS.find((e) => e.id === tourTheme)))
-              : startGame}
+              : gameMode === "tour" ? () => beginWithStory(() => (tourTheme === "classic" ? startTour() : startExpedition(EXPEDITIONS.find((e) => e.id === tourTheme))))
+              : () => beginWithStory(startGame)}
             style={primaryBtn}>
             {gameMode === "quiz" ? "Start the quiz 🧠" : gameMode === "explore" ? "Start exploring 🧭"
               : gameMode === "tour" ? (tourTheme === "classic" ? "Start the Grand Tour ✈" : `Start the ${TOUR_THEMES.find((t) => t.id === tourTheme)?.title} 🗺️`)
@@ -1995,15 +2020,44 @@ export default function ShutterbugWorld() {
     return (
       <Frame>
         <div style={{ maxWidth: 840, margin: "0 auto" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", flexWrap: "wrap", gap: 10 }}>
-            <div>
-              <Stamp>Passport</Stamp>
-              <h2 style={{ fontFamily: "ui-sans-serif, system-ui", fontWeight: 900, fontSize: 28, color: INK, margin: "8px 0 0", display: "flex", alignItems: "center", gap: 10 }}><Avatar spec={avatarFor(profile)} size={44} title={`${profile.name}'s traveler`} /> {profile.name}</h2>
-            </div>
-            <button onClick={() => { setConfirmRemove(false); setScreen("start"); }} className="sbw-noprint" style={{ padding: "9px 18px", borderRadius: 8, border: `1.5px solid ${INK}`, background: "transparent", color: INK, fontWeight: 700, cursor: "pointer" }}>← Back</button>
+          <div className="sbw-noprint" style={{ display: "flex", justifyContent: "flex-end" }}>
+            <button onClick={() => { setConfirmRemove(false); setScreen("start"); }} style={{ padding: "8px 16px", borderRadius: 8, border: `1.5px solid ${INK}`, background: "transparent", color: INK, fontWeight: 700, cursor: "pointer" }}>← Back</button>
           </div>
 
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 16 }}>
+          {/* ---- The passport, as a real booklet: navy cover band + an identity
+               "photo page", then tabbed pages for stamps, collections, keepsakes. ---- */}
+          <div style={{ background: "linear-gradient(160deg, #1C3A5E, #16324E)", borderRadius: "14px 14px 4px 4px", padding: "18px 22px 16px", color: "#F4E3B8", boxShadow: "0 6px 20px rgba(0,0,0,0.28)", marginTop: 4 }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
+              <div style={{ fontFamily: "ui-monospace, monospace", letterSpacing: "0.3em", fontSize: 13, fontWeight: 700 }}>PASSPORT</div>
+              <div aria-hidden="true" style={{ fontSize: 26 }}>🌐</div>
+            </div>
+            <div style={{ fontFamily: "ui-monospace, monospace", letterSpacing: "0.16em", fontSize: 10, opacity: 0.7, marginTop: 2 }}>SHUTTERBUG · A WORLD PHOTO SAFARI</div>
+            <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 14, background: "rgba(244,227,184,0.08)", border: "1px solid rgba(244,227,184,0.25)", borderRadius: 8, padding: "10px 12px" }}>
+              <div style={{ background: "#F4E3B8", borderRadius: 6, padding: 3, flex: "none" }}><Avatar spec={avatarFor(profile)} size={48} title={`${profile.name}'s traveler`} /></div>
+              <div style={{ textAlign: "left", minWidth: 0 }}>
+                <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 9, letterSpacing: "0.16em", opacity: 0.65 }}>TRAVELER</div>
+                <div style={{ fontWeight: 900, fontSize: 22, color: "#fff", lineHeight: 1.1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{profile.name}</div>
+                <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, opacity: 0.8, marginTop: 3 }}>Stamps {pp.masteredCount}/{pp.totalCountries} · Trips {profile.games || 0}</div>
+              </div>
+              {earnedBadges > 0 && <div style={{ marginLeft: "auto", textAlign: "center", flex: "none" }}><div style={{ fontSize: 24 }}>🏅</div><div style={{ fontFamily: "ui-monospace, monospace", fontSize: 10, opacity: 0.85 }}>{earnedBadges}</div></div>}
+            </div>
+          </div>
+
+          {/* Page tabs */}
+          <div className="sbw-noprint" role="tablist" aria-label="Passport pages" style={{ display: "flex", gap: 5, flexWrap: "wrap", margin: "12px 0 14px" }}>
+            {[["id", "🪪 Identity"], ["stamps", "📖 Stamps"], ["collections", "🗂 Collections"], ["badges", "🏅 Keepsakes"]].map(([id, label]) => {
+              const on = passportPage === id;
+              return (
+                <button key={id} role="tab" aria-selected={on} onClick={() => setPassportPage(id)}
+                  style={{ padding: "8px 14px", borderRadius: "9px 9px 0 0", border: `1.5px solid ${on ? CORAL : PAPER_LINE}`, borderBottomWidth: on ? 3 : 1.5, borderBottomColor: on ? CORAL : PAPER_LINE, background: on ? CORAL : "transparent", color: on ? "#fff" : INK, fontWeight: 800, fontSize: 12.5, cursor: "pointer" }}>
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+
+          {passportPage === "id" && (<>
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
             <StatCard label="Stamps earned" value={`${pp.masteredCount} / ${pp.totalCountries}`} />
             <StatCard label="Countries visited" value={`${pp.visitedCount}`} />
             <StatCard label="Trips taken" value={`${profile.games || 0}`} />
@@ -2029,8 +2083,11 @@ export default function ShutterbugWorld() {
             ))}
           </div>
 
+          </>)}
+
+          {passportPage === "collections" && (<>
           {/* Collections — one card per subject category, with progress. */}
-          <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.18em", color: INK, opacity: 0.6, margin: "22px 0 10px" }}>COLLECTIONS</div>
+          <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.18em", color: INK, opacity: 0.6, margin: "4px 0 10px" }}>COLLECTIONS</div>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 }}>
             {Object.entries(KIND_META).map(([k, meta]) => {
               const kk = pp.kinds[k] || { mastered: 0, total: 0 };
@@ -2062,8 +2119,11 @@ export default function ShutterbugWorld() {
             })}
           </div>
 
-          {/* Achievements — long-term badges earned across games. */}
-          <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.18em", color: INK, opacity: 0.6, margin: "22px 0 10px" }}>ACHIEVEMENTS <span style={{ opacity: 0.7 }}>— {earnedBadges}/{badges.length}</span></div>
+          </>)}
+
+          {passportPage === "badges" && (<>
+          {/* Achievements — long-term keepsakes earned across games. */}
+          <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.18em", color: INK, opacity: 0.6, margin: "4px 0 10px" }}>KEEPSAKES <span style={{ opacity: 0.7 }}>— {earnedBadges}/{badges.length}</span></div>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             {badges.slice().sort((a, b) => (b.earned - a.earned) || (b.have / b.need - a.have / a.need)).map((b) => (
               <div key={b.id} title={b.earned ? "Earned!" : `${b.have} / ${b.need}`}
@@ -2077,10 +2137,13 @@ export default function ShutterbugWorld() {
             ))}
           </div>
 
+          </>)}
+
+          {passportPage === "stamps" && (<>
           {/* ---- STICKER BOOK: one page per continent, one slot per country. ----
                A mastered country's slot fills with the photo the traveller actually
                earned there — the gaps are the invitation to keep flying. */}
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", margin: "26px 0 4px", flexWrap: "wrap", gap: 8 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", margin: "4px 0 4px", flexWrap: "wrap", gap: 8 }}>
             <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.18em", color: INK, opacity: 0.6 }}>STICKER BOOK</span>
             <button onClick={() => window.print()} className="sbw-noprint"
               style={{ padding: "6px 14px", borderRadius: 8, border: `1.5px solid ${INK}`, background: "transparent", color: INK, fontWeight: 700, fontSize: 12, cursor: "pointer" }}>
@@ -2133,6 +2196,7 @@ export default function ShutterbugWorld() {
               </section>
             );
           })}
+          </>)}
 
           {/* Remove traveller — two-step so it can't be clicked by accident. */}
           <div className="sbw-noprint" style={{ marginTop: 28, paddingTop: 16, borderTop: `1px solid ${PAPER_LINE}`, textAlign: "center" }}>
@@ -2184,7 +2248,7 @@ export default function ShutterbugWorld() {
   const clue = isTour ? "" : (isCatAsg
     ? (catCount
         ? `In ${asg.continent.toUpperCase()}, ${NUMWORD[catCount] || catCount} countries on your map have a ${catMeta.noun}. Fly to any of them and photograph it — you pick which one!`
-        : `In ${asg.continent.toUpperCase()}, find any ${catMeta.noun} on the editor's list and photograph it — you pick which one!`)
+        : `In ${asg.continent.toUpperCase()}, find any ${catMeta.noun} on Grandpa's list and photograph it — you pick which one!`)
     : (target ? (target[tier] || target.hard) : ""));
   const inCountry = phase === "country";
   const inCity = phase === "city";
@@ -2281,7 +2345,7 @@ export default function ShutterbugWorld() {
             </>
           ) : (
           <div style={{ background: PAPER, border: `1px dashed ${CORAL}`, borderRadius: 6, padding: "14px 16px", position: "relative" }}>
-            <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.22em", color: CORAL, marginBottom: 8 }}>✎ TELEGRAM — FROM THE EDITOR</div>
+            <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.22em", color: CORAL, marginBottom: 8 }}>{NOTE_HEADER}</div>
             {(isCatAsg || namesSubject) ? (
               <>
                 <p style={{ margin: 0, color: INK, lineHeight: 1.5, fontSize: 15 }}>Bring me a photo of <b>{promptSubject}</b>.{showTypeBadge && badgeCat && <> <CategoryBadge category={badgeCat} size="sm" style={{ verticalAlign: "middle" }} /></>}</p>
@@ -2300,16 +2364,16 @@ export default function ShutterbugWorld() {
               Medium, unavailable on Hard. */}
           {!isTour && !isExplore && mode.research !== "off" && (researched[step] ? (
             <div style={{ marginTop: 10, background: "#EAF1F2", border: `1px solid ${OCEAN}`, borderRadius: 6, padding: "10px 12px", fontSize: 13, color: INK, lineHeight: 1.45 }}>
-              <b style={{ color: OCEAN }}>🔎 Research notes:</b> {researched[step]}
+              <b style={{ color: OCEAN }}>📖 {GUIDEBOOK.notesLabel}</b> {researched[step]}
             </div>
           ) : (() => {
             const disabled = busy || days <= researchCost;
             return (
             <button onClick={doResearch} disabled={disabled}
-              title={researchCost > 0 ? "Spend half a travel day for the newsroom to pin down the editor's subject" : "Ask the newsroom to pin down the editor's subject — free on Easy"}
+              title={researchCost > 0 ? GUIDEBOOK.tipCost : GUIDEBOOK.tipFree}
               style={{ marginTop: 10, padding: "7px 14px", borderRadius: 8, border: `1.5px solid ${OCEAN}`, background: "transparent", color: OCEAN, fontWeight: 700, fontSize: 13,
                 cursor: disabled ? "default" : "pointer", opacity: disabled ? 0.5 : 1 }}>
-              🔎 Research the subject <span style={{ opacity: 0.75, fontWeight: 600 }}>({researchCost > 0 ? "½ day" : "free"})</span>
+              📖 {GUIDEBOOK.button} <span style={{ opacity: 0.75, fontWeight: 600 }}>({researchCost > 0 ? "½ day" : "free"})</span>
             </button>
             );
           })())}
@@ -2362,7 +2426,7 @@ export default function ShutterbugWorld() {
               <div style={{ fontSize: 28 }} aria-hidden="true">📸</div>
               <div style={{ fontWeight: 800, color: INK, marginTop: 4 }}><span style={{ fontSize: "1.3em", verticalAlign: "-0.08em" }}>{ctxCountry ? COUNTRY_FLAG[ctxCountry] : ""}</span> You're in {ctxCountry || pickedContinent}!</div>
               <div style={{ fontSize: 13, color: INK, opacity: 0.8, marginTop: 6, lineHeight: 1.45 }}>
-                {isTour ? "Photograph any target on your itinerary that's here, then fly on." : "Click the right city on the map to photograph the editor's subject."}
+                {isTour ? "Photograph any target on your itinerary that's here, then fly on." : "Click the right city on the map to photograph Grandpa's subject."}
               </div>
               <CountryCard country={ctxCountry} />
               {isTour && (
@@ -3088,6 +3152,94 @@ function Confetti({ reduced }) {
 
 function Stamp({ children }) {
   return <span style={{ display: "inline-block", fontFamily: "ui-monospace, monospace", fontSize: 10, letterSpacing: "0.22em", textTransform: "uppercase", color: CORAL, border: `1.5px solid ${CORAL}`, borderRadius: 4, padding: "3px 8px", transform: "rotate(-2deg)" }}>{children}</span>;
+}
+
+// Reveals its text at reading speed to encourage kids to actually read rather
+// than click through. Clicking (or Enter/Space) completes the current line
+// instantly, and reduced-motion users get it whole at once — so no keyboard or
+// screen-reader user is ever trapped behind the animation. The full text is
+// always present for assistive tech; only the visible copy animates.
+function GradualText({ text, reduced, onDone, cps = 42, style }) {
+  const [n, setN] = useState(reduced ? text.length : 0);
+  const doneRef = useRef(false);
+  const idRef = useRef(null);
+  const finish = () => {
+    if (doneRef.current) return;
+    doneRef.current = true;
+    if (idRef.current) { clearInterval(idRef.current); idRef.current = null; }
+    setN(text.length);
+    if (onDone) onDone();
+  };
+  useEffect(() => {
+    doneRef.current = false;
+    if (reduced) { setN(text.length); doneRef.current = true; if (onDone) onDone(); return; }
+    setN(0);
+    let i = 0;
+    idRef.current = setInterval(() => {
+      i += 1;
+      setN(i);
+      if (i >= text.length) { clearInterval(idRef.current); idRef.current = null; if (!doneRef.current) { doneRef.current = true; if (onDone) onDone(); } }
+    }, Math.max(8, Math.round(1000 / cps)));
+    return () => { if (idRef.current) clearInterval(idRef.current); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [text, reduced]);
+  const busy = n < text.length;
+  return (
+    <p onClick={busy ? finish : undefined}
+      onKeyDown={busy ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); finish(); } } : undefined}
+      role={busy ? "button" : undefined} tabIndex={busy ? 0 : undefined}
+      aria-label={busy ? text : undefined}
+      style={{ cursor: busy ? "pointer" : "default", ...style }}>
+      <span aria-hidden={busy ? "true" : undefined}>{text.slice(0, n)}</span>
+      {busy && <span aria-hidden="true" style={{ opacity: 0.35 }}>▌</span>}
+    </p>
+  );
+}
+
+// The story screen: Grandpa Nigel speaks his beats one at a time at reading
+// speed; the "camera" button stays disabled until he has finished. A stand-in
+// portrait sits in for art the user will drop in later (public/grandpa.png).
+function StoryScreen({ beats, reduced, ctaLabel, onDone, onSkip }) {
+  const [revealed, setRevealed] = useState(reduced ? beats.length : 0);
+  const ready = revealed >= beats.length;
+  return (
+    <Frame>
+      <div style={{ maxWidth: 560, margin: "0 auto", padding: "6px 4px", textAlign: "center" }}>
+        {/* Stand-in portrait — replace with public/grandpa.png when the art is ready. */}
+        <div aria-hidden="true" style={{ width: 108, height: 108, margin: "0 auto 4px", borderRadius: "50%", background: "radial-gradient(circle at 50% 38%, #F3E4C6, #D8B98A)", border: `3px solid ${GOLD}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 56, boxShadow: "0 4px 14px rgba(74,50,20,0.3)" }}>
+          {GRANDPA.emoji}
+        </div>
+        <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.2em", color: CORAL, marginBottom: 14 }}>{GRANDPA.name.toUpperCase()}</div>
+
+        <div style={{ background: PAPER, border: `1px solid ${PAPER_LINE}`, borderRadius: 12, padding: "18px 20px", textAlign: "left", minHeight: 180 }}>
+          {beats.slice(0, revealed + 1).map((b, i) => (
+            i < revealed
+              ? <p key={i} style={{ margin: i ? "12px 0 0" : 0, color: INK, fontSize: 16, lineHeight: 1.55 }}>{b}</p>
+              : <GradualText key={i} text={b} reduced={reduced} onDone={() => setRevealed((r) => r + 1)}
+                  style={{ margin: i ? "12px 0 0" : 0, color: INK, fontSize: 16, lineHeight: 1.55 }} />
+          ))}
+        </div>
+
+        <div style={{ marginTop: 18, display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap" }}>
+          <button onClick={ready ? onDone : undefined} disabled={!ready}
+            aria-disabled={!ready}
+            style={{ ...primaryBtn, margin: 0, opacity: ready ? 1 : 0.45, cursor: ready ? "pointer" : "default" }}>
+            {ctaLabel}
+          </button>
+          {onSkip && (
+            <button onClick={onSkip} style={{ padding: "10px 16px", borderRadius: 10, border: `1.5px solid ${INK}`, background: "transparent", color: INK, fontWeight: 700, fontSize: 13, cursor: "pointer" }}>
+              Skip
+            </button>
+          )}
+        </div>
+        {!ready && (
+          <p role="status" style={{ fontSize: 12, color: INK, opacity: 0.5, marginTop: 8 }}>
+            (tap the text to read faster)
+          </p>
+        )}
+      </div>
+    </Frame>
+  );
 }
 function StatCard({ label, value }) {
   return (

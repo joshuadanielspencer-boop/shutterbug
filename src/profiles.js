@@ -89,6 +89,16 @@ export function setAvatar(name, avatar) {
   write(s);
 }
 
+// Persist a small arbitrary flag on a profile (e.g. story progress like
+// whether the traveller has met Grandpa Nigel yet). Unknown keys are fine.
+export function setProfileFlag(name, key, value) {
+  const s = read();
+  const p = s.profiles[name];
+  if (!p) return;
+  p[key] = value;
+  write(s);
+}
+
 export function setLastProfile(name) {
   const s = read();
   if (name === null || s.profiles[name]) {
