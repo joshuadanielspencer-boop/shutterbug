@@ -114,6 +114,25 @@ export function deleteProfile(name) {
   write(s);
 }
 
+// Rename a traveller, keeping all their progress. Profiles are keyed by name, so
+// this re-keys the object and its `name` field. Returns the new name on success,
+// or null if the new name is empty or already taken by a DIFFERENT traveller.
+export function renameProfile(oldName, rawNew) {
+  const newName = String(rawNew || "").trim().slice(0, MAX_NAME);
+  if (!newName) return null;
+  const s = read();
+  const p = s.profiles[oldName];
+  if (!p) return null;
+  if (newName === oldName) return oldName;                 // nothing to do
+  if (s.profiles[newName]) return null;                    // would clobber another traveller
+  p.name = newName;
+  s.profiles[newName] = p;
+  delete s.profiles[oldName];
+  if (s.lastProfile === oldName) s.lastProfile = newName;
+  write(s);
+  return newName;
+}
+
 // Record one finished game against a profile.
 // Returns { isBest, best, isBestTime, bestTime }.
 export function recordGame(name, { difficulty, score, timeMs = 0, won = false, rank = null, mode = "assignments", visitedIds = [], correctIds = [], missedIds = [] }) {

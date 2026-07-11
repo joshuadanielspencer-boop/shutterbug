@@ -9,9 +9,10 @@ import { robinson, eqToRobinson, ROBINSON_W, ROBINSON_H } from "./robinson.js";
 import { CATEGORIES, CATEGORY_ORDER, KIND_META, kindOf } from "./data/categories.js";
 import { ANECDOTES } from "./data/anecdotes.js";
 import { GRANDPA, INTRO_BEATS, SENDOFF_BEATS, NOTE_HEADER, GUIDEBOOK,
-  HOMECOMING_INTRO, WRONG_REACTIONS, ACHIEVEMENT_INTRO, DREAM_FULFILLED } from "./data/grandpa.js";
+  HOMECOMING_INTRO, WRONG_REACTIONS, ACHIEVEMENT_INTRO, DREAM_FULFILLED,
+  END_WIN, END_LOSE } from "./data/grandpa.js";
 import { listProfiles, lastProfileName, getProfile, createProfile, setLastProfile,
-  deleteProfile, setAvatar, setProfileFlag, recordGame, recordExplore, recordQuiz,
+  deleteProfile, renameProfile, setAvatar, setProfileFlag, recordGame, recordExplore, recordQuiz,
   weightedOrder, freshFirst, passportData, achievements, topScores, storageAvailable } from "./profiles.js";
 
 // Base URL the app is served from ("/" at a domain root, "/<repo>/" on a GitHub
@@ -132,14 +133,29 @@ function PhotoCredit({ photo, style }) {
 // `research` gates the ½-day Research hint by tier: "free" (Easy — a leg-up for
 // young players, no day cost), "half" (Medium — costs SHOT_COST), "off" (Hard —
 // no hand-holding). `blurb` is the one-line explainer on the start screen.
+// Scoring is deliberately SMALL and legible (no inflated "750 points!"). Each
+// filed shot is worth a few points; harder tiers pay LESS per shot but ask for
+// more shots, so a young player on Easy and an adult on Hard land on similar
+// totals — the leaderboard prints the difficulty, so that's where the bragging
+// rights live. `points` = points per filed shot. On top: a small day-bonus for
+// efficient routes and ½-point extra credit per correct homecoming review
+// question (see dayBonus / QUIZ_BONUS below).
 const MODES = {
-  easy:   { label: "Easy",   assignments: 3, cityDecoys: 2, daysPer: 3, points: 150, slack: 5, labels: "all",   clue: "easy",   catShare: 0.22, countryOpts: 3, research: "free",
+  easy:   { label: "Easy",   assignments: 3, cityDecoys: 2, daysPer: 3, points: 3, slack: 5, labels: "all",   clue: "easy",   catShare: 0.22, countryOpts: 3, research: "free",
             blurb: "Clues spell out the place · fly straight to the city · all pins labelled · free Research hints." },
-  medium: { label: "Medium", assignments: 5, cityDecoys: 3, daysPer: 3, points: 125, slack: 5, labels: "smart", clue: "medium", catShare: 0.08, countryOpts: 5, research: "half",
+  medium: { label: "Medium", assignments: 5, cityDecoys: 3, daysPer: 3, points: 2, slack: 5, labels: "smart", clue: "medium", catShare: 0.08, countryOpts: 5, research: "half",
             blurb: "Clues name the continent but hide the country · pick the country, then the city · Research costs ½ day." },
-  hard:   { label: "Hard",   assignments: 7, cityDecoys: 4, daysPer: 2, points: 100, slack: 4, labels: "smart", clue: "hard",   catShare: 0.04, countryOpts: 7, research: "off",
+  hard:   { label: "Hard",   assignments: 7, cityDecoys: 4, daysPer: 2, points: 1, slack: 4, labels: "smart", clue: "hard",   catShare: 0.04, countryOpts: 7, research: "off",
             blurb: "Pure-context clues — no place names · country names hidden on the map · no Research · more, tighter trips." },
 };
+// A small efficiency reward: +1 point per 2 full travel days you bank, capped so
+// it never dominates the shot points. QUIZ_BONUS is the ½-point extra credit each
+// correct homecoming review question adds to the trip score.
+const DAY_BONUS_CAP = 3;
+const dayBonus = (days) => Math.min(DAY_BONUS_CAP, Math.floor(Math.max(0, days) / 2));
+const QUIZ_BONUS = 0.5;
+// Round a score to at most one decimal place (quiz extra credit is in halves).
+const tidyScore = (n) => Math.round(n * 10) / 10;
 const MODE_ORDER = ["easy", "medium", "hard"];
 
 const modePlan = (key) => {
@@ -177,13 +193,14 @@ const flightDays = (from, to) => Math.max(0.5, Math.min(3, Math.round((kmBetween
 // ---- same-continent targets and planning an efficient route saves days. ----
 // ---- `reqs` = itinerary length; `slack` = spare days. ----
 const TOUR_MODES = {
-  easy:   { reqs: 4, catShare: 0.22, labels: "all",   clue: "easy",   points: 150, slack: 3 },
-  medium: { reqs: 5, catShare: 0.08, labels: "smart", clue: "medium", points: 125, slack: 2 },
-  hard:   { reqs: 6, catShare: 0.04, labels: "smart", clue: "hard",   points: 100, slack: 1 },
+  easy:   { reqs: 4, catShare: 0.22, labels: "all",   clue: "easy",   points: 2, slack: 3 },
+  medium: { reqs: 5, catShare: 0.08, labels: "smart", clue: "medium", points: 2, slack: 2 },
+  hard:   { reqs: 6, catShare: 0.04, labels: "smart", clue: "hard",   points: 1, slack: 1 },
 };
-// Best achievable Grand Tour score: every target filed, plus the day-bonus for the
-// most days a perfectly efficient route could bank (the buffer built into the budget).
-const tourMaxScore = (nReqs, difficulty) => nReqs * TOUR_MODES[difficulty].points + (nReqs + TOUR_MODES[difficulty].slack) * 50;
+// Best achievable Grand Tour score: every target filed, the small day-bonus for an
+// efficient route, and full marks on the homecoming review quiz (≤5 questions).
+const tourMaxScore = (nReqs, difficulty) =>
+  nReqs * TOUR_MODES[difficulty].points + dayBonus(TOUR_MODES[difficulty].slack) + Math.min(5, nReqs) * QUIZ_BONUS;
 
 // ---- Themed Expeditions: guided, curated Grand Tours around a single learning ----
 // theme (all wildlife, all volcanoes…). Each is a Grand Tour whose specific targets
@@ -527,10 +544,10 @@ const spacedFor = (box) => {
   });
 };
 
-// The best score a game could reach: every photo landed (points each) plus the
-// full day bonus for banking all the slack days (a perfect clean route spends only
-// the flights + shots, leaving exactly `slack` days at 50 pts apiece).
-const maxScoreFor = (nAssign, mode) => nAssign * mode.points + mode.slack * 50;
+// The best score a game could reach: every photo landed (points each), the small
+// efficient-route day bonus, and full marks on the homecoming review quiz.
+const maxScoreFor = (nAssign, mode) =>
+  nAssign * mode.points + dayBonus(mode.slack) + Math.min(5, nAssign) * QUIZ_BONUS;
 
 // Rank on the FRACTION of the achievable max, so a perfect Easy run and a
 // perfect Hard run both earn the top title regardless of raw points.
@@ -806,14 +823,17 @@ const MODE_CARDS = [
 const TOUR_THEMES = [{ id: "classic", title: "Classic", emoji: "🎲", lesson: "A round-the-world itinerary drawn fresh from the whole collection — targets across the continents on one shared day budget." }, ...EXPEDITIONS];
 const cardThumb = (id) => { const l = BY_ID[id]; if (!l?.photo?.src) return null; const src = l.photo.src; return src.includes("?") ? src : src + "?width=480"; };
 
-// ---- Generative background music (Web Audio) -------------------------------
-// A quiet, kalimba-like pattern in C-major pentatonic over a slow bass root,
-// composed live by a look-ahead scheduler — so it never audibly loops, ships
-// no audio files, and works offline. It has its own context and mute toggle,
+// ---- Background music (Web Audio): a Scottish jig ---------------------------
+// A lilting 6/8 folk jig over a bagpipe-style drone (tonic + fifth), composed
+// live by a look-ahead scheduler and looping a fixed melody in D Mixolydian
+// (the natural-7th that gives Scottish and Irish tunes their colour). Ships no
+// audio files and works offline. It has its own context and mute toggle,
 // separate from the sound effects. start() must be called from a user gesture
 // (a click handler) to satisfy autoplay rules, especially on iPad Safari.
+// finale() ends the loop and plays a short, jaunty flourish for the results.
 const MUSIC = (() => {
   let ctx = null, master = null, timer = null, nextBeat = 0, running = false;
+  let drone = []; // sustained bagpipe drone oscillators, torn down on stop()
   const ac = () => {
     try {
       if (typeof window === "undefined") return null;
@@ -824,59 +844,75 @@ const MUSIC = (() => {
         master = ctx.createGain();
         master.gain.value = 0.0001;
         const soften = ctx.createBiquadFilter();
-        soften.type = "lowpass"; soften.frequency.value = 2400; // rounds off the pluck edges
+        soften.type = "lowpass"; soften.frequency.value = 2600; // rounds off the reedy edges
         master.connect(soften); soften.connect(ctx.destination);
       }
       if (ctx.state === "suspended") ctx.resume();
       return ctx;
     } catch { return null; }
   };
-  const PENT = [261.63, 293.66, 329.63, 392.0, 440.0, 523.25]; // C D E G A C'
-  const pluck = (t, f, peak) => {
-    const o = ctx.createOscillator(); o.type = "sine"; o.frequency.value = f;
-    const o2 = ctx.createOscillator(); o2.type = "sine"; o2.frequency.value = f * 2; // soft octave partial
-    const g = ctx.createGain(); const g2 = ctx.createGain();
-    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(peak, t + 0.012);
-    g.gain.exponentialRampToValueAtTime(0.0001, t + 1.1);
-    g2.gain.setValueAtTime(0.0001, t); g2.gain.exponentialRampToValueAtTime(peak * 0.25, t + 0.012);
-    g2.gain.exponentialRampToValueAtTime(0.0001, t + 0.5);
-    o.connect(g); g.connect(master); o2.connect(g2); g2.connect(master);
-    o.start(t); o.stop(t + 1.2); o2.start(t); o2.stop(t + 0.6);
-  };
-  const bass = (t, f) => {
-    const o = ctx.createOscillator(); o.type = "sine"; o.frequency.value = f;
+  // D Mixolydian around the chanter's range. 0 = rest.
+  const N = { D4: 293.66, E4: 329.63, Fs4: 369.99, G4: 392.0, A4: 440.0, B4: 493.88,
+    Cn5: 523.25, D5: 587.33, E5: 659.25, Fs5: 739.99, G5: 783.99, A5: 880.0 };
+  // An original 8-bar jig phrase, six eighth-notes per bar (grouped 3+3). The
+  // first note of each triplet group is accented, giving the jig its bounce.
+  const MELODY = [
+    N.D4, N.Fs4, N.A4,  N.D5, N.A4, N.Fs4,
+    N.G4, N.B4, N.G4,   N.Fs4, N.A4, N.Fs4,
+    N.E4, N.G4, N.B4,   N.A4, N.Fs4, N.D4,
+    N.E4, N.Fs4, N.G4,  N.A4, 0, N.A4,
+    N.B4, N.A4, N.G4,   N.Fs4, N.E4, N.Fs4,
+    N.G4, N.Fs4, N.E4,  N.D4, N.E4, N.Fs4,
+    N.A4, N.D5, N.Cn5,  N.B4, N.A4, N.G4,
+    N.Fs4, N.E4, N.D4,  N.D4, 0, 0,
+  ];
+  // A short reedy note — sawtooth through its own lowpass, quick attack and a
+  // clipped tail so notes stay distinct at jig tempo. Chanter-like.
+  const reed = (t, f, peak, dur) => {
+    const o = ctx.createOscillator(); o.type = "sawtooth"; o.frequency.value = f;
+    const lp = ctx.createBiquadFilter(); lp.type = "lowpass"; lp.frequency.value = 2000; lp.Q.value = 0.6;
     const g = ctx.createGain();
-    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.09, t + 0.05);
-    g.gain.exponentialRampToValueAtTime(0.0001, t + 2.6);
-    o.connect(g); g.connect(master); o.start(t); o.stop(t + 2.8);
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(peak, t + 0.014);
+    g.gain.exponentialRampToValueAtTime(peak * 0.6, t + dur * 0.6);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(lp); lp.connect(g); g.connect(master);
+    o.start(t); o.stop(t + dur + 0.02);
   };
-  let lastIdx = -1;
+  const EIGHTH = 0.148; // ~135 bpm dotted-quarter — a lively jig
+  let idx = 0;
   const schedule = () => {
     try {
       if (!running || !ctx) return;
-      const spb = 60 / 76 / 2;                 // eighth notes at 76 bpm
-      const ahead = ctx.currentTime + 0.7;
+      const ahead = ctx.currentTime + 0.6;
       while (nextBeat < ahead) {
-        const beat = Math.round(nextBeat / spb);
-        if (beat % 16 === 0) bass(nextBeat, [130.81, 98.0, 110.0][Math.floor(Math.random() * 3)]);
-        // Sparse melody: rests are what keep it calm. Never repeat a note.
-        if (Math.random() < 0.5) {
-          let i; do { i = Math.floor(Math.random() * PENT.length); } while (i === lastIdx);
-          lastIdx = i;
-          pluck(nextBeat, PENT[i], 0.07 + Math.random() * 0.05);
-        }
-        nextBeat += spb;
+        const f = MELODY[idx % MELODY.length];
+        const onDownbeat = (idx % 3) === 0;
+        if (f) reed(nextBeat, f, (onDownbeat ? 0.13 : 0.09), onDownbeat ? EIGHTH * 1.1 : EIGHTH * 0.85);
+        idx += 1;
+        nextBeat += EIGHTH;
       }
     } catch { /* music must never break gameplay */ }
   };
+  const startDrone = (t) => {
+    for (const f of [73.42, 110.0]) { // D2 + A2 — the pipe's tonic and fifth
+      const o = ctx.createOscillator(); o.type = "sawtooth"; o.frequency.value = f;
+      const lp = ctx.createBiquadFilter(); lp.type = "lowpass"; lp.frequency.value = 700;
+      const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.05, t + 0.5);
+      o.connect(lp); lp.connect(g); g.connect(master); o.start(t);
+      drone.push({ o, g });
+    }
+  };
+  const stopDrone = () => { const t = ctx ? ctx.currentTime : 0; for (const d of drone) { try { d.g.gain.setTargetAtTime(0.0001, t, 0.15); d.o.stop(t + 0.5); } catch { /* ignore */ } } drone = []; };
   return {
     start() {
       try {
         const c = ac(); if (!c || running) return;
         running = true;
-        master.gain.setTargetAtTime(0.16, c.currentTime, 0.4); // fade in
+        master.gain.cancelScheduledValues(c.currentTime);
+        master.gain.setTargetAtTime(0.13, c.currentTime, 0.5); // fade in
         nextBeat = Math.max(nextBeat, c.currentTime + 0.15);
-        if (!timer) timer = setInterval(schedule, 250);
+        startDrone(c.currentTime + 0.1);
+        if (!timer) timer = setInterval(schedule, 200);
         schedule();
       } catch { /* ignore */ }
     },
@@ -884,7 +920,27 @@ const MUSIC = (() => {
       try {
         running = false;
         if (timer) { clearInterval(timer); timer = null; }
+        stopDrone();
         if (ctx && master) master.gain.setTargetAtTime(0.0001, ctx.currentTime, 0.25); // fade out
+      } catch { /* ignore */ }
+    },
+    // End-of-run flourish: stop the loop, then a brief celebratory jig run that
+    // lands on a bright D-major chord. About 5 seconds, then silence.
+    finale() {
+      try {
+        running = false;
+        if (timer) { clearInterval(timer); timer = null; }
+        stopDrone();
+        const c = ac(); if (!c) return;
+        master.gain.cancelScheduledValues(c.currentTime);
+        master.gain.setValueAtTime(0.15, c.currentTime);
+        const t0 = c.currentTime + 0.05;
+        const run = [N.D4, N.E4, N.Fs4, N.G4, N.A4, N.B4, N.A4, N.D5, N.Cn5, N.B4, N.A4, N.Fs4];
+        run.forEach((f, i) => reed(t0 + i * 0.13, f, i % 3 === 0 ? 0.14 : 0.1, 0.14));
+        // Final held chord: D major (D–F#–A–D).
+        const tc = t0 + run.length * 0.13;
+        [N.D4, N.Fs4, N.A4, N.D5].forEach((f) => reed(tc, f, 0.11, 1.8));
+        master.gain.setTargetAtTime(0.0001, tc + 1.4, 0.5); // let it ring, then fade
       } catch { /* ignore */ }
     },
   };
@@ -978,8 +1034,16 @@ export default function ShutterbugWorld() {
   const [soundOn, setSoundOn] = useState(true);
   const [musicOn, setMusicOn] = useState(() => { try { return localStorage.getItem("shutterbug.music") !== "off"; } catch { return true; } });
   useEffect(() => { try { localStorage.setItem("shutterbug.music", musicOn ? "on" : "off"); } catch { /* ignore */ } }, [musicOn]);
-  // Leaving for the start/passport screens ends the ambient loop.
-  useEffect(() => { if (screen === "start" || screen === "passport") MUSIC.stop(); }, [screen]);
+  // Music by screen: the passport is quiet; arriving at the results ends the
+  // jig loop and plays a short celebratory flourish. The start screen keeps the
+  // jig going if it's already playing (and start-screen clicks kick it off).
+  useEffect(() => {
+    if (screen === "passport") MUSIC.stop();
+    else if (screen === "end") MUSIC.finale();
+  }, [screen]);
+  // Start the splash jig on the player's first interaction (autoplay rules need a
+  // gesture, so we can't begin it on load — the first tap does it).
+  const startMusicMaybe = () => { if (musicOn) MUSIC.start(); };
   const [pending, setPending] = useState(null); // result popup that pauses play until dismissed
   const [elapsedMs, setElapsedMs] = useState(0); // final game time, shown on the results screen
   const [liveNow, setLiveNow] = useState(0); // ticks while playing so the on-screen timer updates
@@ -1008,6 +1072,8 @@ export default function ShutterbugWorld() {
   const [researched, setResearched] = useState({}); // assignment step -> revealed research note (Research button)
   const [cityPlan, setCityPlan] = useState(null); // country-layer city step: { ids, wide } (wide = continent view for thin countries)
   const [quiz, setQuiz] = useState(null); // Quiz mode: { questions, i, answeredIdx, score, correctCount, streak, done, best }
+  const [quizBonus, setQuizBonus] = useState(0); // ½-pt-per-correct homecoming review extra credit folded into the trip score
+  const [endLine, setEndLine] = useState(""); // Grandpa's one random line on the results screen (picked once per results view)
   const [expedition, setExpedition] = useState(null); // active themed expedition {id,title,emoji,lesson} (a curated Grand Tour)
   const [guestMet, setGuestMet] = useState(false); // has a guest (no profile) met Grandpa Nigel this session?
   const [countryPopup, setCountryPopup] = useState(null); // culture card popup shown on arrival in a country
@@ -1058,7 +1124,11 @@ export default function ShutterbugWorld() {
   // In the country layer, the city choices are the picked country's own landmarks
   // (computed at pick-time, so it works for category missions where the country is
   // the player's free choice). Otherwise the pre-built per-step options.
-  const cityOptions = gameMode === "tour" ? (tourOptions[pickedContinent] || [])
+  const cityOptions = gameMode === "tour"
+      // Grand Tour now routes through the country map too: once a country is
+      // picked, the city step shows that country's own landmarks; on a country-
+      // less continent (Antarctica) it falls back to the continent's targets.
+      ? ((pickedCountry && cityPlan) ? cityPlan.ids : (tourOptions[pickedContinent] || []))
     : gameMode === "explore"
       ? (pickedCountry ? ((COUNTRY_LOCS[pickedContinent] && COUNTRY_LOCS[pickedContinent][pickedCountry]) || [])
                        : LOCATIONS.filter((l) => l.continent === pickedContinent).map((l) => l.id))
@@ -1196,7 +1266,8 @@ export default function ShutterbugWorld() {
     setTourReqs(reqs);
     setTourOptions(opts);
     setAssignments([]); setOptionsByStep([]); setStep(0);
-    setPhase("continent"); setPickedContinent(null); setCurrent(null);
+    setPhase("continent"); setPickedContinent(null); setPickedCountry(null); setCityPlan(null); setCurrent(null);
+    poppedCountryRef.current = null;
     setDays(budget); setScore(0); setAlbum([]); setVisitedIds([]);
     setRevealed(false); setLastResult(null); setNewBadges([]); setPending(null);
     setElapsedMs(0); startRef.current = Date.now(); recorded.current = false;
@@ -1307,7 +1378,9 @@ export default function ShutterbugWorld() {
     if (!quiz || quiz.answeredIdx !== null || quiz.done) return;
     const correct = quiz.questions[quiz.i].options[idx].correct;
     const streak = correct ? quiz.streak + 1 : 0;
-    const gain = correct ? 100 + Math.max(0, streak - 1) * 20 : 0; // consecutive-correct bonus
+    // Small, legible scoring: 1 point per correct answer, +1 more once you're on a
+    // 3-in-a-row streak (so a flawless 10 lands around 15, not 1,000+).
+    const gain = correct ? 1 + (streak >= 3 ? 1 : 0) : 0;
     sfx(correct ? "success" : "fail");
     setQuiz({ ...quiz, answeredIdx: idx, score: quiz.score + gain, correctCount: quiz.correctCount + (correct ? 1 : 0), streak, lastGain: gain });
   }
@@ -1316,7 +1389,7 @@ export default function ShutterbugWorld() {
     if (quiz.i + 1 >= quiz.questions.length) {
       // The homecoming visit is part of an expedition, not a standalone Quiz —
       // it isn't scored on the quiz leaderboard; it hands off to the results.
-      if (quiz.homecoming) { setQuiz(null); setScreen("end"); return; }
+      if (quiz.homecoming) { endHomecoming(); return; }
       setElapsedMs(Date.now() - startRef.current);
       let best = null;
       if (profileName) { best = recordQuiz(profileName, { score: quiz.score, correct: quiz.correctCount, total: quiz.questions.length }); refreshProfiles(); }
@@ -1332,10 +1405,22 @@ export default function ShutterbugWorld() {
   // results screen. Anecdote on a right answer; a gentle line on a wrong one.
   function startHomecoming() {
     const ids = album.map((p) => p.id);
+    setQuizBonus(0);
     if (!ids.length) { setScreen("end"); return; }
     const questions = buildQuiz(ids, Math.min(5, ids.length));
     setQuiz({ questions, i: 0, answeredIdx: null, score: 0, correctCount: 0, streak: 0, lastGain: 0, done: false, best: null, homecoming: true });
     setScreen("homecoming");
+  }
+  // Leaving the homecoming for the results: each correct review answer adds ½ a
+  // point of extra credit to the trip score (folded in BEFORE the results screen
+  // records the run, so the recorded score and leaderboard include it).
+  function endHomecoming() {
+    const correct = quiz?.correctCount || 0;
+    const bonus = correct * QUIZ_BONUS;
+    setQuizBonus(bonus);
+    if (bonus) setScore((s) => tidyScore(s + bonus));
+    setQuiz(null);
+    setScreen("end");
   }
 
   // Dismiss the result popup and do what its button promised.
@@ -1404,6 +1489,17 @@ export default function ShutterbugWorld() {
     if (screen === "start") recorded.current = false;
   }, [screen]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Grandpa's send-you-off line on the results screen: proud on a clean sweep,
+  // encouraging when the days ran out. Picked ONCE when the screen opens so it
+  // doesn't reshuffle on every re-render.
+  useEffect(() => {
+    if (screen !== "end") return;
+    const totalTargets = gameMode === "tour" ? tourReqs.length : assignments.length;
+    const won = totalTargets > 0 && album.length >= totalTargets;
+    const pool = won ? END_WIN : END_LOSE;
+    setEndLine(pool[Math.floor(Math.random() * pool.length)]);
+  }, [screen]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const outOfDays = (subtitle) => {
     setElapsedMs(Date.now() - startRef.current);
     sfx("lose");
@@ -1436,16 +1532,20 @@ export default function ShutterbugWorld() {
       const from = current ? loc(current) : (pickedContinent ? CONTINENT_PIN[pickedContinent] : HUB);
       const to = CONTINENT_PIN[cont];
       const cost = flightDays(from, to); // distance-based: group nearby continents to save days
+      const useCountry = COUNTRY_LAYER_CONTINENTS.has(cont); // every mode visits the country map
       sfx("plane");
       const finalize = () => {
         const nd = Math.round((days - cost) * 10) / 10;
         setDays(nd);
-        setFlying(null); setPickedContinent(cont); setPhase("city"); setCurrent(null); setRevealed(false);
+        setFlying(null); setPickedContinent(cont); setPickedCountry(null); setCityPlan(null);
+        setPhase(useCountry ? "country" : "city"); setCurrent(null); setRevealed(false);
+        poppedCountryRef.current = null; // let this continent's countries pop their card
         const costTxt = `−${cost} day${cost === 1 ? "" : "s"}`;
         if (nd <= 0) return outOfDays(`You reached ${cont}, but the trip's budget is spent.`);
         const here = tourReqs.filter((r) => !r.done && r.continent === cont).length;
+        const where = useCountry ? "Pick the country your next target is in." : "Photograph a target on your list.";
         setMsg(here
-          ? { type: "info", text: `Touched down in ${cont} (${costTxt}). ${here} target${here === 1 ? "" : "s"} on your list ${here === 1 ? "is" : "are"} here.` }
+          ? { type: "info", text: `Touched down in ${cont} (${costTxt}). ${here} target${here === 1 ? "" : "s"} on your list ${here === 1 ? "is" : "are"} here. ${where}` }
           : { type: "warn", text: `Touched down in ${cont} (${costTxt}) — but nothing on your list is here. Fly on when ready.` });
       };
       if (prefersReduced) { finalize(); return; }
@@ -1496,6 +1596,20 @@ export default function ShutterbugWorld() {
       setCityPlan({ ids: ((COUNTRY_LOCS[pickedContinent] && COUNTRY_LOCS[pickedContinent][country]) || []).slice().sort(() => Math.random() - 0.5), wide: false });
       setPhase("city"); setCurrent(null); setRevealed(false);
       setMsg({ type: "info", text: `${country} — click any place to learn about it.` });
+      return;
+    }
+    if (gameMode === "tour") {
+      // Land in the chosen country; the city step shows only ITS landmarks. Free
+      // to change your mind — no penalty for picking a country (unlike the timed
+      // Assignments), so exploring the map is encouraged.
+      const own = (COUNTRY_LOCS[pickedContinent] && COUNTRY_LOCS[pickedContinent][country]) || [];
+      const hasBox = !!COUNTRY_META[countryKey(pickedContinent, country)];
+      setCityPlan({ ids: own.slice().sort(() => Math.random() - 0.5), wide: !hasBox });
+      setPickedCountry(country);
+      setPhase("city"); setCurrent(null); setRevealed(false);
+      if (COUNTRY_INFO[country] && poppedCountryRef.current !== country) { poppedCountryRef.current = country; setCountryPopup(country); }
+      const targetHere = tourReqs.some((r) => !r.done && (COUNTRY_LOCS[pickedContinent]?.[country] || []).some((id) => r.kind === "category" ? BY_ID[id].category === r.category : r.targetId === id));
+      setMsg({ type: targetHere ? "info" : "warn", text: targetHere ? `Arrived in ${country}. Photograph your target here!` : `Arrived in ${country} — but no target on your list is here. Pick another country, or fly on.` });
       return;
     }
     if (days <= 0 || !target) return;
@@ -1563,7 +1677,10 @@ export default function ShutterbugWorld() {
     setResearched((r) => ({ ...r, [step]: text }));
     if (researchCost > 0) setDays((d) => Math.round((d - researchCost) * 10) / 10);
     sfx("success");
-    setMsg({ type: "info", text: `🔎 Research: ${text}` });
+    // The note pins itself under the telegram (and persists across the flight);
+    // don't ALSO echo it into the message banner — that read as the hint
+    // appearing twice. Just nudge the player toward the map.
+    setMsg({ type: "info", text: "Grandpa's guidebook has the answer — pinned above. Now pick the continent on the map." });
   }
 
   // ---- City phase: click a city on the zoomed continent to photograph it ----
@@ -1601,7 +1718,7 @@ export default function ShutterbugWorld() {
         const remaining = nextReqs.filter((r) => !r.done).length;
         const found = req.kind === "category" ? `You found a ${CATEGORIES[req.category].noun} — ${clicked.subject}!` : `You bagged ${clicked.subject}!`;
         if (remaining === 0) {
-          const bonus = Math.round(Math.max(0, d) * 50);
+          const bonus = dayBonus(d);
           setScore((s) => s + gain + bonus);
           setElapsedMs(Date.now() - startRef.current);
           sfx("win");
@@ -1656,7 +1773,7 @@ export default function ShutterbugWorld() {
       const found = a.type === "category" ? `You found a ${CATEGORIES[a.category].noun} — ${clicked.subject}!` : `You photographed ${clicked.subject}.`;
       const done = step + 1 >= assignments.length;
       if (done) {
-        const bonus = Math.round(Math.max(0, d) * 50);
+        const bonus = dayBonus(d);
         setScore((s) => s + gain + bonus);
         setElapsedMs(Date.now() - startRef.current);
         sfx("win");
@@ -1732,7 +1849,7 @@ export default function ShutterbugWorld() {
                 {profiles.map((p) => {
                   const active = p.name === profileName;
                   return (
-                    <button key={p.name} onClick={() => { setProfileName(p.name); setLastProfile(p.name); setHasChosen(true); setPromptTraveler(false); }} aria-pressed={active}
+                    <button key={p.name} onClick={() => { startMusicMaybe(); setProfileName(p.name); setLastProfile(p.name); setHasChosen(true); setPromptTraveler(false); }} aria-pressed={active}
                       style={{ padding: "5px 14px 5px 6px", borderRadius: 20, cursor: "pointer", fontWeight: 700, fontSize: 13,
                         display: "inline-flex", alignItems: "center", gap: 7,
                         border: `1.5px solid ${INK}`, background: active ? INK : "transparent", color: active ? PAPER : INK }}>
@@ -1740,7 +1857,7 @@ export default function ShutterbugWorld() {
                     </button>
                   );
                 })}
-                <button onClick={() => { setProfileName(null); setLastProfile(null); setHasChosen(true); setPromptTraveler(false); }} aria-pressed={hasChosen && profileName === null}
+                <button onClick={() => { startMusicMaybe(); setProfileName(null); setLastProfile(null); setHasChosen(true); setPromptTraveler(false); }} aria-pressed={hasChosen && profileName === null}
                   style={{ padding: "7px 14px", borderRadius: 20, cursor: "pointer", fontWeight: 700, fontSize: 13,
                     border: `1.5px dashed ${INK}`, background: (hasChosen && profileName === null) ? INK : "transparent", color: (hasChosen && profileName === null) ? PAPER : INK }}>
                   Guest
@@ -1764,7 +1881,7 @@ export default function ShutterbugWorld() {
                   </button>
                   <button onClick={() => setAvatarEdit(true)}
                     style={{ padding: "7px 16px", borderRadius: 8, border: `1.5px solid ${OCEAN}`, background: "transparent", color: OCEAN, fontWeight: 700, fontSize: 13, cursor: "pointer" }}>
-                    🎨 Style my traveler
+                    🧳 Customize traveler
                   </button>
                 </span>
               ) : (
@@ -1785,7 +1902,7 @@ export default function ShutterbugWorld() {
                 const src = cardThumb(c.photoId);
                 return (
                   <div key={c.id} style={{ position: "relative" }}>
-                    <button onClick={() => { setGameMode(c.id); setModeInfo(null); }} aria-pressed={active}
+                    <button onClick={() => { startMusicMaybe(); setGameMode(c.id); setModeInfo(null); }} aria-pressed={active}
                       style={{ position: "relative", display: "block", width: "100%", height: 108, borderRadius: 12, overflow: "hidden", cursor: "pointer",
                         border: active ? `3px solid ${CORAL}` : `1.5px solid ${PAPER_LINE}`, padding: 0, background: "#20343B", textAlign: "left",
                         boxShadow: active ? "0 4px 14px rgba(233,106,76,0.35)" : "0 2px 8px rgba(74,50,20,0.18)" }}>
@@ -1917,6 +2034,12 @@ export default function ShutterbugWorld() {
         {avatarEdit && profileName && (
           <AvatarEditor name={profileName} initial={getProfile(profileName)?.avatar}
             onSave={(spec) => { setAvatar(profileName, spec); setAvatarEdit(false); refreshProfiles(); sfx("stamp"); }}
+            onRename={(want) => {
+              const nn = renameProfile(profileName, want);
+              if (nn) { setProfileName(nn); setLastProfile(nn); refreshProfiles(); sfx("stamp"); return true; }
+              return false;
+            }}
+            onRemove={() => { deleteProfile(profileName); setAvatarEdit(false); setProfileName(null); setHasChosen(false); refreshProfiles(); }}
             onClose={() => setAvatarEdit(false)} />
         )}
       </Frame>
@@ -1954,11 +2077,11 @@ export default function ShutterbugWorld() {
       <Frame>
         <div style={{ maxWidth: 560, margin: "0 auto" }}>
           {home && (
-            <div style={{ display: "flex", alignItems: "center", gap: 12, background: PAPER, border: `1px solid ${PAPER_LINE}`, borderRadius: 12, padding: "12px 14px", marginBottom: 14 }}>
-              <NigelPortrait size={54} style={{ borderWidth: 2 }} />
+            <div style={{ display: "flex", alignItems: "center", gap: 16, background: PAPER, border: `1px solid ${PAPER_LINE}`, borderRadius: 12, padding: "14px 16px", marginBottom: 14 }}>
+              <NigelPortrait size={96} style={{ borderWidth: 3 }} />
               <div>
-                <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 10, letterSpacing: "0.16em", color: CORAL }}>HOME AGAIN · {GRANDPA.name.toUpperCase()}</div>
-                <div style={{ color: INK, fontSize: 13.5, lineHeight: 1.4, marginTop: 2 }}>{quiz.i === 0 ? HOMECOMING_INTRO : "And this one — do you remember?"}</div>
+                <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 12, letterSpacing: "0.16em", color: CORAL }}>HOME AGAIN · {GRANDPA.name.toUpperCase()}</div>
+                <div style={{ color: INK, fontSize: 17, lineHeight: 1.45, marginTop: 4 }}>{quiz.i === 0 ? HOMECOMING_INTRO : "And this one — do you remember?"}</div>
               </div>
             </div>
           )}
@@ -2001,8 +2124,8 @@ export default function ShutterbugWorld() {
               const tidbit = (loc && ANECDOTES[loc.id]) || (loc && loc.fact) || "";
               const wrongLine = WRONG_REACTIONS[quiz.i % WRONG_REACTIONS.length];
               return (
-                <div style={{ marginTop: 14, background: wasCorrect ? "#EAF6EF" : PAPER, border: `1px solid ${wasCorrect ? GREEN : PAPER_LINE}`, borderRadius: 10, padding: "12px 14px", fontSize: 13.5, color: INK, lineHeight: 1.55 }}>
-                  <span aria-hidden="true" style={{ marginRight: 6 }}>{GRANDPA.emoji}</span>
+                <div style={{ marginTop: 14, background: wasCorrect ? "#EAF6EF" : PAPER, border: `1px solid ${wasCorrect ? GREEN : PAPER_LINE}`, borderRadius: 10, padding: "14px 16px", fontSize: 16, color: INK, lineHeight: 1.6 }}>
+                  <span aria-hidden="true" style={{ marginRight: 6, fontSize: "1.4em", verticalAlign: "-0.15em" }}>{GRANDPA.emoji}</span>
                   <b style={{ color: wasCorrect ? GREEN : CORAL }}>{wasCorrect ? "That's the one!" : wrongLine}</b>{" "}
                   {wasCorrect ? tidbit : q.explain}
                 </div>
@@ -2016,7 +2139,7 @@ export default function ShutterbugWorld() {
           })()}
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 16 }}>
             {home
-              ? <button onClick={() => { setQuiz(null); setScreen("end"); }} style={{ background: "none", border: "none", color: INK, opacity: 0.6, fontSize: 13, cursor: "pointer", fontWeight: 700 }}>Skip to results →</button>
+              ? <button onClick={endHomecoming} style={{ background: "none", border: "none", color: INK, opacity: 0.6, fontSize: 13, cursor: "pointer", fontWeight: 700 }}>Skip to results →</button>
               : <button onClick={() => { setQuiz(null); setGameMode("assignments"); setScreen("start"); }} style={{ background: "none", border: "none", color: INK, opacity: 0.6, fontSize: 13, cursor: "pointer", fontWeight: 700 }}>← Quit</button>}
             {answered && <button onClick={nextQuiz} style={{ ...primaryBtn, margin: 0, padding: "10px 22px" }}>{quiz.i + 1 >= quiz.questions.length ? (home ? "Show him the rest →" : "See results") : "Next question →"}</button>}
           </div>
@@ -2044,8 +2167,21 @@ export default function ShutterbugWorld() {
           <h2 style={{ fontFamily: "ui-sans-serif, system-ui", fontWeight: 900, letterSpacing: "0.08em", fontSize: 30, color: INK, margin: "10px 0 4px" }}>{album.length} / {totalTargets} shots filed</h2>
           <p style={{ fontFamily: "ui-monospace, monospace", fontSize: 22, color: CORAL, fontWeight: 700, margin: "6px 0" }}>{score} pts · ⏱ {fmtTime(elapsedMs)}</p>
           <p style={{ fontFamily: "ui-monospace, monospace", fontSize: 12, color: INK, opacity: 0.6, margin: "0 0 6px", letterSpacing: "0.06em" }}>{isTourEnd ? "Grand Tour" : "Assignments"} · {mode.label} · {Math.round(pct * 100)}% of a perfect run</p>
+          {quizBonus > 0 && <p style={{ fontFamily: "ui-monospace, monospace", fontSize: 12, color: GREEN, fontWeight: 700, margin: "0 0 6px" }}>+{tidyScore(quizBonus)} review-quiz extra credit ✔</p>}
           <p style={{ color: INK, fontWeight: 700, marginTop: 6 }}>{r.title}</p>
           <p style={{ color: INK, opacity: 0.7, marginTop: 2 }}>{r.note}</p>
+
+          {/* Grandpa's word on the trip — proud on a clean sweep, encouraging when
+              the days ran out. He is the emotional bookend to every expedition. */}
+          {endLine && (
+            <div style={{ display: "flex", alignItems: "center", gap: 16, background: PAPER, border: `2px solid ${GOLD}`, borderRadius: 14, padding: "16px 18px", margin: "18px auto 0", maxWidth: 520, textAlign: "left" }}>
+              <NigelPortrait size={112} />
+              <div>
+                <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.16em", color: CORAL, marginBottom: 5 }}>{GRANDPA.name.toUpperCase()}</div>
+                <p style={{ margin: 0, color: INK, fontSize: 17, lineHeight: 1.5 }}>{endLine}</p>
+              </div>
+            </div>
+          )}
 
           {profileName && (lastResult?.isBest || lastResult?.isBestTime) && (
             <div style={{ marginTop: 10, display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap" }}>
@@ -2386,6 +2522,19 @@ export default function ShutterbugWorld() {
   const busy = !!flying || !!pending || (!isExplore && days <= 0);
   return (
     <Frame>
+      {/* Travel-day budget — pinned top-left so it's the first thing the player
+          sees. The single most important number in a timed run. */}
+      {!isExplore && (
+        <div style={{ display: "flex", justifyContent: "flex-start", marginBottom: 12 }}>
+          <div style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "8px 16px", borderRadius: 12,
+            background: days <= 1 ? CORAL : days <= 2.5 ? GOLD : INK, color: days <= 2.5 && days > 1 ? INK : "#fff",
+            fontFamily: "ui-monospace, monospace", fontWeight: 800, boxShadow: "0 3px 0 rgba(16,38,46,0.2)" }}>
+            <span aria-hidden="true" style={{ fontSize: 20, lineHeight: 1 }}>◷</span>
+            <span style={{ fontSize: 20, lineHeight: 1 }}>{days}</span>
+            <span style={{ fontSize: 12, letterSpacing: "0.08em", opacity: 0.9 }}>TRAVEL DAY{days === 1 ? "" : "S"} LEFT</span>
+          </div>
+        </div>
+      )}
       <div style={{ display: "flex", gap: 16, alignItems: "flex-start", flexWrap: "wrap" }}>
         {/* Field journal panel */}
         <div style={{ flex: "1 1 360px", minWidth: 320 }}>
@@ -2487,7 +2636,7 @@ export default function ShutterbugWorld() {
                 {flashKey > 0 && !prefersReduced && <div key={flashKey} className="sbw-flash" />}
               </div>
               <PhotoCredit photo={currentLoc.photo} style={{ textAlign: "center", marginTop: 0, marginBottom: 4 }} />
-              <div style={{ fontWeight: 700, color: INK }}><span style={{ fontSize: "1.5em", verticalAlign: "-0.08em" }}>{currentLoc.flag}</span> {currentLoc.city}, {currentLoc.country}</div>
+              <div style={{ fontWeight: 700, color: INK }}><span style={{ fontSize: "2.6em", verticalAlign: "-0.22em" }}>{currentLoc.flag}</span> {currentLoc.city}, {currentLoc.country}</div>
               <div style={{ fontSize: 13, color: INK, opacity: 0.7, marginTop: 2 }}>{currentLoc.subject}</div>
               {/* Country-layer arrivals already saw the culture card as a popup;
                   easy mode (no country step) and Explore show it here with the shot. */}
@@ -2512,15 +2661,23 @@ export default function ShutterbugWorld() {
           ) : inCity ? (
             <div style={{ marginTop: 12, background: "#fff", border: `1px dashed ${CORAL}`, borderRadius: 8, padding: 16, textAlign: "center" }}>
               <div style={{ fontSize: 28 }} aria-hidden="true">📸</div>
-              <div style={{ fontWeight: 800, color: INK, marginTop: 4 }}><span style={{ fontSize: "1.3em", verticalAlign: "-0.08em" }}>{ctxCountry ? COUNTRY_FLAG[ctxCountry] : ""}</span> You're in {ctxCountry || pickedContinent}!</div>
+              <div style={{ fontWeight: 800, color: INK, marginTop: 4 }}><span style={{ fontSize: "2.2em", verticalAlign: "-0.2em" }}>{ctxCountry ? COUNTRY_FLAG[ctxCountry] : ""}</span> You're in {ctxCountry || pickedContinent}!</div>
               <div style={{ fontSize: 13, color: INK, opacity: 0.8, marginTop: 6, lineHeight: 1.45 }}>
                 {isTour ? "Photograph any target on your itinerary that's here, then fly on." : "Click the right city on the map to photograph Grandpa's subject."}
               </div>
               {isTour && (
-                <button onClick={() => { if (!busy) { setPhase("continent"); setRevealed(false); setMsg({ type: "info", text: "Pick the next continent to fly to." }); } }} disabled={busy}
-                  style={{ marginTop: 10, padding: "8px 16px", borderRadius: 8, border: `1.5px solid ${OCEAN}`, background: "transparent", color: OCEAN, fontWeight: 700, fontSize: 13, cursor: busy ? "default" : "pointer" }}>
-                  ✈ Fly to another continent
-                </button>
+                <div style={{ display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap", marginTop: 10 }}>
+                  {pickedCountry && COUNTRY_LAYER_CONTINENTS.has(pickedContinent) && (
+                    <button onClick={() => { if (!busy) { setPickedCountry(null); setCityPlan(null); setPhase("country"); setCurrent(null); setRevealed(false); setMsg({ type: "info", text: `${pickedContinent} — pick the country your next target is in.` }); } }} disabled={busy}
+                      style={{ padding: "8px 16px", borderRadius: 8, border: `1.5px solid ${INK}`, background: "transparent", color: INK, fontWeight: 700, fontSize: 13, cursor: busy ? "default" : "pointer" }}>
+                      ↑ Pick another country
+                    </button>
+                  )}
+                  <button onClick={() => { if (!busy) { setPickedCountry(null); setCityPlan(null); setPhase("continent"); setRevealed(false); setMsg({ type: "info", text: "Pick the next continent to fly to." }); } }} disabled={busy}
+                    style={{ padding: "8px 16px", borderRadius: 8, border: `1.5px solid ${OCEAN}`, background: "transparent", color: OCEAN, fontWeight: 700, fontSize: 13, cursor: busy ? "default" : "pointer" }}>
+                    ✈ Fly to another continent
+                  </button>
+                </div>
               )}
             </div>
           ) : inCountry ? (
@@ -2748,11 +2905,11 @@ export default function ShutterbugWorld() {
                      onClick={() => photographCity(id)}
                      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); photographCity(id); } }}
                      style={{ cursor: busy ? "default" : "pointer" }}>
-                    <ellipse cx={px} cy={py} {...pinR(0.026)} fill="transparent" />
-                    <ellipse cx={px} cy={py} {...pinR(isCurrent ? 0.02 : 0.017)} fill={isCurrent ? "rgba(233,92,66,0.22)" : "rgba(255,255,255,0.78)"} stroke={isCurrent ? CORAL : INK} strokeWidth={isCurrent ? "1.4" : "1"} vectorEffect="non-scaling-stroke" />
-                    {isCurrent && <ellipse cx={px} cy={py} {...pinR(0.026)} fill="none" stroke={CORAL} strokeWidth="1" vectorEffect="non-scaling-stroke" className="sbw-ping" />}
-                    <text x={px} y={py} fontSize={0.028 * box.h} textAnchor="middle" dominantBaseline="central" style={{ pointerEvents: "none" }}>{emoji}</text>
-                    <text className="sbw-label" x={px + 0.022 * box.w} y={py - 0.02 * box.h} fontSize={0.02 * box.h} fontFamily="ui-monospace, monospace" fill={INK} style={{ paintOrder: "stroke", stroke: PAPER, strokeWidth: 0.006 * box.h }}>{l.city}</text>
+                    <ellipse cx={px} cy={py} {...pinR(0.05)} fill="transparent" />
+                    <ellipse cx={px} cy={py} {...pinR(isCurrent ? 0.04 : 0.034)} fill={isCurrent ? "rgba(233,92,66,0.22)" : "rgba(255,255,255,0.82)"} stroke={isCurrent ? CORAL : INK} strokeWidth={isCurrent ? "1.4" : "1"} vectorEffect="non-scaling-stroke" />
+                    {isCurrent && <ellipse cx={px} cy={py} {...pinR(0.052)} fill="none" stroke={CORAL} strokeWidth="1" vectorEffect="non-scaling-stroke" className="sbw-ping" />}
+                    <text x={px} y={py} fontSize={0.056 * box.h} textAnchor="middle" dominantBaseline="central" style={{ pointerEvents: "none" }}>{emoji}</text>
+                    <text className="sbw-label" x={px + 0.04 * box.w} y={py - 0.036 * box.h} fontSize={0.022 * box.h} fontFamily="ui-monospace, monospace" fill={INK} style={{ paintOrder: "stroke", stroke: PAPER, strokeWidth: 0.006 * box.h }}>{l.city}</text>
                   </g>
                 );
               })}
@@ -2782,10 +2939,9 @@ export default function ShutterbugWorld() {
         {profileName && <Avatar spec={avatarFor(getProfile(profileName))} size={22} title={`${profileName}'s traveler`} />}
         {isExplore
           ? <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 13, fontWeight: 700, color: OCEAN }} title="Places you've discovered">📸 {album.length} discovered</span>
-          : (<>
+          : (
               <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 13, fontWeight: 700, color: INK, opacity: 0.75 }} title="Time on this trip">⏱ {fmtTime(Math.max(0, liveNow - startRef.current))}</span>
-              <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 13, fontWeight: 700, color: days <= 1 ? CORAL : INK }}>◷ {days} day{days === 1 ? "" : "s"} left</span>
-            </>)}
+            )}
         <span aria-hidden="true" style={{ width: 1, height: 18, background: PAPER_LINE }} />
         <button onClick={() => setSoundOn((s) => !s)} aria-label={soundOn ? "Turn sound off" : "Turn sound on"} aria-pressed={soundOn} title={soundOn ? "Sound on" : "Sound off"}
           style={{ background: "none", border: "none", cursor: "pointer", fontSize: 17, lineHeight: 1, padding: 2, color: INK, opacity: 0.75 }}>
@@ -3030,22 +3186,36 @@ function LandmarkModal({ p, onClose, reduced }) {
 // localStorage. Profiles that never opened the editor get a stable default
 // derived from their name, so every board shows a face from day one.
 // ===========================================================================
-const AVATAR_SKIN = ["#F7D7C4", "#EFC3A4", "#D9A184", "#B97F5E", "#8E5B3F", "#6A4430"];
-const AVATAR_HAIRC = ["#2B2118", "#5C4030", "#8A6238", "#C99C4F", "#C4483F", "#9AA0A3"];
-const AVATAR_SHIRT = ["#E96A4C", "#2E6E75", "#3E8E5A", "#D9A036", "#8E6FC1"];
-const AVATAR_HAIR = ["none", "short", "buzz", "curly", "long"];
-const AVATAR_HAT = ["none", "safari", "cap", "beret", "beanie"];
+// Skin was already a good range; the rest gained a lot more variety (more hair
+// styles, a much wider colour wheel for hair and shirts, and an optional pair of
+// glasses) so two travellers rarely look alike.
+const AVATAR_SKIN = ["#F7D7C4", "#EFC3A4", "#E7B48F", "#D9A184", "#B97F5E", "#8E5B3F", "#6A4430", "#4A2E1E"];
+const AVATAR_HAIRC = ["#2B2118", "#4A3325", "#5C4030", "#8A6238", "#C99C4F", "#E6CE8A", "#8A3B24", "#C4483F", "#E4873C", "#9AA0A3", "#E9E6E1", "#3E73B0", "#C25FA0", "#5FA36B", "#8E6FC1"];
+const AVATAR_SHIRT = ["#E96A4C", "#2E6E75", "#3E8E5A", "#D9A036", "#8E6FC1", "#1F3D66", "#C25FA0", "#4FA6C4", "#7A8A3A", "#B23A48", "#2B2B2B", "#EDE6D2"];
+const AVATAR_HAIR = ["none", "short", "buzz", "curly", "long", "afro", "ponytail", "bun", "pigtails", "mohawk", "bob", "spiky", "wavy"];
+const AVATAR_HAT = ["none", "safari", "cap", "beret", "beanie", "bucket", "sunhat", "bandana", "earflap"];
+const AVATAR_GLASSES = ["none", "round", "square", "sunglasses"];
 const AVATAR_DIMS = [
   { key: "skin", label: "Skin", n: AVATAR_SKIN.length, swatch: (i) => AVATAR_SKIN[i] },
   { key: "hair", label: "Hair", n: AVATAR_HAIR.length, name: (i) => AVATAR_HAIR[i] },
   { key: "hairColor", label: "Hair colour", n: AVATAR_HAIRC.length, swatch: (i) => AVATAR_HAIRC[i] },
+  { key: "glasses", label: "Glasses", n: AVATAR_GLASSES.length, name: (i) => AVATAR_GLASSES[i] },
   { key: "hat", label: "Hat", n: AVATAR_HAT.length, name: (i) => AVATAR_HAT[i] },
   { key: "shirt", label: "Shirt", n: AVATAR_SHIRT.length, swatch: (i) => AVATAR_SHIRT[i] },
 ];
 function defaultAvatar(name) {
   // hashStr is unsigned 32-bit — shifts must be >>> or big hashes go negative.
+  // Derive every field from the array lengths so new options are reachable by
+  // default, and keep hair on a real style (index ≥ 1, never "none").
   const h = hashStr("av:" + String(name || "?"));
-  return { skin: h % 6, hair: 1 + ((h >>> 3) % 4), hairColor: (h >>> 6) % 6, hat: (h >>> 10) % 5, shirt: (h >>> 13) % 5 };
+  return {
+    skin: h % AVATAR_SKIN.length,
+    hair: 1 + ((h >>> 3) % (AVATAR_HAIR.length - 1)),
+    hairColor: (h >>> 6) % AVATAR_HAIRC.length,
+    glasses: (h >>> 9) % AVATAR_GLASSES.length === 0 ? 0 : ((h >>> 9) % 2 === 0 ? 0 : (h >>> 11) % AVATAR_GLASSES.length),
+    hat: (h >>> 12) % AVATAR_HAT.length,
+    shirt: (h >>> 15) % AVATAR_SHIRT.length,
+  };
 }
 const avatarFor = (profile) => (profile && profile.avatar) || defaultAvatar(profile && profile.name);
 
@@ -3057,7 +3227,11 @@ function Avatar({ spec, size = 24, title }) {
   const shirt = pick(AVATAR_SHIRT, v.shirt);
   const hair = pick(AVATAR_HAIR, v.hair);
   const hat = pick(AVATAR_HAT, v.hat);
-  const clip = `sbw-av-${size}-${v.skin}${v.hair}${v.hairColor}${v.hat}${v.shirt}`;
+  const glasses = pick(AVATAR_GLASSES, v.glasses);
+  const clip = `sbw-av-${size}-${v.skin}${v.hair}${v.hairColor}${v.glasses}${v.hat}${v.shirt}`;
+  // A hat covers the crown, so any hair that piles ON TOP of the head is hidden
+  // under it (side/back hair still shows). Keeps hat + big-hair combos tidy.
+  const crownHidden = hat !== "none";
   return (
     <svg width={size} height={size} viewBox="0 0 64 64" role={title ? "img" : undefined}
       aria-hidden={title ? undefined : "true"} style={{ flex: "none", verticalAlign: "middle" }}>
@@ -3072,24 +3246,53 @@ function Avatar({ spec, size = 24, title }) {
         <rect x="26" y="50" width="12" height="2.6" rx="1.3" fill="#C9C9C9" />
         <circle cx="32" cy="55" r="2.8" fill="#222" />
         <circle cx="32" cy="55" r="1.5" fill="#6FA8B8" />
-        {/* long hair falls BEHIND the head */}
-        {hair === "long" && (<g fill={hairC}>
-          <rect x="16.5" y="22" width="8" height="24" rx="4" />
-          <rect x="39.5" y="22" width="8" height="24" rx="4" />
+        {/* hair that falls BEHIND the head (drawn before the head) */}
+        {(hair === "long" || hair === "bob") && (<g fill={hairC}>
+          <rect x="16.5" y="22" width="8" height={hair === "bob" ? 15 : 24} rx="4" />
+          <rect x="39.5" y="22" width="8" height={hair === "bob" ? 15 : 24} rx="4" />
         </g>)}
+        {hair === "wavy" && (<g fill={hairC}>
+          <path d="M17,24 Q14,34 18,44 Q22,40 21,30 Z" />
+          <path d="M47,24 Q50,34 46,44 Q42,40 43,30 Z" />
+        </g>)}
+        {hair === "ponytail" && (<g fill={hairC}>
+          <ellipse cx="47" cy="30" rx="4.5" ry="9" transform="rotate(14 47 30)" />
+        </g>)}
+        {hair === "pigtails" && (<g fill={hairC}>
+          <circle cx="18" cy="30" r="5" /><circle cx="46" cy="30" r="5" />
+        </g>)}
+        {hair === "afro" && <circle cx="32" cy="24" r="17" fill={hairC} />}
         {/* head */}
         <circle cx="32" cy="28" r="13" fill={skin} />
-        {/* hair caps over the head */}
-        {(hair === "short" || hair === "long") && <path d="M19.6,24 A13,13 0 0 1 44.4,24 Z" fill={hairC} />}
+        {/* hair that caps OVER the head (hidden under a hat's crown) */}
+        {!crownHidden && (<>
+        {(hair === "short" || hair === "long" || hair === "bob" || hair === "wavy" || hair === "ponytail" || hair === "pigtails") && <path d="M19.6,24 A13,13 0 0 1 44.4,24 Z" fill={hairC} />}
         {hair === "buzz" && <path d="M21.1,21 A13,13 0 0 1 42.9,21 Z" fill={hairC} />}
+        {hair === "afro" && <path d="M19.6,24 A13,13 0 0 1 44.4,24 Z" fill={hairC} />}
         {hair === "curly" && (<g fill={hairC}>
           <path d="M19.6,24 A13,13 0 0 1 44.4,24 Z" />
           <circle cx="22" cy="19" r="4.4" /><circle cx="32" cy="14.5" r="5" /><circle cx="42" cy="19" r="4.4" />
         </g>)}
+        {hair === "mohawk" && <path d="M29,10 L35,10 L34,24 L30,24 Z" fill={hairC} />}
+        {hair === "spiky" && (<g fill={hairC}>
+          <path d="M20,24 L22,13 L26,23 Z" /><path d="M27,23 L30,11 L34,23 Z" /><path d="M35,23 L38,12 L42,24 Z" />
+          <path d="M19.6,24 A13,13 0 0 1 44.4,24 Z" />
+        </g>)}
+        </>)}
         {/* face */}
         <circle cx="27" cy="28.5" r="1.4" fill="#10262E" />
         <circle cx="37" cy="28.5" r="1.4" fill="#10262E" />
         <path d="M27,33 Q32,37 37,33" fill="none" stroke="#10262E" strokeWidth="1.6" strokeLinecap="round" />
+        {/* glasses sit over the eyes */}
+        {glasses === "round" && (<g fill="none" stroke="#10262E" strokeWidth="1.3">
+          <circle cx="27" cy="28.5" r="3.4" /><circle cx="37" cy="28.5" r="3.4" /><path d="M30.4,28.5 L33.6,28.5" />
+        </g>)}
+        {glasses === "square" && (<g fill="none" stroke="#10262E" strokeWidth="1.3">
+          <rect x="23.4" y="25.6" width="7" height="5.6" rx="1.2" /><rect x="33.6" y="25.6" width="7" height="5.6" rx="1.2" /><path d="M30.4,28.4 L33.6,28.4" />
+        </g>)}
+        {glasses === "sunglasses" && (<g stroke="#10262E" strokeWidth="1.2">
+          <rect x="23.2" y="25.4" width="7.4" height="5.6" rx="2.4" fill="#20303A" /><rect x="33.4" y="25.4" width="7.4" height="5.6" rx="2.4" fill="#20303A" /><path d="M30.6,27 L33.4,27" fill="none" />
+        </g>)}
         {/* hat sits on top of everything */}
         {hat === "safari" && (<g>
           <path d="M23,18.5 Q23,9.5 32,9.5 Q41,9.5 41,18.5 Z" fill="#C8A96A" />
@@ -3110,24 +3313,55 @@ function Avatar({ spec, size = 24, title }) {
           <rect x="20.5" y="17.4" width="23" height="4.2" rx="2.1" fill="#2F6E46" />
           <circle cx="32" cy="8.8" r="2.6" fill="#2F6E46" />
         </g>)}
+        {hat === "bucket" && (<g>
+          <path d="M22,18.5 A10,10 0 0 1 42,18.5 Z" fill="#6E8E4C" />
+          <ellipse cx="32" cy="18.7" rx="14.5" ry="3.6" fill="#5C7A3C" />
+        </g>)}
+        {hat === "sunhat" && (<g>
+          <ellipse cx="32" cy="18.5" rx="18" ry="4.6" fill="#E7C15A" />
+          <path d="M24,17.5 Q24,9 32,9 Q40,9 40,17.5 Z" fill="#F0D27A" />
+          <rect x="24" y="15" width="16" height="2.6" fill="#C89A3A" />
+        </g>)}
+        {hat === "bandana" && (<g>
+          <path d="M19.6,23 A13,13 0 0 1 44.4,23 L44,18 A13,13 0 0 0 20,18 Z" fill="#C4483F" />
+          <circle cx="24" cy="20.5" r="0.9" fill="#F4ECD8" /><circle cx="32" cy="18.6" r="0.9" fill="#F4ECD8" /><circle cx="40" cy="20.5" r="0.9" fill="#F4ECD8" />
+        </g>)}
+        {hat === "earflap" && (<g>
+          <path d="M20.5,19.5 A11.5,11.5 0 0 1 43.5,19.5 Z" fill="#4F7CA8" />
+          <rect x="20.5" y="17.4" width="23" height="4.6" rx="2.3" fill="#E9E6E1" />
+          <ellipse cx="21.5" cy="27" rx="3" ry="4.6" fill="#4F7CA8" /><ellipse cx="42.5" cy="27" rx="3" ry="4.6" fill="#4F7CA8" />
+          <circle cx="32" cy="8.6" r="2.6" fill="#E9E6E1" />
+        </g>)}
       </g>
     </svg>
   );
 }
 
-// The editor: one row of ◀ ▶ steppers per dimension, live preview, randomize.
-// Everything is a real button, so it is fully keyboard-operable.
-function AvatarEditor({ name, initial, onSave, onClose }) {
+// The "Customize Traveler" modal: rename the traveller, restyle their avatar
+// (one row of ◀ ▶ steppers per dimension, live preview, randomize), or remove
+// them. Everything is a real button/field, so it is fully keyboard-operable.
+function AvatarEditor({ name, initial, onSave, onClose, onRename, onRemove }) {
   const [spec, setSpec] = useState(() => {
     const raw = { ...defaultAvatar(name), ...(initial || {}) };
     for (const d of AVATAR_DIMS) raw[d.key] = (((raw[d.key] || 0) % d.n) + d.n) % d.n; // negative-safe
     return raw;
   });
+  const [renameTo, setRenameTo] = useState(name);
+  const [renameErr, setRenameErr] = useState("");
+  const [confirmRemove, setConfirmRemove] = useState(false);
+  const doRename = () => {
+    const want = renameTo.trim();
+    setRenameErr("");
+    if (!want || want === name) return;
+    const ok = onRename && onRename(want);
+    if (!ok) setRenameErr("That name is taken — pick another.");
+  };
   const bump = (key, n, dir) => setSpec((sp) => ({ ...sp, [key]: (sp[key] + dir + n) % n }));
   const roll = () => setSpec({
     skin: Math.floor(Math.random() * AVATAR_SKIN.length),
     hair: Math.floor(Math.random() * AVATAR_HAIR.length),
     hairColor: Math.floor(Math.random() * AVATAR_HAIRC.length),
+    glasses: Math.floor(Math.random() * AVATAR_GLASSES.length),
     hat: Math.floor(Math.random() * AVATAR_HAT.length),
     shirt: Math.floor(Math.random() * AVATAR_SHIRT.length),
   });
@@ -3138,11 +3372,28 @@ function AvatarEditor({ name, initial, onSave, onClose }) {
     </button>
   );
   return (
-    <div role="dialog" aria-modal="true" aria-label={`Style ${name}'s traveler`}
+    <div role="dialog" aria-modal="true" aria-label={`Customize ${name}'s traveler`}
       style={{ position: "fixed", inset: 0, background: "rgba(16,38,46,0.62)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 70, padding: 16 }}>
       <div className="sbw-pop" style={{ background: PAPER, borderRadius: 12, padding: 20, width: "min(92vw, 380px)", maxHeight: "90vh", overflowY: "auto", textAlign: "center", border: `1px solid ${PAPER_LINE}` }}>
-        <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.2em", color: CORAL }}>🎨 STYLE YOUR TRAVELLER</div>
+        <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.2em", color: CORAL }}>🧳 CUSTOMIZE TRAVELER</div>
         <div style={{ margin: "12px 0 4px" }}><Avatar spec={spec} size={104} title={`${name}'s traveler`} /></div>
+        {/* Rename */}
+        {onRename && (
+          <div style={{ margin: "8px 0 4px", textAlign: "left" }}>
+            <label htmlFor="sbw-rename" style={{ fontFamily: "ui-monospace, monospace", fontSize: 10, letterSpacing: "0.14em", color: INK, opacity: 0.6 }}>NAME</label>
+            <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
+              <input id="sbw-rename" value={renameTo} maxLength={20}
+                onChange={(e) => { setRenameTo(e.target.value); setRenameErr(""); }}
+                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); doRename(); } }}
+                style={{ flex: 1, minWidth: 0, padding: "8px 10px", borderRadius: 8, border: `1.5px solid ${PAPER_LINE}`, fontSize: 14, background: "#fff", color: INK }} />
+              <button onClick={doRename} disabled={!renameTo.trim() || renameTo.trim() === name}
+                style={{ padding: "8px 14px", borderRadius: 8, border: `1.5px solid ${OCEAN}`, background: "transparent", color: OCEAN, fontWeight: 700, fontSize: 13, cursor: renameTo.trim() && renameTo.trim() !== name ? "pointer" : "default", opacity: renameTo.trim() && renameTo.trim() !== name ? 1 : 0.5 }}>
+                Rename
+              </button>
+            </div>
+            {renameErr && <p role="alert" style={{ color: CORAL, fontSize: 12, fontWeight: 700, margin: "5px 0 0" }}>{renameErr}</p>}
+          </div>
+        )}
         {AVATAR_DIMS.map((d) => (
           <div key={d.key} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, padding: "6px 0", borderTop: `1px solid ${PAPER_LINE}` }}>
             <span style={{ fontWeight: 700, color: INK, fontSize: 13, width: 86, textAlign: "left" }}>{d.label}</span>
@@ -3161,6 +3412,25 @@ function AvatarEditor({ name, initial, onSave, onClose }) {
           <button onClick={() => onSave(spec)} style={{ padding: "9px 18px", borderRadius: 8, border: "none", background: GREEN, color: "#fff", fontWeight: 800, cursor: "pointer" }}>Save</button>
           <button onClick={onClose} style={{ padding: "9px 14px", borderRadius: 8, border: `1.5px solid ${INK}`, background: "transparent", color: INK, fontWeight: 700, cursor: "pointer" }}>Cancel</button>
         </div>
+        {/* Remove traveller — two-step so it can't be clicked by accident. */}
+        {onRemove && (
+          <div style={{ marginTop: 14, paddingTop: 12, borderTop: `1px solid ${PAPER_LINE}` }}>
+            {confirmRemove ? (
+              <div>
+                <p style={{ color: INK, fontSize: 12.5, opacity: 0.8, margin: "0 0 8px" }}>Remove <b>{name}</b> and erase all their stamps, scores, and best times? This can't be undone.</p>
+                <div style={{ display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap" }}>
+                  <button onClick={onRemove} style={{ padding: "8px 16px", borderRadius: 8, border: "none", background: CORAL, color: "#fff", fontWeight: 800, cursor: "pointer" }}>Yes, remove</button>
+                  <button onClick={() => setConfirmRemove(false)} style={{ padding: "8px 14px", borderRadius: 8, border: `1.5px solid ${INK}`, background: "transparent", color: INK, fontWeight: 700, cursor: "pointer" }}>Cancel</button>
+                </div>
+              </div>
+            ) : (
+              <button onClick={() => setConfirmRemove(true)}
+                style={{ background: "none", border: "none", color: CORAL, opacity: 0.85, fontSize: 12.5, fontWeight: 700, cursor: "pointer" }}>
+                🗑 Remove this traveler…
+              </button>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -3209,8 +3479,8 @@ function CountryCard({ country }) {
   return (
     <div style={{ marginTop: 10, background: PAPER, border: `1px solid ${PAPER_LINE}`, borderRadius: 8, padding: 12, textAlign: "left" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
-        <span aria-hidden="true" style={{ fontSize: 32, lineHeight: 1 }}>{COUNTRY_FLAG[country] || "🏳️"}</span>
-        <span style={{ fontWeight: 900, color: INK, fontSize: 17 }}>{country}</span>
+        <span aria-hidden="true" style={{ fontSize: 52, lineHeight: 1 }}>{COUNTRY_FLAG[country] || "🏳️"}</span>
+        <span style={{ fontWeight: 900, color: INK, fontSize: 19 }}>{country}</span>
         {info && <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, color: INK, opacity: 0.55, marginLeft: "auto" }}>{info.region}</span>}
       </div>
       <PeoplePhoto people={people} />
