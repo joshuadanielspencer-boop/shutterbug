@@ -120,8 +120,12 @@ function PhotoCredit({ photo, style }) {
 // ---- Points per photo are HIGHER on Easy (younger players). `labels`: "all" ----
 // ---- names every city, "smart" hides names until hover/focus. `clue` picks ----
 // ---- the clue text.
-// `catShare` = the chance each assignment is a "photograph any {category} in
-// {continent}" mission instead of a specific-subject one (the rest are specific).
+// `catShare` = the chance each assignment is an open "photograph any {category}
+// in {continent}" mission instead of a specific-subject one. Kept LOW on purpose
+// and rarer as difficulty rises (Easy an occasional change of pace; Medium/Hard
+// almost always specific), so the game is mostly about piecing together a real
+// clue to a real place rather than "find one of many." The specific missions use
+// each location's easy/medium/hard clue ladder (spelled out → cryptic).
 // `slack` = spare travel days baked into the budget on top of the clean-route
 // cost (distance flights + one shot each); banking them at the end is the day
 // bonus, and it shrinks with difficulty.
@@ -129,11 +133,11 @@ function PhotoCredit({ photo, style }) {
 // young players, no day cost), "half" (Medium — costs SHOT_COST), "off" (Hard —
 // no hand-holding). `blurb` is the one-line explainer on the start screen.
 const MODES = {
-  easy:   { label: "Easy",   assignments: 3, cityDecoys: 2, daysPer: 3, points: 150, slack: 5, labels: "all",   clue: "easy",   catShare: 0.4, countryOpts: 3, research: "free",
+  easy:   { label: "Easy",   assignments: 3, cityDecoys: 2, daysPer: 3, points: 150, slack: 5, labels: "all",   clue: "easy",   catShare: 0.22, countryOpts: 3, research: "free",
             blurb: "Clues spell out the place · fly straight to the city · all pins labelled · free Research hints." },
-  medium: { label: "Medium", assignments: 5, cityDecoys: 3, daysPer: 3, points: 125, slack: 5, labels: "smart", clue: "medium", catShare: 0.5, countryOpts: 5, research: "half",
+  medium: { label: "Medium", assignments: 5, cityDecoys: 3, daysPer: 3, points: 125, slack: 5, labels: "smart", clue: "medium", catShare: 0.08, countryOpts: 5, research: "half",
             blurb: "Clues name the continent but hide the country · pick the country, then the city · Research costs ½ day." },
-  hard:   { label: "Hard",   assignments: 7, cityDecoys: 4, daysPer: 2, points: 100, slack: 4, labels: "smart", clue: "hard",   catShare: 0.5, countryOpts: 7, research: "off",
+  hard:   { label: "Hard",   assignments: 7, cityDecoys: 4, daysPer: 2, points: 100, slack: 4, labels: "smart", clue: "hard",   catShare: 0.04, countryOpts: 7, research: "off",
             blurb: "Pure-context clues — no place names · country names hidden on the map · no Research · more, tighter trips." },
 };
 const MODE_ORDER = ["easy", "medium", "hard"];
@@ -173,9 +177,9 @@ const flightDays = (from, to) => Math.max(0.5, Math.min(3, Math.round((kmBetween
 // ---- same-continent targets and planning an efficient route saves days. ----
 // ---- `reqs` = itinerary length; `slack` = spare days. ----
 const TOUR_MODES = {
-  easy:   { reqs: 4, catShare: 0.4, labels: "all",   clue: "easy",   points: 150, slack: 3 },
-  medium: { reqs: 5, catShare: 0.5, labels: "smart", clue: "medium", points: 125, slack: 2 },
-  hard:   { reqs: 6, catShare: 0.6, labels: "smart", clue: "hard",   points: 100, slack: 1 },
+  easy:   { reqs: 4, catShare: 0.22, labels: "all",   clue: "easy",   points: 150, slack: 3 },
+  medium: { reqs: 5, catShare: 0.08, labels: "smart", clue: "medium", points: 125, slack: 2 },
+  hard:   { reqs: 6, catShare: 0.04, labels: "smart", clue: "hard",   points: 100, slack: 1 },
 };
 // Best achievable Grand Tour score: every target filed, plus the day-bonus for the
 // most days a perfectly efficient route could bank (the buffer built into the budget).
@@ -3343,8 +3347,8 @@ function StoryScreen({ beats, reduced, ctaLabel, onDone, onSkip }) {
   return (
     <Frame>
       <div style={{ maxWidth: 560, margin: "0 auto", padding: "6px 4px", textAlign: "center" }}>
-        <NigelPortrait size={116} style={{ margin: "0 auto 4px" }} />
-        <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.2em", color: CORAL, marginBottom: 14 }}>{GRANDPA.name.toUpperCase()}</div>
+        <NigelPortrait size={232} style={{ margin: "0 auto 8px" }} />
+        <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 22, fontWeight: 700, letterSpacing: "0.14em", color: CORAL, marginBottom: 16 }}>{GRANDPA.name.toUpperCase()}</div>
 
         <div style={{ background: PAPER, border: `1px solid ${PAPER_LINE}`, borderRadius: 12, padding: "18px 20px", textAlign: "left", minHeight: 180 }}>
           {beats.slice(0, revealed + 1).map((b, i) => (
