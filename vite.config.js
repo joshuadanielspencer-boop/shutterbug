@@ -11,6 +11,27 @@ const base = process.env.BASE_PATH || "/";
 // https://vite.dev/config/
 export default defineConfig({
   base,
+  build: {
+    // Split the bundle so React, the (large) map-outline data, the location
+    // catalogue, and the rest of the content each land in their own chunk. This
+    // improves browser caching (editing a fact no longer re-downloads React) and,
+    // together with the lazy map load, keeps the country-outline data out of the
+    // first paint. The data chunks are legitimately large text (path strings,
+    // facts), so the warning limit is raised to reflect that — it isn't bloat.
+    chunkSizeWarningLimit: 700,
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes("node_modules")) {
+            return id.includes("react") ? "react-vendor" : "vendor";
+          }
+          if (id.includes("/src/data/worldmap")) return "mapdata";
+          if (id.includes("/src/data/locations")) return "locations";
+          if (id.includes("/src/data/")) return "content";
+        },
+      },
+    },
+  },
   plugins: [
     react(),
     // Turn the built app into an installable, offline-capable PWA so it can run
