@@ -234,7 +234,9 @@ const CONTINENT_COLOR = {
 // The world (continent-selection) map is a Robinson projection. Its viewBox is
 // this tall, with the ~182.6-tall map centred in it — so it fills the square frame
 // with a gentle stretch and blank margins top/bottom (and rounded blank corners).
-const WORLD_VBH = 262;
+// A taller viewBox scales the map DOWN vertically within the square frame: 262→288
+// compresses it ~10% so the world reads less stretched/elongated.
+const WORLD_VBH = 288;
 const WORLD_BOX = { x: 0, y: (ROBINSON_H - WORLD_VBH) / 2, w: ROBINSON_W, h: WORLD_VBH };
 
 // The Robinson map outline (filled as ocean) and a light graticule, both static.
@@ -547,6 +549,26 @@ const spacedFor = (box) => {
   });
 };
 
+// A country can hold far more landmarks than a single run should show (the USA has
+// 30). Pick a manageable, well-SPREAD subset for the city map: always the required
+// place(s), then spaced decoys from the rest, capped at `cap`. Guarantees the
+// target is present and reduces pin/label overlap. `wrap` shifts eastern-Pacific
+// points so Oceania spacing is measured correctly.
+const pickCountryCityIds = (continent, country, mustInclude, cap) => {
+  const all = (COUNTRY_LOCS[continent] && COUNTRY_LOCS[continent][country]) || [];
+  if (all.length <= cap) return shuffleArr(all);
+  const meta = COUNTRY_META[countryKey(continent, country)];
+  const wrap = CONTINENT_META[continent] && CONTINENT_META[continent].mode === "wrap";
+  const xy = (l) => ({ x: wrap && l.x < 180 ? l.x + 360 : l.x, y: l.y });
+  const far = spacedFor(meta ? meta.box : { w: 30 });
+  const chosen = mustInclude.filter((id) => all.includes(id)).slice(0, cap);
+  const chosenXY = chosen.map((id) => xy(BY_ID[id]));
+  const pool = shuffleArr(all.filter((id) => !chosen.includes(id)));
+  for (const id of pool) { if (chosen.length >= cap) break; const p = xy(BY_ID[id]); if (far(p, chosenXY)) { chosen.push(id); chosenXY.push(p); } }
+  for (const id of pool) { if (chosen.length >= cap) break; if (!chosen.includes(id)) chosen.push(id); } // top up if spacing was too strict
+  return shuffleArr(chosen);
+};
+
 // The best score a game could reach: every photo landed (points each), the small
 // efficient-route day bonus, and full marks on the homecoming review quiz.
 const maxScoreFor = (nAssign, mode) =>
@@ -842,6 +864,7 @@ const MUSIC = (() => {
   // playing through `master`.
   let ctx = null, master = null, jigBus = null, timer = null, nextBeat = 0, running = false;
   let drone = []; // sustained bagpipe drone oscillators, torn down on stop()
+  let countryTimer = null, countryActive = false; // the looping country-arrival tune
   const ac = () => {
     try {
       if (typeof window === "undefined") return null;
@@ -1011,14 +1034,21 @@ const MUSIC = (() => {
       try {
         running = false;
         if (timer) { clearInterval(timer); timer = null; }
+        this.stopCountry();
         stopDrone();
         if (ctx && jigBus) jigBus.gain.setTargetAtTime(0.0001, ctx.currentTime, 0.25);
         if (ctx && master) master.gain.setTargetAtTime(0.0001, ctx.currentTime, 0.3);
       } catch { /* ignore */ }
     },
+    // Stop the looping country tune (leaving the country / the trip).
+    stopCountry() {
+      countryActive = false;
+      if (countryTimer) { clearTimeout(countryTimer); countryTimer = null; }
+    },
     // ~4-second lively jig over a flight, on master (independent of the loop).
     travelJig() {
       try {
+        this.stopCountry(); // you're leaving the country — silence its tune
         const c = ac(); if (!c) return;
         wake(c);
         const t0 = c.currentTime + 0.04;
@@ -1031,12 +1061,21 @@ const MUSIC = (() => {
         for (let i = 0; i < n; i += 6) voice(t0 + i * EIGHTH, 146.83, 0.06, EIGHTH * 3, "reed", master);
       } catch { /* ignore */ }
     },
-    // A country/region tune (5–9 s) on arrival, on master.
+    // The country's tune, LOOPED while the player is in that country (a gap
+    // between repeats so it doesn't fatigue). Replaces any previous country loop.
     countryTune(country, continent) {
       try {
+        this.stopCountry();
         const c = ac(); if (!c) return;
         wake(c);
-        playTune(tuneKeyFor(country, continent));
+        const key = tuneKeyFor(country, continent);
+        countryActive = true;
+        const loop = () => {
+          if (!countryActive || !ctx) return;
+          const dur = playTune(key);
+          countryTimer = setTimeout(loop, Math.max(3000, (dur + 3) * 1000));
+        };
+        loop();
       } catch { /* ignore */ }
     },
     // End-of-run flourish: stop the loop, then a brief celebratory jig run that
@@ -1045,6 +1084,7 @@ const MUSIC = (() => {
       try {
         running = false;
         if (timer) { clearInterval(timer); timer = null; }
+        this.stopCountry();
         stopDrone();
         const c = ac(); if (!c) return;
         wake(c);
@@ -1076,6 +1116,17 @@ const SPEECH_LANG = {
   "Urdu": "ur", "Uzbek": "uz", "Vietnamese": "vi", "Xhosa": "xh",
 };
 const speechAvailable = typeof window !== "undefined" && "speechSynthesis" in window;
+// Speak a short English announcement aloud ("Welcome to France!") — used on map
+// arrivals. A nice-to-have; never breaks anything if speech is unavailable.
+function speakEn(text) {
+  try {
+    if (!speechAvailable || !text) return;
+    const u = new SpeechSynthesisUtterance(String(text));
+    u.lang = "en-US"; u.rate = 0.95; u.pitch = 1.05;
+    window.speechSynthesis.cancel();
+    window.speechSynthesis.speak(u);
+  } catch { /* speech is optional */ }
+}
 function speakGreeting(g) {
   try {
     if (!speechAvailable || !g?.text) return;
@@ -1155,6 +1206,7 @@ export default function ShutterbugWorld() {
     if (screen === "passport") MUSIC.stop();
     else if (screen === "play") MUSIC.fadeJig();          // reach the map → jig fades out
     else if (screen === "end") { if (musicOn) MUSIC.finale(); else MUSIC.stop(); }
+    else MUSIC.stopCountry();                             // meet/start/quiz/homecoming — no country tune
   }, [screen]); // eslint-disable-line react-hooks/exhaustive-deps
   // Start the splash jig on the player's first interaction (autoplay rules need a
   // gesture, so we can't begin it on load — the first tap does it).
@@ -1237,6 +1289,7 @@ export default function ShutterbugWorld() {
 
   const sfx = (name, ...args) => { if (soundOn && SFX[name]) SFX[name](...args); };
   const music = (name, ...args) => { if (musicOn && MUSIC[name]) MUSIC[name](...args); };
+  const say = (text) => { if (soundOn) speakEn(text); }; // spoken map-arrival announcements
 
   useEffect(() => () => timer.current && clearTimeout(timer.current), []);
 
@@ -1731,6 +1784,7 @@ export default function ShutterbugWorld() {
         setFlying(null); setPickedContinent(cont); setPickedCountry(null); setCityPlan(null);
         setPhase(useCountry ? "country" : "city"); setCurrent(null); setRevealed(false);
         setMsg({ type: "info", text: useCountry ? `Welcome to ${cont}! Pick a country to explore.` : `Welcome to ${cont}! Click any place to learn about it.` });
+        say(`Welcome to ${cont}!`);
         maybeMrO();
       };
       if (prefersReduced) { finalize(); return; }
@@ -1761,6 +1815,7 @@ export default function ShutterbugWorld() {
         setMsg(here
           ? { type: "info", text: `Touched down in ${cont} (${costTxt}). ${here} target${here === 1 ? "" : "s"} on your list ${here === 1 ? "is" : "are"} here. ${where}` }
           : { type: "warn", text: `Touched down in ${cont} (${costTxt}) — but nothing on your list is here. Fly on when ready.` });
+        say(`Welcome to ${cont}!`);
         maybeMrO();
       };
       if (prefersReduced) { finalize(); return; }
@@ -1788,7 +1843,7 @@ export default function ShutterbugWorld() {
         setCurrent(null);   // arrived on the continent; no city picked yet
         setRevealed(false);
         if (nd <= 0) outOfDays(`You reached ${cont}, but the trip's budget is spent.`);
-        else { setMsg({ type: "info", text: `Touched down in ${cont} (${costTxt}). ${useCountry ? "Now pick the right country." : "Now pick the right city."}` }); maybeMrO(); }
+        else { setMsg({ type: "info", text: `Touched down in ${cont} (${costTxt}). ${useCountry ? "Now pick the right country." : "Now pick the right city."}` }); say(`Welcome to ${cont}!`); maybeMrO(); }
       };
       if (prefersReduced) { finalize(); return; }
       music("travelJig");
@@ -1812,9 +1867,10 @@ export default function ShutterbugWorld() {
     if (phase !== "country" || flying || pending) return;
     if (gameMode === "explore") {
       setPickedCountry(country);
-      setCityPlan({ ids: ((COUNTRY_LOCS[pickedContinent] && COUNTRY_LOCS[pickedContinent][country]) || []).slice().sort(() => Math.random() - 0.5), wide: false });
+      setCityPlan({ ids: pickCountryCityIds(pickedContinent, country, [], 7), wide: false });
       setPhase("city"); setCurrent(null); setRevealed(false);
       music("countryTune", country, pickedContinent); // a few seconds of local music on arrival
+      say(`You're in ${country}!`);
       setMsg({ type: "info", text: `${country} — click any place to learn about it.` });
       return;
     }
@@ -1822,13 +1878,15 @@ export default function ShutterbugWorld() {
       // Land in the chosen country; the city step shows only ITS landmarks. Free
       // to change your mind — no penalty for picking a country (unlike the timed
       // Assignments), so exploring the map is encouraged.
-      const own = (COUNTRY_LOCS[pickedContinent] && COUNTRY_LOCS[pickedContinent][country]) || [];
       const hasBox = !!COUNTRY_META[countryKey(pickedContinent, country)];
-      setCityPlan({ ids: own.slice().sort(() => Math.random() - 0.5), wide: !hasBox });
+      const ownIds = (COUNTRY_LOCS[pickedContinent] && COUNTRY_LOCS[pickedContinent][country]) || [];
+      const tourMust = tourReqs.filter((r) => !r.done && ownIds.includes(r.anchorId)).map((r) => r.anchorId);
+      setCityPlan({ ids: pickCountryCityIds(pickedContinent, country, tourMust, 5), wide: !hasBox });
       setPickedCountry(country);
       setPhase("city"); setCurrent(null); setRevealed(false);
       if (COUNTRY_INFO[country] && poppedCountryRef.current !== country) { poppedCountryRef.current = country; setCountryPopup(country); }
       music("countryTune", country, pickedContinent); // a few seconds of local music on arrival
+      say(`You're in ${country}!`);
       const targetHere = tourReqs.some((r) => !r.done && (COUNTRY_LOCS[pickedContinent]?.[country] || []).some((id) => r.kind === "category" ? BY_ID[id].category === r.category : r.targetId === id));
       setMsg({ type: targetHere ? "info" : "warn", text: targetHere ? `Arrived in ${country}. Photograph your target here!` : `Arrived in ${country} — but no target on your list is here. Pick another country, or fly on.` });
       return;
@@ -1847,11 +1905,17 @@ export default function ShutterbugWorld() {
       // tight; a thinner one keeps the continent view (so the lone pin isn't lost
       // in a hard zoom) but still shows only that country's own places. Countries
       // fill toward 3+ as content is added.
-      const own = (COUNTRY_LOCS[pickedContinent] && COUNTRY_LOCS[pickedContinent][country]) || [];
+      const ownIds = (COUNTRY_LOCS[pickedContinent] && COUNTRY_LOCS[pickedContinent][country]) || [];
       // Zoom into the country you picked whenever it has a map box; only fall back
       // to the continent view if it doesn't (safety — keeps a lone pin visible).
       const hasBox = !!COUNTRY_META[countryKey(pickedContinent, country)];
-      const plan = { ids: own.slice().sort(() => Math.random() - 0.5), wide: !hasBox };
+      // Show only a manageable, spread-out subset (cap by difficulty: Easy 3 →
+      // Hard 5), always including this assignment's target(s) — so a big country
+      // like the USA never floods the map with 30 overlapping pins.
+      const mustInc = a.type === "specific" ? [a.targetId]
+        : ownIds.filter((id) => BY_ID[id].category === a.category).slice(0, 2);
+      const cap = MODES[difficulty].cityDecoys + 1;
+      const plan = { ids: pickCountryCityIds(pickedContinent, country, mustInc, cap), wide: !hasBox };
       setCityPlan(plan);
       setPickedCountry(country);
       setPhase("city");
@@ -1860,6 +1924,7 @@ export default function ShutterbugWorld() {
       // Pop the culture card the moment you land in the country.
       if (COUNTRY_INFO[country] && poppedCountryRef.current !== country) { poppedCountryRef.current = country; setCountryPopup(country); }
       music("countryTune", country, pickedContinent); // a few seconds of local music on arrival
+      say(`You're in ${country}!`);
       setMsg({ type: "info", text: `Arrived in ${country}. Now photograph Grandpa's subject.` });
     } else {
       const nd = Math.round((days - 0.5) * 10) / 10; // a wrong country costs half a day
@@ -2063,8 +2128,8 @@ export default function ShutterbugWorld() {
             <NigelPortrait size={132} style={{ flex: "none" }} />
             <div style={{ textAlign: "left" }}>
               <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 12, letterSpacing: "0.16em", color: CORAL, marginBottom: 6 }}>{GRANDPA.name.toUpperCase()}</div>
-              <p style={{ margin: 0, color: INK, fontSize: 17, lineHeight: 1.5 }}>{meetInfo?.line}</p>
-              {showRunNote && <p style={{ margin: "10px 0 0", color: INK, opacity: 0.85, fontSize: 15, lineHeight: 1.5, fontStyle: "italic" }}>{meetInfo.comment}</p>}
+              <TypeLine text={meetInfo?.line} reduced={prefersReduced} style={{ margin: 0, color: INK, fontSize: 17, lineHeight: 1.5 }} />
+              {showRunNote && <TypeLine text={meetInfo.comment} reduced={prefersReduced} style={{ margin: "10px 0 0", color: INK, opacity: 0.85, fontSize: 15, lineHeight: 1.5, fontStyle: "italic" }} />}
               <p style={{ margin: "12px 0 0", color: INK, fontWeight: 800, fontSize: 16 }}>{MEET_ASK}</p>
             </div>
           </div>
@@ -2211,11 +2276,30 @@ export default function ShutterbugWorld() {
     return (
       <Frame>
         <div style={{ maxWidth: 960, margin: "0 auto", textAlign: "center", padding: "8px 4px" }}>
-          <div style={{ maxWidth: 720, margin: "0 auto" }}>
-          {/* Hand-illustrated splash — the title and tagline live in the artwork,
-              so no text heading is needed here. */}
-          <img src={`${BASE}splash.jpg`} alt="Shutterbug — A World Photo Safari"
-            style={{ width: "100%", maxWidth: 720, height: "auto", display: "block", margin: "4px auto 0", borderRadius: 14, boxShadow: "0 4px 16px rgba(74,50,20,0.28)" }} />
+          {/* Hand-illustrated splash covering most of the screen, with the launch
+              button overlaid near the bottom-centre of the artwork. The title and
+              tagline live in the image, so no text heading is needed. */}
+          <div style={{ position: "relative", width: "100%", maxWidth: 940, margin: "0 auto" }}>
+            <img src={`${BASE}splash.jpg`} alt="Shutterbug — A World Photo Safari"
+              style={{ width: "100%", height: "auto", display: "block", borderRadius: 14, boxShadow: "0 4px 16px rgba(74,50,20,0.28)" }} />
+            <div style={{ position: "absolute", left: 0, right: 0, bottom: "5%", display: "flex", flexDirection: "column", alignItems: "center", gap: 8, padding: "0 12px" }}>
+              {(() => {
+                const prof = profileName ? getProfile(profileName) : null;
+                const returning = !!prof && (prof.metNigel || (prof.games || 0) > 0);
+                const label = returning ? "Continue your adventure ✈" : "Begin your adventure ✈";
+                return (
+                  <button onClick={goToMeet}
+                    style={{ ...primaryBtn, marginTop: 0, fontSize: 19, padding: "15px 32px", boxShadow: "0 5px 0 #A93A28, 0 6px 22px rgba(0,0,0,0.45)" }}>
+                    {label}
+                  </button>
+                );
+              })()}
+              {promptTraveler && (
+                <p role="alert" style={{ color: CORAL, fontWeight: 800, fontSize: 14, margin: 0, background: "rgba(255,255,255,0.94)", border: `1.5px solid ${CORAL}`, borderRadius: 10, padding: "6px 12px" }}>
+                  ☝️ Pick a traveler below (or tap <b>Guest</b>) to begin!
+                </p>
+              )}
+            </div>
           </div>
 
           {/* One centred column: traveller, then a picture-first grid of mode cards
@@ -2261,30 +2345,14 @@ export default function ShutterbugWorld() {
                     🧳 Customize traveler
                   </button>
                 </span>
-              ) : (
+              ) : (!canSave && (
                 <p style={{ fontSize: 12, color: INK, opacity: 0.6, margin: "8px 2px 0" }}>
-                  {canSave ? "Guest games aren't saved. Add a name to keep scores and stamps." : "This browser can't save progress, so games won't be recorded."}
+                  This browser can't save progress, so games won't be recorded.
                 </p>
-              )}
+              ))}
             </Field>
           </div>
 
-
-          {/* ---- Start button: pick a way to play and difficulty now live on the
-               meet-Grandpa screen, so the splash stays calm and picture-first. ---- */}
-          {(() => {
-            const prof = profileName ? getProfile(profileName) : null;
-            const returning = !!prof && (prof.metNigel || (prof.games || 0) > 0);
-            const label = returning ? "Continue your adventure ✈" : "Begin your adventure ✈";
-            return (
-              <button onClick={goToMeet} style={primaryBtn}>{label}</button>
-            );
-          })()}
-          {promptTraveler && (
-            <p role="alert" style={{ color: CORAL, fontWeight: 700, fontSize: 14, margin: "10px 0 0" }}>
-              ☝️ Pick a traveler above (or tap <b>Guest</b>) to begin!
-            </p>
-          )}
 
           {/* ---- High scores, tucked behind a toggle ---- */}
           {canSave && topScores(1).length > 0 && (
@@ -2370,73 +2438,80 @@ export default function ShutterbugWorld() {
     const loc = home ? BY_ID[q.id] : null;
     return (
       <Frame>
-        <div style={{ maxWidth: 560, margin: "0 auto" }}>
-          {home && (
-            <div style={{ display: "flex", alignItems: "center", gap: 16, background: PAPER, border: `1px solid ${PAPER_LINE}`, borderRadius: 12, padding: "14px 16px", marginBottom: 14 }}>
-              <NigelPortrait size={96} style={{ borderWidth: 3 }} />
-              <div>
-                <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 12, letterSpacing: "0.16em", color: CORAL }}>HOME AGAIN · {GRANDPA.name.toUpperCase()}</div>
-                <div style={{ color: INK, fontSize: 17, lineHeight: 1.45, marginTop: 4 }}>{quiz.i === 0 ? HOMECOMING_INTRO : "And this one — do you remember?"}</div>
+        <div style={{ maxWidth: home ? 960 : 560, margin: "0 auto" }}>
+          <div style={{ display: "flex", gap: 18, alignItems: "flex-start", flexWrap: "wrap" }}>
+            {/* Homecoming: Grandpa on the LEFT, the quiz on the RIGHT (no scrolling). */}
+            {home && (
+              <div style={{ flex: "1 1 300px", minWidth: 260, background: PAPER, border: `2px solid ${GOLD}`, borderRadius: 16, padding: "20px 18px", textAlign: "center" }}>
+                <NigelPortrait size={192} style={{ margin: "0 auto 12px" }} />
+                <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 20, letterSpacing: "0.14em", color: CORAL, fontWeight: 700, lineHeight: 1.2 }}>HOME AGAIN</div>
+                <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 22, letterSpacing: "0.06em", color: CORAL, fontWeight: 800, marginBottom: 12 }}>{GRANDPA.name.toUpperCase()}</div>
+                <TypeLine text={quiz.i === 0 ? HOMECOMING_INTRO : "And this one — do you remember?"} reduced={prefersReduced}
+                  style={{ color: INK, fontSize: 16, lineHeight: 1.5, textAlign: "left", margin: 0 }} />
+                {answered && (() => {
+                  const wasCorrect = q.options[quiz.answeredIdx].correct;
+                  const tidbit = (loc && ANECDOTES[loc.id]) || (loc && loc.fact) || "";
+                  const wrongLine = WRONG_REACTIONS[quiz.i % WRONG_REACTIONS.length];
+                  return (
+                    <div style={{ marginTop: 12, background: wasCorrect ? "#EAF6EF" : "#fff", border: `1px solid ${wasCorrect ? GREEN : PAPER_LINE}`, borderRadius: 10, padding: "12px 14px", fontSize: 15.5, color: INK, lineHeight: 1.55, textAlign: "left" }}>
+                      <b style={{ color: wasCorrect ? GREEN : CORAL }}>{wasCorrect ? "That's the one!" : wrongLine}</b>{" "}
+                      <TypeLine text={wasCorrect ? tidbit : q.explain} reduced={prefersReduced} inline style={{ display: "inline" }} />
+                    </div>
+                  );
+                })()}
               </div>
-            </div>
-          )}
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-            <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 12, letterSpacing: "0.18em", color: INK, opacity: 0.7 }}>{home ? "🖼" : "🧠"} QUESTION {quiz.i + 1}/{quiz.questions.length}</span>
-            <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 13, fontWeight: 700, color: CORAL }}>{home ? `${quiz.correctCount} right` : `${quiz.score} pts${quiz.streak > 1 ? ` · 🔥${quiz.streak}` : ""}`}</span>
-          </div>
-          {q.photo && (
-            <div style={{ margin: "0 auto 14px", maxWidth: 380, borderRadius: 8, overflow: "hidden", border: `1px solid ${PAPER_LINE}` }}>
-              <Photo photo={q.photo} alt="Quiz landmark" size={360} full />
-            </div>
-          )}
-          {q.bigEmoji && (
-            <div aria-hidden="true" style={{ textAlign: "center", fontSize: 96, lineHeight: 1.1, margin: "0 0 10px" }}>{q.bigEmoji}</div>
-          )}
-          {q.shape && (
-            <div style={{ margin: "0 auto 12px", background: "#fff", border: `1px solid ${PAPER_LINE}`, borderRadius: 8, padding: 10, maxWidth: 340 }}>
-              <ShapeView d={q.shape} />
-            </div>
-          )}
-          <h2 style={{ fontFamily: "ui-sans-serif, system-ui", fontWeight: 800, fontSize: 20, color: INK, textAlign: "center", margin: "0 0 16px", lineHeight: 1.35 }}>{q.prompt}</h2>
-          <div style={{ display: "grid", gap: 10 }}>
-            {q.options.map((o, idx) => {
-              const isCorrect = o.correct, isChosen = quiz.answeredIdx === idx;
-              const bg = !answered ? "#fff" : isCorrect ? "#EAF6EF" : isChosen ? "#FBEAE6" : "#fff";
-              const bd = !answered ? PAPER_LINE : isCorrect ? GREEN : isChosen ? CORAL : PAPER_LINE;
-              return (
-                <button key={idx} onClick={() => answerQuiz(idx)} disabled={answered}
-                  style={{ textAlign: "left", padding: "12px 14px", borderRadius: 10, border: `2px solid ${bd}`, background: bg, color: INK, fontWeight: 700, fontSize: 15, cursor: answered ? "default" : "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
-                  <span>{o.label}</span>
-                  {answered && isCorrect && <span aria-hidden="true">✅</span>}
-                  {answered && isChosen && !isCorrect && <span aria-hidden="true">❌</span>}
-                </button>
-              );
-            })}
-          </div>
-          {answered && (() => {
-            const wasCorrect = q.options[quiz.answeredIdx].correct;
-            if (home) {
-              const tidbit = (loc && ANECDOTES[loc.id]) || (loc && loc.fact) || "";
-              const wrongLine = WRONG_REACTIONS[quiz.i % WRONG_REACTIONS.length];
-              return (
-                <div style={{ marginTop: 14, background: wasCorrect ? "#EAF6EF" : PAPER, border: `1px solid ${wasCorrect ? GREEN : PAPER_LINE}`, borderRadius: 10, padding: "14px 16px", fontSize: 16, color: INK, lineHeight: 1.6 }}>
-                  <span aria-hidden="true" style={{ marginRight: 6, fontSize: "1.4em", verticalAlign: "-0.15em" }}>{GRANDPA.emoji}</span>
-                  <b style={{ color: wasCorrect ? GREEN : CORAL }}>{wasCorrect ? "That's the one!" : wrongLine}</b>{" "}
-                  {wasCorrect ? tidbit : q.explain}
+            )}
+
+            {/* The question + answers */}
+            <div style={{ flex: home ? "1.5 1 360px" : "1 1 100%", minWidth: 300, width: home ? undefined : "100%" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 12, letterSpacing: "0.18em", color: INK, opacity: 0.7 }}>{home ? "🖼" : "🧠"} QUESTION {quiz.i + 1}/{quiz.questions.length}</span>
+                <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 13, fontWeight: 700, color: CORAL }}>{home ? `${quiz.correctCount} right` : `${quiz.score} pts${quiz.streak > 1 ? ` · 🔥${quiz.streak}` : ""}`}</span>
+              </div>
+              {q.photo && (
+                <div style={{ margin: "0 auto 14px", maxWidth: 380, borderRadius: 8, overflow: "hidden", border: `1px solid ${PAPER_LINE}` }}>
+                  <Photo photo={q.photo} alt="Quiz landmark" size={360} full />
                 </div>
-              );
-            }
-            return (
-              <div style={{ marginTop: 14, background: PAPER, border: `1px solid ${PAPER_LINE}`, borderRadius: 8, padding: "10px 12px", fontSize: 13, color: INK, lineHeight: 1.5 }}>
-                <b style={{ color: wasCorrect ? GREEN : CORAL }}>{wasCorrect ? `Correct!${quiz.lastGain ? ` +${quiz.lastGain}` : ""}` : "Not quite."}</b> {q.explain}
+              )}
+              {q.bigEmoji && (
+                <div aria-hidden="true" style={{ textAlign: "center", fontSize: 96, lineHeight: 1.1, margin: "0 0 10px" }}>{q.bigEmoji}</div>
+              )}
+              {q.shape && (
+                <div style={{ margin: "0 auto 12px", background: "#fff", border: `1px solid ${PAPER_LINE}`, borderRadius: 8, padding: 10, maxWidth: 340 }}>
+                  <ShapeView d={q.shape} />
+                </div>
+              )}
+              <h2 style={{ fontFamily: "ui-sans-serif, system-ui", fontWeight: 800, fontSize: 20, color: INK, textAlign: "center", margin: "0 0 16px", lineHeight: 1.35 }}>{q.prompt}</h2>
+              <div style={{ display: "grid", gap: 10 }}>
+                {q.options.map((o, idx) => {
+                  const isCorrect = o.correct, isChosen = quiz.answeredIdx === idx;
+                  const bg = !answered ? "#fff" : isCorrect ? "#EAF6EF" : isChosen ? "#FBEAE6" : "#fff";
+                  const bd = !answered ? PAPER_LINE : isCorrect ? GREEN : isChosen ? CORAL : PAPER_LINE;
+                  return (
+                    <button key={idx} onClick={() => answerQuiz(idx)} disabled={answered}
+                      style={{ textAlign: "left", padding: "12px 14px", borderRadius: 10, border: `2px solid ${bd}`, background: bg, color: INK, fontWeight: 700, fontSize: 15, cursor: answered ? "default" : "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
+                      <span>{o.label}</span>
+                      {answered && isCorrect && <span aria-hidden="true">✅</span>}
+                      {answered && isChosen && !isCorrect && <span aria-hidden="true">❌</span>}
+                    </button>
+                  );
+                })}
               </div>
-            );
-          })()}
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 16 }}>
-            {home
-              ? <span />/* the homecoming review must be answered in full — no skip */
-              : <button onClick={() => { setQuiz(null); setGameMode("assignments"); setScreen("start"); }} style={{ background: "none", border: "none", color: INK, opacity: 0.6, fontSize: 13, cursor: "pointer", fontWeight: 700 }}>← Quit</button>}
-            {answered && <button onClick={nextQuiz} style={{ ...primaryBtn, margin: 0, padding: "10px 22px" }}>{quiz.i + 1 >= quiz.questions.length ? (home ? "Show him the rest →" : "See results") : "Next question →"}</button>}
+              {answered && !home && (() => {
+                const wasCorrect = q.options[quiz.answeredIdx].correct;
+                return (
+                  <div style={{ marginTop: 14, background: PAPER, border: `1px solid ${PAPER_LINE}`, borderRadius: 8, padding: "10px 12px", fontSize: 13, color: INK, lineHeight: 1.5 }}>
+                    <b style={{ color: wasCorrect ? GREEN : CORAL }}>{wasCorrect ? `Correct!${quiz.lastGain ? ` +${quiz.lastGain}` : ""}` : "Not quite."}</b> {q.explain}
+                  </div>
+                );
+              })()}
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 16 }}>
+                {home
+                  ? <span />/* the homecoming review must be answered in full — no skip */
+                  : <button onClick={() => { setQuiz(null); setGameMode("assignments"); setScreen("start"); }} style={{ background: "none", border: "none", color: INK, opacity: 0.6, fontSize: 13, cursor: "pointer", fontWeight: 700 }}>← Quit</button>}
+                {answered && <button onClick={nextQuiz} style={{ ...primaryBtn, margin: 0, padding: "10px 22px" }}>{quiz.i + 1 >= quiz.questions.length ? (home ? "Show him the rest →" : "See results") : "Next question →"}</button>}
+              </div>
+            </div>
           </div>
         </div>
       </Frame>
@@ -2727,7 +2802,7 @@ export default function ShutterbugWorld() {
                           </div>
                         )}
                         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                          <span aria-hidden="true" style={{ fontSize: 22, filter: state === "locked" ? "grayscale(1)" : "none" }}>{slot.flag}</span>
+                          <span aria-hidden="true" style={{ fontSize: 40, filter: state === "locked" ? "grayscale(1)" : "none" }}>{slot.flag}</span>
                           <span style={{ fontWeight: 800, color: INK, fontSize: 12.5, lineHeight: 1.15 }}>{slot.country}</span>
                         </div>
                         <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 10, letterSpacing: "0.06em", marginTop: 4,
@@ -2830,9 +2905,9 @@ export default function ShutterbugWorld() {
   const busy = !!flying || !!pending || (!isExplore && days <= 0);
   return (
     <Frame>
-      {/* Travel-day budget — pinned top-left so it's the first thing the player
-          sees. The single most important number in a timed run. */}
-      {!isExplore && (
+      {/* Grand Tour keeps its day budget pinned top-left (it has no Research
+          button); Assignments shows the day count beside Research instead. */}
+      {isTour && (
         <div style={{ display: "flex", justifyContent: "flex-start", marginBottom: 12 }}>
           <div style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "8px 16px", borderRadius: 12,
             background: days <= 1 ? CORAL : days <= 2.5 ? GOLD : INK, color: days <= 2.5 && days > 1 ? INK : "#fff",
@@ -2892,34 +2967,48 @@ export default function ShutterbugWorld() {
             {(isCatAsg || namesSubject) ? (
               <>
                 <p style={{ margin: 0, color: INK, lineHeight: 1.5, fontSize: 15 }}>Bring me a photo of <b>{promptSubject}</b>.{showTypeBadge && badgeCat && <> <CategoryBadge category={badgeCat} size="sm" style={{ verticalAlign: "middle" }} /></>}</p>
-                <p style={{ margin: "8px 0 0", color: INK, opacity: 0.85, lineHeight: 1.5, fontSize: 14, fontStyle: "italic" }}>{clue}</p>
+                <TypeLine text={clue} reduced={prefersReduced} style={{ margin: "8px 0 0", color: INK, opacity: 0.85, lineHeight: 1.5, fontSize: 14, fontStyle: "italic" }} />
               </>
             ) : (
               <>
-                <p style={{ margin: 0, color: INK, lineHeight: 1.5, fontSize: 15 }}>{clue}</p>
+                <TypeLine text={clue} reduced={prefersReduced} style={{ margin: 0, color: INK, lineHeight: 1.5, fontSize: 15 }} />
                 {showTypeBadge && badgeCat && <div style={{ marginTop: 10 }}><CategoryBadge category={badgeCat} size="sm" style={{ verticalAlign: "middle" }} /></div>}
               </>
             )}
           </div>
           )}
 
-          {/* Research: buy the answer (assignments only). Free on Easy, ½ day on
-              Medium, unavailable on Hard. */}
-          {!isTour && !isExplore && mode.research !== "off" && (researched[step] ? (
-            <div style={{ marginTop: 10, background: "#EAF1F2", border: `1px solid ${OCEAN}`, borderRadius: 6, padding: "10px 12px", fontSize: 13, color: INK, lineHeight: 1.45 }}>
-              <b style={{ color: OCEAN }}>📖 {GUIDEBOOK.notesLabel}</b> {researched[step]}
-            </div>
-          ) : (() => {
+          {/* Assignments: a neat row under the note — the Research button (when
+              available) on the left and the travel-day budget on the right, equal
+              size, filling the width. The revealed clue persists in its own box. */}
+          {!isTour && !isExplore && (() => {
+            const showResearch = mode.research !== "off" && !researched[step];
             const disabled = busy || days <= researchCost;
             return (
-            <button onClick={doResearch} disabled={disabled}
-              title={researchCost > 0 ? GUIDEBOOK.tipCost : GUIDEBOOK.tipFree}
-              style={{ marginTop: 10, padding: "7px 14px", borderRadius: 8, border: `1.5px solid ${OCEAN}`, background: "transparent", color: OCEAN, fontWeight: 700, fontSize: 13,
-                cursor: disabled ? "default" : "pointer", opacity: disabled ? 0.5 : 1 }}>
-              📖 {GUIDEBOOK.button} <span style={{ opacity: 0.75, fontWeight: 600 }}>({researchCost > 0 ? "½ day" : "free"})</span>
-            </button>
+              <div style={{ display: "flex", gap: 8, marginTop: 10, alignItems: "stretch" }}>
+                {showResearch && (
+                  <button onClick={doResearch} disabled={disabled}
+                    title={researchCost > 0 ? GUIDEBOOK.tipCost : GUIDEBOOK.tipFree}
+                    style={{ flex: 1, padding: "10px 12px", borderRadius: 10, border: `1.5px solid ${OCEAN}`, background: "transparent", color: OCEAN, fontWeight: 700, fontSize: 13.5,
+                      cursor: disabled ? "default" : "pointer", opacity: disabled ? 0.5 : 1, lineHeight: 1.25 }}>
+                    📖 {GUIDEBOOK.button} <span style={{ opacity: 0.75, fontWeight: 600 }}>({researchCost > 0 ? "½ day" : "free"})</span>
+                  </button>
+                )}
+                <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "10px 12px", borderRadius: 10,
+                  background: days <= 1 ? CORAL : days <= 2.5 ? GOLD : INK, color: days <= 2.5 && days > 1 ? INK : "#fff",
+                  fontFamily: "ui-monospace, monospace", fontWeight: 800 }}>
+                  <span aria-hidden="true" style={{ fontSize: 20, lineHeight: 1 }}>◷</span>
+                  <span style={{ fontSize: 20, lineHeight: 1 }}>{days}</span>
+                  <span style={{ fontSize: 11.5, letterSpacing: "0.06em", opacity: 0.9 }}>DAY{days === 1 ? "" : "S"} LEFT</span>
+                </div>
+              </div>
             );
-          })())}
+          })()}
+          {!isTour && !isExplore && researched[step] && (
+            <div style={{ marginTop: 8, background: "#EAF1F2", border: `1px solid ${OCEAN}`, borderRadius: 6, padding: "10px 12px", fontSize: 13, color: INK, lineHeight: 1.45 }}>
+              <b style={{ color: OCEAN }}>📖 {GUIDEBOOK.notesLabel}</b> {researched[step]}
+            </div>
+          )}
 
           {msg && (
             <div style={{ marginTop: 12, padding: "10px 12px", borderRadius: 6, fontSize: 14, lineHeight: 1.4,
@@ -2944,16 +3033,16 @@ export default function ShutterbugWorld() {
                 {flashKey > 0 && !prefersReduced && <div key={flashKey} className="sbw-flash" />}
               </div>
               <PhotoCredit photo={currentLoc.photo} style={{ textAlign: "center", marginTop: 0, marginBottom: 4 }} />
-              <div style={{ fontWeight: 700, color: INK }}><span style={{ fontSize: "2.6em", verticalAlign: "-0.22em" }}>{currentLoc.flag}</span> {currentLoc.city}, {currentLoc.country}</div>
+              <div style={{ fontWeight: 700, color: INK }}><span style={{ fontSize: "4em", verticalAlign: "-0.34em" }}>{currentLoc.flag}</span> {currentLoc.city}, {currentLoc.country}</div>
               <div style={{ fontSize: 13, color: INK, opacity: 0.7, marginTop: 2 }}>{currentLoc.subject}</div>
               {/* Country-layer arrivals already saw the culture card as a popup;
                   easy mode (no country step) and Explore show it here with the shot. */}
-              {(!pickedCountry || isExplore) && <CountryCard country={currentLoc.country} />}
+              {(!pickedCountry || isExplore) && <CountryCard country={currentLoc.country} reduced={prefersReduced} />}
               {isExplore && (
                 <div style={{ marginTop: 10, textAlign: "left" }}>
                   <div style={{ textAlign: "center", marginBottom: 8 }}><CategoryBadge category={currentLoc.category} size="sm" /></div>
                   <div style={{ background: PAPER, border: `1px solid ${PAPER_LINE}`, borderRadius: 6, padding: "9px 11px", fontSize: 13, color: INK, lineHeight: 1.5 }}>
-                    <b style={{ color: CORAL }}>Did you know?</b> {currentLoc.fact}
+                    <b style={{ color: CORAL }}>Did you know?</b> <TypeLine text={currentLoc.fact} reduced={prefersReduced} inline style={{ display: "inline" }} />
                   </div>
                   <details style={{ marginTop: 8, fontSize: 12, color: INK }}>
                     <summary style={{ cursor: "pointer", color: OCEAN, fontWeight: 700 }}>How the editor might clue this place</summary>
@@ -2969,7 +3058,7 @@ export default function ShutterbugWorld() {
           ) : inCity ? (
             <div style={{ marginTop: 12, background: "#fff", border: `1px dashed ${CORAL}`, borderRadius: 8, padding: 16, textAlign: "center" }}>
               <div style={{ fontSize: 28 }} aria-hidden="true">📸</div>
-              <div style={{ fontWeight: 800, color: INK, marginTop: 4 }}><span style={{ fontSize: "2.2em", verticalAlign: "-0.2em" }}>{ctxCountry ? COUNTRY_FLAG[ctxCountry] : ""}</span> You're in {ctxCountry || pickedContinent}!</div>
+              <div style={{ fontWeight: 800, color: INK, marginTop: 4 }}><span style={{ fontSize: "3.6em", verticalAlign: "-0.3em" }}>{ctxCountry ? COUNTRY_FLAG[ctxCountry] : ""}</span> You're in {ctxCountry || pickedContinent}!</div>
               <div style={{ fontSize: 13, color: INK, opacity: 0.8, marginTop: 6, lineHeight: 1.45 }}>
                 {isTour ? "Photograph any target on your itinerary that's here, then fly on." : "Click the right city on the map to photograph Grandpa's subject."}
               </div>
@@ -3160,7 +3249,7 @@ export default function ShutterbugWorld() {
                 return (
                 <g>
                   <ellipse cx={d.x} cy={d.y} {...pinR(0.008)} fill={CORAL} stroke={INK} strokeWidth="1" vectorEffect="non-scaling-stroke" />
-                  <ellipse cx={d.x} cy={d.y} {...pinR(0.014)} fill="none" stroke={CORAL} strokeWidth="1" vectorEffect="non-scaling-stroke" className="sbw-ping" />
+                  <ellipse cx={d.x} cy={d.y} {...pinR(0.014)} fill="none" stroke="#FFFFFF" strokeWidth="2.4" vectorEffect="non-scaling-stroke" className="sbw-ping" />
                 </g>
                 );
               })()}
@@ -3180,10 +3269,11 @@ export default function ShutterbugWorld() {
                 const d = `M${a.x} ${a.y} Q${cx} ${cy} ${b.x} ${b.y}`;
                 return (
                 <g className="sbw-plane-group">
-                  <path d={d} fill="none" stroke={CORAL} strokeWidth="1" strokeDasharray="3 3" opacity="0.8" />
+                  <path d={d} fill="none" stroke="#D8DEE3" strokeWidth="1" strokeDasharray="3 3" opacity="0.85" />
                   <g style={{ animation: "sbw-fly 4s ease-in-out forwards", offsetPath: `path('${d}')` }}>
                     {/* scaleY cancels the map's vertical stretch so the plane isn't squished tall */}
-                    <text fontSize="18" fill={CORAL} transform={`scale(1 ${(box.h / box.w).toFixed(3)})`}>✈</text>
+                    {/* ︎ forces the monochrome text glyph so `fill` applies — a silver plane. */}
+                    <text fontSize="20" fill="#EEF1F4" stroke="#39434A" strokeWidth="0.5" paintOrder="stroke" transform={`scale(1 ${(box.h / box.w).toFixed(3)})`}>{"✈︎"}</text>
                   </g>
                 </g>
                 );
@@ -3215,7 +3305,7 @@ export default function ShutterbugWorld() {
                      style={{ cursor: busy ? "default" : "pointer" }}>
                     <ellipse cx={px} cy={py} {...pinR(0.05)} fill="transparent" />
                     <ellipse cx={px} cy={py} {...pinR(isCurrent ? 0.04 : 0.034)} fill={isCurrent ? "rgba(233,92,66,0.22)" : "rgba(255,255,255,0.82)"} stroke={isCurrent ? CORAL : INK} strokeWidth={isCurrent ? "1.4" : "1"} vectorEffect="non-scaling-stroke" />
-                    {isCurrent && <ellipse cx={px} cy={py} {...pinR(0.052)} fill="none" stroke={CORAL} strokeWidth="1" vectorEffect="non-scaling-stroke" className="sbw-ping" />}
+                    {isCurrent && <ellipse cx={px} cy={py} {...pinR(0.052)} fill="none" stroke="#FFFFFF" strokeWidth="3" vectorEffect="non-scaling-stroke" className="sbw-ping" />}
                     <text x={px} y={py} fontSize={0.056 * box.h} textAnchor="middle" dominantBaseline="central" style={{ pointerEvents: "none" }}>{emoji}</text>
                     <text className="sbw-label" x={px + 0.04 * box.w} y={py - 0.036 * box.h} fontSize={0.022 * box.h} fontFamily="ui-monospace, monospace" fill={INK} style={{ paintOrder: "stroke", stroke: PAPER, strokeWidth: 0.006 * box.h }}>{l.city}</text>
                   </g>
@@ -3430,7 +3520,7 @@ function ResultModal({ data, onContinue, reduced }) {
             <img src={withWidth(data.photo.src, 1600)} alt="" style={{ width: "100%", maxHeight: 440, objectFit: "contain", display: "block" }} />
           </div>
         )}
-        <p style={{ color: INK, fontSize: 15, lineHeight: 1.5, margin: "0 auto", maxWidth: 340 }}>{data.subtitle}</p>
+        <TypeLine text={data.subtitle} reduced={reduced} style={{ color: INK, fontSize: 15, lineHeight: 1.5, margin: "0 auto", maxWidth: 340 }} />
         {data.hint && (
           <p style={{ color: OCEAN, fontSize: 14, fontWeight: 700, lineHeight: 1.45, margin: "10px auto 0", maxWidth: 340 }}>
             <span aria-hidden="true">💡 </span>{data.hint}
@@ -3439,7 +3529,7 @@ function ResultModal({ data, onContinue, reduced }) {
         {data.fact && (
           <div style={{ marginTop: 14, background: "#fff", border: `1px dashed ${accent}`, borderRadius: 10, padding: "10px 12px", textAlign: "left" }}>
             <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 10, letterSpacing: "0.18em", color: accent, marginBottom: 4 }}>📖 DID YOU KNOW?</div>
-            <div style={{ color: INK, fontSize: 13, lineHeight: 1.45 }}>{data.fact}</div>
+            <TypeLine text={data.fact} reduced={reduced} style={{ color: INK, fontSize: 13, lineHeight: 1.45 }} />
           </div>
         )}
         <button autoFocus onClick={onContinue}
@@ -3471,7 +3561,7 @@ function LandmarkModal({ p, onClose, reduced }) {
         </div>
         <PhotoCredit photo={p.photo} style={{ textAlign: "center", marginTop: 0, marginBottom: 8 }} />
         <h2 style={{ fontFamily: "ui-sans-serif, system-ui", fontWeight: 900, fontSize: 24, color: INK, margin: "4px 0 2px" }}>{p.subject}</h2>
-        <div style={{ fontWeight: 700, color: INK }}><span style={{ fontSize: "1.5em", verticalAlign: "-0.08em" }}>{p.flag}</span> {p.city}, {p.country}</div>
+        <div style={{ fontWeight: 700, color: INK }}><span style={{ fontSize: "3em", verticalAlign: "-0.24em" }}>{p.flag}</span> {p.city}, {p.country}</div>
         <div style={{ marginTop: 8, display: "flex", gap: 6, justifyContent: "center", alignItems: "center", flexWrap: "wrap" }}>
           {p.category && <CategoryBadge category={p.category} />}
           {p.continent && <span style={{ fontSize: 12, color: INK, opacity: 0.6 }}>{p.continent}</span>}
@@ -3848,7 +3938,7 @@ function PeoplePhoto({ people }) {
 // The country card — the game's cultural centrepiece, shown the moment you're
 // in a country in ANY mode: the country and its flag, a photo of its people in
 // traditional dress, how they say hello, then the capital and a short story.
-function CountryCard({ country }) {
+function CountryCard({ country, reduced }) {
   if (!country || country === "Antarctica") return null;
   const info = COUNTRY_INFO[country], g = COUNTRY_GREETING[country], people = COUNTRY_PEOPLE[country];
   if (!info && !g && !people) return null;
@@ -3856,7 +3946,7 @@ function CountryCard({ country }) {
   return (
     <div style={{ marginTop: 10, background: PAPER, border: `1px solid ${PAPER_LINE}`, borderRadius: 8, padding: 12, textAlign: "left" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
-        <span aria-hidden="true" style={{ fontSize: 52, lineHeight: 1 }}>{COUNTRY_FLAG[country] || "🏳️"}</span>
+        <span aria-hidden="true" style={{ fontSize: 92, lineHeight: 1 }}>{COUNTRY_FLAG[country] || "🏳️"}</span>
         <span style={{ fontWeight: 900, color: INK, fontSize: 19 }}>{country}</span>
         {info && <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, color: INK, opacity: 0.55, marginLeft: "auto" }}>{info.region}</span>}
       </div>
@@ -3874,7 +3964,7 @@ function CountryCard({ country }) {
           <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.06em", color: GREEN, fontWeight: 700, marginBottom: 3 }}>
             <span aria-hidden="true">★ </span>Capital: {info.capital}
           </div>
-          <span aria-hidden="true">📖 </span>{info.blurb}
+          <span aria-hidden="true">📖 </span><TypeLine text={info.blurb} reduced={reduced} inline style={{ display: "inline" }} />
         </div>
       )}
     </div>
@@ -3892,7 +3982,7 @@ function CountryPopup({ country, onClose, reduced }) {
       <div className={reduced ? "" : "sbw-pop"} onClick={(e) => e.stopPropagation()}
         style={{ background: PAPER, borderRadius: 16, border: `3px solid ${CORAL}`, boxShadow: "0 14px 44px rgba(0,0,0,0.35)", maxWidth: 420, width: "100%", padding: "16px 18px", maxHeight: "88vh", overflowY: "auto" }}>
         <div style={{ textAlign: "center", fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.18em", color: CORAL }}>✈ YOU'VE ARRIVED IN…</div>
-        <CountryCard country={country} />
+        <CountryCard country={country} reduced={reduced} />
         <button onClick={onClose} style={{ ...primaryBtn, marginTop: 14, width: "100%", padding: "11px 0" }}>Got it — let's find the shot →</button>
       </div>
     </div>
@@ -3903,18 +3993,26 @@ function CountryPopup({ country, onClose, reduced }) {
 // the bottom-left with an "Oh! Did you know…?" fact, then dismisses itself after a
 // few seconds (or on tap). It never covers the map controls or steals a click.
 function MrOBubble({ fact, onClose, reduced }) {
+  const [imgOk, setImgOk] = useState(true);
   useEffect(() => {
-    const id = setTimeout(onClose, 9000); // auto-dismiss
+    const id = setTimeout(onClose, 10000); // auto-dismiss
     return () => clearTimeout(id);
   }, [fact, onClose]);
   return (
-    <div style={{ position: "fixed", left: 12, bottom: 12, zIndex: 55, maxWidth: 340, pointerEvents: "none" }}>
+    <div style={{ position: "fixed", left: 12, bottom: 12, zIndex: 55, maxWidth: 360, pointerEvents: "none" }}>
       <div className={reduced ? "" : "sbw-pop"} onClick={onClose}
         style={{ display: "flex", alignItems: "flex-end", gap: 8, pointerEvents: "auto", cursor: "pointer" }}>
-        <div aria-hidden="true" style={{ fontSize: 44, lineHeight: 1, flex: "none", filter: "drop-shadow(0 2px 3px rgba(0,0,0,0.25))" }}>{MR_O.emoji}</div>
+        {/* Mr. O's portrait (public/odin.png); falls back to an emoji until the
+            art is added, so it never shows a broken image. */}
+        {imgOk ? (
+          <img src={`${BASE}odin.png`} alt="" onError={() => setImgOk(false)}
+            style={{ width: 88, height: 88, flex: "none", objectFit: "contain", filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.3))" }} />
+        ) : (
+          <div aria-hidden="true" style={{ fontSize: 52, lineHeight: 1, flex: "none", filter: "drop-shadow(0 2px 3px rgba(0,0,0,0.25))" }}>{MR_O.emoji}</div>
+        )}
         <div style={{ background: "#fff", border: `2px solid ${OCEAN}`, borderRadius: "14px 14px 14px 3px", padding: "10px 13px", boxShadow: "0 6px 18px rgba(16,38,46,0.28)" }}>
           <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 10, letterSpacing: "0.12em", color: OCEAN, fontWeight: 700, marginBottom: 3 }}>{MR_O.name.toUpperCase()} · {MR_O.lead.toUpperCase()}</div>
-          <div style={{ color: INK, fontSize: 13.5, lineHeight: 1.45 }}>{fact}</div>
+          <TypeLine text={fact} reduced={reduced} style={{ color: INK, fontSize: 13.5, lineHeight: 1.45 }} />
         </div>
       </div>
     </div>
@@ -3994,6 +4092,39 @@ function GradualText({ text, reduced, onDone, cps = 42, style }) {
       <span aria-hidden={busy ? "true" : undefined}>{text.slice(0, n)}</span>
       {busy && <span aria-hidden="true" style={{ opacity: 0.35 }}>▌</span>}
     </p>
+  );
+}
+
+// A lighter typing effect for in-game prose (clues, facts, dialogue, Mr. O…):
+// reveals the text at reading speed, but — unlike GradualText — it never blocks
+// or disables anything around it, so the player can read and act at once. Click
+// (or reduced-motion) completes it instantly; the full text is exposed to screen
+// readers via aria-label while typing. Generic display text isn't wrapped in this.
+function TypeLine({ text, reduced, style, inline = false, cps = 45, onDone }) {
+  const str = text == null ? "" : String(text);
+  const [n, setN] = useState(reduced ? str.length : 0);
+  const idRef = useRef(null);
+  useEffect(() => {
+    if (idRef.current) { clearInterval(idRef.current); idRef.current = null; }
+    if (reduced) { setN(str.length); if (onDone) onDone(); return; }
+    setN(0);
+    let i = 0;
+    idRef.current = setInterval(() => {
+      i += 1; setN(i);
+      if (i >= str.length) { clearInterval(idRef.current); idRef.current = null; if (onDone) onDone(); }
+    }, Math.max(8, Math.round(1000 / cps)));
+    return () => { if (idRef.current) clearInterval(idRef.current); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [str, reduced]);
+  const busy = n < str.length;
+  const complete = () => { if (idRef.current) { clearInterval(idRef.current); idRef.current = null; } setN(str.length); if (onDone) onDone(); };
+  const Tag = inline ? "span" : "p";
+  return (
+    <Tag onClick={busy ? complete : undefined} aria-label={busy ? str : undefined}
+      style={{ cursor: busy ? "pointer" : "inherit", ...(inline ? {} : { margin: 0 }), ...style }}>
+      <span aria-hidden={busy ? "true" : undefined}>{str.slice(0, n)}</span>
+      {busy && <span aria-hidden="true" style={{ opacity: 0.4 }}>▌</span>}
+    </Tag>
   );
 }
 
@@ -4081,7 +4212,7 @@ function Polaroid({ p }) {
       <div style={{ background: PAPER, display: "flex", alignItems: "center", justifyContent: "center", height: 110, borderRadius: 2, overflow: "hidden" }}>
         <Photo photo={p.photo} icon={p.icon} alt={p.subject} size={82} />
       </div>
-      <div style={{ fontWeight: 700, color: INK, fontSize: 13, marginTop: 8 }}><span style={{ fontSize: "1.5em", verticalAlign: "-0.08em" }}>{p.flag}</span> {p.subject}</div>
+      <div style={{ fontWeight: 700, color: INK, fontSize: 13, marginTop: 8 }}><span style={{ fontSize: "2.8em", verticalAlign: "-0.22em" }}>{p.flag}</span> {p.subject}</div>
       {p.category && <div style={{ marginTop: 5 }}><CategoryBadge category={p.category} size="sm" /></div>}
       <div style={{ fontSize: 11, color: INK, opacity: 0.65, lineHeight: 1.35, marginTop: 5 }}>{p.fact}</div>
       <PhotoCredit photo={p.photo} />
