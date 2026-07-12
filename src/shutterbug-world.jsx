@@ -2139,7 +2139,11 @@ export default function ShutterbugWorld() {
               <div style={{ flex: "1 1 300px", minWidth: 260, background: PAPER, border: `2px solid ${GOLD}`, borderRadius: 16, padding: "20px 18px", textAlign: "center" }}>
                 <NigelPortrait size={192} style={{ margin: "0 auto 12px" }} />
                 <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 22, letterSpacing: "0.06em", color: CORAL, fontWeight: 800, marginBottom: 12 }}>{GRANDPA.name.toUpperCase()}</div>
-                <TypeLine text={quiz.i === 0 ? HOMECOMING_INTRO : "And this one — do you remember?"} reduced={prefersReduced}
+                {/* key by quiz.i so the line remounts every question — otherwise, when
+                    two questions share the same intro text ("And this one…"), TypeLine's
+                    effect wouldn't re-run, onDone wouldn't fire, and the answers would
+                    stay greyed out forever (the player couldn't continue). */}
+                <TypeLine key={quiz.i} text={quiz.i === 0 ? HOMECOMING_INTRO : "And this one — do you remember?"} reduced={prefersReduced}
                   onDone={() => setHomeTypedI(quiz.i)}
                   style={{ color: INK, fontSize: 16, lineHeight: 1.5, textAlign: "left", margin: 0 }} />
                 {answered && (() => {
@@ -3741,7 +3745,7 @@ function MrOBubble({ fact, onClose, reduced }) {
     return () => clearTimeout(id);
   }, [fact, onClose]);
   return (
-    <div style={{ position: "fixed", left: 14, bottom: 14, zIndex: 55, maxWidth: 560, pointerEvents: "none" }}>
+    <div style={{ position: "fixed", left: 16, bottom: 16, zIndex: 55, maxWidth: 680, pointerEvents: "none" }}>
       <div className={reduced ? "" : "sbw-pop"} onClick={onClose}
         style={{ display: "flex", alignItems: "center", gap: 4, pointerEvents: "auto", cursor: "pointer" }}>
         {/* Mr. O — the full cut-out figure (public/odin.png); he gestures toward
@@ -3749,13 +3753,13 @@ function MrOBubble({ fact, onClose, reduced }) {
             missing, so it never shows a broken image. */}
         {imgOk ? (
           <img src={`${BASE}odin.png`} alt="" onError={() => setImgOk(false)}
-            style={{ height: 240, width: "auto", flex: "none", objectFit: "contain", filter: "drop-shadow(0 4px 7px rgba(0,0,0,0.34))" }} />
+            style={{ height: 320, width: "auto", flex: "none", objectFit: "contain", filter: "drop-shadow(0 5px 9px rgba(0,0,0,0.36))" }} />
         ) : (
-          <div aria-hidden="true" style={{ fontSize: 74, lineHeight: 1, flex: "none", filter: "drop-shadow(0 2px 3px rgba(0,0,0,0.25))" }}>{MR_O.emoji}</div>
+          <div aria-hidden="true" style={{ fontSize: 96, lineHeight: 1, flex: "none", filter: "drop-shadow(0 2px 3px rgba(0,0,0,0.25))" }}>{MR_O.emoji}</div>
         )}
-        <div style={{ background: "#fff", border: `2.5px solid ${OCEAN}`, borderRadius: "16px 16px 16px 4px", padding: "13px 16px", boxShadow: "0 6px 20px rgba(16,38,46,0.3)", marginBottom: 30 }}>
-          <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 12, letterSpacing: "0.12em", color: OCEAN, fontWeight: 700, marginBottom: 5 }}>{MR_O.name.toUpperCase()} · {MR_O.lead.toUpperCase()}</div>
-          <TypeLine text={fact} reduced={reduced} style={{ color: INK, fontSize: 16.5, lineHeight: 1.5 }} />
+        <div style={{ background: "#fff", border: `3px solid ${OCEAN}`, borderRadius: "18px 18px 18px 4px", padding: "16px 20px", boxShadow: "0 7px 22px rgba(16,38,46,0.32)", marginBottom: 40 }}>
+          <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 13, letterSpacing: "0.12em", color: OCEAN, fontWeight: 700, marginBottom: 6 }}>{MR_O.name.toUpperCase()} · {MR_O.lead.toUpperCase()}</div>
+          <TypeLine text={fact} reduced={reduced} style={{ color: INK, fontSize: 20, lineHeight: 1.5 }} />
         </div>
       </div>
     </div>
