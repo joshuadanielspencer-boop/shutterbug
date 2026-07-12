@@ -79,31 +79,61 @@ export const MR_O_RIDDLES = [
     explain: "Lesotho is an enclave — a whole country entirely encircled by South Africa." },
 ];
 
+// Mr. O's "Oh! Did you know…" facts, tagged with the continent they're about so
+// the bubble matches the map the player just landed on. `where: null` facts are
+// globally true and can appear on any continent. All verified (rule 2). Continent
+// names match the game's CONTINENTS list exactly.
 export const MR_O_FACTS = [
-  "Russia is so wide it spreads across 11 time zones — when it's breakfast on one side, it's bedtime on the other!",
-  "Antarctica is the coldest, windiest and driest continent — it's actually counted as a desert.",
-  "The Pacific is the biggest ocean, larger than all the land on Earth put together.",
-  "The Sahara in northern Africa is the largest hot desert — roughly the size of the whole United States.",
-  "Canada has more lakes than every other country in the world combined.",
-  "Australia is the only country that is also a whole continent all by itself.",
-  "Greenland is the world's largest island — Australia is bigger, but it counts as a continent instead.",
-  "Asia is the biggest continent, covering about a third of all the land on Earth.",
-  "Mount Everest, on the border of Nepal and China, is the highest mountain above sea level.",
-  "The Andes in South America are the longest mountain range on land — about 7,000 km!",
-  "Lake Baikal in Russia is the deepest lake on Earth and holds around a fifth of the world's unfrozen fresh water.",
-  "The Caspian Sea is really the largest lake on Earth, even though its name says 'sea.'",
-  "Iceland sits right on the crack between two of Earth's giant plates, which is why it has so many volcanoes.",
-  "Vatican City is the smallest country in the world — you can walk all the way across it in minutes.",
-  "There are nearly 200 countries in the world today.",
-  "The equator is an imaginary line around the middle of the Earth, where it stays warm all year round.",
-  "Africa is the only continent with land in all four hemispheres — north, south, east and west.",
-  "The Nile flows north, which surprises people who expect rivers to run 'down' the map.",
-  "Chile is one of the longest, thinnest countries — over 4,000 km long but rarely 200 km wide.",
-  "Japan is made up of thousands of islands — more than 14,000 of them!",
-  "Mount Kilimanjaro in Tanzania has snow at its top even though it stands near the equator.",
-  "The Dead Sea, on the edge of Jordan, is so salty that you float on top without even trying.",
-  "The Great Barrier Reef off Australia is the largest living structure on Earth — you can spot it from space.",
-  "Point Nemo, in the Pacific, is the spot on the ocean farthest from any land in every direction.",
-  "The Amazon carries more water than the next several biggest rivers on Earth combined.",
-  "Indonesia is spread over more than 17,000 islands, strung along the equator.",
+  // ---- Africa ----
+  { where: "Africa", text: "The Sahara in northern Africa is the largest hot desert — roughly the size of the whole United States." },
+  { where: "Africa", text: "Africa is the only continent with land in all four hemispheres — north, south, east and west." },
+  { where: "Africa", text: "The Nile flows north, which surprises people who expect rivers to run 'down' the map." },
+  { where: "Africa", text: "Mount Kilimanjaro in Tanzania has snow at its top even though it stands near the equator." },
+  { where: "Africa", text: "Africa has 54 countries — more than any other continent." },
+  // ---- Asia ----
+  { where: "Asia", text: "Asia is the biggest continent, covering about a third of all the land on Earth." },
+  { where: "Asia", text: "Mount Everest, on the border of Nepal and China, is the highest mountain above sea level." },
+  { where: "Asia", text: "Lake Baikal in Russia is the deepest lake on Earth and holds around a fifth of the world's unfrozen fresh water." },
+  { where: "Asia", text: "The Caspian Sea is really the largest lake on Earth, even though its name says 'sea.'" },
+  { where: "Asia", text: "Japan is made up of thousands of islands — more than 14,000 of them!" },
+  { where: "Asia", text: "The Dead Sea, on the edge of Jordan, is so salty that you float on top without even trying." },
+  { where: "Asia", text: "Indonesia is spread over more than 17,000 islands, strung along the equator." },
+  // ---- Europe ----
+  { where: "Europe", text: "Iceland sits right on the crack between two of Earth's giant plates, which is why it has so many volcanoes." },
+  { where: "Europe", text: "Vatican City is the smallest country in the world — you can walk all the way across it in minutes." },
+  { where: "Europe", text: "The Alps arc across eight countries, and are still slowly rising as two of Earth's plates squeeze together." },
+  { where: "Europe", text: "The Danube flows through ten countries on its way to the Black Sea — more than any other river on Earth." },
+  { where: "Europe", text: "Mount Etna, on the Italian island of Sicily, is one of the world's most active volcanoes." },
+  { where: "Europe", text: "The Volga is the longest river in Europe, winding some 3,500 km across Russia." },
+  // ---- North America ----
+  { where: "North America", text: "Canada has more lakes than every other country in the world combined." },
+  { where: "North America", text: "Greenland is the world's largest island — Australia is bigger, but it counts as a continent instead." },
+  { where: "North America", text: "Denali in Alaska is the highest peak in North America, at about 6,190 metres." },
+  { where: "North America", text: "The Great Lakes together hold about a fifth of all the fresh surface water on Earth." },
+  { where: "North America", text: "Death Valley in California is North America's hottest, lowest spot — it dips below sea level." },
+  { where: "North America", text: "Mexico City is slowly sinking, because it's built on the soft bed of a drained lake." },
+  // ---- South America ----
+  { where: "South America", text: "The Andes in South America are the longest mountain range on land — about 7,000 km!" },
+  { where: "South America", text: "Chile is one of the longest, thinnest countries — over 4,000 km long but rarely 200 km wide." },
+  { where: "South America", text: "The Amazon carries more water than the next several biggest rivers on Earth combined." },
+  { where: "South America", text: "The Atacama Desert in Chile is the driest place on Earth — parts may go years, even decades, without rain." },
+  { where: "South America", text: "Angel Falls in Venezuela is the world's tallest waterfall, plunging almost a kilometre." },
+  // ---- Oceania ----
+  { where: "Oceania", text: "The Pacific is the biggest ocean, larger than all the land on Earth put together." },
+  { where: "Oceania", text: "Australia is the only country that is also a whole continent all by itself." },
+  { where: "Oceania", text: "The Great Barrier Reef off Australia is the largest living structure on Earth — you can spot it from space." },
+  { where: "Oceania", text: "Point Nemo, in the Pacific, is the spot on the ocean farthest from any land in every direction." },
+  { where: "Oceania", text: "Australia is home to more kinds of venomous snake than any other country on Earth." },
+  // ---- Antarctica ----
+  { where: "Antarctica", text: "Antarctica is the coldest, windiest and driest continent — it's actually counted as a desert." },
+  { where: "Antarctica", text: "Antarctica holds about 90% of all the ice on Earth, and most of the world's fresh water is frozen there." },
+  { where: "Antarctica", text: "Nobody lives in Antarctica for good — only scientists visiting its research stations." },
+  { where: "Antarctica", text: "The coldest temperature ever measured on Earth, around −89°C, was recorded in Antarctica." },
+  { where: "Antarctica", text: "Hidden beneath Antarctica's ice are mountains and valleys — and Lake Vostok, sealed under the ice for millions of years." },
+  // ---- Anywhere (globally true) ----
+  { where: null, text: "Russia is so wide it spreads across 11 time zones — when it's breakfast on one side, it's bedtime on the other!" },
+  { where: null, text: "There are nearly 200 countries in the world today." },
+  { where: null, text: "The equator is an imaginary line around the middle of the Earth, where it stays warm all year round." },
+  { where: null, text: "Earth has five oceans; the Southern Ocean around Antarctica was the last to be recognised." },
+  { where: null, text: "A compass needle points to the magnetic north pole, which slowly drifts and isn't quite at the true North Pole." },
 ];

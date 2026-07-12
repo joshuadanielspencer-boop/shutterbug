@@ -873,14 +873,16 @@ export default function ShutterbugWorld() {
   const [mrO, setMrO] = useState(null); // Mr. O's "Oh, did you know?" bubble (a fact string, or null)
   const mrOSeen = useRef([]); // indices shown this session, so he doesn't repeat
   // Mr. O pops up ~30% of the time on touching down at a new continent, with a
-  // fresh geography fact (non-blocking bubble; auto-dismisses).
-  const maybeMrO = () => {
+  // fresh geography fact ABOUT that continent (plus globally-true facts), so his
+  // "did you know" matches the map you just landed on. Non-blocking; auto-dismisses.
+  const maybeMrO = (continent) => {
     if (Math.random() > 0.3) return;
-    let pool = MR_O_FACTS.map((_, i) => i).filter((i) => !mrOSeen.current.includes(i));
-    if (!pool.length) { mrOSeen.current = []; pool = MR_O_FACTS.map((_, i) => i); }
+    const relevant = MR_O_FACTS.map((_, i) => i).filter((i) => MR_O_FACTS[i].where === continent || MR_O_FACTS[i].where == null);
+    let pool = relevant.filter((i) => !mrOSeen.current.includes(i));
+    if (!pool.length) { mrOSeen.current = mrOSeen.current.filter((i) => !relevant.includes(i)); pool = relevant; } // seen them all here — reshuffle just this continent
     const i = pool[Math.floor(Math.random() * pool.length)];
     mrOSeen.current.push(i);
-    setMrO(MR_O_FACTS[i]);
+    setMrO(MR_O_FACTS[i].text);
   };
   const poppedCountryRef = useRef(null); // country whose arrival popup already showed this leg
   const [dreamPending, setDreamPending] = useState(false); // Grandpa's dream just fulfilled — show the win scene
@@ -1457,7 +1459,7 @@ export default function ShutterbugWorld() {
         setPhase(useCountry ? "country" : "city"); setCurrent(null); setRevealed(false);
         setMsg({ type: "info", text: useCountry ? `Welcome to ${cont}! Pick a country to explore.` : `Welcome to ${cont}! Click any place to learn about it.` });
         say(cont); // spoken arrival: just the continent's name
-        if (!sameHere) maybeMrO();
+        if (!sameHere) maybeMrO(cont);
       };
       if (prefersReduced || sameHere) { finalize(); return; }
       music("travelJig");
@@ -1490,7 +1492,7 @@ export default function ShutterbugWorld() {
           ? { type: "info", text: `${sameHere ? "Still in" : "Touched down in"} ${cont} (${costTxt}). ${here} target${here === 1 ? "" : "s"} on your list ${here === 1 ? "is" : "are"} here. ${where}` }
           : { type: "warn", text: `${sameHere ? "Still in" : "Touched down in"} ${cont} (${costTxt}) — but nothing on your list is here. Fly on when ready.` });
         say(cont); // spoken arrival: just the continent's name
-        if (!sameHere) maybeMrO();
+        if (!sameHere) maybeMrO(cont);
       };
       if (prefersReduced || sameHere) { finalize(); return; }
       music("travelJig");
@@ -1521,7 +1523,7 @@ export default function ShutterbugWorld() {
         setCurrent(null);   // arrived on the continent; no city picked yet
         setRevealed(false);
         if (nd <= 0) outOfDays(`You reached ${cont}, but the trip's budget is spent.`);
-        else { setMsg({ type: "info", text: sameHere ? `Still in ${cont} — ${useCountry ? "pick the right country." : "pick the right city."}` : `Touched down in ${cont} (${costTxt}). ${useCountry ? "Now pick the right country." : "Now pick the right city."}` }); say(cont); if (!sameHere) maybeMrO(); }
+        else { setMsg({ type: "info", text: sameHere ? `Still in ${cont} — ${useCountry ? "pick the right country." : "pick the right city."}` : `Touched down in ${cont} (${costTxt}). ${useCountry ? "Now pick the right country." : "Now pick the right city."}` }); say(cont); if (!sameHere) maybeMrO(cont); }
       };
       if (prefersReduced || sameHere) { finalize(); return; }
       music("travelJig");
@@ -3739,21 +3741,21 @@ function MrOBubble({ fact, onClose, reduced }) {
     return () => clearTimeout(id);
   }, [fact, onClose]);
   return (
-    <div style={{ position: "fixed", left: 12, bottom: 12, zIndex: 55, maxWidth: 430, pointerEvents: "none" }}>
+    <div style={{ position: "fixed", left: 14, bottom: 14, zIndex: 55, maxWidth: 560, pointerEvents: "none" }}>
       <div className={reduced ? "" : "sbw-pop"} onClick={onClose}
-        style={{ display: "flex", alignItems: "center", gap: 2, pointerEvents: "auto", cursor: "pointer" }}>
+        style={{ display: "flex", alignItems: "center", gap: 4, pointerEvents: "auto", cursor: "pointer" }}>
         {/* Mr. O — the full cut-out figure (public/odin.png); he gestures toward
             the speech bubble on his right. Falls back to an emoji if the art is
             missing, so it never shows a broken image. */}
         {imgOk ? (
           <img src={`${BASE}odin.png`} alt="" onError={() => setImgOk(false)}
-            style={{ height: 172, width: "auto", flex: "none", objectFit: "contain", filter: "drop-shadow(0 4px 6px rgba(0,0,0,0.32))" }} />
+            style={{ height: 240, width: "auto", flex: "none", objectFit: "contain", filter: "drop-shadow(0 4px 7px rgba(0,0,0,0.34))" }} />
         ) : (
-          <div aria-hidden="true" style={{ fontSize: 52, lineHeight: 1, flex: "none", filter: "drop-shadow(0 2px 3px rgba(0,0,0,0.25))" }}>{MR_O.emoji}</div>
+          <div aria-hidden="true" style={{ fontSize: 74, lineHeight: 1, flex: "none", filter: "drop-shadow(0 2px 3px rgba(0,0,0,0.25))" }}>{MR_O.emoji}</div>
         )}
-        <div style={{ background: "#fff", border: `2px solid ${OCEAN}`, borderRadius: "14px 14px 14px 3px", padding: "10px 13px", boxShadow: "0 6px 18px rgba(16,38,46,0.28)", marginBottom: 24 }}>
-          <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 10, letterSpacing: "0.12em", color: OCEAN, fontWeight: 700, marginBottom: 3 }}>{MR_O.name.toUpperCase()} · {MR_O.lead.toUpperCase()}</div>
-          <TypeLine text={fact} reduced={reduced} style={{ color: INK, fontSize: 13.5, lineHeight: 1.45 }} />
+        <div style={{ background: "#fff", border: `2.5px solid ${OCEAN}`, borderRadius: "16px 16px 16px 4px", padding: "13px 16px", boxShadow: "0 6px 20px rgba(16,38,46,0.3)", marginBottom: 30 }}>
+          <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 12, letterSpacing: "0.12em", color: OCEAN, fontWeight: 700, marginBottom: 5 }}>{MR_O.name.toUpperCase()} · {MR_O.lead.toUpperCase()}</div>
+          <TypeLine text={fact} reduced={reduced} style={{ color: INK, fontSize: 16.5, lineHeight: 1.5 }} />
         </div>
       </div>
     </div>
