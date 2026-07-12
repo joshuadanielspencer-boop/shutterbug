@@ -1,7 +1,10 @@
 import React, { useState, useRef, useEffect, useMemo } from "react";
 import { LOCATIONS } from "./data/locations.js";
 import { WORLD_COUNTRIES, COUNTRY_CONTINENT } from "./data/worldmap.js";
-import { WORLD_COUNTRIES_ROBINSON } from "./data/worldmap-robinson.js";
+// WORLD_COUNTRIES_ROBINSON (the ~290 KB Robinson-projected country outlines) is
+// only used by the world map, so it's loaded lazily (see the effect below) to
+// keep it out of the first paint. worldmap.js stays eager — its outlines feed the
+// sepia background on every screen and the quiz's shape questions.
 import { COUNTRY_INFO, COUNTRY_LAYER_CONTINENTS } from "./data/countries.js";
 import { COUNTRY_PEOPLE, greetingMeaning } from "./data/culture.js";
 import { categoryCountries, categoryMissionOK as missionOK } from "./missions.js";
@@ -815,6 +818,14 @@ export default function ShutterbugWorld() {
   // Start the splash jig on the player's first interaction (autoplay rules need a
   // gesture, so we can't begin it on load — the first tap does it).
   const startMusicMaybe = () => { if (musicOn) MUSIC.start(); };
+  // The world map's Robinson country outlines load as a separate chunk right after
+  // first paint (not part of the splash bundle); null until they arrive.
+  const [robinsonCountries, setRobinsonCountries] = useState(null);
+  useEffect(() => {
+    let ok = true;
+    import("./data/worldmap-robinson.js").then((m) => { if (ok) setRobinsonCountries(m.WORLD_COUNTRIES_ROBINSON); });
+    return () => { ok = false; };
+  }, []);
   const [pending, setPending] = useState(null); // result popup that pauses play until dismissed
   // Mr. O's double-points riddle: a blocking popup that appears at least once every
   // five shots (at a random shot within each window). { data, choices, answeredIdx }.
@@ -2840,16 +2851,21 @@ export default function ShutterbugWorld() {
                 <g stroke={OCEAN_DEEP} strokeWidth="0.4" fill="none" opacity="0.5" vectorEffect="non-scaling-stroke">
                   {ROBINSON_GRATICULE.map((d, i) => <path key={i} d={d} />)}
                 </g>
-                {CONTINENTS.map((cont) => (
+                {robinsonCountries ? CONTINENTS.map((cont) => (
                   <g key={cont} className="sbw-cont" role="button" tabIndex={busy ? -1 : 0}
                      aria-label={`Choose ${cont}`} onClick={() => pickContinent(cont)}
                      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); pickContinent(cont); } }}
                      style={{ cursor: busy ? "default" : "pointer" }}>
-                    {WORLD_COUNTRIES_ROBINSON.filter((c) => COUNTRY_CONTINENT[c.name] === cont).map((c) => (
+                    {robinsonCountries.filter((c) => COUNTRY_CONTINENT[c.name] === cont).map((c) => (
                       <path key={c.name} d={c.d} fill={CONTINENT_COLOR[cont]} fillRule="evenodd" stroke={INK} strokeWidth="0.3" vectorEffect="non-scaling-stroke" />
                     ))}
                   </g>
-                ))}
+                )) : (
+                  // Chunk still in flight (rare — it loads right after first paint). Show
+                  // a brief note so the map area never looks broken.
+                  <text x={box.x + box.w / 2} y={box.y + box.h / 2} textAnchor="middle" dominantBaseline="central"
+                    fontFamily="ui-monospace, monospace" fontSize="9" fill={PAPER} opacity="0.9">Unrolling the map…</text>
+                )}
                 </>
               )}
 

@@ -25,7 +25,11 @@ export default defineConfig({
           if (id.includes("node_modules")) {
             return id.includes("react") ? "react-vendor" : "vendor";
           }
-          if (id.includes("/src/data/worldmap")) return "mapdata";
+          // worldmap-robinson is dynamically imported for the world map — leave it
+          // unassigned so Rollup emits it as its own async chunk (kept out of first
+          // paint). Must come BEFORE the worldmap.js / catch-all rules below.
+          if (id.includes("/src/data/worldmap-robinson")) return;
+          if (id.includes("/src/data/worldmap.js")) return "mapdata";
           if (id.includes("/src/data/locations")) return "locations";
           if (id.includes("/src/data/")) return "content";
         },
