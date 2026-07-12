@@ -4014,19 +4014,19 @@ function MrOBubble({ fact, onClose, reduced }) {
     return () => clearTimeout(id);
   }, [fact, onClose]);
   return (
-    <div style={{ position: "fixed", left: 12, bottom: 12, zIndex: 55, maxWidth: 360, pointerEvents: "none" }}>
+    <div style={{ position: "fixed", left: 12, bottom: 12, zIndex: 55, maxWidth: 430, pointerEvents: "none" }}>
       <div className={reduced ? "" : "sbw-pop"} onClick={onClose}
-        style={{ display: "flex", alignItems: "flex-end", gap: 8, pointerEvents: "auto", cursor: "pointer" }}>
-        {/* Mr. O's portrait (public/odin.png); falls back to an emoji until the
-            art is added, so it never shows a broken image. */}
+        style={{ display: "flex", alignItems: "center", gap: 2, pointerEvents: "auto", cursor: "pointer" }}>
+        {/* Mr. O — the full cut-out figure (public/odin.png); he gestures toward
+            the speech bubble on his right. Falls back to an emoji if the art is
+            missing, so it never shows a broken image. */}
         {imgOk ? (
           <img src={`${BASE}odin.png`} alt="" onError={() => setImgOk(false)}
-            style={{ width: 88, height: 88, flex: "none", borderRadius: "50%", objectFit: "cover", objectPosition: "50% 30%",
-              border: `3px solid ${OCEAN}`, background: "#DCE9EC", boxShadow: "0 3px 8px rgba(16,38,46,0.3)" }} />
+            style={{ height: 172, width: "auto", flex: "none", objectFit: "contain", filter: "drop-shadow(0 4px 6px rgba(0,0,0,0.32))" }} />
         ) : (
           <div aria-hidden="true" style={{ fontSize: 52, lineHeight: 1, flex: "none", filter: "drop-shadow(0 2px 3px rgba(0,0,0,0.25))" }}>{MR_O.emoji}</div>
         )}
-        <div style={{ background: "#fff", border: `2px solid ${OCEAN}`, borderRadius: "14px 14px 14px 3px", padding: "10px 13px", boxShadow: "0 6px 18px rgba(16,38,46,0.28)" }}>
+        <div style={{ background: "#fff", border: `2px solid ${OCEAN}`, borderRadius: "14px 14px 14px 3px", padding: "10px 13px", boxShadow: "0 6px 18px rgba(16,38,46,0.28)", marginBottom: 24 }}>
           <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 10, letterSpacing: "0.12em", color: OCEAN, fontWeight: 700, marginBottom: 3 }}>{MR_O.name.toUpperCase()} · {MR_O.lead.toUpperCase()}</div>
           <TypeLine text={fact} reduced={reduced} style={{ color: INK, fontSize: 13.5, lineHeight: 1.45 }} />
         </div>
