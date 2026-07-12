@@ -3124,21 +3124,26 @@ export default function ShutterbugWorld() {
                   {[...Array(13)].map((_, i) => <line key={"v" + i} x1={i * 30} y1="0" x2={i * 30} y2="180" stroke={OCEAN_DEEP} strokeWidth="0.4" />)}
                 </pattern>
               </defs>
-              {/* World step: stylised ocean band (0..180) with blank letterbox margins
-                  top/bottom. City step: a topographic relief plate for the chosen
-                  continent — the equirectangular Blue Marble (cropped by the viewBox),
-                  drawn twice for Pacific-centred Oceania, or the south-polar image for
-                  Antarctica so it shows the true round continent. */}
+              {/* World step: stylised ocean band. Country/City step: a CRISP VECTOR
+                  map (no pixelation at any zoom) — ocean fill + every country drawn
+                  as a real polygon, so borders stay sharp and shapes read clearly.
+                  Antarctica keeps its south-polar relief plate (it has no countries). */}
               {zoomed ? (
                 plateMode === "polar" ? (
                   <image href={`${BASE}relief-antarctica.jpg`} xlinkHref={`${BASE}relief-antarctica.jpg`} x="0" y="0" width={ANT_PLATE} height={ANT_PLATE} preserveAspectRatio="none" />
-                ) : plateMode === "wrap" ? (
-                  <g>
-                    <image href={`${BASE}relief-world.jpg`} xlinkHref={`${BASE}relief-world.jpg`} x="0" y="0" width="360" height="180" preserveAspectRatio="none" />
-                    <image href={`${BASE}relief-world.jpg`} xlinkHref={`${BASE}relief-world.jpg`} x="360" y="0" width="360" height="180" preserveAspectRatio="none" />
-                  </g>
                 ) : (
-                  <image href={`${BASE}relief-world.jpg`} xlinkHref={`${BASE}relief-world.jpg`} x="0" y="0" width="360" height="180" preserveAspectRatio="none" />
+                  <g shapeRendering="geometricPrecision">
+                    <rect x={box.x} y={box.y} width={box.w} height={box.h} fill={OCEAN} />
+                    {/* land: all countries (drawn a second time, shifted +360°, for the
+                        Pacific-centred Oceania view that crosses the antimeridian) */}
+                    {(plateMode === "wrap" ? [0, 360] : [0]).map((off) => (
+                      <g key={off} transform={off ? `translate(${off} 0)` : undefined}>
+                        {WORLD_COUNTRIES.map((c) => (
+                          <path key={c.name} d={c.d} fill={LAND} fillRule="evenodd" stroke={LAND_EDGE} strokeWidth="0.35" vectorEffect="non-scaling-stroke" />
+                        ))}
+                      </g>
+                    ))}
+                  </g>
                 )
               ) : (
                 <>
@@ -3214,8 +3219,8 @@ export default function ShutterbugWorld() {
                        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); pickCountry(country); } }}
                        style={{ cursor: busy ? "default" : "pointer" }}>
                       {(!wrapPlate && d)
-                        ? <path d={d} fillRule="evenodd" fill="rgba(244,236,216,0.16)" stroke={PAPER} strokeWidth="0.9" vectorEffect="non-scaling-stroke" />
-                        : <ellipse cx={cm.cx} cy={cm.cy} {...pinR(0.028)} fill="rgba(240,165,0,0.55)" stroke={PAPER} strokeWidth="1" vectorEffect="non-scaling-stroke" />}
+                        ? <path d={d} fillRule="evenodd" fill="rgba(62,155,110,0.42)" stroke={INK} strokeWidth="0.6" vectorEffect="non-scaling-stroke" />
+                        : <ellipse cx={cm.cx} cy={cm.cy} {...pinR(0.028)} fill="rgba(62,155,110,0.75)" stroke={PAPER} strokeWidth="1" vectorEffect="non-scaling-stroke" />}
                     </g>
                   );
                 });
@@ -3279,11 +3284,21 @@ export default function ShutterbugWorld() {
                 );
               })()}
 
-              {/* Highlight the country you're standing in (city step): its coral
-                  border teaches the player the country's shape and where it sits on
-                  the continent. Only outline continents have a usable shape. */}
+              {/* Highlight the country you're standing in (city step): fill its shape
+                  in warm gold with a bold coral border so it POPS off the map — this
+                  teaches the player the country's shape, size, and place in the world.
+                  Its name rides in a banner across the top. */}
               {inCity && pickedCountry && plateMode !== "wrap" && wcPath(pickedCountry) && (
-                <path d={wcPath(pickedCountry)} fillRule="evenodd" fill="rgba(240,165,0,0.12)" stroke={CORAL} strokeWidth="1.8" vectorEffect="non-scaling-stroke" style={{ pointerEvents: "none" }} />
+                <path d={wcPath(pickedCountry)} fillRule="evenodd" fill="rgba(240,165,0,0.5)" stroke={CORAL} strokeWidth="2.4" strokeLinejoin="round" vectorEffect="non-scaling-stroke" style={{ pointerEvents: "none" }} />
+              )}
+              {inCity && (ctxCountry || pickedCountry) && (
+                <g style={{ pointerEvents: "none" }}>
+                  <rect x={box.x + box.w * 0.5 - (String(ctxCountry || pickedCountry).length * 0.0125 + 0.03) * box.w} y={box.y + 0.02 * box.h}
+                    width={(String(ctxCountry || pickedCountry).length * 0.025 + 0.06) * box.w} height={0.075 * box.h} rx={0.02 * box.h}
+                    fill="rgba(16,38,46,0.82)" />
+                  <text x={box.x + box.w * 0.5} y={box.y + 0.073 * box.h} fontSize={0.045 * box.h} fontFamily="ui-sans-serif, system-ui" fontWeight="900"
+                    fill="#fff" textAnchor="middle">{ctxCountry || pickedCountry}</text>
+                </g>
               )}
 
               {/* city pins (city phase): the target + same-continent decoys. Each pin
