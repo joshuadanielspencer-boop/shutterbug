@@ -15,7 +15,69 @@ export const MR_O = {
   name: "Mr. O",
   emoji: "🧒",
   lead: "Oh! Did you know…",
+  riddleLead: "Riddle me this…",
 };
+
+// ---- Mr. O's DOUBLE-POINTS RIDDLES ---------------------------------------
+// Now and then Mr. O bursts in with a hard travel riddle — geography, language
+// or culture — for DOUBLE points. Each is a multiple-choice question; the
+// component shuffles the choices and marks the one matching `correct`.
+//
+// FACT RULE (rule 2): every riddle and its answer is a verified, well-established
+// fact. Sources (verified 2026-07-11, Wikipedia/Britannica/standard references):
+// Sargasso Sea = only sea with no land coastline (bounded by ocean currents);
+// Swahili greetings "Jambo/Habari" (Kenya/East Africa); La Paz, Bolivia = world's
+// highest administrative capital (~3,640 m); Japan "Nippon" = origin of the sun;
+// Danube flows through 10 countries (most of any river); India drives on the left;
+// China uses one official time zone despite its width; Thailand's currency = baht;
+// Istanbul straddles Europe & Asia across the Bosphorus; "safari" = "journey" in
+// Swahili; Norway = fjords, flag is a blue-white cross on red; flamenco is a
+// Spanish (Andalusian) art form; the "hongi" is a Māori nose-press greeting (New
+// Zealand); Lesotho is an enclave entirely surrounded by South Africa.
+export const MR_O_RIDDLES = [
+  { q: "I'm the only sea on Earth with no land coastline at all — ocean currents make my edges instead. Which sea am I?",
+    choices: ["The Sargasso Sea", "The Caspian Sea", "The Coral Sea", "The Sea of Japan"], correct: "The Sargasso Sea",
+    explain: "The Sargasso Sea, in the North Atlantic, is bounded by ocean currents rather than land — the only sea on Earth without a coastline." },
+  { q: "In which country would a local welcome you with the Swahili greeting “Jambo!”?",
+    choices: ["Kenya", "Morocco", "Peru", "Thailand"], correct: "Kenya",
+    explain: "“Jambo” and “Habari” are Swahili greetings, spoken in Kenya and across East Africa." },
+  { q: "Which is the world's highest capital, with its government seat over 3,600 m up in the Andes?",
+    choices: ["La Paz, Bolivia", "Kathmandu, Nepal", "Quito, Ecuador", "Bogotá, Colombia"], correct: "La Paz, Bolivia",
+    explain: "La Paz, Bolivia's seat of government, sits about 3,640 m above sea level — the highest capital in the world." },
+  { q: "One big country's own name, “Nippon,” means “origin of the sun” — the Land of the Rising Sun. Which is it?",
+    choices: ["Japan", "China", "South Korea", "Thailand"], correct: "Japan",
+    explain: "“Nippon” (or “Nihon”) means “origin of the sun” — that's why Japan is called the Land of the Rising Sun." },
+  { q: "Which river flows through more countries than any other — ten of them — before reaching the Black Sea?",
+    choices: ["The Danube", "The Nile", "The Rhine", "The Amazon"], correct: "The Danube",
+    explain: "The Danube passes through 10 countries — more than any other river on Earth." },
+  { q: "You land at an airport and everyone is driving on the LEFT. Which of these countries could you be in?",
+    choices: ["India", "France", "Brazil", "Germany"], correct: "India",
+    explain: "India drives on the left (like the UK and Australia); France, Brazil and Germany all drive on the right." },
+  { q: "Which country is about as wide as the whole United States, yet keeps just ONE official time zone?",
+    choices: ["China", "Russia", "Canada", "Brazil"], correct: "China",
+    explain: "China spans five geographic time zones but officially runs on a single one — Beijing time." },
+  { q: "You're haggling in a market in Thailand. What money are you spending?",
+    choices: ["The baht", "The ringgit", "The dong", "The rupee"], correct: "The baht",
+    explain: "Thailand's currency is the baht; the ringgit is Malaysia's, the dong is Vietnam's." },
+  { q: "Which great city is split between TWO continents, with a strait running right through its middle?",
+    choices: ["Istanbul", "Cairo", "Athens", "Dubai"], correct: "Istanbul",
+    explain: "Istanbul straddles Europe and Asia across the Bosphorus strait." },
+  { q: "The word “safari,” for a wildlife journey, means simply “journey” in which language?",
+    choices: ["Swahili", "Zulu", "Hindi", "Arabic"], correct: "Swahili",
+    explain: "“Safari” is the Swahili word for “journey.”" },
+  { q: "Which country is famous for its deep coastal fjords and a flag that's a blue-and-white cross on red?",
+    choices: ["Norway", "Sweden", "Finland", "Denmark"], correct: "Norway",
+    explain: "Norway is carved with fjords; its flag is a blue Scandinavian cross outlined in white on a red field." },
+  { q: "Where might you watch a fiery flamenco dance and be greeted with “¡Hola!” in its homeland?",
+    choices: ["Spain", "Portugal", "Italy", "Greece"], correct: "Spain",
+    explain: "Flamenco is a traditional art form of Andalusia in Spain, where people greet you with “¡Hola!”" },
+  { q: "In which country might you be greeted with a “hongi” — a gentle press of noses and foreheads?",
+    choices: ["New Zealand", "Fiji", "Japan", "Norway"], correct: "New Zealand",
+    explain: "The hongi is a traditional Māori greeting in New Zealand — pressing noses and foreheads together." },
+  { q: "Which small mountain kingdom is completely surrounded by just one country, South Africa?",
+    choices: ["Lesotho", "Eswatini", "Botswana", "Namibia"], correct: "Lesotho",
+    explain: "Lesotho is an enclave — a whole country entirely encircled by South Africa." },
+];
 
 export const MR_O_FACTS = [
   "Russia is so wide it spreads across 11 time zones — when it's breakfast on one side, it's bedtime on the other!",

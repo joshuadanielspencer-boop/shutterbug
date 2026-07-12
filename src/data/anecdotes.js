@@ -235,4 +235,69 @@ export const ANECDOTES = {
   hegra: "Its most striking tomb, Qasr al-Farid ('the Lonely Castle'), was carved from a single freestanding sandstone boulder and left unfinished — its lower half was never smoothed, so you can still see how the masons worked from the top down.",
   elephantrock: "Its Arabic name Jabal AlFil means 'Mountain of the Elephant,' and the red stone glows a deep amber at sunset, making it one of Al-'Ula's most-loved evening gathering spots.",
   masmak: "A spearhead thrown during that 1902 battle is still lodged in the thick wooden main door of the fortress, which today serves as a museum where visitors can see it.",
+
+  // ---- Batch 2 (verified 2026-07-11, Wikipedia/Britannica/site authorities) ----
+  // Belém Tower rhinoceros gargoyle (one of Europe's earliest rhino sculptures,
+  // after Manuel I's 1515 rhino); St Vitus Cathedral 1344–1929; St Mark's outdoor
+  // horses are replicas (originals kept inside); Thera/Santorini a candidate for
+  // the Atlantis legend (Marinatos); Amsterdam frontage tax → narrow houses +
+  // hoist beams + forward lean; Edinburgh One O'Clock Gun (since 1861); Matterhorn
+  // on Toblerone (with the hidden Bern bear); Alhambra = Arabic "the red one";
+  // Segovia aqueduct devil legend; Cliffs of Moher = "Cliffs of Insanity" (The
+  // Princess Bride) + Harry Potter HBP; Budapest dome 96 m for 896/1896; Nyhavn's
+  // former rowdy-sailor port; Meteora reached by rope nets/ladders; Cologne
+  // Cathedral survived WWII as a pilot landmark; Nîmes aqueduct's ~12.6 m drop over
+  // ~50 km; Giant's Causeway Finn McCool legend; Loch Ness 1934 "Surgeon's Photo"
+  // hoax; Mozart at Schönbrunn (1762, age 6); Table Mountain has more plant species
+  // than the UK; Koutoubia minaret modelled the Giralda & Hassan Tower; Lalibela's
+  // 11 tunnel-linked churches ("New Jerusalem"); Kilimanjaro's climate-zone climb;
+  // Abu Simbel's twice-yearly sun alignment; "Serengeti" = Maasai "siringet" endless
+  // plains; Djenné's annual replastering festival; baobab "upside-down tree",
+  // long-lived water-storers; Fez's centuries-old Chouara tanneries (mint offered);
+  // Terracotta Army's unique faces + lost paint; Kinkaku-ji 1950 arson (Mishima's
+  // novel); Ha Long dragon legend; Sigiriya's Mirror Wall graffiti; Everest still
+  // rising ~a few mm/yr; Leshan Buddha's hidden drainage; Hawa Mahal's cooling
+  // breezes; Twain on Varanasi's age; Baikal's nerpa seal + winter ice roads;
+  // Borobudur rediscovered 1814 + clockwise ascent; Bagan's sunrise balloons;
+  // Chocolate Hills giant's-tears legend; Zhangjiajie's Bailong glass elevator.
+  lisbon: "Look low on one of its turrets and you'll spot a carved rhinoceros — a nod to a real rhino the king was given in 1515, one of the first ever seen in Europe!",
+  prague: "The great cathedral standing inside the castle walls took almost six hundred years to finish — begun in 1344 and not completed until 1929!",
+  venice: "The four proud bronze horses above the doorway are copies — the real ones, brought back from Constantinople long ago, are kept safe from the weather inside!",
+  santorini: "Some people think this drowned volcano island inspired the ancient legend of Atlantis — the great city said to have vanished beneath the waves!",
+  amsterdam: "The houses are skinny because owners were once taxed on how wide their canal frontage was — so they built tall and thin, and still hoist furniture up on a beam because the staircases are too narrow!",
+  edinburgh: "The castle sits on the plug of a volcano that died about 350 million years ago — and a gun is still fired from its walls at one o'clock almost every day, a habit begun in 1861!",
+  matterhorn: "That unmistakable pyramid is the very mountain pictured on the Toblerone chocolate bar — and hidden in the wrapper's logo is a little bear, the symbol of the city of Bern!",
+  granada: "Its name comes from Arabic words meaning “the red one,” after the way its long walls glow red-gold in the light of the setting sun!",
+  segovia: "Local legend says the devil himself built it in a single night to win a girl's soul — though the Roman engineers, of course, get the real credit!",
+  cliffsmoher: "These dizzying cliffs played the “Cliffs of Insanity” in the film The Princess Bride — and a young wizard visited them on screen in a Harry Potter adventure too!",
+  budapest: "Its dome stands exactly 96 metres tall on purpose — a nod to the year 896, when the Magyar people first arrived, and to 1896, a thousand years later!",
+  copenhagen: "This picture-perfect harbour was once a rough, rowdy dock crowded with sailors, taverns and tattoo parlours — quite the change from the postcard spot it is today!",
+  meteora: "For centuries the only way up to these clifftop monasteries was by long swaying ladders, or hauled up in a net on a rope — pulled up whenever danger threatened below!",
+  cologne: "In the war, bombs flattened much of the city around it, yet the great cathedral kept standing — pilots even used its dark twin spires as a landmark from the air!",
+  pontdugard: "The whole fifty-kilometre channel it belonged to sloped so gently that the water fell only about twelve metres along its entire length — a masterpiece of careful measuring!",
+  giantscauseway: "Legend says a giant named Finn McCool laid these forty thousand stone steps as a causeway across the sea, to march over and challenge a rival giant in Scotland!",
+  lochness: "The most famous photo of the “monster” turned out to be a clever hoax — really just a toy submarine with a model head, a trick finally confessed sixty years later!",
+  vienna: "A six-year-old Mozart once played the piano for the empress in this very palace, back in 1762 — and, the story goes, cheekily clambered onto her lap afterwards!",
+  capetown: "This one flat-topped mountain is home to more kinds of wild plant than the whole of the United Kingdom — and many of them grow nowhere else on Earth!",
+  marrakesh: "Its tall minaret was so admired that it became the model for other famous towers built by the same rulers — the Giralda in Spain and the Hassan Tower in Rabat!",
+  lalibela: "It's one of eleven churches here all carved down out of the solid rock, linked by a maze of tunnels and trenches — built long ago to be a “New Jerusalem”!",
+  kilimanjaro: "Climbing it is like walking from the equator to the poles — you pass through steamy rainforest, open moorland and finally freezing, icy slopes, all on one mountain!",
+  abusimbel: "Twice a year the dawn sun shoots straight down the temple's long hall to light up the statues of the gods deep inside — a trick its builders planned over three thousand years ago!",
+  serengeti: "Its name comes from a Maasai word, “siringet,” meaning “the place where the land runs on forever” — and across those endless plains the great herds march!",
+  djenne: "Once a year the whole town turns out for a grand festival to re-plaster the mosque's walls with fresh mud by hand, keeping the giant sandcastle standing for another year!",
+  baobabs: "People call the baobab the “upside-down tree,” as if its roots wave in the air instead of its branches — and some live for over a thousand years, storing water in their fat trunks!",
+  fes: "In its ancient tanneries, workers still dye leather by hand in stone pots of colour just as they have for centuries — and visitors are handed a sprig of mint to sniff against the smell!",
+  xian: "No two of the clay soldiers share the same face — and each was once painted in bright colours, though the paint often flakes away within minutes of meeting the air after two thousand years underground!",
+  kyoto: "The golden pavilion you see is a careful rebuild — a troubled young monk set fire to the original in 1950, a story so dramatic it inspired a famous Japanese novel!",
+  halong: "Legend says the islands are jewels and jade spat out by a family of dragons sent from heaven, forming a wall of stone to guard the land against invaders from the sea!",
+  sigiriya: "One wall was once polished so smooth the king could see his own reflection in it — and visitors long ago scribbled more than a thousand poems on it, some over a thousand years old!",
+  everest: "It's still growing! The slow-motion crash of two great slabs of the Earth's crust pushes the mountain a few millimetres taller every single year.",
+  leshan: "Hidden inside the giant Buddha's coils of hair and body is a clever drainage system that whisks rainwater away — and a single one of its toenails is big enough for a person to sit on!",
+  jaipur: "All those hundreds of little windows aren't just for peeping out — they funnel cool breezes right through the palace, which is exactly how the “Palace of Winds” earned its name!",
+  varanasi: "This city is so astonishingly ancient that a famous visiting writer once joked it looked older than history, older than tradition, older even than legend — all put together!",
+  baikal: "It's the only home of the nerpa, the world's only seal that lives entirely in fresh water — and in winter its ice grows so thick and glass-clear that cars drive right across it!",
+  borobudur: "For centuries it lay lost beneath volcanic ash and thick jungle, until it was uncovered again in 1814 — and pilgrims still climb it in a clockwise spiral, like a journey toward enlightenment!",
+  bagan: "At dawn, hot-air balloons drift silently over its thousands of ancient spires — a whole sea of temples glowing gold in the first light of the sun!",
+  chocolatehills: "Legend says the hills are the hardened tears of a heartbroken giant — though they're really ancient coral and limestone, worn by wind and rain into hundreds of neat cones!",
+  zhangjiajie: "One towering pillar is climbed by a glass lift built right onto the cliff face — the tallest outdoor elevator in the world, whisking visitors more than three hundred metres up in a couple of minutes!",
 };

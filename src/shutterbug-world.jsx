@@ -16,7 +16,7 @@ import { listProfiles, lastProfileName, getProfile, createProfile, setLastProfil
   deleteProfile, renameProfile, setAvatar, setProfileFlag, recordGame, recordExplore, recordQuiz,
   weightedOrder, freshFirst, passportData, achievements, topScores, storageAvailable,
   careerRank, unlocks, UNLOCK_REQ } from "./profiles.js";
-import { MR_O, MR_O_FACTS } from "./data/mr-o.js";
+import { MR_O, MR_O_FACTS, MR_O_RIDDLES } from "./data/mr-o.js";
 
 // Base URL the app is served from ("/" at a domain root, "/<repo>/" on a GitHub
 // Pages project site). Prefix runtime asset URLs with it so the relief map plates
@@ -144,8 +144,8 @@ function PhotoCredit({ photo, style }) {
 // efficient routes and ½-point extra credit per correct homecoming review
 // question (see dayBonus / QUIZ_BONUS below).
 const MODES = {
-  easy:   { label: "Easy",   assignments: 5, cityDecoys: 2, daysPer: 3, points: 3, slack: 6, labels: "all",   clue: "easy",   catShare: 0.22, countryOpts: 3, research: "free",  hints: true,
-            blurb: "A short 5-shot trip. Clues name the country, every pin is labelled, a category badge tells you what kind of place it is, wrong guesses get warm/cold hints, and Research is free." },
+  easy:   { label: "Easy",   assignments: 5, cityDecoys: 2, daysPer: 3, points: 3, slack: 6, labels: "all",   clue: "easy",   catShare: 0.22, countryOpts: 5, research: "half", hints: true,
+            blurb: "A short 5-shot trip. Clues name the country, every pin is labelled, a category badge tells you what kind of place it is, wrong guesses get warm/cold hints, and Research for a Clue costs just ½ a day." },
   medium: { label: "Medium", assignments: 9, cityDecoys: 3, daysPer: 3, points: 2, slack: 6, labels: "smart", clue: "medium", catShare: 0.08, countryOpts: 5, research: "half", hints: true,
             blurb: "A 9-shot expedition. Clues name the continent but hide the country; labels appear on hover; a category badge still helps; Research costs ½ a day." },
   hard:   { label: "Hard",   assignments: 14, cityDecoys: 4, daysPer: 2, points: 1, slack: 5, labels: "smart", clue: "hard",   catShare: 0.04, countryOpts: 7, research: "off",  hints: false,
@@ -293,6 +293,26 @@ const CONTINENT_META = (() => {
       // Australia while still keeping Indonesia in frame.
       const w = Math.max(40, (maxX - minX) * 1.03);
       const h = Math.max(40, (maxY - minY) * 1.05);
+      meta[c] = { mode: "equirect", box: { x: cx - w / 2, y: cy - h / 2, w, h }, cx, cy };
+      continue;
+    }
+    if (c === "Europe") {
+      // Europe's landmarks span ~72° of longitude (Iceland → Kazan) but only ~34°
+      // of latitude, so the old square box padded huge margins of ocean top and
+      // bottom — pulling Greenland, half of Africa and a slab of Asia into frame.
+      // Hug the content instead (a wide, short box); the frame takes the box's
+      // aspect ratio, so nothing distorts.
+      const w = Math.max(40, (maxX - minX) * 1.10);
+      const h = Math.max(40, (maxY - minY) * 1.50); // headroom for the country labels
+      meta[c] = { mode: "equirect", box: { x: cx - w / 2, y: cy - h / 2, w, h }, cx, cy };
+      continue;
+    }
+    if (c === "Africa") {
+      // Africa is TALLER than it is wide, so the old square box padded wide margins
+      // of Atlantic and Indian ocean and let ~12° of Europe/Mediterranean creep in
+      // up north. Hug the content: a near-square box tight to the landmarks.
+      const w = Math.max(40, (maxX - minX) * 1.12);
+      const h = Math.max(40, (maxY - minY) * 1.15);
       meta[c] = { mode: "equirect", box: { x: cx - w / 2, y: cy - h / 2, w, h }, cx, cy };
       continue;
     }
@@ -1097,6 +1117,38 @@ const MUSIC = (() => {
         master.gain.setTargetAtTime(0.0001, tc + 1.4, 0.5); // let it ring, then fade
       } catch { /* ignore */ }
     },
+    // A short, slow, wistful Scottish air — played once when the traveller comes
+    // home to Grandpa's homecoming quiz. Gentle flute-like voice over a soft D
+    // drone; nostalgic, not the lively jig. Ends by letting the last note ring.
+    homecoming() {
+      try {
+        running = false;
+        if (timer) { clearInterval(timer); timer = null; }
+        this.stopCountry();
+        stopDrone();
+        const c = ac(); if (!c) return;
+        wake(c);
+        if (jigBus) jigBus.gain.setTargetAtTime(0.0001, c.currentTime, 0.3); // hush any jig loop
+        const t0 = c.currentTime + 0.12;
+        const beat = 0.52; // slow and tender
+        // An original air in D major (public-domain idiom, not a quoted tune).
+        const air = [
+          ["A4", 1], ["D5", 1.5], ["A4", 0.5], ["G4", 1], ["F#4", 1],
+          ["E4", 1], ["F#4", 1.5], ["D4", 0.5], ["E4", 1], ["D4", 2],
+          ["F#4", 1], ["A4", 1.5], ["G4", 0.5], ["F#4", 1], ["E4", 1],
+          ["D4", 1.5], ["E4", 0.5], ["F#4", 1], ["E4", 1], ["D4", 2.5],
+        ];
+        const total = air.reduce((s, [, b]) => s + b, 0) * beat;
+        voice(t0, 146.83, 0.035, total + 1.2, "flute", master); // soft D drone under it
+        let at = t0;
+        for (const [name, b] of air) {
+          const f = noteFreq(name);
+          if (f) voice(at, f, 0.1, Math.max(0.22, b * beat * 0.95), "flute", master);
+          at += b * beat;
+        }
+        master.gain.setTargetAtTime(0.0001, at + 0.7, 0.7); // let the last note ring, then rest
+      } catch { /* music must never break gameplay */ }
+    },
   };
 })();
 
@@ -1204,14 +1256,25 @@ export default function ShutterbugWorld() {
   // jig going if it's already playing (and start-screen clicks kick it off).
   useEffect(() => {
     if (screen === "passport") MUSIC.stop();
-    else if (screen === "play") MUSIC.fadeJig();          // reach the map → jig fades out
+    else if (screen === "play") MUSIC.fadeJig();          // reach the map → the jig fades out
     else if (screen === "end") { if (musicOn) MUSIC.finale(); else MUSIC.stop(); }
-    else MUSIC.stopCountry();                             // meet/start/quiz/homecoming — no country tune
+    else if (screen === "homecoming") { if (musicOn) MUSIC.homecoming(); else MUSIC.stop(); } // a wistful air with Grandpa
+    // splash / meet / intro / dream / quiz: the happy Scottish jig plays the whole
+    // way from the splash through meeting Grandpa (it only fades at the world map),
+    // and resumes here on a return trip so every playthrough is scored to it.
+    else { MUSIC.stopCountry(); if (musicOn) MUSIC.start(); }
   }, [screen]); // eslint-disable-line react-hooks/exhaustive-deps
   // Start the splash jig on the player's first interaction (autoplay rules need a
   // gesture, so we can't begin it on load — the first tap does it).
   const startMusicMaybe = () => { if (musicOn) MUSIC.start(); };
   const [pending, setPending] = useState(null); // result popup that pauses play until dismissed
+  // Mr. O's double-points riddle: a blocking popup that appears at least once every
+  // five shots (at a random shot within each window). { data, choices, answeredIdx }.
+  const [riddle, setRiddle] = useState(null);
+  const riddleSeen = useRef([]);            // riddle indices shown this session
+  const shotsSinceRiddleRef = useRef(0);    // shots taken since the last riddle
+  const riddleEveryRef = useRef(1 + Math.floor(Math.random() * 5)); // next trigger: a random 1–5
+  const riddleDueRef = useRef(false);       // a riddle is queued to open once the shot result is dismissed
   const [elapsedMs, setElapsedMs] = useState(0); // final game time, shown on the results screen
   const [liveNow, setLiveNow] = useState(0); // ticks while playing so the on-screen timer updates
   const [albumView, setAlbumView] = useState(null); // album photo opened into a big popup
@@ -1236,12 +1299,14 @@ export default function ShutterbugWorld() {
   const [avatarEdit, setAvatarEdit] = useState(false);        // avatar editor open (start screen)
   const [createOpen, setCreateOpen] = useState(false);        // "Create New Traveler" modal open
   const [meetInfo, setMeetInfo] = useState(null);             // { line, comment } shown on the meet-Grandpa screen
+  const [meetTyped, setMeetTyped] = useState(0);              // how many of Grandpa's meet lines have finished typing (gates the controls)
   const [modeInfo, setModeInfo] = useState(null);             // which mode-select ⓘ is open
   const [showScores, setShowScores] = useState(false);        // high-scores reveal
   const [researched, setResearched] = useState({}); // assignment step -> revealed research note (Research button)
   const [cityPlan, setCityPlan] = useState(null); // country-layer city step: { ids, wide } (wide = continent view for thin countries)
   const [quiz, setQuiz] = useState(null); // Quiz mode: { questions, i, answeredIdx, score, correctCount, streak, done, best }
   const [quizBonus, setQuizBonus] = useState(0); // ½-pt-per-correct homecoming review extra credit folded into the trip score
+  const [homeTypedI, setHomeTypedI] = useState(-1); // homecoming: index of the question whose Grandpa intro has finished typing (gates the answers)
   const [endLine, setEndLine] = useState(""); // Grandpa's one random line on the results screen (picked once per results view)
   const [expedition, setExpedition] = useState(null); // active themed expedition {id,title,emoji,lesson} (a curated Grand Tour)
   const [guestMet, setGuestMet] = useState(false); // has a guest (no profile) met Grandpa Nigel this session?
@@ -1387,6 +1452,7 @@ export default function ShutterbugWorld() {
       if (!u[difficulty]) setDifficulty("easy");
     }
     setMeetInfo({ line, comment, news });
+    setMeetTyped(0); // Grandpa starts talking; controls stay greyed until he's done
     setScreen("meet");
   }
   function goToMeet() {
@@ -1461,6 +1527,7 @@ export default function ShutterbugWorld() {
     recorded.current = false;
     setMsg({ type: "info", text: "Read Grandpa's note, then pick the right continent on the map." });
     setFlying(null);
+    resetRiddles();
     setGameMode("assignments"); setExpedition(null);
     setScreen("play");
   }
@@ -1537,6 +1604,7 @@ export default function ShutterbugWorld() {
     setElapsedMs(0); startRef.current = Date.now(); recorded.current = false;
     setMsg({ type: "info", text: "Plan your route! Fly to a continent, photograph its targets, then fly on." });
     setFlying(null);
+    resetRiddles();
     setScreen("play");
   }
 
@@ -1625,7 +1693,7 @@ export default function ShutterbugWorld() {
     setRevealed(false); setLastResult(null); setNewBadges([]); setPending(null);
     setElapsedMs(0); setResearched({}); startRef.current = Date.now(); recorded.current = false;
     setMsg({ type: "info", text: `${exp.emoji} ${exp.title}: ${exp.lesson}` });
-    setFlying(null); setScreen("play");
+    setFlying(null); resetRiddles(); setScreen("play");
   }
 
   // ---- Quiz mode: 10 multiple-choice geography questions built from the data. ----
@@ -1687,6 +1755,48 @@ export default function ShutterbugWorld() {
     setScreen("end");
   }
 
+  // ---- Mr. O's double-points riddle ----------------------------------------
+  // Fresh riddle cadence at the start of each scored run.
+  function resetRiddles() {
+    setRiddle(null);
+    shotsSinceRiddleRef.current = 0;
+    riddleEveryRef.current = 1 + Math.floor(Math.random() * 5);
+    riddleDueRef.current = false;
+  }
+  // Count each shot; once we've taken as many as this window's random target
+  // (1–5), queue a riddle to open when the shot's result popup is dismissed —
+  // guaranteeing one lands at least once every five shots.
+  function bumpRiddleCounter() {
+    shotsSinceRiddleRef.current += 1;
+    if (shotsSinceRiddleRef.current >= riddleEveryRef.current) {
+      shotsSinceRiddleRef.current = 0;
+      riddleEveryRef.current = 1 + Math.floor(Math.random() * 5);
+      riddleDueRef.current = true;
+    }
+  }
+  // Open a fresh (unseen) riddle if one is queued and the trip is still going.
+  function maybeOpenRiddle() {
+    if (!riddleDueRef.current) return;
+    riddleDueRef.current = false;
+    let pool = MR_O_RIDDLES.map((_, i) => i).filter((i) => !riddleSeen.current.includes(i));
+    if (!pool.length) { riddleSeen.current = []; pool = MR_O_RIDDLES.map((_, i) => i); }
+    const i = pool[Math.floor(Math.random() * pool.length)];
+    riddleSeen.current.push(i);
+    const data = MR_O_RIDDLES[i];
+    setRiddle({ data, choices: shuffleArr(data.choices), answeredIdx: null });
+  }
+  // Answer the riddle: a correct answer is worth DOUBLE a normal shot's points.
+  function answerRiddle(idx) {
+    if (!riddle || riddle.answeredIdx !== null) return;
+    const correct = riddle.choices[idx] === riddle.data.correct;
+    if (correct) {
+      const base = gameMode === "tour" ? TOUR_MODES[difficulty].points : MODES[difficulty].points;
+      setScore((s) => tidyScore(s + base * 2));
+      sfx("success");
+    } else sfx("fail");
+    setRiddle((r) => ({ ...r, answeredIdx: idx }));
+  }
+
   // Dismiss the result popup and do what its button promised.
   function continueFromResult() {
     const kind = pending?.kind;
@@ -1709,6 +1819,8 @@ export default function ShutterbugWorld() {
       setRevealed(false);
     }
     // wrong continent just closes and leaves you on the world map to try again.
+    // If Mr. O has a riddle queued (and the trip continues), pop it now.
+    if (kind !== "win" && kind !== "lose" && kind !== "tour-win" && kind !== "tour-lose") maybeOpenRiddle();
   }
 
   // When a game ends, record its outcome once against the active profile.
@@ -1779,15 +1891,16 @@ export default function ShutterbugWorld() {
       const from = current ? loc(current) : (pickedContinent ? CONTINENT_PIN[pickedContinent] : HUB);
       const to = CONTINENT_PIN[cont];
       const useCountry = COUNTRY_LAYER_CONTINENTS.has(cont);
-      sfx("plane");
+      const sameHere = !!current && loc(current).continent === cont; // already here — no flight
+      if (!sameHere) sfx("plane");
       const finalize = () => {
         setFlying(null); setPickedContinent(cont); setPickedCountry(null); setCityPlan(null);
         setPhase(useCountry ? "country" : "city"); setCurrent(null); setRevealed(false);
         setMsg({ type: "info", text: useCountry ? `Welcome to ${cont}! Pick a country to explore.` : `Welcome to ${cont}! Click any place to learn about it.` });
-        say(`Welcome to ${cont}!`);
-        maybeMrO();
+        say(cont); // spoken arrival: just the continent's name
+        if (!sameHere) maybeMrO();
       };
-      if (prefersReduced) { finalize(); return; }
+      if (prefersReduced || sameHere) { finalize(); return; }
       music("travelJig");
       flightFinalizeRef.current = finalize;
       setFlying({ fromX: from.x, fromY: from.y, toX: to.x, toY: to.y });
@@ -1799,26 +1912,28 @@ export default function ShutterbugWorld() {
       // continent"; going somewhere with no targets is simply a wasted trip.
       const from = current ? loc(current) : (pickedContinent ? CONTINENT_PIN[pickedContinent] : HUB);
       const to = CONTINENT_PIN[cont];
-      const cost = flightDays(from, to); // distance-based: group nearby continents to save days
+      // Already on this continent? No real flight — skip animation/music/cost.
+      const sameHere = !!current && loc(current).continent === cont;
+      const cost = sameHere ? 0 : flightDays(from, to); // distance-based: group nearby continents to save days
       const useCountry = COUNTRY_LAYER_CONTINENTS.has(cont); // every mode visits the country map
-      sfx("plane");
+      if (!sameHere) sfx("plane");
       const finalize = () => {
         const nd = Math.round((days - cost) * 10) / 10;
         setDays(nd);
         setFlying(null); setPickedContinent(cont); setPickedCountry(null); setCityPlan(null);
         setPhase(useCountry ? "country" : "city"); setCurrent(null); setRevealed(false);
         poppedCountryRef.current = null; // let this continent's countries pop their card
-        const costTxt = `−${cost} day${cost === 1 ? "" : "s"}`;
+        const costTxt = sameHere ? "no days lost" : `−${cost} day${cost === 1 ? "" : "s"}`;
         if (nd <= 0) return outOfDays(`You reached ${cont}, but the trip's budget is spent.`);
         const here = tourReqs.filter((r) => !r.done && r.continent === cont).length;
         const where = useCountry ? "Pick the country your next target is in." : "Photograph a target on your list.";
         setMsg(here
-          ? { type: "info", text: `Touched down in ${cont} (${costTxt}). ${here} target${here === 1 ? "" : "s"} on your list ${here === 1 ? "is" : "are"} here. ${where}` }
-          : { type: "warn", text: `Touched down in ${cont} (${costTxt}) — but nothing on your list is here. Fly on when ready.` });
-        say(`Welcome to ${cont}!`);
-        maybeMrO();
+          ? { type: "info", text: `${sameHere ? "Still in" : "Touched down in"} ${cont} (${costTxt}). ${here} target${here === 1 ? "" : "s"} on your list ${here === 1 ? "is" : "are"} here. ${where}` }
+          : { type: "warn", text: `${sameHere ? "Still in" : "Touched down in"} ${cont} (${costTxt}) — but nothing on your list is here. Fly on when ready.` });
+        say(cont); // spoken arrival: just the continent's name
+        if (!sameHere) maybeMrO();
       };
-      if (prefersReduced) { finalize(); return; }
+      if (prefersReduced || sameHere) { finalize(); return; }
       music("travelJig");
       flightFinalizeRef.current = finalize;
       setFlying({ fromX: from.x, fromY: from.y, toX: to.x, toY: to.y });
@@ -1828,11 +1943,15 @@ export default function ShutterbugWorld() {
     if (!target) return;
     const from = current ? loc(current) : HUB; // first flight departs from the home hub
     const to = CONTINENT_PIN[cont];
-    const cost = flightDays(from, to); // distance-based: farther continents cost more
+    // Already standing on this continent (e.g. the next assignment is here too)?
+    // Then there's no real flight — skip the animation, music and day cost, and
+    // just drop back onto its map.
+    const sameHere = !!current && loc(current).continent === cont;
+    const cost = sameHere ? 0 : flightDays(from, to); // distance-based: farther continents cost more
     const costTxt = `−${cost} day${cost === 1 ? "" : "s"}`;
     if (cont === target.continent) {
       const useCountry = usesCountryLayer(MODES[difficulty], cont);
-      sfx("plane");
+      if (!sameHere) sfx("plane");
       const finalize = () => {
         const nd = Math.round((days - cost) * 10) / 10;
         setDays(nd);
@@ -1843,9 +1962,9 @@ export default function ShutterbugWorld() {
         setCurrent(null);   // arrived on the continent; no city picked yet
         setRevealed(false);
         if (nd <= 0) outOfDays(`You reached ${cont}, but the trip's budget is spent.`);
-        else { setMsg({ type: "info", text: `Touched down in ${cont} (${costTxt}). ${useCountry ? "Now pick the right country." : "Now pick the right city."}` }); say(`Welcome to ${cont}!`); maybeMrO(); }
+        else { setMsg({ type: "info", text: sameHere ? `Still in ${cont} — ${useCountry ? "pick the right country." : "pick the right city."}` : `Touched down in ${cont} (${costTxt}). ${useCountry ? "Now pick the right country." : "Now pick the right city."}` }); say(cont); if (!sameHere) maybeMrO(); }
       };
-      if (prefersReduced) { finalize(); return; }
+      if (prefersReduced || sameHere) { finalize(); return; }
       music("travelJig");
       flightFinalizeRef.current = finalize;
       setFlying({ fromX: from.x, fromY: from.y, toX: to.x, toY: to.y });
@@ -1855,8 +1974,10 @@ export default function ShutterbugWorld() {
       setDays(nd);
       sfx("fail");
       if (nd <= 0) outOfDays(`${cont} wasn't right, and that was your last day.`);
-      else setPending({ kind: "wrong", tone: "bad", emoji: "❌", title: "Not that continent",
-        subtitle: `Grandpa's subject isn't in ${cont}. A wasted flight there and back cost you ${cost} day${cost === 1 ? "" : "s"} — read his note and try again.`,
+      else setPending({ kind: "wrong", tone: "bad", emoji: "❌", title: sameHere ? "Still the wrong continent" : "Not that continent",
+        subtitle: sameHere
+          ? `You're already in ${cont}, but Grandpa's subject isn't here. Read his note and pick the continent it points to.`
+          : `Grandpa's subject isn't in ${cont}. A wasted flight there and back cost you ${cost} day${cost === 1 ? "" : "s"} — read his note and try again.`,
         hint: MODES[difficulty].hints ? `Try looking ${compass(CONTINENT_PIN[cont], CONTINENT_PIN[target.continent])} of ${cont}.` : null,
         buttonLabel: "Try again" });
     }
@@ -1870,7 +1991,7 @@ export default function ShutterbugWorld() {
       setCityPlan({ ids: pickCountryCityIds(pickedContinent, country, [], 7), wide: false });
       setPhase("city"); setCurrent(null); setRevealed(false);
       music("countryTune", country, pickedContinent); // a few seconds of local music on arrival
-      say(`You're in ${country}!`);
+      say(country); // spoken arrival: just the country's name
       setMsg({ type: "info", text: `${country} — click any place to learn about it.` });
       return;
     }
@@ -1886,7 +2007,7 @@ export default function ShutterbugWorld() {
       setPhase("city"); setCurrent(null); setRevealed(false);
       if (COUNTRY_INFO[country] && poppedCountryRef.current !== country) { poppedCountryRef.current = country; setCountryPopup(country); }
       music("countryTune", country, pickedContinent); // a few seconds of local music on arrival
-      say(`You're in ${country}!`);
+      say(country); // spoken arrival: just the country's name
       const targetHere = tourReqs.some((r) => !r.done && (COUNTRY_LOCS[pickedContinent]?.[country] || []).some((id) => r.kind === "category" ? BY_ID[id].category === r.category : r.targetId === id));
       setMsg({ type: targetHere ? "info" : "warn", text: targetHere ? `Arrived in ${country}. Photograph your target here!` : `Arrived in ${country} — but no target on your list is here. Pick another country, or fly on.` });
       return;
@@ -1924,7 +2045,7 @@ export default function ShutterbugWorld() {
       // Pop the culture card the moment you land in the country.
       if (COUNTRY_INFO[country] && poppedCountryRef.current !== country) { poppedCountryRef.current = country; setCountryPopup(country); }
       music("countryTune", country, pickedContinent); // a few seconds of local music on arrival
-      say(`You're in ${country}!`);
+      say(country); // spoken arrival: just the country's name
       setMsg({ type: "info", text: `Arrived in ${country}. Now photograph Grandpa's subject.` });
     } else {
       const nd = Math.round((days - 0.5) * 10) / 10; // a wrong country costs half a day
@@ -1989,6 +2110,7 @@ export default function ShutterbugWorld() {
     }
 
 
+    bumpRiddleCounter(); // count this shot toward Mr. O's next double-points riddle
     const d = Math.round((days - SHOT_COST) * 10) / 10; // a shot costs half a day
     setDays(d);
 
@@ -2118,6 +2240,9 @@ export default function ShutterbugWorld() {
   if (screen === "meet") {
     const prof = profileName ? getProfile(profileName) : null;
     const showRunNote = !!(prof && prof.games > 0 && meetInfo?.comment);
+    // Grandpa's greeting types out first; his choices stay greyed and non-clickable
+    // until every line of his has finished (tap the text to hurry it along).
+    const meetReady = meetTyped >= (1 + (showRunNote ? 1 : 0));
     const u = unlocks(prof);
     const news = meetInfo?.news || [];
     return (
@@ -2128,8 +2253,8 @@ export default function ShutterbugWorld() {
             <NigelPortrait size={132} style={{ flex: "none" }} />
             <div style={{ textAlign: "left" }}>
               <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 12, letterSpacing: "0.16em", color: CORAL, marginBottom: 6 }}>{GRANDPA.name.toUpperCase()}</div>
-              <TypeLine text={meetInfo?.line} reduced={prefersReduced} style={{ margin: 0, color: INK, fontSize: 17, lineHeight: 1.5 }} />
-              {showRunNote && <TypeLine text={meetInfo.comment} reduced={prefersReduced} style={{ margin: "10px 0 0", color: INK, opacity: 0.85, fontSize: 15, lineHeight: 1.5, fontStyle: "italic" }} />}
+              <TypeLine text={meetInfo?.line} reduced={prefersReduced} onDone={() => setMeetTyped((n) => n + 1)} style={{ margin: 0, color: INK, fontSize: 17, lineHeight: 1.5 }} />
+              {showRunNote && <TypeLine text={meetInfo.comment} reduced={prefersReduced} onDone={() => setMeetTyped((n) => n + 1)} style={{ margin: "10px 0 0", color: INK, opacity: 0.85, fontSize: 15, lineHeight: 1.5, fontStyle: "italic" }} />}
               <p style={{ margin: "12px 0 0", color: INK, fontWeight: 800, fontSize: 16 }}>{MEET_ASK}</p>
             </div>
           </div>
@@ -2146,6 +2271,9 @@ export default function ShutterbugWorld() {
             </div>
           )}
 
+          {/* Grandpa's choices — greyed out and non-interactive until he's finished
+              talking, so nobody clicks past his greeting before it's on screen. */}
+          <div style={{ opacity: meetReady ? 1 : 0.5, pointerEvents: meetReady ? "auto" : "none", transition: "opacity .25s" }}>
           {/* Pick a way to play */}
           <div style={{ marginTop: 18 }}>
             <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.22em", color: INK, opacity: 0.65, marginBottom: 10 }}>PICK A WAY TO PLAY</div>
@@ -2257,11 +2385,13 @@ export default function ShutterbugWorld() {
 
           {/* Set off / back */}
           <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap", marginTop: 8 }}>
-            <button onClick={setOff} style={primaryBtn}>
+            <button onClick={setOff} disabled={!meetReady} aria-disabled={!meetReady}
+              style={{ ...primaryBtn, opacity: meetReady ? 1 : 0.5, cursor: meetReady ? "pointer" : "default" }}>
               {gameMode === "quiz" ? "Start the quiz 🧠" : gameMode === "explore" ? "Start exploring 🧭"
                 : gameMode === "tour" ? (tourTheme === "classic" ? "Set off on the Grand Tour ✈" : `Set off: ${TOUR_THEMES.find((t) => t.id === tourTheme)?.title} 🗺️`)
                 : "Set off with the camera 📷"}
             </button>
+          </div>
           </div>
           <button onClick={() => setScreen("start")}
             style={{ marginTop: 14, background: "none", border: "none", color: INK, opacity: 0.6, fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
@@ -2436,6 +2566,9 @@ export default function ShutterbugWorld() {
     const q = quiz.questions[quiz.i];
     const answered = quiz.answeredIdx !== null;
     const loc = home ? BY_ID[q.id] : null;
+    // Homecoming: keep the answer buttons greyed until Grandpa's line has finished
+    // typing, so the child reads his question before picking (only gates homecoming).
+    const homeReady = !home || homeTypedI === quiz.i;
     return (
       <Frame>
         <div style={{ maxWidth: home ? 960 : 560, margin: "0 auto" }}>
@@ -2444,9 +2577,9 @@ export default function ShutterbugWorld() {
             {home && (
               <div style={{ flex: "1 1 300px", minWidth: 260, background: PAPER, border: `2px solid ${GOLD}`, borderRadius: 16, padding: "20px 18px", textAlign: "center" }}>
                 <NigelPortrait size={192} style={{ margin: "0 auto 12px" }} />
-                <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 20, letterSpacing: "0.14em", color: CORAL, fontWeight: 700, lineHeight: 1.2 }}>HOME AGAIN</div>
                 <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 22, letterSpacing: "0.06em", color: CORAL, fontWeight: 800, marginBottom: 12 }}>{GRANDPA.name.toUpperCase()}</div>
                 <TypeLine text={quiz.i === 0 ? HOMECOMING_INTRO : "And this one — do you remember?"} reduced={prefersReduced}
+                  onDone={() => setHomeTypedI(quiz.i)}
                   style={{ color: INK, fontSize: 16, lineHeight: 1.5, textAlign: "left", margin: 0 }} />
                 {answered && (() => {
                   const wasCorrect = q.options[quiz.answeredIdx].correct;
@@ -2488,8 +2621,8 @@ export default function ShutterbugWorld() {
                   const bg = !answered ? "#fff" : isCorrect ? "#EAF6EF" : isChosen ? "#FBEAE6" : "#fff";
                   const bd = !answered ? PAPER_LINE : isCorrect ? GREEN : isChosen ? CORAL : PAPER_LINE;
                   return (
-                    <button key={idx} onClick={() => answerQuiz(idx)} disabled={answered}
-                      style={{ textAlign: "left", padding: "12px 14px", borderRadius: 10, border: `2px solid ${bd}`, background: bg, color: INK, fontWeight: 700, fontSize: 15, cursor: answered ? "default" : "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
+                    <button key={idx} onClick={() => answerQuiz(idx)} disabled={answered || !homeReady} aria-disabled={answered || !homeReady}
+                      style={{ textAlign: "left", padding: "12px 14px", borderRadius: 10, border: `2px solid ${bd}`, background: bg, color: INK, fontWeight: 700, fontSize: 15, cursor: (answered || !homeReady) ? "default" : "pointer", opacity: homeReady ? 1 : 0.5, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
                       <span>{o.label}</span>
                       {answered && isCorrect && <span aria-hidden="true">✅</span>}
                       {answered && isChosen && !isCorrect && <span aria-hidden="true">❌</span>}
@@ -2902,7 +3035,7 @@ export default function ShutterbugWorld() {
   // size at every zoom. On-screen rx = rx_user·(W/box.w) and ry = ry_user·(H/box.h);
   // setting ry_user = k·box.h·(W/H) makes both equal k·W. W/H is the frame aspect.
   const pinR = (k) => ({ rx: k * box.w, ry: k * box.h * aspect });
-  const busy = !!flying || !!pending || (!isExplore && days <= 0);
+  const busy = !!flying || !!pending || !!riddle || (!isExplore && days <= 0);
   return (
     <Frame>
       {/* Grand Tour keeps its day budget pinned top-left (it has no Research
@@ -3057,8 +3190,14 @@ export default function ShutterbugWorld() {
             </div>
           ) : inCity ? (
             <div style={{ marginTop: 12, background: "#fff", border: `1px dashed ${CORAL}`, borderRadius: 8, padding: 16, textAlign: "center" }}>
-              <div style={{ fontSize: 28 }} aria-hidden="true">📸</div>
-              <div style={{ fontWeight: 800, color: INK, marginTop: 4 }}><span style={{ fontSize: "3.6em", verticalAlign: "-0.3em" }}>{ctxCountry ? COUNTRY_FLAG[ctxCountry] : ""}</span> You're in {ctxCountry || pickedContinent}!</div>
+              {/* The country flag flies big and proud on arrival — replacing the old
+                  camera icon — twice the size it used to show at, so the traveller
+                  learns the flag alongside the country name. Falls back to a camera
+                  only where we have no flag on file (rare). */}
+              {ctxCountry && COUNTRY_FLAG[ctxCountry]
+                ? <div style={{ fontSize: "7.2em", lineHeight: 1 }} aria-hidden="true">{COUNTRY_FLAG[ctxCountry]}</div>
+                : <div style={{ fontSize: 28 }} aria-hidden="true">📸</div>}
+              <div style={{ fontWeight: 800, color: INK, marginTop: 4 }}>You're in {ctxCountry || pickedContinent}!</div>
               <div style={{ fontSize: 13, color: INK, opacity: 0.8, marginTop: 6, lineHeight: 1.45 }}>
                 {isTour ? "Photograph any target on your itinerary that's here, then fly on." : "Click the right city on the map to photograph Grandpa's subject."}
               </div>
@@ -3383,6 +3522,8 @@ export default function ShutterbugWorld() {
       {albumView && <LandmarkModal p={albumView} onClose={() => setAlbumView(null)} reduced={prefersReduced} />}
       {countryPopup && <CountryPopup country={countryPopup} onClose={() => setCountryPopup(null)} reduced={prefersReduced} />}
       {mrO && <MrOBubble fact={mrO} onClose={() => setMrO(null)} reduced={prefersReduced} />}
+      {riddle && <RiddleModal riddle={riddle} onAnswer={answerRiddle} onClose={() => setRiddle(null)}
+        gain={gameMode === "tour" ? TOUR_MODES[difficulty].points * 2 : MODES[difficulty].points * 2} reduced={prefersReduced} />}
     </Frame>
   );
 }
@@ -4030,6 +4171,62 @@ function MrOBubble({ fact, onClose, reduced }) {
           <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 10, letterSpacing: "0.12em", color: OCEAN, fontWeight: 700, marginBottom: 3 }}>{MR_O.name.toUpperCase()} · {MR_O.lead.toUpperCase()}</div>
           <TypeLine text={fact} reduced={reduced} style={{ color: INK, fontSize: 13.5, lineHeight: 1.45 }} />
         </div>
+      </div>
+    </div>
+  );
+}
+
+// Mr. O's DOUBLE-POINTS riddle — a blocking popup. He poses a hard travel-trivia
+// question; a correct answer is worth double a normal shot. After answering, the
+// right answer and a short explanation show, then a Continue button dismisses it.
+function RiddleModal({ riddle, onAnswer, onClose, gain, reduced }) {
+  const [imgOk, setImgOk] = useState(true);
+  const { data, choices, answeredIdx } = riddle;
+  const answered = answeredIdx !== null;
+  const wasCorrect = answered && choices[answeredIdx] === data.correct;
+  return (
+    <div role="dialog" aria-modal="true" aria-label="Mr. O's riddle"
+      style={{ position: "fixed", inset: 0, background: "rgba(16,38,46,0.62)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16, zIndex: 58 }}>
+      <div className={reduced ? "" : "sbw-pop"}
+        style={{ background: PAPER, borderRadius: 16, border: `3px solid ${OCEAN}`, boxShadow: "0 14px 44px rgba(0,0,0,0.35)", maxWidth: 560, width: "100%", padding: "22px 22px 24px", textAlign: "center" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, justifyContent: "center", marginBottom: 6 }}>
+          {imgOk
+            ? <img src={`${BASE}odin.png`} alt="" onError={() => setImgOk(false)} style={{ height: 96, width: "auto", flex: "none", objectFit: "contain", filter: "drop-shadow(0 3px 5px rgba(0,0,0,0.3))" }} />
+            : <div aria-hidden="true" style={{ fontSize: 48, lineHeight: 1 }}>{MR_O.emoji}</div>}
+          <div style={{ textAlign: "left" }}>
+            <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.14em", color: OCEAN, fontWeight: 700 }}>{MR_O.name.toUpperCase()}</div>
+            <div style={{ fontFamily: "ui-sans-serif, system-ui", fontWeight: 900, fontSize: 18, color: INK }}>{MR_O.riddleLead}</div>
+            <div style={{ display: "inline-block", marginTop: 4, background: GOLD, color: INK, fontWeight: 800, fontSize: 12, padding: "2px 9px", borderRadius: 20 }}>★ Double points: +{gain}</div>
+          </div>
+        </div>
+        <h2 style={{ fontFamily: "ui-sans-serif, system-ui", fontWeight: 800, fontSize: 19, color: INK, margin: "8px auto 16px", lineHeight: 1.35, maxWidth: 460 }}>{data.q}</h2>
+        <div style={{ display: "grid", gap: 9 }}>
+          {choices.map((c, idx) => {
+            const isCorrect = c === data.correct, isChosen = answeredIdx === idx;
+            const bg = !answered ? "#fff" : isCorrect ? "#EAF6EF" : isChosen ? "#FBEAE6" : "#fff";
+            const bd = !answered ? PAPER_LINE : isCorrect ? GREEN : isChosen ? CORAL : PAPER_LINE;
+            return (
+              <button key={idx} onClick={() => onAnswer(idx)} disabled={answered} aria-disabled={answered}
+                style={{ textAlign: "left", padding: "12px 14px", borderRadius: 10, border: `2px solid ${bd}`, background: bg, color: INK, fontWeight: 700, fontSize: 15, cursor: answered ? "default" : "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
+                <span>{c}</span>
+                {answered && isCorrect && <span aria-hidden="true">✅</span>}
+                {answered && isChosen && !isCorrect && <span aria-hidden="true">❌</span>}
+              </button>
+            );
+          })}
+        </div>
+        {answered && (
+          <div style={{ marginTop: 14, background: "#fff", border: `1px dashed ${wasCorrect ? GREEN : CORAL}`, borderRadius: 10, padding: "11px 13px", textAlign: "left" }}>
+            <b style={{ color: wasCorrect ? GREEN : CORAL }}>{wasCorrect ? `Spot on! +${gain} points.` : "Not quite —"}</b>{" "}
+            <span style={{ color: INK, fontSize: 14, lineHeight: 1.5 }}>{data.explain}</span>
+          </div>
+        )}
+        {answered && (
+          <button autoFocus onClick={onClose}
+            style={{ ...primaryBtn, marginTop: 18, background: OCEAN, boxShadow: "0 4px 0 #1C5560" }}>
+            Back to the trip →
+          </button>
+        )}
       </div>
     </div>
   );
