@@ -4021,7 +4021,8 @@ function MrOBubble({ fact, onClose, reduced }) {
             art is added, so it never shows a broken image. */}
         {imgOk ? (
           <img src={`${BASE}odin.png`} alt="" onError={() => setImgOk(false)}
-            style={{ width: 88, height: 88, flex: "none", objectFit: "contain", filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.3))" }} />
+            style={{ width: 88, height: 88, flex: "none", borderRadius: "50%", objectFit: "cover", objectPosition: "50% 30%",
+              border: `3px solid ${OCEAN}`, background: "#DCE9EC", boxShadow: "0 3px 8px rgba(16,38,46,0.3)" }} />
         ) : (
           <div aria-hidden="true" style={{ fontSize: 52, lineHeight: 1, flex: "none", filter: "drop-shadow(0 2px 3px rgba(0,0,0,0.25))" }}>{MR_O.emoji}</div>
         )}
