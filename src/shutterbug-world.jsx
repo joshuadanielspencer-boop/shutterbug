@@ -3227,31 +3227,51 @@ function Itinerary({ reqs, here }) {
 function ResultModal({ data, onContinue, reduced }) {
   const good = data.tone === "good";
   const accent = good ? GREEN : CORAL;
+  const hasPhoto = !!data.photo?.src;
+  // With both a photo and a fact, they sit side by side (the fact reads as a
+  // caption next to the shot); they stack on narrow screens via flex-wrap.
+  const sideBySide = hasPhoto && !!data.fact;
+  // The shot "develops" like film — greyscale-and-bright blooming into full colour —
+  // with a white shutter flash on top, replayed each time the modal opens (keyed to
+  // the photo). This is the flash/develop that the instant result popup used to hide.
+  const photoEl = hasPhoto && (
+    <div style={{ position: "relative", overflow: "hidden", borderRadius: 8, border: `2px solid ${accent}`, background: "#10262E" }}>
+      <div className={reduced ? undefined : "sbw-develop"} key={`dev-${data.photo.src}`}>
+        <img src={withWidth(data.photo.src, 1600)} alt="" style={{ width: "100%", maxHeight: 440, objectFit: "contain", display: "block" }} />
+      </div>
+      {!reduced && <div className="sbw-flash" key={`fl-${data.photo.src}`} />}
+    </div>
+  );
+  const factEl = data.fact && (
+    <div style={{ background: "#fff", border: `1px dashed ${accent}`, borderRadius: 10, padding: "12px 14px", textAlign: "left" }}>
+      <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 10, letterSpacing: "0.18em", color: accent, marginBottom: 5 }}>📖 DID YOU KNOW?</div>
+      <TypeLine text={data.fact} reduced={reduced} style={{ color: INK, fontSize: 13.5, lineHeight: 1.5 }} />
+    </div>
+  );
   return (
     <div role="dialog" aria-modal="true" aria-label={data.title}
       style={{ position: "fixed", inset: 0, background: "rgba(16,38,46,0.62)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16, zIndex: 50 }}>
       <div className={reduced ? "" : "sbw-pop"}
-        style={{ background: PAPER, borderRadius: 16, border: `3px solid ${accent}`, boxShadow: "0 14px 44px rgba(0,0,0,0.35)", maxWidth: 560, width: "100%", padding: "26px 22px", textAlign: "center" }}>
+        style={{ background: PAPER, borderRadius: 16, border: `3px solid ${accent}`, boxShadow: "0 14px 44px rgba(0,0,0,0.35)", maxWidth: sideBySide ? 760 : 560, width: "100%", maxHeight: "92vh", overflowY: "auto", padding: "26px 22px", textAlign: "center" }}>
         <div style={{ fontSize: 56, lineHeight: 1 }} aria-hidden="true">{data.emoji}</div>
         <h2 style={{ fontFamily: "ui-sans-serif, system-ui", fontWeight: 900, fontSize: 26, color: accent, margin: "10px 0 6px" }}>{data.title}</h2>
         {data.category && <div style={{ marginBottom: 10 }}><CategoryBadge category={data.category} /></div>}
-        {data.photo?.src && (
-          <div style={{ margin: "0 auto 10px", maxWidth: 500, borderRadius: 8, overflow: "hidden", border: `2px solid ${accent}`, background: "#10262E" }}>
-            <img src={withWidth(data.photo.src, 1600)} alt="" style={{ width: "100%", maxHeight: 440, objectFit: "contain", display: "block" }} />
+        {sideBySide ? (
+          <div style={{ display: "flex", gap: 14, alignItems: "center", flexWrap: "wrap", margin: "6px 0 12px" }}>
+            <div style={{ flex: "1 1 300px", minWidth: 240 }}>{photoEl}</div>
+            <div style={{ flex: "1 1 240px", minWidth: 220 }}>{factEl}</div>
           </div>
-        )}
+        ) : hasPhoto ? (
+          <div style={{ margin: "0 auto 10px", maxWidth: 500 }}>{photoEl}</div>
+        ) : null}
         <TypeLine text={data.subtitle} reduced={reduced} style={{ color: INK, fontSize: 15, lineHeight: 1.5, margin: "0 auto", maxWidth: 340 }} />
         {data.hint && (
           <p style={{ color: OCEAN, fontSize: 14, fontWeight: 700, lineHeight: 1.45, margin: "10px auto 0", maxWidth: 340 }}>
             <span aria-hidden="true">💡 </span>{data.hint}
           </p>
         )}
-        {data.fact && (
-          <div style={{ marginTop: 14, background: "#fff", border: `1px dashed ${accent}`, borderRadius: 10, padding: "10px 12px", textAlign: "left" }}>
-            <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 10, letterSpacing: "0.18em", color: accent, marginBottom: 4 }}>📖 DID YOU KNOW?</div>
-            <TypeLine text={data.fact} reduced={reduced} style={{ color: INK, fontSize: 13, lineHeight: 1.45 }} />
-          </div>
-        )}
+        {/* Fact with no photo (e.g. the out-of-days screen) still shows below. */}
+        {!sideBySide && factEl && <div style={{ marginTop: 14 }}>{factEl}</div>}
         <button autoFocus onClick={onContinue}
           style={{ ...primaryBtn, marginTop: 20, background: accent, boxShadow: `0 4px 0 ${good ? "#2E7A55" : "#A93A28"}` }}>
           {data.buttonLabel}
