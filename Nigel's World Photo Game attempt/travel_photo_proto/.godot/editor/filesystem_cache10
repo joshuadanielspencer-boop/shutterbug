@@ -1,9 +1,0 @@
-63f7b34db8d8cdea90c76aacccf841ec
-::res://::1777134813
-::res://assets/::1777099778
-::res://scenes/::1777099778
-Main.tscn::PackedScene::-1::1777099778::0::1::::<><><>0<>0<><>::res://scripts/main.gd<>res://scripts/photo_target.gd<>res://scripts/camera_frame.gd
-::res://scripts/::1777099778
-camera_frame.gd::GDScript::6137744408958631310::1777099778::0::1::::CameraFrame<>Control<><>0<>0<><>::
-main.gd::GDScript::6451958131694273330::1777099779::0::1::::<>Node2D<><>0<>0<><>::
-photo_target.gd::GDScript::2451897484846425789::1777099778::0::1::::PhotoTarget<>ColorRect<><>0<>0<><>::

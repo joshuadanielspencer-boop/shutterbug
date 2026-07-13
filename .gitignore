@@ -7,3 +7,9 @@ dist-ssr
 
 # Personal, machine-specific Claude Code settings (keep shared .claude/settings.json tracked)
 .claude/settings.local.json
+
+# Unrelated prototype + source-art files kept locally, not in the app repo
+Nigel's World Photo Game attempt/
+/Nigel.png
+/Odin.png
+/Shutterbug Splash.png
