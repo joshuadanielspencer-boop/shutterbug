@@ -21,8 +21,28 @@ import { listProfiles, lastProfileName, getProfile, createProfile, setLastProfil
   careerRank, unlocks, UNLOCK_REQ } from "./profiles.js";
 import { MR_O, MR_O_FACTS, MR_O_RIDDLES } from "./data/mr-o.js";
 import { SFX, MUSIC, speakEn, speakGreeting, speechAvailable } from "./audio.js";
-import { BASE, OCEAN, OCEAN_DEEP, LAND, LAND_EDGE, INK, GOLD, CORAL, GREEN, PAPER, PAPER_LINE } from "./theme.js";
+import { BASE, OCEAN, OCEAN_DEEP, SEA, SEA_DEEP, SEA_LINE, LAND, LAND_EDGE, INK, GOLD, CORAL, GREEN, PAPER, PAPER_LINE } from "./theme.js";
 import { Confetti, Stamp, GradualText, TypeLine } from "./components/text.jsx";
+
+// Travel-journal UI art (ChatGPT-generated PNGs) lives here; base-path aware so
+// it resolves at a domain root or under a GitHub Pages subpath. Decorative only —
+// every dynamic label, map region, and control stays code-rendered (see the
+// asset guide). `UI + "name.png"` builds a URL for an <img> or CSS background.
+const UI = `${BASE}assets/shutterbug-ui/`;
+// Handwriting stack for Grandpa's note — a bundled webfont would make this
+// identical everywhere, but this degrades gracefully across Mac/Win/Linux.
+const HAND = '"Caveat", "Patrick Hand", "Bradley Hand", "Segoe Print", "Comic Sans MS", cursive';
+// Mr. O has five looks; hand them out in a reshuffled cycle so he never repeats
+// until all five have appeared, and looks different each time he pops up.
+const MR_O_IMAGES = ["mr-o-1.png", "mr-o-2.png", "mr-o-3.png", "mr-o-4.png", "mr-o-5.png"];
+let _mrOQueue = [];
+function nextMrOImage() {
+  if (_mrOQueue.length === 0) {
+    _mrOQueue = [...MR_O_IMAGES];
+    for (let i = _mrOQueue.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [_mrOQueue[i], _mrOQueue[j]] = [_mrOQueue[j], _mrOQueue[i]]; }
+  }
+  return _mrOQueue.pop();
+}
 
 
 /*
@@ -856,6 +876,12 @@ export default function ShutterbugWorld() {
   const [confirmRemove, setConfirmRemove] = useState(false); // passport delete confirmation
   const [passportPage, setPassportPage] = useState("id"); // passport booklet page: id | stamps | collections | badges
   const [avatarEdit, setAvatarEdit] = useState(false);        // avatar editor open (start screen)
+  const [gearOpen, setGearOpen] = useState(false);            // play-screen settings (gear) popover open
+  const [albumOpen, setAlbumOpen] = useState(false);          // Photo Album tool: full-run photo gallery popup
+  const [guideOpen, setGuideOpen] = useState(false);          // Field Guide tool: clue-research popup
+  const [guideFresh, setGuideFresh] = useState(false);        // did this Field Guide open just spend the research day?
+  const [passportOpen, setPassportOpen] = useState(false);    // Passport tool: multi-page booklet popup
+  const [passportFrom, setPassportFrom] = useState("start");  // where "back" returns from the passport (so opening it mid-game resumes play)
   const [createOpen, setCreateOpen] = useState(false);        // "Create New Traveler" modal open
   const [meetInfo, setMeetInfo] = useState(null);             // { line, comment } shown on the meet-Grandpa screen
   const [meetTyped, setMeetTyped] = useState(0);              // how many of Grandpa's meet lines have finished typing (gates the controls)
@@ -915,7 +941,9 @@ export default function ShutterbugWorld() {
 
   const sfx = (name, ...args) => { if (soundOn && SFX[name]) SFX[name](...args); };
   const music = (name, ...args) => { if (musicOn && MUSIC[name]) MUSIC[name](...args); };
-  const say = (text) => { if (soundOn) speakEn(text); }; // spoken map-arrival announcements
+  // Spoken map-arrival announcements — held back ~1s so the voice lands a beat
+  // after you touch down, not on top of the arrival.
+  const say = (text) => { if (soundOn) setTimeout(() => { if (soundOn) speakEn(text); }, 1000); };
 
   useEffect(() => () => timer.current && clearTimeout(timer.current), []);
 
@@ -1810,13 +1838,15 @@ export default function ShutterbugWorld() {
       <Frame>
         <div style={{ maxWidth: 640, margin: "0 auto", padding: "4px 4px 8px" }}>
           {/* Grandpa greets you */}
-          <div style={{ display: "flex", alignItems: "flex-start", gap: 16, background: PAPER, border: `2px solid ${GOLD}`, borderRadius: 16, padding: "16px 18px" }}>
-            <NigelPortrait size={132} style={{ flex: "none" }} />
-            <div style={{ textAlign: "left" }}>
-              <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 12, letterSpacing: "0.16em", color: CORAL, marginBottom: 6 }}>{GRANDPA.name.toUpperCase()}</div>
+          <div style={{ display: "flex", alignItems: "flex-start", gap: 18, background: PAPER, border: `2px solid ${GOLD}`, borderRadius: 16, padding: "18px 20px", flexWrap: "wrap" }}>
+            <NigelPortrait size={248} style={{ flex: "none" }} />
+            <div style={{ textAlign: "left", flex: "1 1 280px", minWidth: 240 }}>
+              <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 24, fontWeight: 800, letterSpacing: "0.14em", color: CORAL, marginBottom: 10 }}>{GRANDPA.name.toUpperCase()}</div>
+              {/* One line at a time: the follow-up note waits for the greeting to
+                  finish, and the question waits for both. */}
               <TypeLine text={meetInfo?.line} reduced={prefersReduced} onDone={() => setMeetTyped((n) => n + 1)} style={{ margin: 0, color: INK, fontSize: 17, lineHeight: 1.5 }} />
-              {showRunNote && <TypeLine text={meetInfo.comment} reduced={prefersReduced} onDone={() => setMeetTyped((n) => n + 1)} style={{ margin: "10px 0 0", color: INK, opacity: 0.85, fontSize: 15, lineHeight: 1.5, fontStyle: "italic" }} />}
-              <p style={{ margin: "12px 0 0", color: INK, fontWeight: 800, fontSize: 16 }}>{MEET_ASK}</p>
+              {showRunNote && meetTyped >= 1 && <TypeLine text={meetInfo.comment} reduced={prefersReduced} onDone={() => setMeetTyped((n) => n + 1)} style={{ margin: "10px 0 0", color: INK, opacity: 0.85, fontSize: 15, lineHeight: 1.5, fontStyle: "italic" }} />}
+              {meetReady && <p style={{ margin: "12px 0 0", color: INK, fontWeight: 800, fontSize: 16 }}>{MEET_ASK}</p>}
             </div>
           </div>
 
@@ -2027,7 +2057,7 @@ export default function ShutterbugWorld() {
               </div>
               {profileName ? (
                 <span style={{ display: "inline-flex", gap: 8, marginTop: 10, flexWrap: "wrap", justifyContent: "center" }}>
-                  <button onClick={() => { setConfirmRemove(false); setScreen("passport"); }}
+                  <button onClick={() => { setConfirmRemove(false); setPassportFrom("start"); setScreen("passport"); }}
                     style={{ padding: "7px 16px", borderRadius: 8, border: `1.5px solid ${CORAL}`, background: "transparent", color: CORAL, fontWeight: 700, fontSize: 13, cursor: "pointer" }}>
                     📕 {profileName}'s passport
                   </button>
@@ -2298,7 +2328,7 @@ export default function ShutterbugWorld() {
               🏠 Return to main screen
             </button>
             {profileName && (
-              <button onClick={() => { setConfirmRemove(false); setScreen("passport"); }} style={{ ...primaryBtn, background: "transparent", color: CORAL, border: `2px solid ${CORAL}`, boxShadow: "none" }}>
+              <button onClick={() => { setConfirmRemove(false); setPassportFrom("start"); setScreen("passport"); }} style={{ ...primaryBtn, background: "transparent", color: CORAL, border: `2px solid ${CORAL}`, boxShadow: "none" }}>
                 📕 View passport
               </button>
             )}
@@ -2332,7 +2362,7 @@ export default function ShutterbugWorld() {
       <Frame>
         <div style={{ maxWidth: 840, margin: "0 auto" }}>
           <div className="sbw-noprint" style={{ display: "flex", justifyContent: "flex-end" }}>
-            <button onClick={() => { setConfirmRemove(false); setScreen("start"); }} style={{ padding: "8px 16px", borderRadius: 8, border: `1.5px solid ${INK}`, background: "transparent", color: INK, fontWeight: 700, cursor: "pointer" }}>← Back</button>
+            <button onClick={() => { setConfirmRemove(false); setScreen(passportFrom); }} style={{ padding: "8px 16px", borderRadius: 8, border: `1.5px solid ${INK}`, background: "transparent", color: INK, fontWeight: 700, cursor: "pointer" }}>← {passportFrom === "play" ? "Back to the trip" : "Back"}</button>
           </div>
 
           {/* ---- The passport, as a real booklet: navy cover band + an identity
@@ -2589,45 +2619,103 @@ export default function ShutterbugWorld() {
   // across the antimeridian for Pacific-centred Oceania, else the plain map coords).
   const pinXY = (l) => plateMode === "polar" ? antPlate(l.id)
     : { x: (plateMode === "wrap" && l.x < 180) ? l.x + 360 : l.x, y: l.y };
-  // The world map fills a SQUARE frame (preserveAspectRatio="none"), stretched to
-  // fit. Zoomed in, the frame instead takes the BOX's aspect ratio, so a continent
-  // whose content isn't square (Oceania) is shown undistorted rather than padded
-  // out with ocean. Square boxes — every other continent, and every country zoom —
-  // are unaffected: their aspect is 1.
-  const aspect = zoomed ? box.w / box.h : 1;
-  const frameAspect = zoomed ? `${box.w} / ${box.h}` : "1 / 1";
+  // The atlas frame is a FIXED rectangle (never changes size/aspect across maps).
+  // The world map FILLS it (stretched, straight grid — deliberately not a true
+  // Robinson globe); every continent/country zoom instead FITS inside it,
+  // undistorted, with ~10% margin (letterboxed over blue ocean).
+  const FRAME_AR = 1.6;                 // fixed 8:5 atlas window
+  const VB_PAD = 0.1;                   // 10% margin around a fitted zoom
+  const frameAspect = String(FRAME_AR);
+  const par = zoomed ? "xMidYMid meet" : "none";
+  const viewBox = zoomed
+    ? `${box.x - VB_PAD * box.w} ${box.y - VB_PAD * box.h} ${box.w * (1 + 2 * VB_PAD)} ${box.h * (1 + 2 * VB_PAD)}`
+    : `${box.x} ${box.y} ${box.w} ${box.h}`;
+  // Pin circles: world fills the frame (non-uniform scale → aspect = FRAME_AR);
+  // a fitted zoom scales uniformly (aspect = the box's own ratio).
+  const aspect = zoomed ? box.w / box.h : FRAME_AR;
   // Pins are ellipses sized so they render as perfect CIRCLES of a steady on-screen
   // size at every zoom. On-screen rx = rx_user·(W/box.w) and ry = ry_user·(H/box.h);
   // setting ry_user = k·box.h·(W/H) makes both equal k·W. W/H is the frame aspect.
   const pinR = (k) => ({ rx: k * box.w, ry: k * box.h * aspect });
   const busy = !!flying || !!pending || !!riddle || (!isExplore && days <= 0);
+  // Journey-tracker step, derived from phase (continent → country → destination → shot).
+  const stepIdx = phase === "continent" ? 0 : phase === "country" ? 1 : (revealed ? 3 : 2);
+  // Cap the atlas so the whole desk (header + map + ribbon) fits one 720-tall screen
+  // without scrolling; the map stays square-limited and the panel hugs it.
+  const MAP_CAP = "min(calc(100vh - 258px), 560px)";
+  // A short live instruction for the bottom ribbon, matched to the current phase.
+  const ribbonText = inCity
+    ? (isExplore ? "Click any pin to read a place's story." : "Click the right city on the map to take Grandpa's photo.")
+    : inCountry ? "Which country does the clue point to? Click it on the map."
+    : (isTour ? "Pick the next continent to fly to — group nearby targets to save days."
+              : "Choose the continent that matches Grandpa's clue.");
+  const gearItem = { textAlign: "left", background: "transparent", border: "none", borderRadius: 6, padding: "7px 9px", fontSize: 13, fontWeight: 700, color: INK, cursor: "pointer", whiteSpace: "nowrap" };
   return (
-    <Frame>
-      {/* Grand Tour keeps its day budget pinned top-left (it has no Research
-          button); Assignments shows the day count beside Research instead. */}
-      {isTour && (
-        <div style={{ display: "flex", justifyContent: "flex-start", marginBottom: 12 }}>
-          <div style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "8px 16px", borderRadius: 12,
-            background: days <= 1 ? CORAL : days <= 2.5 ? GOLD : INK, color: days <= 2.5 && days > 1 ? INK : "#fff",
-            fontFamily: "ui-monospace, monospace", fontWeight: 800, boxShadow: "0 3px 0 rgba(16,38,46,0.2)" }}>
-            <span aria-hidden="true" style={{ fontSize: 20, lineHeight: 1 }}>◷</span>
-            <span style={{ fontSize: 20, lineHeight: 1 }}>{days}</span>
-            <span style={{ fontSize: 12, letterSpacing: "0.08em", opacity: 0.9 }}>TRAVEL DAY{days === 1 ? "" : "S"} LEFT</span>
+    <Frame desk>
+      {/* The play screen is a full-height column: header up top, the desk grid in
+          the middle, and the instruction ribbon pinned to the bottom of the
+          screen (so it's always visible without scrolling). */}
+      <div style={{ display: "flex", flexDirection: "column", minHeight: "calc(100vh - 40px)", paddingBottom: 78 }}>
+      {/* ===== Desk header bar (teal leather chrome) ===== */}
+      <header style={{ position: "relative", display: "flex", alignItems: "center", gap: 14, flexWrap: "nowrap",
+        background: `linear-gradient(${OCEAN}, ${OCEAN_DEEP})`, border: `2px solid ${INK}`, borderRadius: 12,
+        padding: "6px 20px", marginBottom: 14, boxShadow: "0 6px 0 rgba(16,38,46,0.28)", color: "#F4ECD8",
+        minHeight: 60, overflow: "visible" }}>
+        {/* Logo — extra large, allowed to overrun the teal top/bottom. */}
+        <img src={`${UI}shutterbug-logo.png`} alt="Shutterbug" style={{ height: 184, width: "auto", flex: "0 0 auto",
+          marginTop: -60, marginBottom: -60, filter: "drop-shadow(0 3px 4px rgba(0,0,0,0.4))" }} />
+        <div style={{ flex: 1, minWidth: 8 }} />
+        {/* Travel-days calendar — centered over the bar, oversized, overruns the teal. */}
+        {!isExplore ? (
+          <div style={{ position: "absolute", left: "50%", top: "54%", transform: "translate(-50%, -50%)", zIndex: 2,
+            display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", width: 187, height: 160,
+            paddingTop: 10, backgroundImage: `url("${UI}days-calendar.png")`, backgroundSize: "contain",
+            backgroundRepeat: "no-repeat", backgroundPosition: "center", filter: "drop-shadow(0 4px 5px rgba(0,0,0,0.35))" }}>
+            <span style={{ fontFamily: "ui-monospace, monospace", fontWeight: 900, fontSize: 54, lineHeight: 1,
+              color: days <= 1 ? CORAL : days <= 2.5 ? "#B8860B" : INK }}>{days}</span>
+            <span style={{ fontSize: 8, fontWeight: 800, letterSpacing: "0.1em", color: INK }}>DAYS LEFT</span>
+          </div>
+        ) : (
+          <span style={{ position: "absolute", left: "50%", top: "50%", transform: "translate(-50%,-50%)",
+            fontFamily: "ui-monospace, monospace", fontSize: 16, fontWeight: 800 }} title="Places discovered">📸 {album.length} discovered</span>
+        )}
+        {/* Avatar + greeting — doubled in size; marginRight keeps it clear of the gear. */}
+        <div style={{ display: "flex", alignItems: "center", gap: 14, marginRight: 18 }}>
+          <div style={{ width: 84, height: 84, borderRadius: "50%", border: `4px solid ${GOLD}`, background: PAPER,
+            overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", flex: "0 0 auto",
+            boxShadow: "0 2px 5px rgba(0,0,0,0.4)" }}>
+            {profileName
+              ? <Avatar spec={avatarFor(getProfile(profileName))} size={76} />
+              : <img src={`${UI}player-portrait.png`} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />}
+          </div>
+          <div style={{ lineHeight: 1.2 }}>
+            <div style={{ fontWeight: 900, fontSize: 26, letterSpacing: "0.03em" }}>HI, {(profileName || "EXPLORER").toUpperCase()}!</div>
+            <div style={{ fontSize: 15, opacity: 0.8 }}>Let's capture the world.</div>
           </div>
         </div>
-      )}
-      <div style={{ display: "flex", gap: 16, alignItems: "flex-start", flexWrap: "wrap" }}>
-        {/* Field journal panel */}
-        <div style={{ flex: "1 1 360px", minWidth: 320 }}>
-          {/* Tour/Explore keep a slim top label; Assignments folds its counter
-              into the note header below. The timer + toggles live in the bottom bar. */}
-          {(isExplore || isTour) && (
-            <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 10, fontFamily: "ui-monospace, monospace", fontSize: 12, letterSpacing: "0.18em", color: INK, opacity: 0.7 }}>
-              {profileName && <Avatar spec={avatarFor(getProfile(profileName))} size={22} />}
-              {isExplore ? "🧭 EXPLORE" : `GRAND TOUR · ${tourReqs.filter((r) => r.done).length}/${tourReqs.length} filed`}
+        {/* Settings gear — large, borderless. */}
+        <div style={{ position: "relative", flex: "0 0 auto" }}>
+          <button onClick={() => setGearOpen((v) => !v)} aria-label="Settings" aria-expanded={gearOpen} title="Settings"
+            style={{ background: "transparent", border: "none", padding: 0, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <img src={`${UI}settings-icon.png`} alt="" style={{ width: 72, height: 72, objectFit: "contain", filter: "drop-shadow(0 2px 3px rgba(0,0,0,0.4))" }} />
+          </button>
+          {gearOpen && (
+            <div role="menu" style={{ position: "absolute", right: 0, top: 76, zIndex: 30, background: PAPER, color: INK,
+              border: `2px solid ${INK}`, borderRadius: 10, padding: 8, minWidth: 176, boxShadow: "0 10px 24px rgba(0,0,0,0.4)",
+              display: "flex", flexDirection: "column", gap: 4 }}>
+              <button onClick={() => setSoundOn((s) => !s)} role="menuitemcheckbox" aria-checked={soundOn} style={gearItem}>{soundOn ? "🔊" : "🔇"} Sound: {soundOn ? "On" : "Off"}</button>
+              <button onClick={() => setMusicOn((m) => { const v = !m; if (v) MUSIC.start(); else MUSIC.stop(); return v; })} role="menuitemcheckbox" aria-checked={musicOn} style={gearItem}>🎵 Music: {musicOn ? "On" : "Off"}</button>
+              <button onClick={() => setAnimOn((v) => !v)} role="menuitemcheckbox" aria-checked={animOn} style={gearItem}>✨ Animations: {animOn ? "On" : "Off"}</button>
             </div>
           )}
-
+        </div>
+      </header>
+      {/* ===== Desk grid: letter panel | atlas map | tool rail ===== */}
+      <div style={{ display: "flex", gap: 16, alignItems: "flex-start", flexWrap: "wrap", flex: "1 1 auto", minHeight: 0 }}>
+        {/* Field journal panel */}
+        <div style={{ flex: "1 1 340px", minWidth: 300 }}>
+          {/* The mode + counter now live in the desk header; the panel opens
+              straight into the assignment letter / itinerary. */}
           {isExplore ? (
             <div style={{ background: PAPER, border: `1px dashed ${OCEAN}`, borderRadius: 6, padding: "12px 14px" }}>
               <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.18em", color: OCEAN, marginBottom: 6 }}>
@@ -2660,55 +2748,41 @@ export default function ShutterbugWorld() {
               <Itinerary reqs={tourReqs} here={inCity ? pickedContinent : null} />
             </>
           ) : (
-          <div style={{ background: PAPER, border: `1px dashed ${CORAL}`, borderRadius: 6, padding: "14px 16px", position: "relative" }}>
-            <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.22em", color: CORAL, marginBottom: 8 }}>✎ {GRANDPA.name.toUpperCase()}'S ASSIGNMENT {step + 1}/{assignments.length}</div>
+          <div style={{ position: "relative", borderRadius: 8, padding: "16px 16px 10px",
+            background: `linear-gradient(rgba(244,236,216,0.9), rgba(244,236,216,0.9)), url("${UI}airmail-paper-texture.png") center / cover`,
+            border: `2px solid ${INK}`, boxShadow: "0 4px 0 rgba(16,38,46,0.18)" }}>
+            <img src={`${UI}paperclip.png`} alt="" aria-hidden="true"
+              style={{ position: "absolute", top: -15, left: 16, width: 34, height: "auto", filter: "drop-shadow(0 3px 3px rgba(0,0,0,0.35))" }} />
+            <div style={{ textAlign: "center", marginBottom: 8, color: CORAL }}>
+              <span style={{ display: "block", fontFamily: HAND, fontWeight: 700, fontSize: 25, lineHeight: 1.05 }}>A Note from Nigel</span>
+              <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.2em", fontWeight: 800 }}>ASSIGNMENT {step + 1} / {assignments.length}</span>
+            </div>
+            <div style={{ borderTop: `1px dashed ${INK}`, opacity: 0.35, margin: "0 0 12px" }} />
             {(isCatAsg || namesSubject) ? (
               <>
-                <p style={{ margin: 0, color: INK, lineHeight: 1.5, fontSize: 15 }}>Bring me a photo of <b>{promptSubject}</b>.{showTypeBadge && badgeCat && <> <CategoryBadge category={badgeCat} size="sm" style={{ verticalAlign: "middle" }} /></>}</p>
-                <TypeLine text={clue} reduced={prefersReduced} style={{ margin: "8px 0 0", color: INK, opacity: 0.85, lineHeight: 1.5, fontSize: 14, fontStyle: "italic" }} />
+                <p style={{ margin: 0, color: INK, fontFamily: HAND, lineHeight: 1.35, fontSize: 18 }}>Bring me a photo of <b>{promptSubject}</b>.{showTypeBadge && badgeCat && <> <CategoryBadge category={badgeCat} size="sm" style={{ verticalAlign: "middle" }} /></>}</p>
+                <TypeLine text={clue} reduced={prefersReduced} style={{ margin: "6px 0 0", color: INK, opacity: 0.9, fontFamily: HAND, lineHeight: 1.35, fontSize: 16.5 }} />
               </>
             ) : (
               <>
-                <TypeLine text={clue} reduced={prefersReduced} style={{ margin: 0, color: INK, lineHeight: 1.5, fontSize: 15 }} />
+                <TypeLine text={clue} reduced={prefersReduced} style={{ margin: 0, color: INK, fontFamily: HAND, lineHeight: 1.35, fontSize: 18 }} />
                 {showTypeBadge && badgeCat && <div style={{ marginTop: 10 }}><CategoryBadge category={badgeCat} size="sm" style={{ verticalAlign: "middle" }} /></div>}
               </>
             )}
+            <img src={`${UI}grandpa-signature.png`} alt={`— ${GRANDPA.name}`}
+              style={{ display: "block", width: 150, maxWidth: "72%", marginTop: 6, marginLeft: "auto", opacity: 0.92 }} />
           </div>
           )}
+          {/* Journey tracker (assignments): reflects continent → country →
+              destination → photograph progress. Tour uses its own itinerary above. */}
+          {!isTour && !isExplore && <PhaseTracker stepIdx={stepIdx} />}
 
-          {/* Assignments: a neat row under the note — the Research button (when
-              available) on the left and the travel-day budget on the right, equal
-              size, filling the width. The revealed clue persists in its own box. */}
-          {!isTour && !isExplore && (() => {
-            const showResearch = mode.research !== "off" && !researched[step];
-            const disabled = busy || days <= researchCost;
-            return (
-              <div style={{ display: "flex", gap: 8, marginTop: 10, alignItems: "stretch" }}>
-                {showResearch && (
-                  <button onClick={doResearch} disabled={disabled}
-                    title={researchCost > 0 ? GUIDEBOOK.tipCost : GUIDEBOOK.tipFree}
-                    style={{ flex: 1, padding: "10px 12px", borderRadius: 10, border: `1.5px solid ${OCEAN}`, background: "transparent", color: OCEAN, fontWeight: 700, fontSize: 13.5,
-                      cursor: disabled ? "default" : "pointer", opacity: disabled ? 0.5 : 1, lineHeight: 1.25 }}>
-                    📖 {GUIDEBOOK.button} <span style={{ opacity: 0.75, fontWeight: 600 }}>({researchCost > 0 ? "½ day" : "free"})</span>
-                  </button>
-                )}
-                <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "10px 12px", borderRadius: 10,
-                  background: days <= 1 ? CORAL : days <= 2.5 ? GOLD : INK, color: days <= 2.5 && days > 1 ? INK : "#fff",
-                  fontFamily: "ui-monospace, monospace", fontWeight: 800 }}>
-                  <span aria-hidden="true" style={{ fontSize: 20, lineHeight: 1 }}>◷</span>
-                  <span style={{ fontSize: 20, lineHeight: 1 }}>{days}</span>
-                  <span style={{ fontSize: 11.5, letterSpacing: "0.06em", opacity: 0.9 }}>DAY{days === 1 ? "" : "S"} LEFT</span>
-                </div>
-              </div>
-            );
-          })()}
-          {!isTour && !isExplore && researched[step] && (
-            <div style={{ marginTop: 8, background: "#EAF1F2", border: `1px solid ${OCEAN}`, borderRadius: 6, padding: "10px 12px", fontSize: 13, color: INK, lineHeight: 1.45 }}>
-              <b style={{ color: OCEAN }}>📖 {GUIDEBOOK.notesLabel}</b> {researched[step]}
-            </div>
-          )}
+          {/* The research clue no longer persists in the panel — the player taps the
+              Field Guide tool again to re-read it (free after the first look). */}
 
-          {msg && (
+          {/* Only consequential feedback (win / miss / low-days warning) shows here;
+              routine "touched down / pick a country" info now lives in the ribbon. */}
+          {msg && msg.type !== "info" && (
             <div style={{ marginTop: 12, padding: "10px 12px", borderRadius: 6, fontSize: 14, lineHeight: 1.4,
               background: msg.type === "win" ? "#EAF6EF" : msg.type === "lose" ? "#FBEAE6" : msg.type === "warn" ? "#FCF3E0" : "#EAF1F2",
               color: INK, border: `1px solid ${msg.type === "win" ? GREEN : msg.type === "lose" ? CORAL : msg.type === "warn" ? GOLD : OCEAN}` }}>
@@ -2716,8 +2790,9 @@ export default function ShutterbugWorld() {
             </div>
           )}
 
-          {/* Context card by phase */}
-          {inCity && currentLoc && revealed ? (
+          {/* The developed shot after a successful photograph — the reward card.
+              Arrival/instruction prompts now live in the ribbon + phase tracker. */}
+          {inCity && currentLoc && revealed && (
             <div style={{ marginTop: 12, background: "#fff", border: `1px solid ${PAPER_LINE}`, borderRadius: 8, padding: 14, textAlign: "center" }}>
               <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.18em", color: INK, opacity: 0.6 }}>YOUR SHOT</div>
               <div style={{ margin: "8px 0", position: "relative", overflow: "hidden", borderRadius: 4 }}>
@@ -2753,79 +2828,50 @@ export default function ShutterbugWorld() {
                 </div>
               )}
             </div>
-          ) : inCity ? (
+          )}
+          {/* Grand Tour keeps its arrival controls (fly on / pick another country)
+              — it has no single target, so it needs on-panel navigation. */}
+          {isTour && inCity && !revealed && (
             <div style={{ marginTop: 12, background: "#fff", border: `1px dashed ${CORAL}`, borderRadius: 8, padding: 16, textAlign: "center" }}>
-              {/* The country flag flies big and proud on arrival — replacing the old
-                  camera icon — twice the size it used to show at, so the traveller
-                  learns the flag alongside the country name. Falls back to a camera
-                  only where we have no flag on file (rare). */}
               {ctxCountry && COUNTRY_FLAG[ctxCountry]
-                ? <div style={{ fontSize: "7.2em", lineHeight: 1 }} aria-hidden="true">{COUNTRY_FLAG[ctxCountry]}</div>
+                ? <div style={{ fontSize: "5.4em", lineHeight: 1 }} aria-hidden="true">{COUNTRY_FLAG[ctxCountry]}</div>
                 : <div style={{ fontSize: 28 }} aria-hidden="true">📸</div>}
               <div style={{ fontWeight: 800, color: INK, marginTop: 4 }}>You're in {ctxCountry || pickedContinent}!</div>
               <div style={{ fontSize: 13, color: INK, opacity: 0.8, marginTop: 6, lineHeight: 1.45 }}>
-                {isTour ? "Photograph any target on your itinerary that's here, then fly on." : "Click the right city on the map to photograph Grandpa's subject."}
+                Photograph any target on your itinerary that's here, then fly on.
               </div>
-              {isTour && (
-                <div style={{ display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap", marginTop: 10 }}>
-                  {pickedCountry && COUNTRY_LAYER_CONTINENTS.has(pickedContinent) && (
-                    <button onClick={() => { if (!busy) { setPickedCountry(null); setCityPlan(null); setPhase("country"); setCurrent(null); setRevealed(false); setMsg({ type: "info", text: `${pickedContinent} — pick the country your next target is in.` }); } }} disabled={busy}
-                      style={{ padding: "8px 16px", borderRadius: 8, border: `1.5px solid ${INK}`, background: "transparent", color: INK, fontWeight: 700, fontSize: 13, cursor: busy ? "default" : "pointer" }}>
-                      ↑ Pick another country
-                    </button>
-                  )}
-                  <button onClick={() => { if (!busy) { setPickedCountry(null); setCityPlan(null); setPhase("continent"); setRevealed(false); setMsg({ type: "info", text: "Pick the next continent to fly to." }); } }} disabled={busy}
-                    style={{ padding: "8px 16px", borderRadius: 8, border: `1.5px solid ${OCEAN}`, background: "transparent", color: OCEAN, fontWeight: 700, fontSize: 13, cursor: busy ? "default" : "pointer" }}>
-                    ✈ Fly to another continent
+              <div style={{ display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap", marginTop: 10 }}>
+                {pickedCountry && COUNTRY_LAYER_CONTINENTS.has(pickedContinent) && (
+                  <button onClick={() => { if (!busy) { setPickedCountry(null); setCityPlan(null); setPhase("country"); setCurrent(null); setRevealed(false); setMsg({ type: "info", text: `${pickedContinent} — pick the country your next target is in.` }); } }} disabled={busy}
+                    style={{ padding: "8px 16px", borderRadius: 8, border: `1.5px solid ${INK}`, background: "transparent", color: INK, fontWeight: 700, fontSize: 13, cursor: busy ? "default" : "pointer" }}>
+                    ↑ Pick another country
                   </button>
-                </div>
-              )}
-            </div>
-          ) : inCountry ? (
-            <div style={{ marginTop: 12, background: "#fff", border: `1px dashed ${CORAL}`, borderRadius: 8, padding: 16, textAlign: "center" }}>
-              <div style={{ fontSize: 28 }} aria-hidden="true">🗺️</div>
-              <div style={{ fontWeight: 800, color: INK, marginTop: 4 }}>You're in {pickedContinent}!</div>
-              <div style={{ fontSize: 13, color: INK, opacity: 0.8, marginTop: 6, lineHeight: 1.45 }}>
-                Which country does the clue point to? Click it on the map.
-              </div>
-            </div>
-          ) : (
-            <div style={{ marginTop: 12, background: "#fff", border: `1px dashed ${CORAL}`, borderRadius: 8, padding: 16, textAlign: "center" }}>
-              <div style={{ fontSize: 28 }} aria-hidden="true">🌍</div>
-              <div style={{ fontWeight: 800, color: INK, marginTop: 4 }}>{isTour ? "Where to next?" : "Which continent?"}</div>
-              <div style={{ fontSize: 13, color: INK, opacity: 0.8, marginTop: 6, lineHeight: 1.45 }}>
-                {isTour
-                  ? "Pick a continent to fly to — farther flights cost more days. Group nearby targets to save days!"
-                  : `${current ? `Departing ${currentLoc.flag} ${currentLoc.city}. ` : ""}Read the clue, then click the continent it points to — farther flights cost more travel days.`}
-              </div>
-            </div>
-          )}
-          {/* Album — the trip's photos so far, under the journal boxes. */}
-          {album.length > 0 && (
-            <div style={{ marginTop: 14 }}>
-              <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.18em", color: INK, opacity: 0.6, marginBottom: 6 }}>ALBUM <span style={{ opacity: 0.7, letterSpacing: 0 }}>— tap a photo to revisit it</span></div>
-              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                {album.map((p, i) => (
-                  <button key={`${p.id}-${i}`} onClick={() => setAlbumView(p)} title={`${p.subject} — ${p.city}`} aria-label={`Revisit ${p.subject}, ${p.city}`}
-                    style={{ width: 46, height: 52, background: "#fff", border: `1px solid ${PAPER_LINE}`, borderRadius: 3, padding: 0, display: "flex", alignItems: "center", justifyContent: "center", transform: "rotate(-3deg)", cursor: "pointer" }}>
-                    <Photo photo={p.photo} icon={p.icon} alt={p.subject} size={34} />
-                  </button>
-                ))}
+                )}
+                <button onClick={() => { if (!busy) { setPickedCountry(null); setCityPlan(null); setPhase("continent"); setRevealed(false); setMsg({ type: "info", text: "Pick the next continent to fly to." }); } }} disabled={busy}
+                  style={{ padding: "8px 16px", borderRadius: 8, border: `1.5px solid ${OCEAN}`, background: "transparent", color: OCEAN, fontWeight: 700, fontSize: 13, cursor: busy ? "default" : "pointer" }}>
+                  ✈ Fly to another continent
+                </button>
               </div>
             </div>
           )}
         </div>
 
         {/* Map */}
-        <div style={{ flex: "3 1 620px", minWidth: 440 }}>
-          {/* Desktop-first: the map is the star, so let it grow to ~840px wide. */}
-          <div style={{ position: "relative", aspectRatio: frameAspect, maxWidth: 840, marginInline: "auto", borderRadius: 10, overflow: "hidden", border: `2px solid ${INK}`, boxShadow: "0 6px 0 rgba(16,38,46,0.15)" }}>
-            <svg viewBox={`${box.x} ${box.y} ${box.w} ${box.h}`} preserveAspectRatio="none" style={{ width: "100%", height: "100%", display: "block", background: zoomed ? "#0b1a2e" : PAPER }}>
+        <div style={{ flex: "3 1 640px", minWidth: 440 }}>
+          {/* Atlas plate: the code-rendered map, framed as an adventure-atlas page
+              with brass corners, a compass rose, and a faint ink-distress wash.
+              All the decoration is pointer-events:none so the map stays clickable.
+              The wide world map fills the plate; zoomed square maps stay height-capped. */}
+          <div style={{ position: "relative", width: "100%", maxWidth: 940, margin: "0 auto", padding: 12, borderRadius: 16,
+            border: `4px solid ${OCEAN_DEEP}`, boxShadow: "0 8px 0 rgba(16,38,46,0.22)",
+            background: `url("${UI}atlas-paper-texture.png") center / cover, ${PAPER}` }}>
+          <div style={{ position: "relative", aspectRatio: frameAspect, width: "100%", maxWidth: "100%", maxHeight: MAP_CAP, margin: "0 auto", borderRadius: 8, overflow: "hidden", border: `2px solid ${INK}` }}>
+            <svg viewBox={viewBox} preserveAspectRatio={par} style={{ width: "100%", height: "100%", display: "block", background: SEA }}>
               <defs>
                 <pattern id="sea" width="360" height="180" patternUnits="userSpaceOnUse">
-                  <rect width="360" height="180" fill={OCEAN} />
-                  {[...Array(7)].map((_, i) => <line key={i} x1="0" y1={i * 30} x2="360" y2={i * 30} stroke={OCEAN_DEEP} strokeWidth="0.4" />)}
-                  {[...Array(13)].map((_, i) => <line key={"v" + i} x1={i * 30} y1="0" x2={i * 30} y2="180" stroke={OCEAN_DEEP} strokeWidth="0.4" />)}
+                  <rect width="360" height="180" fill={SEA} />
+                  {[...Array(7)].map((_, i) => <line key={i} x1="0" y1={i * 30} x2="360" y2={i * 30} stroke={SEA_DEEP} strokeWidth="0.4" />)}
+                  {[...Array(13)].map((_, i) => <line key={"v" + i} x1={i * 30} y1="0" x2={i * 30} y2="180" stroke={SEA_DEEP} strokeWidth="0.4" />)}
                 </pattern>
               </defs>
               {/* World step: stylised ocean band. Country/City step: a CRISP VECTOR
@@ -2837,7 +2883,7 @@ export default function ShutterbugWorld() {
                   <image href={`${BASE}relief-antarctica.jpg`} xlinkHref={`${BASE}relief-antarctica.jpg`} x="0" y="0" width={ANT_PLATE} height={ANT_PLATE} preserveAspectRatio="none" />
                 ) : (
                   <g shapeRendering="geometricPrecision">
-                    <rect x={box.x} y={box.y} width={box.w} height={box.h} fill={OCEAN} />
+                    <rect x={box.x} y={box.y} width={box.w} height={box.h} fill={SEA} />
                     {/* land: all countries (drawn a second time, shifted +360°, for the
                         Pacific-centred Oceania view that crosses the antimeridian) */}
                     {(plateMode === "wrap" ? [0, 360] : [0]).map((off) => (
@@ -2851,11 +2897,13 @@ export default function ShutterbugWorld() {
                 )
               ) : (
                 <>
-                {/* Robinson world map: the ocean outline, a light graticule, then each
-                    continent as one clickable colour-coded region. */}
-                <path d={ROBINSON_OUTLINE} fill={OCEAN} stroke={OCEAN_DEEP} strokeWidth="0.8" vectorEffect="non-scaling-stroke" />
-                <g stroke={OCEAN_DEEP} strokeWidth="0.4" fill="none" opacity="0.5" vectorEffect="non-scaling-stroke">
-                  {ROBINSON_GRATICULE.map((d, i) => <path key={i} d={d} />)}
+                {/* World map: the whole frame is filled deep blue (no globe oval),
+                    overlaid with a straight lat/long grid, then each continent as
+                    one colour-coded region. Deliberately a flat rectangle map. */}
+                <rect x={box.x} y={box.y} width={box.w} height={box.h} fill={SEA} />
+                <g stroke={SEA_LINE} strokeWidth="0.4" fill="none" opacity="0.4" vectorEffect="non-scaling-stroke">
+                  {[...Array(11)].map((_, i) => { const x = box.x + (box.w * (i + 1)) / 12; return <line key={"v" + i} x1={x} y1={box.y} x2={x} y2={box.y + box.h} />; })}
+                  {[...Array(5)].map((_, i) => { const y = box.y + (box.h * (i + 1)) / 6; return <line key={"h" + i} x1={box.x} y1={y} x2={box.x + box.w} y2={y} />; })}
                 </g>
                 {robinsonCountries ? CONTINENTS.map((cont) => (
                   <g key={cont} className="sbw-cont" role="button" tabIndex={busy ? -1 : 0}
@@ -2984,10 +3032,12 @@ export default function ShutterbugWorld() {
                 return (
                 <g className="sbw-plane-group">
                   <path d={d} fill="none" stroke="#D8DEE3" strokeWidth="1" strokeDasharray="3 3" opacity="0.85" />
-                  <g style={{ animation: "sbw-fly 4s ease-in-out forwards", offsetPath: `path('${d}')` }}>
-                    {/* scaleY cancels the map's vertical stretch so the plane isn't squished tall */}
-                    {/* ︎ forces the monochrome text glyph so `fill` applies — a silver plane. */}
-                    <text fontSize="20" fill="#EEF1F4" stroke="#39434A" strokeWidth="0.5" paintOrder="stroke" transform={`scale(1 ${(box.h / box.w).toFixed(3)})`}>{"✈︎"}</text>
+                  <g style={{ animation: "sbw-fly 4s ease-in-out forwards", offsetPath: `path('${d}')`, offsetRotate: "auto 90deg" }}>
+                    {/* The illustrated 777 token. offset-rotate "auto 90deg" turns the
+                        nose (which points up in the art) to follow the flight path. The
+                        frame now matches the map aspect, so no squish-compensation. */}
+                    <image href={`${UI}passenger-aircraft-777-token.png`} width="26" height="26" x="-13" y="-13"
+                      style={{ filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.45))" }} />
                   </g>
                 </g>
                 );
@@ -3059,35 +3109,46 @@ export default function ShutterbugWorld() {
             )}
 
           </div>
+            {/* Decorative atlas furniture (non-interactive, over the map plate). */}
+            <img src={`${UI}map-ink-distress.png`} alt="" aria-hidden="true"
+              style={{ position: "absolute", inset: 12, width: "calc(100% - 24px)", height: "calc(100% - 24px)", objectFit: "cover", opacity: 0.16, mixBlendMode: "multiply", pointerEvents: "none", borderRadius: 8 }} />
+            <img src={`${UI}compass-rose.png`} alt="" aria-hidden="true"
+              style={{ position: "absolute", left: 22, bottom: 20, width: "clamp(58px, 9vw, 104px)", pointerEvents: "none", opacity: 0.92, filter: "drop-shadow(0 2px 3px rgba(0,0,0,0.35))" }} />
+            {[["cornerTL", { top: 2, left: 2 }, "rotate(0deg)"], ["cornerTR", { top: 2, right: 2 }, "rotate(90deg)"],
+              ["cornerBR", { bottom: 2, right: 2 }, "rotate(180deg)"], ["cornerBL", { bottom: 2, left: 2 }, "rotate(270deg)"]].map(([k, pos, rot]) => (
+              <img key={k} src={`${UI}atlas-corner.png`} alt="" aria-hidden="true"
+                style={{ position: "absolute", ...pos, width: "clamp(48px, 8vw, 82px)", transform: rot, pointerEvents: "none" }} />
+            ))}
+          </div>
+        </div>
+        {/* ===== Right tool rail — evenly spaced over the desk height, no labels ===== */}
+        <div style={{ flex: "0 0 210px", alignSelf: "stretch", display: "flex", flexDirection: "column",
+          justifyContent: "space-evenly", alignItems: "center", padding: "8px 0" }}>
+          <ToolButton img="passport.png" label="Passport" onClick={() => { setGearOpen(false); setPassportOpen(true); }} />
+          <ToolButton img="photo-album.png" label="Photo Album" onClick={() => setAlbumOpen(true)} />
+          {!isTour && !isExplore && (
+            <ToolButton img="field-guide.png" label="Field Guide — research the clue"
+              onClick={() => { setGearOpen(false); const fresh = !researched[step] && mode.research !== "off"; if (fresh) doResearch(); setGuideFresh(fresh); setGuideOpen(true); }}
+              disabled={busy || (mode.research === "off")} />
+          )}
         </div>
       </div>
 
-      {/* Bottom control bar: traveller, timer, day budget, and the sound / music /
-          animation toggles — kept out of the way at the foot of the screen. */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 16, flexWrap: "wrap", marginTop: 20, paddingTop: 12, borderTop: `1px solid ${PAPER_LINE}` }}>
-        {profileName && <Avatar spec={avatarFor(getProfile(profileName))} size={22} title={`${profileName}'s traveler`} />}
-        {isExplore
-          ? <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 13, fontWeight: 700, color: OCEAN }} title="Places you've discovered">📸 {album.length} discovered</span>
-          : (
-              <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 13, fontWeight: 700, color: INK, opacity: 0.75 }} title="Time on this trip">⏱ {fmtTime(Math.max(0, liveNow - startRef.current))}</span>
-            )}
-        <span aria-hidden="true" style={{ width: 1, height: 18, background: PAPER_LINE }} />
-        <button onClick={() => setSoundOn((s) => !s)} aria-label={soundOn ? "Turn sound off" : "Turn sound on"} aria-pressed={soundOn} title={soundOn ? "Sound on" : "Sound off"}
-          style={{ background: "none", border: "none", cursor: "pointer", fontSize: 17, lineHeight: 1, padding: 2, color: INK, opacity: 0.75 }}>
-          {soundOn ? "🔊" : "🔇"}
-        </button>
-        <button onClick={() => setMusicOn((m) => { const v = !m; if (v) MUSIC.start(); else MUSIC.stop(); return v; })}
-          aria-label={musicOn ? "Turn music off" : "Turn music on"} aria-pressed={musicOn} title={musicOn ? "Music on" : "Music off"}
-          style={{ background: "none", border: "none", cursor: "pointer", fontSize: 17, lineHeight: 1, padding: 2, color: INK, opacity: musicOn ? 0.75 : 0.45 }}>
-          {musicOn ? "🎵" : <span style={{ textDecoration: "line-through" }}>🎵</span>}
-        </button>
-        <button onClick={() => setAnimOn((v) => !v)}
-          aria-label={animOn ? "Turn animations off" : "Turn animations on"} aria-pressed={animOn} title={animOn ? "Animations on" : "Animations off"}
-          style={{ background: "none", border: "none", cursor: "pointer", fontSize: 17, lineHeight: 1, padding: 2, color: INK, opacity: animOn ? 0.75 : 0.45 }}>
-          {animOn ? "✨" : <span style={{ textDecoration: "line-through" }}>✨</span>}
-        </button>
+      </div>{/* /full-height column */}
+      {/* ===== Instruction ribbon — fixed to the very bottom of the screen so it's
+              always visible without scrolling, whatever the panel height. ===== */}
+      <div style={{ position: "fixed", left: "50%", bottom: 8, transform: "translateX(-50%)", zIndex: 20,
+        width: "min(940px, calc(100vw - 40px))", minHeight: 58, display: "flex",
+        alignItems: "center", justifyContent: "center", textAlign: "center", padding: "14px 76px",
+        background: `url("${UI}instruction-ribbon.png") center / 100% 100% no-repeat` }}>
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 10, fontWeight: 800, fontSize: 15.5, color: INK }}>
+          <span aria-hidden="true" style={{ fontSize: 20 }}>🌍</span>{ribbonText}
+        </span>
       </div>
 
+      {passportOpen && <PassportModal profile={profileName ? getProfile(profileName) : null} onClose={() => setPassportOpen(false)} />}
+      {albumOpen && <AlbumModal album={album} onPick={(p) => { setAlbumOpen(false); setAlbumView(p); }} onClose={() => setAlbumOpen(false)} />}
+      {guideOpen && <FieldGuideModal note={researched[step]} spent={guideFresh && researchCost > 0} onClose={() => setGuideOpen(false)} />}
       {pending && <ResultModal data={pending} onContinue={continueFromResult} reduced={prefersReduced} />}
       {albumView && <LandmarkModal p={albumView} onClose={() => setAlbumView(null)} reduced={prefersReduced} />}
       {countryPopup && <CountryPopup country={countryPopup} onClose={() => setCountryPopup(null)} reduced={prefersReduced} />}
@@ -3111,15 +3172,22 @@ function SepiaMapBackground() {
     </div>
   );
 }
-function Frame({ children }) {
+function Frame({ children, desk = false }) {
   return (
     <div style={{ minHeight: "100%", position: "relative", padding: 18, fontFamily: "ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif" }}>
       <style>{`
         /* Whole-continent highlight when hovering or keyboard-focusing a region. */
-        .sbw-cont{ outline: none; }
+        /* Right-rail tool props lift on hover / keyboard focus. */
+        .sbw-tool img{ transition: transform .14s ease, filter .14s ease; }
+        .sbw-tool:hover img, .sbw-tool:focus-visible img{ transform: translateY(-3px) rotate(-1.5deg); filter: drop-shadow(0 9px 11px rgba(0,0,0,0.5)); }
+        .sbw-tool:focus-visible{ outline: 3px solid ${GOLD}; outline-offset: 3px; border-radius: 10px; }
+        .sbw-cont{ outline: none; transition: filter .12s ease; }
         .sbw-cont path{ transition: filter .12s ease; }
         .sbw-cont:hover path,
-        .sbw-cont:focus-visible path{ filter: brightness(1.15) saturate(1.15); stroke-width: 0.8; }
+        .sbw-cont:focus-visible path{ filter: brightness(1.12) saturate(1.1); }
+        /* Thick white halo around the whole continent's OUTER edge on hover/focus. */
+        .sbw-cont:hover,
+        .sbw-cont:focus-visible{ filter: drop-shadow(0 0 1.4px #fff) drop-shadow(0 0 1.4px #fff) drop-shadow(0 0 1px #fff); }
         .sbw-country{ outline: none; }
         .sbw-country path, .sbw-country ellipse{ transition: fill .12s ease; }
         .sbw-country:hover path,
@@ -3144,6 +3212,9 @@ function Frame({ children }) {
         /* White shutter flash over the photo when you take a shot. */
         .sbw-flash{ position: absolute; inset: 0; background: #fff; border-radius: 4px; pointer-events: none; opacity: 0; animation: sbw-flash 0.42s ease-out; }
         @keyframes sbw-flash{ 0%{ opacity: 0 } 10%{ opacity: 0.95 } 100%{ opacity: 0 } }
+        /* Polaroid eject — the print slides up and settles as it develops. */
+        .sbw-polaroid{ animation: sbw-polaroid 0.6s cubic-bezier(.2,.8,.3,1.05) both; }
+        @keyframes sbw-polaroid{ 0%{ transform: translateY(46px) rotate(-1.6deg) scale(0.95); opacity: 0 } 60%{ opacity: 1 } 100%{ transform: translateY(0) rotate(-1.6deg) scale(1); opacity: 1 } }
         /* Result popup pop-in. */
         .sbw-pop{ animation: sbw-pop 0.22s cubic-bezier(.2,.8,.3,1.2); }
         @keyframes sbw-pop{ 0%{ transform: scale(0.82); opacity: 0 } 100%{ transform: scale(1); opacity: 1 } }
@@ -3172,15 +3243,31 @@ function Frame({ children }) {
         body.sbw-no-anim .sbw-plane-group{ display: none }
         body.sbw-no-anim .sbw-flash{ animation: none; opacity: 0 }
         body.sbw-no-anim .sbw-pop{ animation: none }
+        body.sbw-no-anim .sbw-polaroid{ animation: none }
         body.sbw-no-anim .sbw-develop{ animation: none }
         body.sbw-no-anim .sbw-confetti{ animation: none; opacity: 0 }
       `}</style>
-      <SepiaMapBackground />
-      <div style={{ position: "relative", zIndex: 1, maxWidth: 1320, margin: "0 auto", background: PAPER, borderRadius: 14, padding: 22, border: `1px solid ${PAPER_LINE}`,
-        boxShadow: "0 12px 34px rgba(74,50,20,0.32)",
-        backgroundImage: `repeating-linear-gradient(0deg, transparent, transparent 27px, ${PAPER_LINE}55 27px, ${PAPER_LINE}55 28px)` }}>
-        {children}
-      </div>
+      {desk ? (
+        // Play screen: an illustrated desk — wood-grain surface (photo texture over
+        // a warm gradient fallback) with the atlas, letter, and tools laid on top.
+        <div aria-hidden="true" style={{ position: "fixed", inset: 0, zIndex: 0, pointerEvents: "none",
+          background: `radial-gradient(120% 120% at 50% 0%, #6b4423 0%, #4a2e18 60%, #2f1d0f 100%)`,
+          backgroundImage: `radial-gradient(120% 120% at 50% -10%, rgba(0,0,0,0) 40%, rgba(0,0,0,0.45) 100%), url("${UI}desk-wood-texture.png")`,
+          backgroundSize: "cover, cover", backgroundPosition: "center, center" }} />
+      ) : (
+        <SepiaMapBackground />
+      )}
+      {desk ? (
+        <div style={{ position: "relative", zIndex: 1, maxWidth: 1360, margin: "0 auto" }}>
+          {children}
+        </div>
+      ) : (
+        <div style={{ position: "relative", zIndex: 1, maxWidth: 1320, margin: "0 auto", background: PAPER, borderRadius: 14, padding: 22, border: `1px solid ${PAPER_LINE}`,
+          boxShadow: "0 12px 34px rgba(74,50,20,0.32)",
+          backgroundImage: `repeating-linear-gradient(0deg, transparent, transparent 27px, ${PAPER_LINE}55 27px, ${PAPER_LINE}55 28px)` }}>
+          {children}
+        </div>
+      )}
     </div>
   );
 }
@@ -3230,28 +3317,278 @@ function Itinerary({ reqs, here }) {
     </div>
   );
 }
+// Right-rail tool prop (passport / photo album / field guide). The PNG is the
+// tactile object; the label under it is live text. Functional button, so it
+// carries a real aria-label and a visible focus/hover lift.
+function ToolButton({ img, label, onClick, disabled }) {
+  return (
+    <button onClick={onClick} disabled={disabled} aria-label={label} title={label} className="sbw-tool"
+      style={{ display: "flex", alignItems: "center", justifyContent: "center", background: "transparent",
+        border: "none", padding: 0, cursor: disabled ? "default" : "pointer", opacity: disabled ? 0.4 : 1, width: "100%" }}>
+      <img src={`${UI}${img}`} alt="" style={{ width: "100%", maxWidth: 200, display: "block",
+        filter: "drop-shadow(0 5px 7px rgba(0,0,0,0.45))" }} />
+    </button>
+  );
+}
+// The four-step journey tracker (Continent → Country → Destination → Photograph).
+// Purely reflects `phase` progress; the icons are art, the labels/numbers live.
+const PHASE_STEPS = [
+  { key: "continent", label: "Continent", hint: "Pick the correct continent.", icon: "itinerary-continent.png" },
+  { key: "country", label: "Country", hint: "Find the right country.", icon: "itinerary-country.png" },
+  { key: "destination", label: "Destination", hint: "Narrow it down.", icon: "itinerary-destination.png" },
+  { key: "photograph", label: "Photograph", hint: "Take the perfect shot!", icon: "itinerary-photograph.png" },
+];
+function PhaseTracker({ stepIdx }) {
+  return (
+    <ol style={{ listStyle: "none", margin: "12px 0 0", padding: 0, display: "flex", flexDirection: "column", gap: 7 }}>
+      {PHASE_STEPS.map((s, i) => {
+        const active = i === stepIdx, done = i < stepIdx;
+        return (
+          <li key={s.key} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 12px", borderRadius: 8,
+            background: active ? "#FBE7DF" : PAPER, border: `2px solid ${active ? CORAL : PAPER_LINE}`,
+            opacity: done ? 0.62 : 1 }}>
+            <span aria-hidden="true" style={{ flex: "0 0 auto", width: 26, height: 26, borderRadius: "50%",
+              display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 900, fontSize: 13,
+              background: active ? CORAL : done ? GREEN : "transparent", color: active || done ? "#fff" : INK,
+              border: active || done ? "none" : `2px solid ${INK}` }}>{done ? "✓" : i + 1}</span>
+            <img src={`${UI}${s.icon}`} alt="" style={{ width: 30, height: 30, objectFit: "contain", flex: "0 0 auto" }} />
+            <span style={{ lineHeight: 1.2 }}>
+              <span style={{ display: "block", fontWeight: 800, fontSize: 13.5, letterSpacing: "0.04em",
+                color: active ? CORAL : INK, textTransform: "uppercase" }}>{s.label}</span>
+              <span style={{ display: "block", fontSize: 11.5, color: INK, opacity: 0.7 }}>{s.hint}</span>
+            </span>
+          </li>
+        );
+      })}
+    </ol>
+  );
+}
+// A dim backdrop shared by the two tool popups; closes on Escape or backdrop click.
+function ModalShell({ label, onClose, maxWidth, accent = OCEAN, children }) {
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+  return (
+    <div role="dialog" aria-modal="true" aria-label={label} onClick={onClose}
+      style={{ position: "fixed", inset: 0, background: "rgba(16,38,46,0.62)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16, zIndex: 50 }}>
+      <div onClick={(e) => e.stopPropagation()}
+        style={{ position: "relative", background: PAPER, borderRadius: 16, border: `3px solid ${accent}`, boxShadow: "0 14px 44px rgba(0,0,0,0.35)", maxWidth: maxWidth || 620, width: "100%", maxHeight: "90vh", overflowY: "auto", padding: "22px 22px 24px" }}>
+        <button onClick={onClose} aria-label="Close" title="Close"
+          style={{ position: "absolute", top: 10, right: 12, background: "transparent", border: "none", fontSize: 24, lineHeight: 1, color: INK, cursor: "pointer", opacity: 0.6 }}>×</button>
+        {children}
+      </div>
+    </div>
+  );
+}
+// A shared open-book popup: the book art fills a 3:2 frame and content is laid
+// on the left and right cream pages. Closes on Escape / backdrop click.
+function OpenBook({ img, label, onClose, left, right, footer }) {
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+  const pageBase = { position: "absolute", top: "13%", height: "72%", display: "flex", flexDirection: "column" };
+  return (
+    <div role="dialog" aria-modal="true" aria-label={label} onClick={onClose}
+      style={{ position: "fixed", inset: 0, background: "rgba(16,38,46,0.66)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 10, padding: 16, zIndex: 56 }}>
+      <div onClick={(e) => e.stopPropagation()}
+        style={{ position: "relative", width: "min(900px, 95vw)", aspectRatio: "3 / 2",
+          backgroundImage: `url("${UI}${img}")`, backgroundSize: "contain", backgroundRepeat: "no-repeat", backgroundPosition: "center",
+          filter: "drop-shadow(0 16px 40px rgba(0,0,0,0.5))" }}>
+        <button onClick={onClose} aria-label="Close" title="Close"
+          style={{ position: "absolute", top: "1%", right: "3%", background: "rgba(16,38,46,0.7)", color: "#fff", border: "none", borderRadius: "50%", width: 30, height: 30, fontSize: 18, lineHeight: 1, cursor: "pointer", zIndex: 3 }}>×</button>
+        <div style={{ ...pageBase, left: "12.5%", width: "33.5%" }}>{left}</div>
+        <div style={{ ...pageBase, left: "54%", width: "33.5%" }}>{right}</div>
+      </div>
+      {footer}
+    </div>
+  );
+}
+// Photo Album — every shot filed on the current run, laid out in an open album.
+function AlbumModal({ album, onPick, onClose }) {
+  const [page, setPage] = useState(0);
+  const PER = 8, spreads = Math.max(1, Math.ceil(album.length / PER));
+  const slice = album.slice(page * PER, page * PER + PER);
+  const thumb = (p, i) => (
+    <button key={`${p.id}-${i}`} onClick={() => onPick(p)} title={`${p.subject} — ${p.city}`} aria-label={`Revisit ${p.subject}, ${p.city}`}
+      style={{ background: "#fff", border: "none", borderRadius: 2, padding: "4px 4px 12px", cursor: "pointer", boxShadow: "0 3px 7px rgba(0,0,0,0.28)", transform: `rotate(${i % 2 ? 1.5 : -1.5}deg)` }}>
+      <div style={{ height: 64, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", background: "#10262E" }}>
+        <Photo photo={p.photo} icon={p.icon} alt={p.subject} size={62} />
+      </div>
+      <div style={{ fontWeight: 700, fontSize: 10, color: INK, marginTop: 3, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{p.flag} {p.city}</div>
+    </button>
+  );
+  const grid = (list) => (
+    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px 12px", alignContent: "start" }}>{list.map(thumb)}</div>
+  );
+  const footer = spreads > 1 && (
+    <div onClick={(e) => e.stopPropagation()} style={{ display: "flex", alignItems: "center", gap: 14, color: "#F4ECD8" }}>
+      <button onClick={() => setPage((p) => Math.max(0, p - 1))} disabled={page === 0} aria-label="Previous page" style={{ background: "rgba(255,255,255,0.14)", border: "1.5px solid rgba(244,236,216,0.5)", color: "#F4ECD8", borderRadius: 8, width: 40, height: 34, fontSize: 18, cursor: page === 0 ? "default" : "pointer", opacity: page === 0 ? 0.4 : 1 }}>‹</button>
+      <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 13, fontWeight: 700, minWidth: 110, textAlign: "center" }}>Page {page + 1} of {spreads}</span>
+      <button onClick={() => setPage((p) => Math.min(spreads - 1, p + 1))} disabled={page >= spreads - 1} aria-label="Next page" style={{ background: "rgba(255,255,255,0.14)", border: "1.5px solid rgba(244,236,216,0.5)", color: "#F4ECD8", borderRadius: 8, width: 40, height: 34, fontSize: 18, cursor: page >= spreads - 1 ? "default" : "pointer", opacity: page >= spreads - 1 ? 0.4 : 1 }}>›</button>
+    </div>
+  );
+  return (
+    <OpenBook img="photo-album-open-blank.png" label="Photo album" onClose={onClose} footer={footer}
+      left={<>
+        <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.18em", color: CORAL, fontWeight: 800, marginBottom: 8 }}>📷 PHOTO ALBUM</div>
+        {album.length ? grid(slice.slice(0, 4)) : <div style={{ fontSize: 13, color: INK, opacity: 0.7 }}>No photos yet — take your first shot to start the album!</div>}
+      </>}
+      right={<div style={{ paddingTop: 24 }}>{grid(slice.slice(4))}</div>} />
+  );
+}
+// Field Guide — spends the research half-day (once per assignment) and reveals
+// Grandpa's clue tip; re-opening later just re-reads it, no extra time lost.
+function FieldGuideModal({ note, spent, onClose }) {
+  const line = spent ? "You spend half a travel day poring over the field guide." : "You open the field guide again — no travel time lost.";
+  return (
+    <OpenBook img="field-guide-open-blank.png" label="Field guide" onClose={onClose}
+      left={<>
+        <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.18em", color: GREEN, fontWeight: 800, marginBottom: 10 }}>📗 FIELD GUIDE</div>
+        <p style={{ margin: "0 0 10px", color: INK, opacity: 0.85, fontSize: 13.5, lineHeight: 1.5, fontStyle: "italic" }}>{line} It yields:</p>
+      </>}
+      right={<div style={{ display: "flex", flexDirection: "column", justifyContent: "center", height: "100%" }}>
+        <div style={{ color: INK, fontFamily: HAND, fontSize: 19, lineHeight: 1.4 }}>{note || "Nothing new this time — read Grandpa's note and trust your map sense!"}</div>
+      </div>} />
+  );
+}
+// The passport as an openable booklet popup: page 0 is the identity/profile
+// spread (avatar in the photo frame + traveller stats); pages 1..N are the
+// accomplishment spreads (country stamps + keepsakes), paged with arrows.
+function PassportModal({ profile, onClose }) {
+  const [page, setPage] = useState(0);
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === "Escape") onClose(); if (e.key === "ArrowRight") setPage((p) => p + 1); if (e.key === "ArrowLeft") setPage((p) => Math.max(0, p - 1)); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+  const pp = profile ? passportData(profile) : null;
+  const rank = profile ? careerRank(profile) : null;
+  const earned = profile ? achievements(profile).filter((b) => b.earned) : [];
+  const stamps = pp ? pp.countries.filter((c) => c.mastered) : [];
+  const items = [
+    ...stamps.map((c) => ({ kind: "stamp", icon: COUNTRY_FLAG[c.country] || "🏳️", label: c.country })),
+    ...earned.map((b) => ({ kind: "keepsake", icon: b.emoji, label: b.name })),
+  ];
+  const PER = 12; // items per two-page spread (6 a page)
+  const spreads = Math.max(1, Math.ceil(items.length / PER));
+  const lastPage = spreads; // page 0 = profile, 1..spreads = accomplishments
+  const isProfile = page === 0;
+  const bookImg = isProfile ? "passport-open-profile-blank.png" : "passport-open-pages-blank.png";
+  const spreadItems = isProfile ? [] : items.slice((page - 1) * PER, page * PER);
+  const leftItems = spreadItems.slice(0, PER / 2), rightItems = spreadItems.slice(PER / 2);
+  const bestPairs = profile ? Object.entries(profile.best || {}).filter(([, v]) => typeof v === "number") : [];
+  const Cell = ({ it }) => (
+    <div style={{ display: "flex", alignItems: "center", gap: 7, minWidth: 0 }}>
+      <span aria-hidden="true" style={{ fontSize: 22, lineHeight: 1, flex: "none" }}>{it.icon}</span>
+      <span style={{ fontSize: 12.5, fontWeight: 700, color: INK, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{it.label}</span>
+    </div>
+  );
+  const pageCol = (list) => (
+    <div style={{ display: "flex", flexDirection: "column", gap: 9, overflow: "hidden" }}>
+      {list.map((it, i) => <Cell key={i} it={it} />)}
+    </div>
+  );
+  return (
+    <div role="dialog" aria-modal="true" aria-label="Passport" onClick={onClose}
+      style={{ position: "fixed", inset: 0, background: "rgba(16,38,46,0.66)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 10, padding: 16, zIndex: 56 }}>
+      <div onClick={(e) => e.stopPropagation()}
+        style={{ position: "relative", width: "min(880px, 94vw)", aspectRatio: "3 / 2",
+          backgroundImage: `url("${UI}${bookImg}")`, backgroundSize: "contain", backgroundRepeat: "no-repeat", backgroundPosition: "center",
+          filter: "drop-shadow(0 16px 40px rgba(0,0,0,0.5))" }}>
+        <button onClick={onClose} aria-label="Close passport" title="Close"
+          style={{ position: "absolute", top: "2%", right: "4%", background: "rgba(16,38,46,0.7)", color: "#fff", border: "none", borderRadius: "50%", width: 30, height: 30, fontSize: 18, lineHeight: 1, cursor: "pointer", zIndex: 3 }}>×</button>
+        {!profile ? (
+          <div style={{ position: "absolute", left: "54%", top: "34%", width: "34%", textAlign: "center", color: INK }}>
+            <div style={{ fontWeight: 800, fontSize: 15 }}>No traveller yet</div>
+            <div style={{ fontSize: 13, opacity: 0.75, marginTop: 6 }}>Create a traveller to earn a passport of stamps and keepsakes.</div>
+          </div>
+        ) : isProfile ? (
+          <>
+            {/* Avatar in the photo frame (left page) */}
+            <div style={{ position: "absolute", left: "20.5%", top: "20%", width: "22.5%", aspectRatio: "1 / 1",
+              display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <Avatar spec={avatarFor(profile)} size={150} />
+            </div>
+            {/* Identity details (right page) */}
+            <div style={{ position: "absolute", left: "53%", top: "17%", width: "37%", color: INK, textAlign: "left" }}>
+              <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 10, letterSpacing: "0.16em", color: OCEAN, opacity: 0.8 }}>TRAVELLER</div>
+              <div style={{ fontWeight: 900, fontSize: 24, lineHeight: 1.1, color: INK, overflow: "hidden", textOverflow: "ellipsis" }}>{profile.name}</div>
+              <div style={{ fontWeight: 800, fontSize: 14, color: CORAL, marginTop: 3 }}>★ {rank.title}</div>
+              <div style={{ marginTop: 12, display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px 12px", fontSize: 12.5 }}>
+                <div><b style={{ fontSize: 18 }}>{pp.masteredCount}</b><span style={{ opacity: 0.7 }}>/{pp.totalCountries}</span><div style={{ opacity: 0.7, fontSize: 11 }}>stamps</div></div>
+                <div><b style={{ fontSize: 18 }}>{rank.have}</b><div style={{ opacity: 0.7, fontSize: 11 }}>places shot</div></div>
+                <div><b style={{ fontSize: 18 }}>{profile.games || 0}</b><div style={{ opacity: 0.7, fontSize: 11 }}>trips filed</div></div>
+                <div><b style={{ fontSize: 18 }}>{earned.length}</b><div style={{ opacity: 0.7, fontSize: 11 }}>keepsakes</div></div>
+              </div>
+              {bestPairs.length > 0 && (
+                <div style={{ marginTop: 10, fontSize: 11.5, opacity: 0.85 }}>
+                  <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 9.5, letterSpacing: "0.14em", color: OCEAN, marginBottom: 3 }}>BEST SCORES</div>
+                  {bestPairs.slice(0, 4).map(([k, v]) => <div key={k} style={{ textTransform: "capitalize" }}>{k}: <b>{v}</b></div>)}
+                </div>
+              )}
+            </div>
+          </>
+        ) : (
+          <>
+            <div style={{ position: "absolute", left: "11%", top: "12%", width: "34%", bottom: "13%" }}>
+              <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 10, letterSpacing: "0.16em", color: OCEAN, fontWeight: 700, marginBottom: 8 }}>📖 STAMPS & KEEPSAKES</div>
+              {pageCol(leftItems)}
+            </div>
+            <div style={{ position: "absolute", right: "11%", top: "12%", width: "34%", bottom: "13%" }}>
+              <div style={{ height: 18, marginBottom: 8 }} />
+              {pageCol(rightItems)}
+              {spreadItems.length === 0 && <div style={{ fontSize: 13, color: INK, opacity: 0.7 }}>No stamps yet — photograph places to fill your passport!</div>}
+            </div>
+          </>
+        )}
+      </div>
+      {/* Pager */}
+      <div onClick={(e) => e.stopPropagation()} style={{ display: "flex", alignItems: "center", gap: 14, color: "#F4ECD8" }}>
+        <button onClick={() => setPage((p) => Math.max(0, p - 1))} disabled={page === 0} aria-label="Previous page"
+          style={{ background: "rgba(255,255,255,0.14)", border: "1.5px solid rgba(244,236,216,0.5)", color: "#F4ECD8", borderRadius: 8, width: 40, height: 34, fontSize: 18, cursor: page === 0 ? "default" : "pointer", opacity: page === 0 ? 0.4 : 1 }}>‹</button>
+        <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 13, fontWeight: 700, minWidth: 150, textAlign: "center" }}>
+          {isProfile ? "Profile" : `Page ${page} of ${spreads}`}
+        </span>
+        <button onClick={() => setPage((p) => Math.min(lastPage, p + 1))} disabled={page >= lastPage} aria-label="Next page"
+          style={{ background: "rgba(255,255,255,0.14)", border: "1.5px solid rgba(244,236,216,0.5)", color: "#F4ECD8", borderRadius: 8, width: 40, height: 34, fontSize: 18, cursor: page >= lastPage ? "default" : "pointer", opacity: page >= lastPage ? 0.4 : 1 }}>›</button>
+      </div>
+    </div>
+  );
+}
 function ResultModal({ data, onContinue, reduced }) {
   const good = data.tone === "good";
   const accent = good ? GREEN : CORAL;
   const hasPhoto = !!data.photo?.src;
+  const [mroImg] = useState(nextMrOImage); // Mr. O's look for the "did you know" card
   // With both a photo and a fact, they sit side by side (the fact reads as a
   // caption next to the shot); they stack on narrow screens via flex-wrap.
   const sideBySide = hasPhoto && !!data.fact;
-  // The shot "develops" like film — greyscale-and-bright blooming into full colour —
-  // with a white shutter flash on top, replayed each time the modal opens (keyed to
-  // the photo). This is the flash/develop that the instant result popup used to hide.
+  // A true polaroid: white frame with a deep bottom lip; the print ejects and the
+  // image "develops" (grey → colour) under a white shutter flash. The polaroid
+  // FRAME is static (always shown); only the eject/develop/flash are motion.
   const photoEl = hasPhoto && (
-    <div style={{ position: "relative", overflow: "hidden", borderRadius: 8, border: `2px solid ${accent}`, background: "#10262E" }}>
-      <div className={reduced ? undefined : "sbw-develop"} key={`dev-${data.photo.src}`}>
-        <img src={withWidth(data.photo.src, 1600)} alt="" style={{ width: "100%", maxHeight: 440, objectFit: "contain", display: "block" }} />
+    <div className={reduced ? undefined : "sbw-polaroid"} key={`pol-${data.photo.src}`}
+      style={{ background: "#fff", padding: "9px 9px 30px", borderRadius: 3, transform: "rotate(-1.6deg)",
+        boxShadow: "0 10px 22px rgba(0,0,0,0.34)", maxWidth: 420, margin: "0 auto" }}>
+      <div style={{ position: "relative", overflow: "hidden", background: "#10262E" }}>
+        <div className={reduced ? undefined : "sbw-develop"} key={`dev-${data.photo.src}`}>
+          <img src={withWidth(data.photo.src, 1600)} alt="" style={{ width: "100%", maxHeight: 400, objectFit: "contain", display: "block" }} />
+        </div>
+        {!reduced && <div className="sbw-flash" key={`fl-${data.photo.src}`} />}
       </div>
-      {!reduced && <div className="sbw-flash" key={`fl-${data.photo.src}`} />}
     </div>
   );
   const factEl = data.fact && (
-    <div style={{ background: "#fff", border: `1px dashed ${accent}`, borderRadius: 10, padding: "12px 14px", textAlign: "left" }}>
-      <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 10, letterSpacing: "0.18em", color: accent, marginBottom: 5 }}>📖 DID YOU KNOW?</div>
-      <TypeLine text={data.fact} reduced={reduced} style={{ color: INK, fontSize: 13.5, lineHeight: 1.5 }} />
+    <div style={{ display: "flex", alignItems: "flex-start", gap: 8, background: "#fff", border: `1px dashed ${OCEAN}`, borderRadius: 10, padding: "12px 14px", textAlign: "left" }}>
+      <img src={`${UI}${mroImg}`} alt="" aria-hidden="true" style={{ width: 52, height: 52, flex: "0 0 auto", objectFit: "contain", objectPosition: "top", filter: "drop-shadow(0 2px 3px rgba(0,0,0,0.28))" }} />
+      <div>
+        <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 10.5, letterSpacing: "0.14em", color: OCEAN, fontWeight: 700, marginBottom: 4 }}>OH! DID YOU KNOW…</div>
+        <TypeLine text={data.fact} reduced={reduced} style={{ color: INK, fontSize: 13.5, lineHeight: 1.5 }} />
+      </div>
     </div>
   );
   return (
@@ -3270,7 +3607,9 @@ function ResultModal({ data, onContinue, reduced }) {
         ) : hasPhoto ? (
           <div style={{ margin: "0 auto 10px", maxWidth: 500 }}>{photoEl}</div>
         ) : null}
-        <TypeLine text={data.subtitle} reduced={reduced} style={{ color: INK, fontSize: 15, lineHeight: 1.5, margin: "0 auto", maxWidth: 340 }} />
+        {/* Game-mechanic text (what you shot, points) appears INSTANTLY — only
+            "someone speaking" / new-info text (the fact) types gradually. */}
+        <p style={{ color: INK, fontSize: 15, lineHeight: 1.5, margin: "0 auto", maxWidth: 340 }}>{data.subtitle}</p>
         {data.hint && (
           <p style={{ color: OCEAN, fontSize: 14, fontWeight: 700, lineHeight: 1.45, margin: "10px auto 0", maxWidth: 340 }}>
             <span aria-hidden="true">💡 </span>{data.hint}
@@ -3740,6 +4079,7 @@ function CountryPopup({ country, onClose, reduced }) {
 // few seconds (or on tap). It never covers the map controls or steals a click.
 function MrOBubble({ fact, onClose, reduced }) {
   const [imgOk, setImgOk] = useState(true);
+  const [img] = useState(nextMrOImage); // a fresh look each appearance
   useEffect(() => {
     const id = setTimeout(onClose, 10000); // auto-dismiss
     return () => clearTimeout(id);
@@ -3752,7 +4092,7 @@ function MrOBubble({ fact, onClose, reduced }) {
             the speech bubble on his right. Falls back to an emoji if the art is
             missing, so it never shows a broken image. */}
         {imgOk ? (
-          <img src={`${BASE}odin.png`} alt="" onError={() => setImgOk(false)}
+          <img src={`${UI}${img}`} alt="" onError={() => setImgOk(false)}
             style={{ height: 320, width: "auto", flex: "none", objectFit: "contain", filter: "drop-shadow(0 5px 9px rgba(0,0,0,0.36))" }} />
         ) : (
           <div aria-hidden="true" style={{ fontSize: 96, lineHeight: 1, flex: "none", filter: "drop-shadow(0 2px 3px rgba(0,0,0,0.25))" }}>{MR_O.emoji}</div>
@@ -3771,6 +4111,7 @@ function MrOBubble({ fact, onClose, reduced }) {
 // right answer and a short explanation show, then a Continue button dismisses it.
 function RiddleModal({ riddle, onAnswer, onClose, gain, reduced }) {
   const [imgOk, setImgOk] = useState(true);
+  const [img] = useState(nextMrOImage);
   const { data, choices, answeredIdx } = riddle;
   const answered = answeredIdx !== null;
   const wasCorrect = answered && choices[answeredIdx] === data.correct;
@@ -3781,7 +4122,7 @@ function RiddleModal({ riddle, onAnswer, onClose, gain, reduced }) {
         style={{ background: PAPER, borderRadius: 16, border: `3px solid ${OCEAN}`, boxShadow: "0 14px 44px rgba(0,0,0,0.35)", maxWidth: 560, width: "100%", padding: "22px 22px 24px", textAlign: "center" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, justifyContent: "center", marginBottom: 6 }}>
           {imgOk
-            ? <img src={`${BASE}odin.png`} alt="" onError={() => setImgOk(false)} style={{ height: 96, width: "auto", flex: "none", objectFit: "contain", filter: "drop-shadow(0 3px 5px rgba(0,0,0,0.3))" }} />
+            ? <img src={`${UI}${img}`} alt="" onError={() => setImgOk(false)} style={{ height: 96, width: "auto", flex: "none", objectFit: "contain", filter: "drop-shadow(0 3px 5px rgba(0,0,0,0.3))" }} />
             : <div aria-hidden="true" style={{ fontSize: 48, lineHeight: 1 }}>{MR_O.emoji}</div>}
           <div style={{ textAlign: "left" }}>
             <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.14em", color: OCEAN, fontWeight: 700 }}>{MR_O.name.toUpperCase()}</div>

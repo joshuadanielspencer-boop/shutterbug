@@ -277,7 +277,7 @@ export const MUSIC = (() => {
       drone.push({ o, g });
     }
   };
-  const stopDrone = () => { const t = ctx ? ctx.currentTime : 0; for (const d of drone) { try { d.g.gain.setTargetAtTime(0.0001, t, 0.15); d.o.stop(t + 0.5); } catch { /* ignore */ } } drone = []; };
+  const stopDrone = () => { const t = ctx ? ctx.currentTime : 0; for (const d of drone) { try { d.g.gain.setTargetAtTime(0.0001, t, 0.7); d.o.stop(t + 2.6); } catch { /* ignore */ } } drone = []; };
   // Bring master up to the audible level (one-shots need it even when the jig
   // loop is faded out at the map).
   const wake = (c) => { master.gain.cancelScheduledValues(c.currentTime); master.gain.setTargetAtTime(0.16, c.currentTime, 0.3); };
@@ -298,24 +298,25 @@ export const MUSIC = (() => {
       } catch { /* ignore */ }
     },
     // Fade the jig loop out (at the map) but keep the context + master alive so
-    // the travel jig and country tunes can still play.
+    // the travel jig and country tunes can still play. ~2s gentle fade.
     fadeJig() {
       try {
         running = false;
         if (timer) { clearInterval(timer); timer = null; }
         stopDrone();
-        if (ctx && jigBus) jigBus.gain.setTargetAtTime(0.0001, ctx.currentTime, 0.6);
+        if (ctx && jigBus) jigBus.gain.setTargetAtTime(0.0001, ctx.currentTime, 0.7);
       } catch { /* ignore */ }
     },
-    // Full stop (leaving to the passport): silence everything.
+    // Full stop (leaving to the passport / music off): fade everything out over
+    // ~2 seconds rather than cutting abruptly.
     stop() {
       try {
         running = false;
         if (timer) { clearInterval(timer); timer = null; }
         this.stopCountry();
         stopDrone();
-        if (ctx && jigBus) jigBus.gain.setTargetAtTime(0.0001, ctx.currentTime, 0.25);
-        if (ctx && master) master.gain.setTargetAtTime(0.0001, ctx.currentTime, 0.3);
+        if (ctx && jigBus) jigBus.gain.setTargetAtTime(0.0001, ctx.currentTime, 0.7);
+        if (ctx && master) master.gain.setTargetAtTime(0.0001, ctx.currentTime, 0.75);
       } catch { /* ignore */ }
     },
     // Stop the looping country tune (leaving the country / the trip).
