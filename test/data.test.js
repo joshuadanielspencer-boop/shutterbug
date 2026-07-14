@@ -11,6 +11,7 @@ import { COUNTRY_INFO } from "../src/data/countries.js";
 import { categoryCountries, categoryMissionOK } from "../src/missions.js";
 import { COUNTRY_PEOPLE, GREETING_MEANING, peopleCards } from "../src/data/culture.js";
 import { RIVERS, LAKES, MARINE, WATER_FEATURES, WATER_KINDS } from "../src/data/geography.js";
+import { JOURNEYS, journeyBox, closestStops } from "../src/data/journeys.js";
 
 const CONTINENTS = [
   "North America", "South America", "Europe", "Africa", "Asia", "Oceania", "Antarctica",
@@ -425,6 +426,10 @@ describe("measurements read imperial first", () => {
       if (l[k]) strings.push([`${l.id}.${k}`, l[k]]);
   for (const [country, info] of Object.entries(COUNTRY_INFO))
     if (info.blurb) strings.push([`${country}.blurb`, info.blurb]);
+  for (const j of JOURNEYS) {
+    strings.push([`${j.id}.intro`, j.intro]);
+    for (const s2 of j.stops) strings.push([`${j.id}/${s2.id}.fact`, s2.fact], [`${j.id}/${s2.id}.prompt`, s2.prompt]);
+  }
 
   it("no player-facing text gives metric without an imperial equivalent", () => {
     for (const [where, text] of strings) {
@@ -446,6 +451,49 @@ describe("measurements read imperial first", () => {
       const met = Math.min(...[text.search(METRIC), text.search(SPELLED)].filter((i) => i >= 0));
       expect(imp >= 0 && imp < met,
         `${where}: leads with metric — imperial should come first, metric in parentheses`).toBe(true);
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Journeys — ordered historical routes (src/data/journeys.js).
+// ---------------------------------------------------------------------------
+describe("journeys", () => {
+  it("every stop is a real, sourced place with coordinates that agree with each other", () => {
+    for (const j of JOURNEYS) {
+      expect(j.stops.length, `${j.id}: too few stops`).toBeGreaterThanOrEqual(4);
+      for (const s of j.stops) {
+        expect(s.name && s.place && s.when, `${j.id}/${s.id}: incomplete`).toBeTruthy();
+        expect(s.fact.length, `${j.id}/${s.id}: fact too thin`).toBeGreaterThan(40);
+        // Rule 2: coordinates came from a source, and the source is recorded.
+        expect(s.source, `${j.id}/${s.id}: no source`).toMatch(/^https?:\/\//);
+        expect(s.lat).toBeGreaterThanOrEqual(-90);
+        expect(s.lat).toBeLessThanOrEqual(90);
+        expect(s.lon).toBeGreaterThanOrEqual(-180);
+        expect(s.lon).toBeLessThanOrEqual(180);
+        // the map-space copy must be derived from the real coordinates, not typed in
+        expect(s.x).toBeCloseTo(s.lon + 180, 6);
+        expect(s.y).toBeCloseTo(90 - s.lat, 6);
+      }
+    }
+  });
+
+  it("no two stops sit on top of each other", () => {
+    // Two stops closer than this render as one pin, and the player physically
+    // cannot click the one they mean. Fort Clatsop and Cape Disappointment are
+    // only 12 miles apart — that's why the route carries just one of them.
+    for (const j of JOURNEYS)
+      expect(closestStops(j), `${j.id}: two stops are too close to tell apart on the map`)
+        .toBeGreaterThan(1.2);
+  });
+
+  it("the map window holds every stop", () => {
+    for (const j of JOURNEYS) {
+      const b = journeyBox(j);
+      for (const s of j.stops) {
+        expect(s.x >= b.x && s.x <= b.x + b.w, `${j.id}/${s.id}: off the map horizontally`).toBe(true);
+        expect(s.y >= b.y && s.y <= b.y + b.h, `${j.id}/${s.id}: off the map vertically`).toBe(true);
+      }
     }
   });
 });

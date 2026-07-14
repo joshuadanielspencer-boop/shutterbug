@@ -442,13 +442,14 @@ export const UNLOCK_REQ = {
   expeditions: "Photograph 25 places",
 };
 export function unlocks(profile) {
-  if (!profile) return { assignments: true, daily: true, explore: true, quiz: true, tour: true, scout: true, easy: true, medium: true, hard: true, expeditions: true };
+  if (!profile) return { assignments: true, daily: true, journey: true, explore: true, quiz: true, tour: true, scout: true, easy: true, medium: true, hard: true, expeditions: true };
   const mastered = distinctMastered(profile);
   const games = profile.games || 0;
   const contTouched = Object.values(continentTotals(passportData(profile).countries)).filter((v) => v.mastered > 0).length;
   return {
     assignments: true,
     daily: true,     // always available — the whole point is that it is there every day
+    journey: true,   // a guided history route: never gated, it's the gentlest way in
     explore: true,
     scout: true,
     easy: true,

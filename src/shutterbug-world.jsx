@@ -7,6 +7,7 @@ import { WORLD_COUNTRIES, COUNTRY_CONTINENT } from "./data/worldmap.js";
 // sepia background on every screen and the quiz's shape questions.
 import { COUNTRY_INFO, COUNTRY_LAYER_CONTINENTS, COUNTRY_NATIVE } from "./data/countries.js";
 import { RIVERS, LAKES, MARINE } from "./data/geography.js";
+import { JOURNEYS, JOURNEY_BY_ID, journeyBox } from "./data/journeys.js";
 import { COUNTRY_PEOPLE, peopleCards, greetingMeaning } from "./data/culture.js";
 import { categoryCountries, categoryMissionOK as missionOK } from "./missions.js";
 import { robinson, eqToRobinson, ROBINSON_W, ROBINSON_H } from "./robinson.js";
@@ -821,6 +822,8 @@ const MODE_CARDS = [
     blurb: "No timer, no score — roam the world, drill into any country, and read every place's story, culture card, and clues. Everywhere you visit is stamped in your passport." },
   { id: "quiz", name: "Quiz", emoji: "🧠", photoId: "xian",
     blurb: "Ten fast multiple-choice questions — name the landmark from its photo, place it on the map, or know the capital. Build a streak for bonus points." },
+  { id: "journey", name: "Journeys", emoji: "🛶", photoId: "yellowstone",
+    blurb: "Retrace a real expedition, stop by stop, in the order it actually happened. No day budget and no score to chase — the order IS the story, and you can't skip ahead. Start with Lewis and Clark's crossing of North America." },
   { id: "daily", name: "Daily Expedition", emoji: "📅", photoId: "cairo",
     blurb: "Today's expedition — five shots, and it's the SAME five for everyone playing at your level today. Finish it and you get a little result card to share. One official run a day: the first one counts." },
 ];
@@ -1082,6 +1085,8 @@ export default function ShutterbugWorld() {
   // Grand Tour route plan: the stops, the order you committed to, PAR (the cheapest
   // possible circuit), the budget derived from it, and how often you left the plan.
   const [tourPlan, setTourPlan] = useState(null);
+  const [journeyId, setJourneyId] = useState(JOURNEYS[0].id);   // which route is picked on the meet screen
+  const [journey, setJourney] = useState(null);                 // live run: { id, at, wrong, done, reveal }
 
   // Player profiles (localStorage). profileName === null means "Guest — no saving".
   // Nobody is auto-selected at launch (hasChosen === false) so a player can't
@@ -1298,6 +1303,7 @@ export default function ShutterbugWorld() {
     const u = unlocks(profileName ? getProfile(profileName) : null);
     if (gameMode === "quiz" && u.quiz) return startQuiz();
     if (gameMode === "daily") return startGame(dayNumber());
+    if (gameMode === "journey") return startJourney(journeyId);
     if (gameMode === "explore") return startExplore();
     if (gameMode === "tour" && u.tour) {
       const themed = tourTheme !== "classic" && u.expeditions;
@@ -1541,6 +1547,45 @@ export default function ShutterbugWorld() {
     setElapsedMs(0); setResearched({}); startRef.current = Date.now(); recorded.current = false;
     setMsg({ type: "info", text: `${exp.emoji} ${exp.title}: ${exp.lesson}` });
     setFlying(null); resetRiddles(); setScreen("play");
+  }
+
+  // ---- Journeys: retrace a real expedition, in the order it happened. ----------
+  // Not a Grand Tour (there the ORDER is the puzzle) and not an Assignment (there
+  // the PLACE is the puzzle). Here the order is the story, so it's fixed and you
+  // can't skip ahead — clicking stop 5 before stop 4 tells you it comes later.
+  // No travel-day budget: a route you're retracing shouldn't be a race.
+  function startJourney(id) {
+    const j = JOURNEY_BY_ID[id];
+    if (!j) return;
+    setJourney({ id, at: 0, wrong: 0, firstTry: 0, reveal: null, done: false });
+    setGameMode("journey"); setExpedition(null); setTourPlan(null);
+    setAssignments([]); setTourReqs([]); setAlbum([]);
+    setElapsedMs(0); startRef.current = Date.now();
+    setScreen("journey");
+  }
+  // Clicking a stop on the journey map. Only the NEXT one counts.
+  function pickJourneyStop(i) {
+    if (!journey || journey.reveal !== null || journey.done) return;
+    const j = JOURNEY_BY_ID[journey.id];
+    if (i === journey.at) {
+      sfx("success");
+      setJourney((s) => ({ ...s, reveal: i, firstTry: s.missedHere ? s.firstTry : s.firstTry + 1, missedHere: false }));
+    } else {
+      sfx("fail");
+      setJourney((s) => ({ ...s, wrong: s.wrong + 1, missedHere: true }));
+      setMsg({ type: "warn", text: i < journey.at
+        ? `${j.stops[i].name} is behind you — you've already been there. Look further along the trail.`
+        : `${j.stops[i].name} comes later on the journey. They didn't get there yet.` });
+    }
+  }
+  // Dismiss a stop's card and move on down the trail.
+  function nextJourneyStop() {
+    const j = JOURNEY_BY_ID[journey.id];
+    const at = journey.at + 1;
+    const done = at >= j.stops.length;
+    if (done) { sfx("win"); setElapsedMs(Date.now() - startRef.current); }
+    setJourney((s) => ({ ...s, at, reveal: null, done }));
+    setMsg(null);
   }
 
   // ---- Quiz mode: 10 multiple-choice geography questions built from the data. ----
@@ -2284,7 +2329,7 @@ export default function ShutterbugWorld() {
           <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap", marginTop: 8 }}>
             <button onClick={setOff} disabled={!meetReady} aria-disabled={!meetReady}
               style={{ ...primaryBtn, opacity: meetReady ? 1 : 0.5, cursor: meetReady ? "pointer" : "default" }}>
-              {gameMode === "quiz" ? "Start the quiz 🧠" : gameMode === "daily" ? `Fly today's expedition 📅` : gameMode === "explore" ? "Start exploring 🧭"
+              {gameMode === "quiz" ? "Start the quiz 🧠" : gameMode === "daily" ? `Fly today's expedition 📅` : gameMode === "journey" ? `Set out: ${JOURNEY_BY_ID[journeyId].title} 🛶` : gameMode === "explore" ? "Start exploring 🧭"
                 : gameMode === "tour" ? (tourTheme === "classic" ? "Set off on the Grand Tour ✈" : `Set off: ${TOUR_THEMES.find((t) => t.id === tourTheme)?.title} 🗺️`)
                 : "Set off with the camera 📷"}
             </button>
@@ -2553,6 +2598,127 @@ export default function ShutterbugWorld() {
   }
 
   // ---------- STREAK RESULTS ----------
+
+  // ---------- JOURNEY (retrace a real expedition) ----------
+  if (screen === "journey" && journey) {
+    const j = JOURNEY_BY_ID[journey.id];
+    const JOURNEY_AR = 1.7;
+    const box = journeyBox(j, JOURNEY_AR);
+    const stops = j.stops;
+    const cur = journey.reveal !== null ? stops[journey.reveal] : stops[journey.at];
+    // The box is cut to the frame's own aspect, so the plate scales uniformly and a
+    // plain circle stays a circle — no ellipse trick needed here.
+    const pin = (k) => k * box.w;
+    const reached = (i) => i < journey.at || (journey.reveal !== null && i <= journey.reveal);
+    return (
+      <Frame>
+        <div style={{ maxWidth: 900, margin: "0 auto" }}>
+          <div style={{ textAlign: "center" }}>
+            <Stamp>{j.title}</Stamp>
+            <p style={{ fontFamily: "ui-monospace, monospace", fontSize: 12, letterSpacing: "0.16em", color: OCEAN, margin: "10px 0 2px" }}>
+              {j.era.toUpperCase()} · STOP {Math.min(journey.at + 1, stops.length)} OF {stops.length}
+            </p>
+          </div>
+          {journey.done ? (
+            <div style={{ background: PAPER, border: `2px solid ${GOLD}`, borderRadius: 14, padding: "18px 20px", marginTop: 12, textAlign: "center" }}>
+              <h2 style={{ margin: "0 0 6px", color: INK, fontSize: 24, fontWeight: 900 }}>You retraced the whole journey.</h2>
+              <p style={{ margin: "0 0 4px", color: INK, opacity: 0.8, lineHeight: 1.5 }}>
+                All {stops.length} stops, in the order they happened — {journey.firstTry} of them found first try.
+              </p>
+              <p style={{ margin: "8px 0 0", color: INK, opacity: 0.7, fontSize: 13.5, lineHeight: 1.5 }}>
+                Lewis and Clark went looking for a river route across the continent. There isn't one —
+                and proving that was the journey's real result.
+              </p>
+              <button onClick={() => { setJourney(null); setGameMode("assignments"); setScreen("start"); }}
+                style={{ ...primaryBtn, marginTop: 16 }}>Back to the desk 🧭</button>
+            </div>
+          ) : (
+            <p style={{ textAlign: "center", color: INK, fontSize: 15, lineHeight: 1.55, margin: "4px auto 10px", maxWidth: 620 }}>
+              {journey.at === 0 && journey.reveal === null ? j.intro : cur.prompt}
+            </p>
+          )}
+          {msg && msg.type === "warn" && !journey.done && (
+            <p role="status" style={{ textAlign: "center", color: CORAL, fontWeight: 700, fontSize: 13.5, margin: "0 0 8px" }}>{msg.text}</p>
+          )}
+
+          {/* The trail. The route line is drawn only as far as they had actually got,
+              so the map fills in westward as the story does. */}
+          <div style={{ position: "relative", borderRadius: 12, overflow: "hidden", border: `3px solid ${OCEAN_DEEP}`, background: SEA }}>
+            <svg viewBox={`${box.x} ${box.y} ${box.w} ${box.h}`} preserveAspectRatio="xMidYMid meet"
+              style={{ width: "100%", display: "block", aspectRatio: String(JOURNEY_AR) }}>
+              <image href={`${BASE}relief-world.jpg`} xlinkHref={`${BASE}relief-world.jpg`}
+                x="0" y="0" width="360.4" height="180" preserveAspectRatio="none" />
+              {WORLD_COUNTRIES.map((c) => (
+                <path key={c.name} d={c.d} fill="none" stroke={INK} strokeOpacity="0.45" strokeWidth="0.5" vectorEffect="non-scaling-stroke" />
+              ))}
+              <WaterFeatures box={box} vbW={box.w} vbH={box.h} zoomed frameAR={1} />
+              {/* the trail so far */}
+              <path d={"M" + stops.slice(0, Math.max(1, journey.at + (journey.reveal !== null ? 1 : 0)))
+                .map((s2) => `${s2.x} ${s2.y}`).join("L")}
+                fill="none" stroke={CORAL} strokeWidth="2.5" strokeDasharray="5 4"
+                strokeLinecap="round" vectorEffect="non-scaling-stroke" />
+              {stops.map((s2, i) => {
+                const done = reached(i);
+                const isNext = i === journey.at && journey.reveal === null;
+                return (
+                  <g key={s2.id} role="button" tabIndex={0} aria-label={`${s2.name}, ${s2.place}`}
+                    onClick={() => pickJourneyStop(i)}
+                    onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); pickJourneyStop(i); } }}
+                    style={{ cursor: "pointer" }}>
+                    <circle cx={s2.x} cy={s2.y} r={pin(0.016)} fill={done ? GREEN : PAPER}
+                      stroke={INK} strokeWidth="1.5" vectorEffect="non-scaling-stroke" />
+                    {/* the number is the point — this is an ORDERED route, and a pin you
+                        can only tell apart by colour tells a colourblind child nothing. */}
+                    <text x={s2.x} y={s2.y} textAnchor="middle" dominantBaseline="central"
+                      fontSize={box.w * 0.019} fontFamily="ui-monospace, monospace" fontWeight="800"
+                      fill={done ? "#fff" : INK} style={{ pointerEvents: "none" }}>{i + 1}</text>
+                    {isNext && (
+                      <circle cx={s2.x} cy={s2.y} r={pin(0.026)} fill="none" stroke={CORAL}
+                        strokeWidth="2" vectorEffect="non-scaling-stroke" style={{ pointerEvents: "none" }}>
+                        {!prefersReduced && <animate attributeName="stroke-opacity" values="1;0.15;1" dur="1.6s" repeatCount="indefinite" />}
+                      </circle>
+                    )}
+                    {done && (
+                      <text x={s2.x} y={s2.y - box.h * 0.028} textAnchor="middle" fontSize={box.w * 0.018}
+                        fontFamily="ui-sans-serif, system-ui" fontWeight="700" fill={INK} stroke={PAPER}
+                        strokeWidth="3" strokeOpacity="0.8" paintOrder="stroke" vectorEffect="non-scaling-stroke"
+                        style={{ pointerEvents: "none" }}>{s2.name}</text>
+                    )}
+                  </g>
+                );
+              })}
+            </svg>
+          </div>
+
+          {/* The card for the stop you just found. */}
+          {journey.reveal !== null && (
+            <div style={{ background: PAPER, border: `2px solid ${GOLD}`, borderRadius: 14, padding: "14px 18px", marginTop: 12 }}>
+              <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.16em", color: CORAL, marginBottom: 4 }}>
+                {cur.when.toUpperCase()} · {cur.place.toUpperCase()}
+              </div>
+              <h3 style={{ margin: "0 0 6px", color: INK, fontSize: 20, fontWeight: 900 }}>{cur.name}</h3>
+              <p style={{ margin: 0, color: INK, fontSize: 14.5, lineHeight: 1.55 }}>{cur.fact}</p>
+              <a href={cur.source} target="_blank" rel="noreferrer"
+                style={{ display: "inline-block", marginTop: 8, fontSize: 11.5, color: OCEAN }}>
+                Source: {new URL(cur.source).hostname}
+              </a>
+              <button onClick={nextJourneyStop} style={{ ...primaryBtn, marginTop: 12, width: "100%", padding: "11px 0" }}>
+                {journey.at + 1 >= stops.length ? "Finish the journey 🏁" : "On to the next stop →"}
+              </button>
+            </div>
+          )}
+          {!journey.done && journey.reveal === null && (
+            <div style={{ textAlign: "center", marginTop: 12 }}>
+              <button onClick={() => { setJourney(null); setGameMode("assignments"); setScreen("start"); }}
+                style={{ background: "none", border: "none", color: INK, opacity: 0.6, fontSize: 13, cursor: "pointer", fontWeight: 700 }}>
+                ← Leave the trail
+              </button>
+            </div>
+          )}
+        </div>
+      </Frame>
+    );
+  }
 
   // ---------- ROUTE PLANNER (Grand Tour) ----------
   // The step that makes Grand Tour a different game from Assignments. There you're
