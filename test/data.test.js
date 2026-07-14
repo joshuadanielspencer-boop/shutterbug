@@ -12,6 +12,7 @@ import { categoryCountries, categoryMissionOK } from "../src/missions.js";
 import { COUNTRY_PEOPLE, GREETING_MEANING, peopleCards } from "../src/data/culture.js";
 import { RIVERS, LAKES, MARINE, WATER_FEATURES, WATER_KINDS } from "../src/data/geography.js";
 import { JOURNEYS, journeyBox, closestStops, unrolledX } from "../src/data/journeys.js";
+import { CURIOSITY_DECKS, CURIOSITY_DECK_BY_ID, ALL_CURIOSITY_IDS } from "../src/data/curiosities.js";
 
 const CONTINENTS = [
   "North America", "South America", "Europe", "Africa", "Asia", "Oceania", "Antarctica",
@@ -430,6 +431,8 @@ describe("measurements read imperial first", () => {
     strings.push([`${j.id}.intro`, j.intro]);
     for (const s2 of j.stops) strings.push([`${j.id}/${s2.id}.fact`, s2.fact], [`${j.id}/${s2.id}.prompt`, s2.prompt]);
   }
+  for (const d of CURIOSITY_DECKS)
+    for (const c of d.cards) strings.push([`curio/${c.id}`, `${c.title} ${c.body}`]);
 
   it("no player-facing text gives metric without an imperial equivalent", () => {
     for (const [where, text] of strings) {
@@ -529,6 +532,46 @@ describe("journeys", () => {
       const j = JOURNEYS.find((x) => x.id === id);
       const xs = unrolledX(j);
       expect(Math.max(...xs) - Math.min(...xs), `${id}: doesn't span the globe`).toBeGreaterThan(340);
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// The "tap to learn" curiosity layer (src/data/curiosities.js). Shape only — a
+// human still verifies the facts (rule 2). But the shape guards catch a card with
+// no source, a duplicate id (which would break the "found" tracker's count), or a
+// time-sensitive claim shipped without the `asOf` stamp that keeps it honest.
+// ---------------------------------------------------------------------------
+describe("curiosity layer", () => {
+  it("every card is well-formed and has a source (or is deliberately source-free)", () => {
+    for (const d of CURIOSITY_DECKS) {
+      expect(d.label && d.emoji, `${d.id}: deck missing label/emoji`).toBeTruthy();
+      expect(["trivia", "story"], `${d.id}: unknown narrator`).toContain(d.narrator);
+      expect(d.cards.length, `${d.id}: needs at least one card`).toBeGreaterThanOrEqual(1);
+      for (const c of d.cards) {
+        expect(c.title && c.body, `${d.id}/${c.id}: incomplete`).toBeTruthy();
+        expect(c.body.length, `${d.id}/${c.id}: body too thin`).toBeGreaterThan(40);
+        // A source is required for any external fact. The only source-free deck is
+        // the game's own "about" deck, which describes the game itself.
+        if (d.id !== "logo")
+          expect(c.source, `${d.id}/${c.id}: no source`).toMatch(/^https?:\/\//);
+      }
+    }
+  });
+
+  it("card ids are globally unique (the 'found' counter relies on it)", () => {
+    expect(new Set(ALL_CURIOSITY_IDS).size, "duplicate curiosity id").toBe(ALL_CURIOSITY_IDS.length);
+  });
+
+  it("time-sensitive facts carry an as-of year", () => {
+    // A card that states a country count, the members of a bloc, or a most-visited
+    // ranking WILL go stale. It must say when it was true, so a future reader sees a
+    // dated fact rather than a wrong one. This pins the ones we know change.
+    const MUST_DATE = ["ctry-count", "ctry-blocs", "dest-country", "dest-city"];
+    for (const id of MUST_DATE) {
+      const card = CURIOSITY_DECKS.flatMap((d) => d.cards).find((c) => c.id === id);
+      expect(card, `${id}: card went missing`).toBeTruthy();
+      expect(typeof card.asOf, `${id}: time-sensitive fact with no asOf year`).toBe("number");
     }
   });
 });

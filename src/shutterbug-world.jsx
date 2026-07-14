@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useMemo } from "react";
+import React, { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import { LOCATIONS } from "./data/locations.js";
 import { WORLD_COUNTRIES, COUNTRY_CONTINENT } from "./data/worldmap.js";
 // WORLD_COUNTRIES_ROBINSON (the ~290 KB Robinson-projected country outlines) is
@@ -24,7 +24,8 @@ import { dailyResult, recordDaily, dailyStreak } from "./profiles.js";
 import { listProfiles, lastProfileName, getProfile, createProfile, setLastProfile,
   deleteProfile, renameProfile, setAvatar, setProfileFlag, recordGame, recordExplore, recordQuiz,
   weightedOrder, freshFirst, passportData, achievements, topScores, storageAvailable,
-  careerRank, unlocks, UNLOCK_REQ } from "./profiles.js";
+  careerRank, unlocks, UNLOCK_REQ, markCuriositySeen, curiositiesSeen } from "./profiles.js";
+import { CURIOSITY_DECK_BY_ID, CURIOSITY_TOTAL } from "./data/curiosities.js";
 import { MR_O, MR_O_FACTS, MR_O_RIDDLES } from "./data/mr-o.js";
 import { SFX, MUSIC, speakEn, speakGreeting, speechAvailable } from "./audio.js";
 import { BASE, OCEAN, OCEAN_DEEP, SEA, SEA_DEEP, SEA_LINE, LAND, LAND_EDGE, INK, GOLD, CORAL, GREEN, PAPER, PAPER_LINE } from "./theme.js";
@@ -1105,6 +1106,8 @@ export default function ShutterbugWorld() {
   const [passportPage, setPassportPage] = useState("id"); // passport booklet page: id | stamps | collections | badges
   const [avatarEdit, setAvatarEdit] = useState(false);        // avatar editor open (start screen)
   const [gearOpen, setGearOpen] = useState(false);            // play-screen settings (gear) popover open
+  const [curioDeck, setCurioDeck] = useState(null);           // tap-to-learn: id of the open field-note deck, or null
+  const [curioTick, setCurioTick] = useState(0);              // bumps when a card is read, to refresh the "X / Y" count
   const [albumOpen, setAlbumOpen] = useState(false);          // Photo Album tool: full-run photo gallery popup
   const [guideOpen, setGuideOpen] = useState(false);          // Field Guide tool: clue-research popup
   const [guideFresh, setGuideFresh] = useState(false);        // did this Field Guide open just spend the research day?
@@ -1185,6 +1188,14 @@ export default function ShutterbugWorld() {
 
   const sfx = (name, ...args) => { if (soundOn && SFX[name]) SFX[name](...args); };
   const music = (name, ...args) => { if (musicOn && MUSIC[name]) MUSIC[name](...args); };
+  // Tap-to-learn: open a field-note deck, and record each card a saved traveller reads
+  // so poking around counts toward "Curiosities found". Guests just don't persist.
+  const openCurio = (deckId) => { if (CURIOSITY_DECK_BY_ID[deckId]) { sfx("click"); setCurioDeck(deckId); } };
+  const onCurioSeen = useCallback((cardId) => {
+    if (profileName) markCuriositySeen(profileName, cardId);
+    setCurioTick((t) => t + 1);
+  }, [profileName]);
+  const curioFound = profileName ? Object.keys(curiositiesSeen(getProfile(profileName))).length : 0;
   // Spoken map-arrival announcements — held back ~1s so the voice lands a beat
   // after you touch down, not on top of the arrival.
   const say = (text) => { if (soundOn) setTimeout(() => { if (soundOn) speakEn(text); }, 1000); };
@@ -3326,20 +3337,26 @@ export default function ShutterbugWorld() {
         background: `linear-gradient(${OCEAN}, ${OCEAN_DEEP})`, border: `2px solid ${INK}`, borderRadius: 12,
         padding: "6px 20px", marginBottom: 14, boxShadow: "0 6px 0 rgba(16,38,46,0.28)", color: "#F4ECD8",
         minHeight: 60, overflow: "visible" }}>
-        {/* Logo — extra large, allowed to overrun the teal top/bottom. */}
-        <img src={`${UI}shutterbug-logo.png`} alt="Shutterbug" style={{ height: 184, width: "auto", flex: "0 0 auto",
-          marginTop: -60, marginBottom: -60, filter: "drop-shadow(0 3px 4px rgba(0,0,0,0.4))" }} />
+        {/* Logo — extra large, allowed to overrun the teal top/bottom. Also a
+            tap-to-learn target (what the game is / how to play). */}
+        <button onClick={() => openCurio("logo")} title="About the game" aria-label="About the game"
+          style={{ background: "transparent", border: "none", padding: 0, margin: 0, cursor: "help", flex: "0 0 auto", lineHeight: 0 }}>
+          <img src={`${UI}shutterbug-logo.png`} alt="Shutterbug" style={{ height: 184, width: "auto",
+            marginTop: -60, marginBottom: -60, filter: "drop-shadow(0 3px 4px rgba(0,0,0,0.4))" }} />
+        </button>
         <div style={{ flex: 1, minWidth: 8 }} />
         {/* Travel-days calendar — centered over the bar, oversized, overruns the teal. */}
         {!isExplore ? (
-          <div style={{ position: "absolute", left: "50%", top: "54%", transform: "translate(-50%, -50%)", zIndex: 2,
+          <button onClick={() => openCurio("calendar")} title="Travel & time" aria-label="Travel and time — a fact to learn"
+            style={{ position: "absolute", left: "50%", top: "54%", transform: "translate(-50%, -50%)", zIndex: 2,
             display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", width: 176, height: 168,
+            background: "transparent", border: "none", cursor: "help",
             backgroundImage: `url("${UI}days-calendar-blank-no-clock.png")`, backgroundSize: "contain",
             backgroundRepeat: "no-repeat", backgroundPosition: "center", filter: "drop-shadow(0 4px 5px rgba(0,0,0,0.35))" }}>
             <span style={{ fontFamily: "ui-monospace, monospace", fontWeight: 900, fontSize: 38, lineHeight: 1,
               color: days <= 1 ? CORAL : days <= 2.5 ? "#B8860B" : INK }}>{days}</span>
             <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: "0.1em", color: INK }}>DAYS LEFT</span>
-          </div>
+          </button>
         ) : (
           <span style={{ position: "absolute", left: "50%", top: "50%", transform: "translate(-50%,-50%)",
             fontFamily: "ui-monospace, monospace", fontSize: 16, fontWeight: 800 }} title="Places discovered">📸 {album.length} discovered</span>
@@ -3445,7 +3462,19 @@ export default function ShutterbugWorld() {
           )}
           {/* Journey tracker (assignments): reflects continent → country →
               destination → photograph progress. Tour uses its own itinerary above. */}
-          {!isTour && !isExplore && <PhaseTracker stepIdx={stepIdx} />}
+          {!isTour && !isExplore && <PhaseTracker stepIdx={stepIdx} onCurio={openCurio} />}
+
+          {/* Tap-to-learn tracker: poking at the chrome (logo, calendar, compass, the
+              step markers) is its own kind of progress. Saved travellers only — guests
+              don't persist, so a counter would be stuck at zero. */}
+          {profileName && (
+            <p style={{ margin: "10px 2px 0", fontSize: 11.5, fontWeight: 700, color: INK, opacity: 0.7,
+              display: "flex", alignItems: "center", gap: 6 }}>
+              <span aria-hidden="true">🔎</span>
+              Curiosities found: {curioFound} / {CURIOSITY_TOTAL}
+              {curioFound >= CURIOSITY_TOTAL && <span style={{ color: GREEN }}>· all found! 🎉</span>}
+            </p>
+          )}
 
           {/* The research clue no longer persists in the panel — the player taps the
               Field Guide tool again to re-read it (free after the first look). */}
@@ -3810,8 +3839,17 @@ export default function ShutterbugWorld() {
             {/* Decorative atlas furniture (non-interactive, over the map plate). */}
             <img src={`${UI}map-ink-distress.png`} alt="" aria-hidden="true"
               style={{ position: "absolute", inset: 12, width: "calc(100% - 24px)", height: "calc(100% - 24px)", objectFit: "cover", opacity: 0.16, mixBlendMode: "multiply", pointerEvents: "none", borderRadius: 8 }} />
-            <img src={`${UI}compass-rose.png`} alt="" aria-hidden="true"
-              style={{ position: "absolute", left: 62, bottom: 42, width: "clamp(58px, 9vw, 104px)", pointerEvents: "none", opacity: 0.92, filter: "drop-shadow(0 2px 3px rgba(0,0,0,0.35))" }} />
+            {/* The compass rose is also a tap-to-learn target. It's the ONLY furniture
+                that takes clicks, so it's kept to the art's own footprint in the corner
+                (where map labels already give it a wide berth) and off during a flight,
+                so it never steals a continent tap. */}
+            <button onClick={() => openCurio("compass")} title="About the compass" aria-label="About the compass"
+              disabled={flying}
+              style={{ position: "absolute", left: 62, bottom: 42, width: "clamp(58px, 9vw, 104px)", height: "clamp(58px, 9vw, 104px)",
+                padding: 0, border: "none", background: "transparent", cursor: flying ? "default" : "help", zIndex: 4 }}>
+              <img src={`${UI}compass-rose.png`} alt="" aria-hidden="true"
+                style={{ width: "100%", height: "100%", objectFit: "contain", opacity: 0.92, filter: "drop-shadow(0 2px 3px rgba(0,0,0,0.35))" }} />
+            </button>
             {[["cornerTL", { top: 2, left: 2 }, "rotate(0deg)"], ["cornerTR", { top: 2, right: 2 }, "rotate(90deg)"],
               ["cornerBR", { bottom: 2, right: 2 }, "rotate(180deg)"], ["cornerBL", { bottom: 2, left: 2 }, "rotate(270deg)"]].map(([k, pos, rot]) => (
               <img key={k} src={`${UI}atlas-corner.png`} alt="" aria-hidden="true"
@@ -3850,6 +3888,11 @@ export default function ShutterbugWorld() {
       {pending && <ResultModal data={pending} onContinue={continueFromResult} reduced={prefersReduced} />}
       {albumView && <LandmarkModal p={albumView} onClose={() => setAlbumView(null)} reduced={prefersReduced} />}
       {countryPopup && <CountryPopup country={countryPopup} onClose={() => setCountryPopup(null)} reduced={prefersReduced} />}
+      {curioDeck && CURIOSITY_DECK_BY_ID[curioDeck] && (
+        <CuriosityCard deck={CURIOSITY_DECK_BY_ID[curioDeck]}
+          seen={profileName ? curiositiesSeen(getProfile(profileName)) : {}}
+          onSeen={onCurioSeen} onClose={() => setCurioDeck(null)} reduced={prefersReduced} />
+      )}
       {mrO && <MrOBubble fact={mrO} onClose={() => setMrO(null)} reduced={prefersReduced} />}
       {riddle && <RiddleModal riddle={riddle} onAnswer={answerRiddle} onClose={() => setRiddle(null)}
         gain={gameMode === "tour" ? TOUR_MODES[difficulty].points * 2 : MODES[difficulty].points * 2} reduced={prefersReduced} />}
@@ -4072,11 +4115,14 @@ const PHASE_STEPS = [
   { key: "destination", label: "Destination", hint: "Narrow it down.", icon: "itinerary-destination.png" },
   { key: "photograph", label: "Photograph", hint: "Take the perfect shot!", icon: "itinerary-photograph.png" },
 ];
-function PhaseTracker({ stepIdx }) {
+function PhaseTracker({ stepIdx, onCurio }) {
   return (
     <ol style={{ listStyle: "none", margin: "12px 0 0", padding: 0, display: "flex", flexDirection: "column", gap: 7 }}>
       {PHASE_STEPS.map((s, i) => {
         const active = i === stepIdx, done = i < stepIdx;
+        // Each step is also a tap-to-learn card (what a continent / country /
+        // destination is; how a photograph works). The ⓘ makes that discoverable
+        // without competing with the step's job of showing where you are.
         return (
           <li key={s.key} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 12px", borderRadius: 8,
             background: active ? "#FBE7DF" : PAPER, border: `2px solid ${active ? CORAL : PAPER_LINE}`,
@@ -4086,11 +4132,16 @@ function PhaseTracker({ stepIdx }) {
               background: active ? CORAL : done ? GREEN : "transparent", color: active || done ? "#fff" : INK,
               border: active || done ? "none" : `2px solid ${INK}` }}>{done ? "✓" : i + 1}</span>
             <img src={`${UI}${s.icon}`} alt="" style={{ width: 30, height: 30, objectFit: "contain", flex: "0 0 auto" }} />
-            <span style={{ lineHeight: 1.2 }}>
+            <span style={{ lineHeight: 1.2, flex: 1, minWidth: 0 }}>
               <span style={{ display: "block", fontWeight: 800, fontSize: 13.5, letterSpacing: "0.04em",
                 color: active ? CORAL : INK, textTransform: "uppercase" }}>{s.label}</span>
               <span style={{ display: "block", fontSize: 11.5, color: INK, opacity: 0.7 }}>{s.hint}</span>
             </span>
+            <button onClick={() => onCurio(s.key)} aria-label={`Learn: what is a ${s.label.toLowerCase()}?`}
+              title={`What is a ${s.label.toLowerCase()}?`}
+              style={{ flex: "0 0 auto", width: 30, height: 30, borderRadius: "50%", border: `1.5px solid ${OCEAN}`,
+                background: "rgba(30,86,102,0.08)", color: OCEAN, fontWeight: 900, fontSize: 15, lineHeight: 1, cursor: "help",
+                display: "flex", alignItems: "center", justifyContent: "center" }}>ⓘ</button>
           </li>
         );
       })}
@@ -4891,6 +4942,74 @@ function MrOBubble({ fact, onClose, reduced }) {
         </div>
       </div>
     </div>
+  );
+}
+
+// The "tap to learn" FIELD-NOTE CARD. Tapping a piece of chrome (logo, calendar,
+// compass, a guess-stage button) opens the matching deck from src/data/curiosities.js
+// here. It deals one verified fact at a time; "Another" reshuffles onward through the
+// deck so a revisit teaches something new, with a "2 of 3" counter. Every card read
+// is reported up via onSeen so poking around counts toward "Curiosities found".
+//
+// The card order is shuffled with Math.random on purpose: this is presentation, never
+// mission generation, so it must NOT touch the seedable RNG that the Daily depends on.
+function CuriosityCard({ deck, seen, onSeen, onClose, reduced }) {
+  const narratorTrivia = deck.narrator === "trivia";
+  const accent = narratorTrivia ? OCEAN : GOLD;
+  const [order] = useState(() => {
+    const idx = deck.cards.map((_, i) => i);
+    for (let i = idx.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [idx[i], idx[j]] = [idx[j], idx[i]];
+    }
+    return idx;
+  });
+  const [pos, setPos] = useState(0);
+  const card = deck.cards[order[pos]];
+  // Was this card new to the player when it first appeared? Snapshot at open time so
+  // the "NEW" flag doesn't flicker off the instant we record it as seen.
+  const wasNew = !seen[card.id];
+  useEffect(() => { onSeen(card.id); }, [card.id, onSeen]);
+
+  return (
+    <ModalShell label={`${deck.label} — field note`} onClose={onClose} accent={accent} maxWidth={520}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
+        <span aria-hidden="true" style={{ fontSize: 26 }}>{deck.emoji}</span>
+        <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 12, letterSpacing: "0.14em",
+          color: accent, fontWeight: 800 }}>
+          {narratorTrivia ? "MR O · THE EDITOR" : "GRANDPA NIGEL"}
+        </span>
+        {wasNew && (
+          <span style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: "0.1em", color: "#fff",
+            background: GREEN, borderRadius: 10, padding: "2px 8px" }}>NEW</span>
+        )}
+      </div>
+      <h2 style={{ margin: "0 0 8px", color: INK, fontSize: 21, fontWeight: 900, lineHeight: 1.25 }}>{card.title}</h2>
+      <p style={{ margin: 0, color: INK, fontSize: 15.5, lineHeight: 1.6 }}>{card.body}</p>
+      <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 12, flexWrap: "wrap" }}>
+        {card.asOf && (
+          <span style={{ fontSize: 11.5, fontWeight: 700, color: INK, opacity: 0.6 }}>as of {card.asOf}</span>
+        )}
+        {card.source && (
+          <a href={card.source} target="_blank" rel="noreferrer" style={{ fontSize: 11.5, color: OCEAN }}>
+            Source: {(() => { try { return new URL(card.source).hostname.replace(/^www\./, ""); } catch { return "source"; } })()}
+          </a>
+        )}
+      </div>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginTop: 18 }}>
+        <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 12, color: INK, opacity: 0.6, fontWeight: 700 }}>
+          {pos + 1} of {deck.cards.length}
+        </span>
+        {deck.cards.length > 1 && (
+          <button onClick={() => setPos((p) => (p + 1) % deck.cards.length)}
+            className={reduced ? "" : ""}
+            style={{ background: accent, color: "#fff", border: "none", borderRadius: 10, padding: "9px 18px",
+              fontWeight: 800, fontSize: 14, cursor: "pointer" }}>
+            Another ↻
+          </button>
+        )}
+      </div>
+    </ModalShell>
   );
 }
 

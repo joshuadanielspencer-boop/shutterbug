@@ -90,6 +90,22 @@ export function setAvatar(name, avatar) {
   write(s);
 }
 
+// Curiosity layer: remember which tap-to-learn field-note cards a traveller has
+// read, so "Curiosities found: X / Y" counts poking around as progress. Stored as
+// a plain map of card id → true. Returns the updated set size, or 0 for guests.
+export function markCuriositySeen(name, cardId) {
+  const s = read();
+  const p = s.profiles[name];
+  if (!p || !cardId) return 0;
+  p.curios = p.curios || {};
+  p.curios[cardId] = true;
+  write(s);
+  return Object.keys(p.curios).length;
+}
+export function curiositiesSeen(profile) {
+  return (profile && profile.curios) || {};
+}
+
 // Persist a small arbitrary flag on a profile (e.g. story progress like
 // whether the traveller has met Grandpa Nigel yet). Unknown keys are fine.
 export function setProfileFlag(name, key, value) {

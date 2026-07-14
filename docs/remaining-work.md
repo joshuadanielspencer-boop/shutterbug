@@ -137,27 +137,37 @@ score cards and their clues don't match. `test/daily.test.js` guards this.
 
 ## 4. The "tap to learn" curiosity layer
 
-Spec'd in `docs/design-notes.md` §6. Not started. **This is mostly sourcing work, not
-code** — roughly 40 cards, each needing a verified fact (rule 2). Budget accordingly.
+**A first slice SHIPPED** (spec'd in `docs/design-notes.md` §6). The engine is built and
+data-driven, so adding cards is now pure content work.
 
-Make the UI chrome tappable; each element opens a small rotating "field-note card"
-(reshuffled cycle, so revisits teach something new, with a "3 of 8" counter). Mr O
-narrates trivia, Grandpa narrates story.
+- **Cards** live in `src/data/curiosities.js` as decks (rule 1). Each card is
+  `{ id, title, body, source, asOf? }`; anything time-sensitive carries `asOf` and the
+  card shows "as of YYYY". `npm test` walks the cards: unique ids, a source on every
+  external fact, imperial-first measurements, and an `asOf` on the four known
+  time-sensitive cards (country count, blocs, most-visited country/city).
+- **The card UI** is `CuriosityCard` (a `ModalShell`): title + fact + source + "as of",
+  a "2 of 3" counter, and an **Another ↻** button that reshuffles onward. `narrator:
+  "trivia"` themes it as Mr O the editor (teal); `"story"` as Grandpa (gold).
+- **Wired chrome (7 of 8 elements):** the **logo** (about the game), the **days
+  calendar** (travel & time), the **compass rose** on the map, and the four **guess-stage
+  markers** each carry an ⓘ (continent, country, destination, photograph). Every card a
+  saved traveller reads is recorded via `markCuriositySeen`, and a **"Curiosities found:
+  X / 21"** line shows in the field-journal panel.
 
-Elements and their topics:
-- **logo** → about the game / how to play
-- **calendar** → travel times by sail vs steam vs jet, time zones, the Date Line
-- **avatar** → jump to customise traveller
-- **compass** → cardinal directions, true vs magnetic north, why maps are north-up
-- **Continent button** → how continents are defined, why the count is 5/6/7, plates
-- **Country button** → how many countries and why "it depends"; UN/EU/OPEC/BRICS/USMCA
-- **Destination button** → most-visited places, over-tourism
-- **Photograph button** → shutter speed, ISO, aperture, rule of thirds
-
-Store all cards in `src/data/` (rule 1 — never inline in a component). **Date-stamp
-anything time-sensitive** (country counts, visitor numbers, membership lists), and
-cite a source per card. Add a "Curiosities found: 14/40" tracker so poking around
-counts as progress.
+**What's left on this item:**
+- **21 cards, not 40.** Three per deck. Adding more is just more objects in the deck's
+  `cards` array — the reshuffle, counter and tracker all scale automatically (the
+  tracker denominator is `CURIOSITY_TOTAL`, derived from the data).
+- **The avatar → "customise traveller" jump is not wired** (the 8th element). It was left
+  out to avoid duplicating the passport/avatar-editor flow; decide where it should land.
+- **The compass tap-target overlaps the corner of the continent-selection map.** It only
+  owns its own ~104px footprint (verified: every continent stays selectable elsewhere,
+  and it's disabled during a flight), but if you ever want it truly zero-conflict, move
+  the compass deck's trigger off the world map or lower its stacking below the continent
+  hit-layer.
+- **Re-verify the dated cards periodically** (rule 2): BRICS grew to 11 in 2025, France
+  passed 100M visitors in 2024, Bangkok was the most-visited city in 2024. When these
+  change, update the body and bump `asOf`.
 
 ---
 
