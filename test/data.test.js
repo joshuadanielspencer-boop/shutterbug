@@ -9,7 +9,7 @@ import { WORLD_COUNTRIES, COUNTRY_CONTINENT } from "../src/data/worldmap.js";
 import { COUNTRY_NATIVE } from "../src/data/countries.js";
 import { COUNTRY_INFO } from "../src/data/countries.js";
 import { categoryCountries, categoryMissionOK } from "../src/missions.js";
-import { COUNTRY_PEOPLE, GREETING_MEANING } from "../src/data/culture.js";
+import { COUNTRY_PEOPLE, GREETING_MEANING, peopleCards } from "../src/data/culture.js";
 import { RIVERS, LAKES, MARINE, WATER_FEATURES, WATER_KINDS } from "../src/data/geography.js";
 
 const CONTINENTS = [
@@ -254,7 +254,7 @@ describe("culture cards", () => {
   it("every visitable country has a photo of its people", () => {
     // Sweden shipped without one once, because the country was added to
     // locations.js long after the culture pipeline had "finished".
-    for (const c of visitable) expect(COUNTRY_PEOPLE[c], `no culture photo for "${c}"`).toBeTruthy();
+    for (const c of visitable) expect(peopleCards(c).length, `no culture photo for "${c}"`).toBeGreaterThan(0);
   });
 
   it("no orphan photos for countries nobody can visit", () => {
@@ -262,13 +262,38 @@ describe("culture cards", () => {
   });
 
   it("every photo is a freely-licensed Commons file with credit and caption", () => {
-    for (const [c, p] of Object.entries(COUNTRY_PEOPLE)) {
-      expect(p.src, c).toMatch(/^https:\/\/commons\.wikimedia\.org\/wiki\/Special:FilePath\//);
-      expect(p.source, c).toMatch(/^https:\/\/commons\.wikimedia\.org\/wiki\/File:/);
-      expect(p.credit, c).toBeTruthy();
-      expect(p.caption && p.caption.length > 10, `${c} caption`).toBe(true);
-      expect(p.license, `${c} licence "${p.license}"`).toMatch(FREE);
+    // Runs over EVERY card, not just the first — a country with rotating cards
+    // could otherwise smuggle an unlicensed second photo past this check.
+    for (const c of Object.keys(COUNTRY_PEOPLE)) {
+      for (const p of peopleCards(c)) {
+        expect(p.src, c).toMatch(/^https:\/\/commons\.wikimedia\.org\/wiki\/Special:FilePath\//);
+        expect(p.source, c).toMatch(/^https:\/\/commons\.wikimedia\.org\/wiki\/File:/);
+        expect(p.credit, c).toBeTruthy();
+        expect(p.caption && p.caption.length > 10, `${c} caption`).toBe(true);
+        expect(p.license, `${c} licence "${p.license}"`).toMatch(FREE);
+      }
     }
+  });
+
+  it("a country with several peoples names each one, and shows no more than three", () => {
+    for (const c of Object.keys(COUNTRY_PEOPLE)) {
+      const cards = peopleCards(c);
+      if (cards.length === 1) continue;
+      // Three is the cap: the card rotates on arrival, and beyond three a child
+      // would rarely see the same people twice, which defeats the point.
+      expect(cards.length, `${c} has ${cards.length} cards`).toBeLessThanOrEqual(3);
+      // Rotating anonymous photos teaches nothing — each must say WHO it shows.
+      for (const p of cards) expect(p.people, `${c}: a rotating card with no people named`).toBeTruthy();
+      const names = cards.map((p) => p.people);
+      expect(new Set(names).size, `${c}: two cards claim the same people`).toBe(names.length);
+    }
+  });
+
+  it("the United States shows at least its Native, African American and European-descended peoples", () => {
+    const named = peopleCards("United States").map((p) => p.people);
+    for (const who of ["Native American", "African American"])
+      expect(named, `the US card set is missing ${who}`).toContain(who);
+    expect(named.length, "the US should not be represented by one people").toBeGreaterThanOrEqual(3);
   });
 
   it("every greeting used in the game has an English gloss", () => {

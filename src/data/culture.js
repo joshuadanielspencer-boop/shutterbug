@@ -109,6 +109,18 @@ export const GREETING_MEANING = {
 // a Wikimedia Commons Special:FilePath URL (?width caps the download); licences
 // were re-verified against the Commons API and the choices reviewed for
 // respectful, accurate representation before being added here.
+// A country's entry is EITHER one card, or a LIST of up to three.
+//
+// Many countries are home to several peoples, and showing only one of them tells
+// a child something false by omission — the United States is not only its Native
+// nations, nor only its European or African-descended communities. Where that's
+// true, the entry is a list and the arrival card rotates: a different people each
+// time you land there, with the others a tap away. Where a country really is
+// close to homogeneous (China is ~90% Han), one card is the honest answer, and
+// the entry stays a single object.
+//
+// Read entries through peopleCards() below, never directly — it normalises both
+// shapes to an array so callers don't have to care which they got.
 export const COUNTRY_PEOPLE = {
   "Japan": {
     src: "https://commons.wikimedia.org/wiki/Special:FilePath/NagoyaFestival.jpg?width=800",
@@ -487,12 +499,34 @@ export const COUNTRY_PEOPLE = {
     caption: "A First Nations dancer in traditional regalia at the powwow in Wendake, Quebec",
     portrait: true, // no free landscape photo of this dress exists — show it whole
   },
-  "United States": {
-    src: "https://commons.wikimedia.org/wiki/Special:FilePath/Assiniboine%20Sioux%20Jingle%20Dress%20Girls.jpg?width=800",
-    source: "https://commons.wikimedia.org/wiki/File:Assiniboine%20Sioux%20Jingle%20Dress%20Girls.jpg",
-    credit: "Thayne Tuason", license: "CC BY-SA 4.0",
-    caption: "Assiniboine Sioux dancers in jingle dresses trimmed with metal cones that chime as they dance",
-  },
+  // The United States is the clearest case for rotating cards: a single photo of
+  // any one of its peoples would misrepresent the country. These three are a floor,
+  // not a full account — Hispanic/Latino and Asian American communities are each
+  // larger than several of the countries in this game, and belong here too.
+  // All three files licence-checked via the Commons API (scripts/commons.mjs).
+  "United States": [
+    {
+      src: "https://commons.wikimedia.org/wiki/Special:FilePath/Assiniboine%20Sioux%20Jingle%20Dress%20Girls.jpg?width=800",
+      source: "https://commons.wikimedia.org/wiki/File:Assiniboine%20Sioux%20Jingle%20Dress%20Girls.jpg",
+      credit: "Thayne Tuason", license: "CC BY-SA 4.0",
+      people: "Native American",
+      caption: "Assiniboine Sioux dancers in jingle dresses trimmed with metal cones that chime as they dance, at the Wadopana Pow Wow in Montana",
+    },
+    {
+      src: "https://commons.wikimedia.org/wiki/Special:FilePath/Juneteenth_marching_band_parade_in_Austin%2C_Texas%2C_2009.jpg?width=800",
+      source: "https://commons.wikimedia.org/wiki/File:Juneteenth_marching_band_parade_in_Austin,_Texas,_2009.jpg",
+      credit: "Jessica Mullen", license: "CC BY 2.0",
+      people: "African American",
+      caption: "A marching band parades for Juneteenth in Austin, Texas — the holiday marking the end of slavery in the United States",
+    },
+    {
+      src: "https://commons.wikimedia.org/wiki/Special:FilePath/2005_Tacoma_Highland_Games.jpg?width=800",
+      source: "https://commons.wikimedia.org/wiki/File:2005_Tacoma_Highland_Games.jpg",
+      credit: "James F. Perry", license: "CC BY-SA 3.0",
+      people: "Scottish American",
+      caption: "The parade of clans at the Tacoma Highland Games in Washington — one of many festivals where Americans of European descent keep an old country's dress and music alive",
+    },
+  ],
   "Argentina": {
     src: "https://commons.wikimedia.org/wiki/Special:FilePath/San%20Antonio%20de%20Areco-Fiesta%20de%20la%20Tradici%C3%B3n%2011.jpg?width=800",
     source: "https://commons.wikimedia.org/wiki/File:San%20Antonio%20de%20Areco-Fiesta%20de%20la%20Tradici%C3%B3n%2011.jpg",
@@ -767,3 +801,11 @@ export const COUNTRY_PEOPLE = {
 // The English gloss for a greeting object (or null if none is known).
 export const greetingMeaning = (greeting) =>
   (greeting && greeting.text && GREETING_MEANING[greeting.text]) || null;
+
+// A country's people cards, always as an array (empty if we have none yet).
+// Single-object entries are wrapped, so every caller can just map over the result.
+export function peopleCards(country) {
+  const e = COUNTRY_PEOPLE[country];
+  if (!e) return [];
+  return Array.isArray(e) ? e : [e];
+}

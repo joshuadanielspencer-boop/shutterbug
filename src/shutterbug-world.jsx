@@ -7,7 +7,7 @@ import { WORLD_COUNTRIES, COUNTRY_CONTINENT } from "./data/worldmap.js";
 // sepia background on every screen and the quiz's shape questions.
 import { COUNTRY_INFO, COUNTRY_LAYER_CONTINENTS, COUNTRY_NATIVE } from "./data/countries.js";
 import { RIVERS, LAKES, MARINE } from "./data/geography.js";
-import { COUNTRY_PEOPLE, greetingMeaning } from "./data/culture.js";
+import { COUNTRY_PEOPLE, peopleCards, greetingMeaning } from "./data/culture.js";
 import { categoryCountries, categoryMissionOK as missionOK } from "./missions.js";
 import { robinson, eqToRobinson, ROBINSON_W, ROBINSON_H } from "./robinson.js";
 import { rnd, shuffled, withSeed, randInt } from "./rng.js";
@@ -412,12 +412,19 @@ const countriesOf = (l) => (l.countries && l.countries.length ? l.countries : [l
 // Bounding box of a country outline. The worldmap paths are absolute M/L coords
 // (no curves), so every number pairs up as an (x, y) point — enough to size a
 // zoom box to the country's real shape rather than just its landmark spread.
-const pathBBox = (d) => {
+//
+// `refX` is a longitude the country is known to sit near (its landmarks' centre).
+// Every point is measured in the wrap-around nearest that reference, because a
+// country whose outline crosses the antimeridian would otherwise measure as if it
+// spanned the entire planet: the USA's Aleutians run past 180°E, so a raw box put
+// its "centre" on the prime meridian and the United States map opened on AFRICA.
+const pathBBox = (d, refX) => {
   const nums = d && d.match(/-?\d+(?:\.\d+)?/g);
   if (!nums || nums.length < 4) return null;
+  const near = (x) => (refX == null ? x : x + 360 * Math.round((refX - x) / 360));
   let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
   for (let i = 0; i + 1 < nums.length; i += 2) {
-    const x = +nums[i], y = +nums[i + 1];
+    const x = near(+nums[i]), y = +nums[i + 1];
     if (x < minX) minX = x; if (x > maxX) maxX = x;
     if (y < minY) minY = y; if (y > maxY) maxY = y;
   }
@@ -441,7 +448,7 @@ const pathBBox = (d) => {
       // continent (Oceania) crosses the antimeridian, so keep its landmark box.
       let bx0 = minX, bx1 = maxX, by0 = minY, by1 = maxY;
       const bpath = !wrap && (WC_BY_NAME[country] || WC_BY_NAME[WC_ALIAS[country]]);
-      const bb = bpath && pathBBox(bpath);
+      const bb = bpath && pathBBox(bpath, cx);   // measured around the country's own landmarks
       if (bb) { bx0 = Math.min(bx0, bb.minX); bx1 = Math.max(bx1, bb.maxX); by0 = Math.min(by0, bb.minY); by1 = Math.max(by1, bb.maxY); }
       const bcx = (bx0 + bx1) / 2, bcy = (by0 + by1) / 2; // centre on the country itself
       const side = Math.min(120, Math.max(4.5, Math.max(bx1 - bx0, by1 - by0) * 1.5)); // 50% breathing room, tight floor
@@ -4292,8 +4299,26 @@ function CreateTravelerModal({ onSubmit, onClose }) {
 // landscape frame (16:9) so a portrait source can never push the rest of the card
 // off-screen. Sources are landscape wherever one could be found; `object-position`
 // biases the crop upward so faces survive on the few that aren't.
-function PeoplePhoto({ people }) {
-  if (!people) return null;
+// Countries with several peoples carry several cards (see COUNTRY_PEOPLE). Which
+// one you meet first ROTATES between visits, so coming back to the United States
+// introduces you to someone new rather than repeating the same photo — and the
+// others are always one tap away. Kept per-country in module scope so it survives
+// the card unmounting between arrivals; it's a display cursor, not player data,
+// so it deliberately doesn't persist across sessions.
+const peopleCursor = {};
+
+function PeoplePhoto({ country }) {
+  const cards = peopleCards(country);
+  // Start where this country's rotation left off, then advance it for next time.
+  const [i, setI] = useState(() => {
+    const start = peopleCursor[country] || 0;
+    peopleCursor[country] = (start + 1) % Math.max(1, cards.length);
+    return start % Math.max(1, cards.length);
+  });
+  if (!cards.length) return null;
+  const people = cards[i];
+  const many = cards.length > 1;
+  const step = (d) => setI((n) => (n + d + cards.length) % cards.length);
   return (
     <figure style={{ margin: "10px 0 0", textAlign: "left" }}>
       {/* Fixed landscape frame, so a culture card can never push the page into a
@@ -4313,6 +4338,22 @@ function PeoplePhoto({ people }) {
             objectFit: people.portrait ? "contain" : "cover",
             objectPosition: people.portrait ? "50% 50%" : "50% 30%" }} />
       </div>
+      {/* Which of this country's peoples you're looking at, and how to see the
+          others. The count is spelled out ("1 of 3") rather than shown as dots —
+          a position you can only read from colour or size is no position at all
+          (rule 3). Both arrows are real buttons, so they're keyboard-reachable. */}
+      {many && (
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 6 }}>
+          <button onClick={() => step(-1)} aria-label="Previous people of this country"
+            style={peopleArrow}>◀</button>
+          <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, color: OCEAN, fontWeight: 700 }}
+            aria-live="polite">
+            {people.people ? `${people.people} · ` : ""}{i + 1} of {cards.length}
+          </span>
+          <button onClick={() => step(1)} aria-label="Next people of this country"
+            style={{ ...peopleArrow, marginLeft: "auto" }}>▶</button>
+        </div>
+      )}
       <figcaption style={{ fontSize: 11, color: INK, opacity: 0.7, marginTop: 4, lineHeight: 1.4 }}>
         {people.caption} · {people.credit} ({people.license})
       </figcaption>
@@ -4320,13 +4361,17 @@ function PeoplePhoto({ people }) {
   );
 }
 
+const peopleArrow = { background: "transparent", border: `1.5px solid ${OCEAN}`, color: OCEAN,
+  borderRadius: 6, cursor: "pointer", fontSize: 11, lineHeight: 1, padding: "4px 8px", fontWeight: 700 };
+
 // The country card — the game's cultural centrepiece, shown the moment you're
 // in a country in ANY mode: the country and its flag, a photo of its people in
 // traditional dress, how they say hello, then the capital and a short story.
 function CountryCard({ country, reduced }) {
   if (!country || country === "Antarctica") return null;
-  const info = COUNTRY_INFO[country], g = COUNTRY_GREETING[country], people = COUNTRY_PEOPLE[country];
-  if (!info && !g && !people) return null;
+  const info = COUNTRY_INFO[country], g = COUNTRY_GREETING[country];
+  const people = peopleCards(country);
+  if (!info && !g && !people.length) return null;
   const mean = g ? greetingMeaning(g) : null;
   return (
     <div style={{ marginTop: 10, background: PAPER, border: `1px solid ${PAPER_LINE}`, borderRadius: 8, padding: 12, textAlign: "left" }}>
@@ -4346,7 +4391,7 @@ function CountryCard({ country, reduced }) {
         </span>
         {info && <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, color: INK, opacity: 0.55, marginLeft: "auto" }}>{info.region}</span>}
       </div>
-      <PeoplePhoto people={people} />
+      <PeoplePhoto key={country} country={country} />
       {g && (
         <div style={{ fontSize: 13.5, color: OCEAN, lineHeight: 1.55, marginTop: 8 }}>
           <span aria-hidden="true">💬 </span>Here they say <b>“{g.text}”</b>
