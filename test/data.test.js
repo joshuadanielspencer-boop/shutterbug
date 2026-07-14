@@ -10,6 +10,7 @@ import { COUNTRY_NATIVE } from "../src/data/countries.js";
 import { COUNTRY_INFO } from "../src/data/countries.js";
 import { categoryCountries, categoryMissionOK } from "../src/missions.js";
 import { COUNTRY_PEOPLE, GREETING_MEANING } from "../src/data/culture.js";
+import { RIVERS, LAKES, MARINE, WATER_FEATURES, WATER_KINDS } from "../src/data/geography.js";
 
 const CONTINENTS = [
   "North America", "South America", "Europe", "Africa", "Asia", "Oceania", "Antarctica",
@@ -293,5 +294,88 @@ describe("culture cards", () => {
       const hasNonLatin = /[^\u0000-\u024F\u1E00-\u1EFF\s·‘’ʻʼ'.-]/.test(v.name);
       if (hasNonLatin) expect(typeof v.roman, `${country}: non-Latin script needs a romanization`).toBe("string");
     }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Water features (src/data/geography.js, generated from Natural Earth).
+//
+// The shape checks are cheap. The one that EARNS its keep is the last: a river's
+// NAME in Natural Earth is not a river. Unrelated rivers share names (there is a
+// Colorado in Argentina, a Mackenzie in Queensland), and a long river is stored
+// under its local names, so a naive lookup silently produced a Colorado in South
+// America and a Nile that stopped in Sudan. Both looked entirely plausible drawn
+// on the map. So we pin each big river to a box it must lie inside and a real
+// city it must run past — facts checked independently, not read back out of the
+// data they're guarding.
+// ---------------------------------------------------------------------------
+describe("water features", () => {
+  const inMap = (x, y) => x >= 0 && x <= 360 && y >= 0 && y <= 180;
+
+  it("every feature is well formed and uniquely identified", () => {
+    const ids = new Set();
+    for (const f of WATER_FEATURES) {
+      expect(f.name, `${f.id}: no name`).toBeTruthy();
+      expect(ids.has(f.id), `duplicate id ${f.id}`).toBe(false);
+      ids.add(f.id);
+      expect(Object.keys(WATER_KINDS), `${f.id}: unknown kind ${f.kind}`).toContain(f.kind);
+      expect([1, 2, 3], `${f.id}: bad tier`).toContain(f.tier);
+      expect(inMap(f.lx, f.ly), `${f.id}: label anchor is off the map`).toBe(true);
+      // Rule 2: every name must say where it came from, so it can be re-checked.
+      expect(f.source, `${f.id}: no source cited`).toMatch(/Natural Earth/);
+    }
+  });
+
+  it("rivers and lakes carry geometry, and their label sits on it", () => {
+    for (const f of [...RIVERS, ...LAKES]) {
+      expect(f.d, `${f.id}: no path`).toMatch(/^M/);
+      const [x0, y0, x1, y1] = f.b;
+      expect(x1 > x0 && y1 >= y0, `${f.id}: empty bounding box`).toBe(true);
+      expect(f.lx >= x0 - 0.5 && f.lx <= x1 + 0.5 && f.ly >= y0 - 0.5 && f.ly <= y1 + 0.5,
+        `${f.id}: label anchor is nowhere near the feature`).toBe(true);
+    }
+    for (const f of MARINE) expect(f.d, `${f.id}: marine features are labels only`).toBeUndefined();
+  });
+
+  it("the oceans, and at least one sea, bay and gulf, show on the world map", () => {
+    const worldwide = MARINE.filter((f) => f.tier === 1);
+    for (const kind of ["ocean", "sea", "bay", "gulf"])
+      expect(worldwide.some((f) => f.kind === kind), `nothing of kind "${kind}" shows at world zoom`).toBe(true);
+    expect(MARINE.filter((f) => f.kind === "ocean").length).toBeGreaterThanOrEqual(5);
+  });
+
+  it("each big river lies in its own basin, and runs past the city it's famous for", () => {
+    const TRUTH = {
+      "Nile":         { box: [24, 36, 0, 32],      city: [32.5, 15.6] },   // Khartoum
+      "Blue Nile":    { box: [32, 40, 9, 16],      city: [32.5, 15.6] },   // Khartoum
+      "Yangtze":      { box: [90, 123, 24, 36],    city: [106.5, 29.6] },  // Chongqing
+      "Danube":       { box: [7, 30, 42, 50],      city: [16.4, 48.2] },   // Vienna
+      "Mekong":       { box: [93, 107, 8, 34],     city: [104.9, 11.6] },  // Phnom Penh
+      "Colorado":     { box: [-116, -104, 30, 42], city: [-112.1, 36.1] }, // the Grand Canyon
+      "Mississippi":  { box: [-96, -88, 28, 48],   city: [-90.1, 35.1] },  // Memphis
+      "Amazon":       { box: [-75, -48, -6, 1],    city: [-60.0, -3.1] },  // Manaus
+      "Rio Grande":   { box: [-108, -96, 25, 39],  city: [-106.5, 31.8] }, // El Paso
+      "Mackenzie":    { box: [-138, -110, 58, 70], city: [-133.7, 67.4] }, // Inuvik
+      "Volga":        { box: [31, 52, 44, 60],     city: [44.5, 48.7] },   // Volgograd
+      "Yellow River": { box: [95, 121, 32, 42],    city: [111.0, 36.0] },  // Linfen
+    };
+    const SLACK = 2;   // degrees — the courses are simplified, so don't be brittle
+    for (const [name, t] of Object.entries(TRUTH)) {
+      const r = RIVERS.find((x) => x.name === name);
+      expect(r, `${name}: missing from the rivers layer`).toBeTruthy();
+      const lon0 = r.b[0] - 180, lon1 = r.b[2] - 180, lat0 = 90 - r.b[3], lat1 = 90 - r.b[1];
+      expect(lon0 >= t.box[0] - SLACK && lon1 <= t.box[1] + SLACK
+        && lat0 >= t.box[2] - SLACK && lat1 <= t.box[3] + SLACK,
+      `${name}: runs outside its real basin (lon ${lon0.toFixed(0)}..${lon1.toFixed(0)}, lat ${lat0.toFixed(0)}..${lat1.toFixed(0)}) — likely a same-named river on another continent`).toBe(true);
+      const cx = t.city[0] + 180, cy = 90 - t.city[1];
+      expect(cx >= r.b[0] - SLACK && cx <= r.b[2] + SLACK && cy >= r.b[1] - SLACK && cy <= r.b[3] + SLACK,
+        `${name}: never reaches the city it's known for — likely truncated, because Natural Earth stores the rest of its course under a local name`).toBe(true);
+    }
+  });
+
+  it("the lakes the game promises are all present", () => {
+    for (const name of ["Lake Superior", "Lake Michigan", "Lake Huron", "Lake Erie", "Lake Ontario",
+      "Lake Baikal", "Lake Victoria", "Lake Tanganyika", "Lake Titicaca"])
+      expect(LAKES.some((l) => l.name === name), `${name} is missing`).toBe(true);
   });
 });

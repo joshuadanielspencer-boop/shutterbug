@@ -16,3 +16,6 @@ Nigel's World Photo Game attempt/
 
 # Local ChatGPT source art — not needed for the built site
 Images/
+
+# Natural Earth source data cached by scripts/gen-geography.mjs (hundreds of MB)
+scripts/.cache/

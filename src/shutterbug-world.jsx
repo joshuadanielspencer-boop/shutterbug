@@ -6,6 +6,7 @@ import { WORLD_COUNTRIES, COUNTRY_CONTINENT } from "./data/worldmap.js";
 // keep it out of the first paint. worldmap.js stays eager — its outlines feed the
 // sepia background on every screen and the quiz's shape questions.
 import { COUNTRY_INFO, COUNTRY_LAYER_CONTINENTS, COUNTRY_NATIVE } from "./data/countries.js";
+import { RIVERS, LAKES, MARINE } from "./data/geography.js";
 import { COUNTRY_PEOPLE, greetingMeaning } from "./data/culture.js";
 import { categoryCountries, categoryMissionOK as missionOK } from "./missions.js";
 import { robinson, eqToRobinson, ROBINSON_W, ROBINSON_H } from "./robinson.js";
@@ -821,6 +822,92 @@ function ShapeView({ d }) {
     <svg role="img" aria-label="A mystery country's outline" style={{ width: "100%", maxWidth: 300, height: 190, display: "block", margin: "0 auto" }}>
       <path ref={ref} d={d} fillRule="evenodd" fill={OCEAN} stroke={INK} strokeWidth="1" vectorEffect="non-scaling-stroke" />
     </svg>
+  );
+}
+
+// ===========================================================================
+// WATER FEATURES — rivers, lakes, seas, oceans, bays and gulfs (data/geography.js,
+// all of it Natural Earth). The relief plate paints terrain and open ocean but NO
+// lakes at all, so these vectors are what put Baikal, Victoria and the Great Lakes
+// back on the map — and being vectors, they stay crisp at any zoom.
+// ===========================================================================
+// How far in you must be before a feature is drawn. Zooming in reveals more, the
+// way a real atlas does: oceans on the world map, big rivers on a continent, the
+// Thames only once you're over Britain.
+const waterTier = (boxW) => (boxW > 150 ? 1 : boxW > 30 ? 2 : 3);
+// Does the feature's bounding box touch what's on screen? (Cheap cull — a Rwanda
+// zoom shouldn't hand the browser 40 rivers' worth of path data to clip away.)
+const inView = (b, box) => b[0] <= box.x + box.w && b[2] >= box.x && b[1] <= box.y + box.h && b[3] >= box.y;
+
+// A water label. Dark blue with a pale halo, so it stays legible on BOTH the dark
+// sea and the pale land — never relying on colour alone to be readable (rule 3).
+// `stretch` undoes the world map's non-uniform squash so glyphs aren't distorted.
+// A label whose anchor is only just off the edge is nudged back in (the Pacific's
+// anchor sits near the antimeridian, which IS the world map's edge). Anything
+// anchored further out than that is not drawn at all — never dragged into frame.
+function WaterLabel({ f, size, stretch, upper, box }) {
+  const text = upper ? f.name.toUpperCase() : f.name;
+  // Rough half-width of the rendered string, in user units. Serif italic averages
+  // a bit over half the font size per glyph; the ocean labels also get letter-spaced.
+  const halfW = 0.5 * text.length * size * (upper ? 0.62 : 0.5) * stretch;
+  const lx = Math.min(Math.max(f.lx, box.x + halfW), box.x + box.w - halfW);
+  const ly = Math.min(Math.max(f.ly, box.y + size), box.y + box.h - size);
+  if (Math.abs(lx - f.lx) > halfW || Math.abs(ly - f.ly) > size) return null;
+  return (
+    <text x={0} y={0} transform={`translate(${lx} ${ly}) scale(${stretch} 1)`}
+      textAnchor="middle" dominantBaseline="middle" fontSize={size}
+      fontFamily="Georgia, 'Times New Roman', serif" fontStyle="italic"
+      letterSpacing={upper ? size * 0.18 : 0}
+      fill={SEA_DEEP} stroke={PAPER} strokeWidth="3" strokeOpacity="0.75"
+      vectorEffect="non-scaling-stroke" paintOrder="stroke"
+      style={{ pointerEvents: "none" }}>
+      {text}
+    </text>
+  );
+}
+
+// The whole layer, drawn straight over the relief plate. Pointer-events are off
+// throughout — the map underneath stays clickable, labels never steal a tap.
+// `labels` is turned off for the country-picking step: that map is already carpeted
+// with country name chips, and a second layer of text under them just reads as mess.
+// The rivers and lakes themselves stay — they're the terrain, not the clutter.
+function WaterFeatures({ box, vbW, vbH, zoomed, frameAR, labels = true }) {
+  const max = waterTier(box.w);
+  // Font size in USER units, picked so a label always lands at ~1.6% of the frame's
+  // width on screen — the same apparent size at every zoom, and it scales down with
+  // the map on a phone. A zoomed plate is fitted with preserveAspectRatio="meet", so
+  // whichever of width/height is the tighter fit sets the scale (for a square
+  // continent box in a 1.45:1 frame that's the HEIGHT, not the width — getting this
+  // wrong is what made the first cut's labels come out half-size). The world map
+  // stretches instead of fitting, so its size keys off the height and its glyphs get
+  // counter-stretched back to the right shape.
+  const size = 0.016 * (zoomed ? Math.max(vbW, frameAR * vbH) : frameAR * box.h);
+  const stretch = zoomed ? 1 : box.w / (frameAR * box.h);
+  const shown = (f) => f.tier <= max;
+  const lakes = zoomed ? LAKES.filter((f) => shown(f) && inView(f.b, box)) : [];
+  const rivers = zoomed ? RIVERS.filter((f) => shown(f) && inView(f.b, box)) : [];
+  // On the world map only the seas and oceans are named — rivers there would be
+  // hair-thin clutter over the continent buttons the player is trying to click.
+  // That map is Robinson-projected, so their anchors get projected to match; the
+  // relief plates are equirectangular, where the anchors already live.
+  const marine = MARINE.filter(shown)
+    .filter((f) => !zoomed || (f.lx >= box.x && f.lx <= box.x + box.w && f.ly >= box.y && f.ly <= box.y + box.h))
+    .map((f) => (zoomed ? f : { ...f, ...(({ x, y }) => ({ lx: x, ly: y }))(eqToRobinson(f.lx, f.ly)) }));
+  return (
+    <g style={{ pointerEvents: "none" }} aria-hidden="true">
+      {lakes.map((f) => (
+        <path key={f.id} d={f.d} fill={SEA} stroke={SEA_DEEP} strokeWidth="0.7"
+          vectorEffect="non-scaling-stroke" fillRule="evenodd" />
+      ))}
+      {rivers.map((f) => (
+        <path key={f.id} d={f.d} fill="none" stroke={SEA} strokeWidth={f.tier === 1 ? 2.4 : 1.7}
+          strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
+      ))}
+      {labels && [...rivers, ...lakes, ...marine].map((f) => (
+        <WaterLabel key={"l" + f.id} f={f} size={f.kind === "ocean" ? size * 1.15 : size}
+          stretch={stretch} upper={f.kind === "ocean"} box={box} />
+      ))}
+    </g>
   );
 }
 
@@ -2964,6 +3051,15 @@ export default function ShutterbugWorld() {
                         ))}
                       </g>
                     ))}
+                    {/* rivers, lakes and sea names on top of the terrain. The plate
+                        is drawn twice for the Pacific-centred view, so these are too —
+                        each copy culled against the box shifted back into its own space. */}
+                    {(plateMode === "wrap" ? [0, 360] : [0]).map((off) => (
+                      <g key={"w" + off} transform={off ? `translate(${off} 0)` : undefined}>
+                        <WaterFeatures box={{ ...box, x: box.x - off }} vbW={box.w * (1 + 2 * VB_PAD)}
+                          vbH={box.h * (1 + 2 * VB_PAD)} zoomed frameAR={FRAME_AR} labels={!inCountry} />
+                      </g>
+                    ))}
                   </g>
                 )
               ) : (
@@ -2999,6 +3095,9 @@ export default function ShutterbugWorld() {
                   <text x={box.x + box.w / 2} y={box.y + box.h / 2} textAnchor="middle" dominantBaseline="central"
                     fontFamily="ui-monospace, monospace" fontSize="9" fill={PAPER} opacity="0.9">Unrolling the map…</text>
                 )}
+                {/* The oceans and the great seas, named — drawn last so they sit over
+                    the water, but pointer-transparent so every continent stays clickable. */}
+                <WaterFeatures box={box} vbW={box.w} vbH={box.h} zoomed={false} frameAR={FRAME_AR} />
                 </>
               )}
 
