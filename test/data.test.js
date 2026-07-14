@@ -61,9 +61,13 @@ describe("locations", () => {
   });
 
   it("has all three clue tiers, and the reveal ladder withholds place names", () => {
-    // easy spells things out; medium may name the continent/region but not the
-    // country; hard is pure context — no country, continent, or city name — so the
-    // player must deduce the place. (Antarctica's "country" is itself, so skip it.)
+    // Reveal ladder: easy spells things out; MEDIUM names the COUNTRY but not the
+    // continent (Adventurer tier); hard is pure context — no country, continent, or
+    // city name. (Antarctica's "country" is itself, so skip it.)
+    // NOTE: the medium tier is mid-conversion to this new ladder (name the country,
+    // drop the continent). Until every medium clue is converted, we can't enforce
+    // "medium names the country / hides the continent" across the board, so the
+    // medium-specific checks are temporarily relaxed. The hard-tier guards stay on.
     const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     const has = (text, word) => new RegExp("\\b" + esc(word) + "\\b", "i").test(text);
     for (const l of LOCATIONS) {
@@ -72,7 +76,6 @@ describe("locations", () => {
         expect(l[tier].length, `${l.id}.${tier} length`).toBeGreaterThan(20);
       }
       if (l.country !== "Antarctica") {
-        expect(has(l.medium, l.country), `${l.id}: medium leaks country`).toBe(false);
         expect(has(l.hard, l.country), `${l.id}: hard leaks country`).toBe(false);
       }
       expect(has(l.hard, l.continent), `${l.id}: hard leaks continent`).toBe(false);
