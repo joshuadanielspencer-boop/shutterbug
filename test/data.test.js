@@ -11,7 +11,7 @@ import { COUNTRY_INFO } from "../src/data/countries.js";
 import { categoryCountries, categoryMissionOK } from "../src/missions.js";
 import { COUNTRY_PEOPLE, GREETING_MEANING, peopleCards } from "../src/data/culture.js";
 import { RIVERS, LAKES, MARINE, WATER_FEATURES, WATER_KINDS } from "../src/data/geography.js";
-import { JOURNEYS, journeyBox, closestStops } from "../src/data/journeys.js";
+import { JOURNEYS, journeyBox, closestStops, unrolledX } from "../src/data/journeys.js";
 
 const CONTINENTS = [
   "North America", "South America", "Europe", "Africa", "Asia", "Oceania", "Antarctica",
@@ -479,21 +479,56 @@ describe("journeys", () => {
   });
 
   it("no two stops sit on top of each other", () => {
-    // Two stops closer than this render as one pin, and the player physically
-    // cannot click the one they mean. Fort Clatsop and Cape Disappointment are
-    // only 12 miles apart — that's why the route carries just one of them.
-    for (const j of JOURNEYS)
-      expect(closestStops(j), `${j.id}: two stops are too close to tell apart on the map`)
-        .toBeGreaterThan(1.2);
+    // Two stops closer than this render as one pin, and the player physically cannot
+    // click the one they mean. Fort Clatsop and Cape Disappointment are 12 miles
+    // apart — that's why the Lewis & Clark route carries just one of them.
+    //
+    // The limit is a FRACTION OF THE MAP, not a fixed number of degrees: 1.2° is a
+    // comfortable gap on a map of Wyoming and about four pixels on a map of the whole
+    // world. Port St Julian is 5.7° from the Strait of Magellan and still had to go.
+    for (const j of JOURNEYS) {
+      const w = journeyBox(j).w;
+      expect(closestStops(j), `${j.id}: two stops are too close to tell apart on a ${Math.round(w)}°-wide map`)
+        .toBeGreaterThan(0.024 * w);
+    }
   });
 
   it("the map window holds every stop", () => {
     for (const j of JOURNEYS) {
       const b = journeyBox(j);
-      for (const s of j.stops) {
-        expect(s.x >= b.x && s.x <= b.x + b.w, `${j.id}/${s.id}: off the map horizontally`).toBe(true);
+      const xs = unrolledX(j);   // where the pins are actually DRAWN
+      j.stops.forEach((s, i) => {
+        expect(xs[i] >= b.x && xs[i] <= b.x + b.w, `${j.id}/${s.id}: off the map horizontally`).toBe(true);
         expect(s.y >= b.y && s.y <= b.y + b.h, `${j.id}/${s.id}: off the map vertically`).toBe(true);
-      }
+      });
+      // There is no map beyond the poles: a box taller than the world would hang a
+      // band of open sea below Antarctica, which is not a place.
+      expect(b.y, `${j.id}: map window runs off the top of the world`).toBeGreaterThanOrEqual(0);
+      expect(b.y + b.h, `${j.id}: map window runs off the bottom of the world`).toBeLessThanOrEqual(180 + 1e-9);
+    }
+  });
+
+  // A leg that sails west must be DRAWN going west. Unrolled, each leg is the short
+  // way round the globe; drawn naively, Magellan's Pacific crossing comes out as a
+  // line running back east across Africa — plausible, and the wrong way round the
+  // world. This is trap 1 in docs/remaining-work.md, in map form.
+  it("no leg is drawn the long way round the world", () => {
+    for (const j of JOURNEYS) {
+      const xs = unrolledX(j);
+      for (let i = 1; i < xs.length; i++)
+        expect(Math.abs(xs[i] - xs[i - 1]),
+          `${j.id}/${j.stops[i].id}: drawn as a ${Math.round(Math.abs(xs[i] - xs[i - 1]))}° leg — it should have gone the other way`)
+          .toBeLessThanOrEqual(180);
+    }
+  });
+
+  // The two circumnavigations must actually circumnavigate: the whole point is that
+  // you come home from the far side, so the route has to span most of the globe.
+  it("a round-the-world route really does go round the world", () => {
+    for (const id of ["beagle", "magellan"]) {
+      const j = JOURNEYS.find((x) => x.id === id);
+      const xs = unrolledX(j);
+      expect(Math.max(...xs) - Math.min(...xs), `${id}: doesn't span the globe`).toBeGreaterThan(340);
     }
   });
 });

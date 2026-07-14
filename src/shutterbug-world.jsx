@@ -7,7 +7,7 @@ import { WORLD_COUNTRIES, COUNTRY_CONTINENT } from "./data/worldmap.js";
 // sepia background on every screen and the quiz's shape questions.
 import { COUNTRY_INFO, COUNTRY_LAYER_CONTINENTS, COUNTRY_NATIVE } from "./data/countries.js";
 import { RIVERS, LAKES, MARINE } from "./data/geography.js";
-import { JOURNEYS, JOURNEY_BY_ID, journeyBox } from "./data/journeys.js";
+import { JOURNEYS, JOURNEY_BY_ID, journeyBox, unrolledX, closestStops } from "./data/journeys.js";
 import { COUNTRY_PEOPLE, peopleCards, greetingMeaning } from "./data/culture.js";
 import { categoryCountries, categoryMissionOK as missionOK } from "./missions.js";
 import { robinson, eqToRobinson, ROBINSON_W, ROBINSON_H } from "./robinson.js";
@@ -1087,6 +1087,7 @@ export default function ShutterbugWorld() {
   const [tourPlan, setTourPlan] = useState(null);
   const [journeyId, setJourneyId] = useState(JOURNEYS[0].id);   // which route is picked on the meet screen
   const [journey, setJourney] = useState(null);                 // live run: { id, at, wrong, done, reveal }
+  const journeyMapRef = useRef(null);
 
   // Player profiles (localStorage). profileName === null means "Guest — no saving".
   // Nobody is auto-selected at launch (hasChosen === false) so a player can't
@@ -1165,6 +1166,22 @@ export default function ShutterbugWorld() {
     if (typeof document !== "undefined") document.body.classList.toggle("sbw-no-anim", !animOn);
   }, [animOn]);
   const prefersReduced = !animOn;
+
+  // A world-spanning route is wider than a phone, so its map pans inside its frame
+  // (see the journey screen). Keep the stop you're looking for in view: otherwise the
+  // map opens on its left edge and the pin the player is being asked to find is off
+  // the side of it. Declared after prefersReduced because it reads it.
+  useEffect(() => {
+    const el = journeyMapRef.current;
+    if (!el || !journey || el.scrollWidth <= el.clientWidth) return;
+    const j = JOURNEY_BY_ID[journey.id];
+    const i = Math.min(journey.reveal !== null ? journey.reveal : journey.at, j.stops.length - 1);
+    const box = journeyBox(j);
+    const frac = (unrolledX(j)[i] - box.x) / box.w;
+    // Instant, not smooth: a smooth scroll here is unreliable (some engines drop it),
+    // and jumping straight to the stop orients the player without a distracting slide.
+    el.scrollTo({ left: Math.max(0, frac * el.scrollWidth - el.clientWidth / 2), behavior: "auto" });
+  }, [journey?.id, journey?.at, journey?.reveal]);
 
   const sfx = (name, ...args) => { if (soundOn && SFX[name]) SFX[name](...args); };
   const music = (name, ...args) => { if (musicOn && MUSIC[name]) MUSIC[name](...args); };
@@ -2290,6 +2307,30 @@ export default function ShutterbugWorld() {
             </div>
           )}
 
+          {/* Which journey. No difficulty here: a route you're retracing isn't a race. */}
+          {gameMode === "journey" && (
+            <div style={{ marginTop: 18 }}>
+              <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.22em", color: INK, opacity: 0.65, marginBottom: 8 }}>THE ROUTE</div>
+              <div style={{ display: "flex", gap: 7, flexWrap: "wrap", justifyContent: "center" }}>
+                {JOURNEYS.map((jr) => {
+                  const on = journeyId === jr.id;
+                  return (
+                    <button key={jr.id} onClick={() => setJourneyId(jr.id)} aria-pressed={on}
+                      aria-label={`${jr.title}, ${jr.era}, ${jr.region}`}
+                      style={{ padding: "6px 13px", borderRadius: 16, cursor: "pointer", fontWeight: 700, fontSize: 12.5,
+                        border: `1.5px solid ${on ? CORAL : INK}`, background: on ? CORAL : "transparent", color: on ? "#fff" : INK }}>
+                      <span aria-hidden="true">{jr.emoji} </span>{jr.title}
+                    </button>
+                  );
+                })}
+              </div>
+              <p style={{ fontSize: 12.5, color: INK, opacity: 0.75, margin: "9px auto 0", maxWidth: 520, lineHeight: 1.45 }}>
+                <b>{JOURNEY_BY_ID[journeyId].era} · {JOURNEY_BY_ID[journeyId].region}.</b>{" "}
+                {JOURNEY_BY_ID[journeyId].blurb}
+              </p>
+            </div>
+          )}
+
           {/* Difficulty */}
           {(gameMode === "assignments" || gameMode === "tour") && (
             <div style={{ marginTop: 18 }}>
@@ -2602,17 +2643,39 @@ export default function ShutterbugWorld() {
   // ---------- JOURNEY (retrace a real expedition) ----------
   if (screen === "journey" && journey) {
     const j = JOURNEY_BY_ID[journey.id];
-    const JOURNEY_AR = 1.7;
-    const box = journeyBox(j, JOURNEY_AR);
+    const box = journeyBox(j);
+    // The frame takes its shape FROM the box (rather than the box being cut to a fixed
+    // frame), because a round-the-world route needs a long letterbox map and a wagon
+    // trail across Wyoming does not. Matching them exactly is what stops the plate
+    // spilling into a letterbox band — an SVG clips to its viewport, not its viewBox.
+    const JOURNEY_AR = box.w / box.h;
     const stops = j.stops;
+    // Stops are DRAWN at their unrolled longitude, so a westward leg goes west even
+    // when it crosses the antimeridian. See unrolledX() — this is the difference
+    // between a map of Magellan's voyage and a map of a voyage he didn't make.
+    const ux = unrolledX(j);
     const cur = journey.reveal !== null ? stops[journey.reveal] : stops[journey.at];
+    // Which copies of the world the box can see. A route that sails off the left edge
+    // keeps going into the tile before it, so the plate is repeated to meet it.
+    const tiles = [];
+    for (let k = Math.floor(box.x / 360); k <= Math.floor((box.x + box.w) / 360); k++) tiles.push(k);
     // The box is cut to the frame's own aspect, so the plate scales uniformly and a
     // plain circle stays a circle — no ellipse trick needed here.
-    const pin = (k) => k * box.w;
+    //
+    // Pin size is 1.6% of the map width, EXCEPT where that would make two pins
+    // overlap: on a route spanning the whole globe, two stops a few hundred miles
+    // apart are only a few pixels apart, and a pin you can't click is worse than a
+    // small one. So the radius also caps at 0.42 × the closest pair, which keeps a
+    // visible gap between every pair of circles on every route.
+    const PIN_R = Math.min(0.016 * box.w, 0.42 * closestStops(j));
+    const pin = (k) => (k / 0.016) * PIN_R;   // ring, label offset etc. scale with the pin
     const reached = (i) => i < journey.at || (journey.reveal !== null && i <= journey.reveal);
     return (
       <Frame>
-        <div style={{ maxWidth: 900, margin: "0 auto" }}>
+        {/* A route that circles the globe gets a wider page than a wagon trail does:
+            the pins on a world map are small enough already without squeezing them
+            into 900px. Everything still centres, and narrow screens just cap out. */}
+        <div style={{ maxWidth: JOURNEY_AR >= 2 ? 1200 : 900, margin: "0 auto" }}>
           <div style={{ textAlign: "center" }}>
             <Stamp>{j.title}</Stamp>
             <p style={{ fontFamily: "ui-monospace, monospace", fontSize: 12, letterSpacing: "0.16em", color: OCEAN, margin: "10px 0 2px" }}>
@@ -2626,8 +2689,7 @@ export default function ShutterbugWorld() {
                 All {stops.length} stops, in the order they happened — {journey.firstTry} of them found first try.
               </p>
               <p style={{ margin: "8px 0 0", color: INK, opacity: 0.7, fontSize: 13.5, lineHeight: 1.5 }}>
-                Lewis and Clark went looking for a river route across the continent. There isn't one —
-                and proving that was the journey's real result.
+                {j.outro}
               </p>
               <button onClick={() => { setJourney(null); setGameMode("assignments"); setScreen("start"); }}
                 style={{ ...primaryBtn, marginTop: 16 }}>Back to the desk 🧭</button>
@@ -2642,48 +2704,84 @@ export default function ShutterbugWorld() {
           )}
 
           {/* The trail. The route line is drawn only as far as they had actually got,
-              so the map fills in westward as the story does. */}
-          <div style={{ position: "relative", borderRadius: 12, overflow: "hidden", border: `3px solid ${OCEAN_DEEP}`, background: SEA }}>
+              so the map fills in westward as the story does.
+
+              The map has a minimum width and pans sideways inside its own frame on a
+              small screen. Squeezed to fit a 375px phone, a map of the whole world
+              gives you a 6-pixel pin — no child is tapping that. Better to keep the
+              pins a real size and let the map be dragged. (The page itself never
+              scrolls sideways; only this box does.) */}
+          <div ref={journeyMapRef} style={{ position: "relative", borderRadius: 12, overflowX: "auto", overflowY: "hidden",
+            border: `3px solid ${OCEAN_DEEP}`, background: SEA, WebkitOverflowScrolling: "touch" }}>
             <svg viewBox={`${box.x} ${box.y} ${box.w} ${box.h}`} preserveAspectRatio="xMidYMid meet"
-              style={{ width: "100%", display: "block", aspectRatio: String(JOURNEY_AR) }}>
-              <image href={`${BASE}relief-world.jpg`} xlinkHref={`${BASE}relief-world.jpg`}
-                x="0" y="0" width="360.4" height="180" preserveAspectRatio="none" />
-              {WORLD_COUNTRIES.map((c) => (
-                <path key={c.name} d={c.d} fill="none" stroke={INK} strokeOpacity="0.45" strokeWidth="0.5" vectorEffect="non-scaling-stroke" />
+              style={{ width: "100%", minWidth: JOURNEY_AR >= 2 ? 1000 : 620, display: "block", aspectRatio: String(JOURNEY_AR) }}>
+              {/* One copy of the world per tile the box crosses. For every route that
+                  stays put this is a single tile and nothing changes; for a
+                  circumnavigation it is what lets the trail keep sailing west. */}
+              {tiles.map((k) => (
+                <g key={k} transform={`translate(${k * 360} 0)`}>
+                  <image href={`${BASE}relief-world.jpg`} xlinkHref={`${BASE}relief-world.jpg`}
+                    x="0" y="0" width="360.4" height="180" preserveAspectRatio="none" />
+                  {WORLD_COUNTRIES.map((c) => (
+                    <path key={c.name} d={c.d} fill="none" stroke={INK} strokeOpacity="0.45" strokeWidth="0.5" vectorEffect="non-scaling-stroke" />
+                  ))}
+                  <WaterFeatures box={{ ...box, x: box.x - k * 360 }} vbW={box.w} vbH={box.h} zoomed frameAR={1} />
+                </g>
               ))}
-              <WaterFeatures box={box} vbW={box.w} vbH={box.h} zoomed frameAR={1} />
               {/* the trail so far */}
-              <path d={"M" + stops.slice(0, Math.max(1, journey.at + (journey.reveal !== null ? 1 : 0)))
-                .map((s2) => `${s2.x} ${s2.y}`).join("L")}
+              <path d={"M" + ux.slice(0, Math.max(1, journey.at + (journey.reveal !== null ? 1 : 0)))
+                .map((x, i) => `${x} ${stops[i].y}`).join("L")}
                 fill="none" stroke={CORAL} strokeWidth="2.5" strokeDasharray="5 4"
                 strokeLinecap="round" vectorEffect="non-scaling-stroke" />
               {stops.map((s2, i) => {
                 const done = reached(i);
                 const isNext = i === journey.at && journey.reveal === null;
+                const x = ux[i];
                 return (
                   <g key={s2.id} role="button" tabIndex={0} aria-label={`${s2.name}, ${s2.place}`}
                     onClick={() => pickJourneyStop(i)}
                     onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); pickJourneyStop(i); } }}
                     style={{ cursor: "pointer" }}>
-                    <circle cx={s2.x} cy={s2.y} r={pin(0.016)} fill={done ? GREEN : PAPER}
+                    <circle cx={x} cy={s2.y} r={pin(0.016)} fill={done ? GREEN : PAPER}
                       stroke={INK} strokeWidth="1.5" vectorEffect="non-scaling-stroke" />
                     {/* the number is the point — this is an ORDERED route, and a pin you
                         can only tell apart by colour tells a colourblind child nothing. */}
-                    <text x={s2.x} y={s2.y} textAnchor="middle" dominantBaseline="central"
-                      fontSize={box.w * 0.019} fontFamily="ui-monospace, monospace" fontWeight="800"
+                    <text x={x} y={s2.y} textAnchor="middle" dominantBaseline="central"
+                      fontSize={PIN_R * 1.19} fontFamily="ui-monospace, monospace" fontWeight="800"
                       fill={done ? "#fff" : INK} style={{ pointerEvents: "none" }}>{i + 1}</text>
                     {isNext && (
-                      <circle cx={s2.x} cy={s2.y} r={pin(0.026)} fill="none" stroke={CORAL}
+                      <circle cx={x} cy={s2.y} r={pin(0.026)} fill="none" stroke={CORAL}
                         strokeWidth="2" vectorEffect="non-scaling-stroke" style={{ pointerEvents: "none" }}>
                         {!prefersReduced && <animate attributeName="stroke-opacity" values="1;0.15;1" dur="1.6s" repeatCount="indefinite" />}
                       </circle>
                     )}
-                    {done && (
-                      <text x={s2.x} y={s2.y - box.h * 0.028} textAnchor="middle" fontSize={box.w * 0.018}
-                        fontFamily="ui-sans-serif, system-ui" fontWeight="700" fill={INK} stroke={PAPER}
-                        strokeWidth="3" strokeOpacity="0.8" paintOrder="stroke" vectorEffect="non-scaling-stroke"
-                        style={{ pointerEvents: "none" }}>{s2.name}</text>
-                    )}
+                    {done && (() => {
+                      // A centred label on a pin near the frame's edge runs off it and gets
+                      // cut in half ("Sanlúcar de Bar"). The stops at the two ends of a
+                      // round-the-world route are ALWAYS at the edge, so those labels turn
+                      // and read inward instead.
+                      const nearRight = x > box.x + box.w * 0.85, nearLeft = x < box.x + box.w * 0.15;
+                      const anchor = nearRight ? "end" : nearLeft ? "start" : "middle";
+                      // A label sits above its pin unless another pin is sitting up there —
+                      // Tidore's label would otherwise print straight across Mactan, 600
+                      // miles north of it.
+                      const crowdedAbove = stops.some((o, k) => k !== i
+                        && Math.abs(ux[k] - x) < PIN_R * 3.2
+                        && s2.y - o.y > 0 && s2.y - o.y < PIN_R * 3.2);
+                      // And where stops come in a tight chain — most of the Oregon Trail —
+                      // even side-by-side labels collide, so they alternate above and below.
+                      const inChain = stops.some((o, k) => k !== i
+                        && Math.abs(ux[k] - x) < PIN_R * 6 && Math.abs(o.y - s2.y) < PIN_R * 4);
+                      const below = crowdedAbove || (inChain && i % 2 === 1);
+                      const dy = below ? PIN_R * 2.6 : -PIN_R * 1.8;
+                      return (
+                        <text x={x + (nearRight ? -PIN_R : nearLeft ? PIN_R : 0)} y={s2.y + dy}
+                          textAnchor={anchor} fontSize={PIN_R * 1.13}
+                          fontFamily="ui-sans-serif, system-ui" fontWeight="700" fill={INK} stroke={PAPER}
+                          strokeWidth="3" strokeOpacity="0.8" paintOrder="stroke" vectorEffect="non-scaling-stroke"
+                          style={{ pointerEvents: "none" }}>{s2.name}</text>
+                      );
+                    })()}
                   </g>
                 );
               })}

@@ -164,29 +164,56 @@ counts as progress.
 ## 5. More Journeys
 
 The engine is **built and proven** (`src/data/journeys.js` + the `journey` mode).
-Lewis & Clark ships as the flagship. **Adding a route is now just data.**
+**Four routes now ship** and a **picker** lets the player choose between them on the
+meet screen. **Adding a route is now just data.**
 
-Wish list: Marco Polo's Silk Road, Magellan, Darwin's *Beagle*, the Oregon Trail, the
-Exodus route, the 13 Colonies, National Parks, Paul's first missionary journey.
+- **Lewis & Clark** (6 stops) — the original flagship.
+- **The Oregon Trail** (9 stops) — a migration, not an expedition; a tight chain of
+  landmarks across the plains.
+- **Darwin's *Beagle*** (9 stops) — the first **circumnavigation** in the set. Note the
+  Galápagos card deliberately teaches that it was the **mockingbirds**, not the finches,
+  that Darwin noted island-by-island (the finch story is a later myth — rule 2).
+- **Magellan & Elcano** (8 stops) — the second circumnavigation, ending on the lost day
+  at Cape Verde and the Date Line.
+
+**Circumnavigations needed real engine work** (all done, all tested):
+- `unrolledX(journey)` places each stop at whichever copy of its longitude (x, x±360…)
+  is *nearest the previous stop*, so a westward leg is drawn going **west** even across
+  the antimeridian. Without this, Magellan's Pacific crossing renders as a line running
+  back **east** across Africa — a plausible map that is exactly wrong (trap 1). The map
+  is **tiled sideways** to follow it, which is why Spain shows at both ends of the frame.
+- `journeyBox` now takes the route's own `aspect`/`pad` (a round-the-world route wants a
+  long letterbox; a wagon trail does not), and the **frame is shaped from the box**, not
+  the reverse.
+- Pins **shrink** so they can't overlap on a globe-wide map, edge labels turn inward,
+  chain labels alternate above/below, and on a phone the map **pans inside its frame and
+  auto-scrolls to the active stop** (a whole-world map squeezed to 375px gives a 6px pin).
+
+**Still on the wish list:** Marco Polo (⚠ see below), the Exodus route, the 13 Colonies,
+National Parks, Paul's first missionary journey.
 
 **How to add one:**
 - Get each stop's coordinates from its Wikipedia article via the MediaWiki API — do
   **not** eyeball them off a map:
   `https://en.wikipedia.org/w/api.php?action=query&format=json&prop=coordinates|extracts&exintro=1&explaintext=1&titles=Fort+Mandan`
-- Record the article URL in the stop's `source`.
+- Record the article URL in the stop's `source`. Add an `outro` (shown on the win
+  screen) — it lives in the data now, not the component.
 - Keep facts on the plainly documented spine of the story.
 - Measurements must be **imperial first, metric in brackets** — the units test covers
   journey facts and prompts.
 - `npm test` enforces: ≥4 stops, coordinates in range, `x`/`y` derived from `lat`/`lon`,
-  a source per stop, and **no two stops within 1.2°** (Fort Clatsop and Cape
-  Disappointment are 12 miles apart and rendered as one unclickable pin — that's why
-  the route carries only one of them).
+  a source per stop, **no leg drawn the long way round**, circumnavigations that really
+  span the globe, and **no two stops closer than 2.4% of the map width** — a fraction,
+  not a fixed 1.2°, because 1.2° is a comfortable gap on a map of Wyoming and four pixels
+  on a map of the world. (Port St Julian sits 5.7° from the Strait of Magellan and still
+  had to be folded into the Strait's card.)
 
-> ⚠ **Lewis & Clark was the safe one.** Nobody disputes where Fort Mandan was. The
-> Exodus route and the site of Mount Sinai are **genuinely contested**, and several of
-> Paul's stops are uncertain. Before adding those, add a `certainty` field
-> (`"documented"` vs `"traditional"`) and make the card **say which**. Do not quietly
-> present a traditional site as a fact. This is a rule-2 issue, not a polish issue.
+> ⚠ **Lewis & Clark was the safe one, and the four shipped routes all are.** Nobody
+> disputes where Fort Mandan or Tidore was. The Exodus route and the site of Mount Sinai
+> are **genuinely contested**, several of Paul's stops are uncertain, and whether Marco
+> Polo reached China at all is disputed by serious historians. Before adding those, add a
+> `certainty` field (`"documented"` vs `"traditional"`) and make the card **say which**.
+> Do not quietly present a traditional site as a fact. This is a rule-2 issue, not polish.
 
 ---
 
