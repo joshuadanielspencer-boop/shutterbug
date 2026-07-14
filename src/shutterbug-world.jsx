@@ -163,7 +163,7 @@ const MODES = {
   easy:   { label: "Explorer", ages: "grades 3–5 · ages 8–10", assignments: 5, cityDecoys: 2, daysPer: 3, points: 3, slack: 6, labels: "all",   clue: "easy",   catShare: 0.22, countryOpts: 5, research: "half", hints: true,
             blurb: "A short 5-shot trip. Clues name the country, every pin is labelled, a category badge tells you what kind of place it is, wrong guesses get warm/cold hints, and Research for a Clue costs just ½ a day." },
   medium: { label: "Adventurer", ages: "grades 6–8 · ages 11–13", assignments: 9, cityDecoys: 3, daysPer: 3, points: 2, slack: 6, labels: "smart", clue: "medium", catShare: 0.08, countryOpts: 5, research: "half", hints: true,
-            blurb: "A 9-shot expedition. Clues name the continent but hide the country; labels appear on hover; a category badge still helps; Research costs ½ a day." },
+            blurb: "A 9-shot expedition. Clues name the country but hide the continent, so you must know where in the world it sits; labels appear on hover; a category badge still helps; Research costs ½ a day." },
   hard:   { label: "Expert",   ages: "high school & up", assignments: 14, cityDecoys: 4, daysPer: 2, points: 1, slack: 5, labels: "smart", clue: "hard",   catShare: 0.04, countryOpts: 7, research: "off",  hints: false,
             blurb: "A long 14-shot grand expedition for experts. Pure-context clues — no place names, no country labels on the map, no category badge, no warm/cold hints, and no Research. You're on your own." },
 };
@@ -253,8 +253,15 @@ const CONTINENT_COLOR = {
 // with a gentle stretch and blank margins top/bottom (and rounded blank corners).
 // A taller viewBox scales the map DOWN vertically within the square frame: 262→288
 // compresses it ~10% so the world reads less stretched/elongated.
-const WORLD_VBH = 288;
-const WORLD_BOX = { x: 0, y: (ROBINSON_H - WORLD_VBH) / 2, w: ROBINSON_W, h: WORLD_VBH };
+// The world-map crop, computed in Robinson space so the framing is exact:
+//  • left edge sits at Hawaii's longitude (Hawaii flush left),
+//  • bottom edge at the South Pole (Antarctica flush with the bottom),
+//  • the northernmost land (~83.7°N, Greenland/Russia) sits ~10% down from the top.
+const _HAWAII_X = eqToRobinson(24.5, 70.1).x;      // lon −155.5°, lat 19.9°
+const _NORTH_LAND_Y = eqToRobinson(180, 6.3).y;    // ~83.7°N — northernmost land
+const _SOUTH_Y = eqToRobinson(180, 180).y;         // 90°S — Antarctica's bottom
+const _WORLD_TOP = (_NORTH_LAND_Y - 0.10 * _SOUTH_Y) / 0.90; // 10% margin above the north
+const WORLD_BOX = { x: _HAWAII_X, y: _WORLD_TOP, w: ROBINSON_W - _HAWAII_X, h: _SOUTH_Y - _WORLD_TOP };
 
 // The Robinson map outline (filled as ocean) and a light graticule, both static.
 const ROBINSON_OUTLINE = (() => {
@@ -2789,14 +2796,18 @@ export default function ShutterbugWorld() {
               <Itinerary reqs={tourReqs} here={inCity ? pickedContinent : null} />
             </>
           ) : (
-          <div style={{ position: "relative", borderRadius: 8, padding: "16px 16px 10px",
-            background: `linear-gradient(rgba(244,236,216,0.9), rgba(244,236,216,0.9)), url("${UI}airmail-paper-texture.png") center / cover`,
-            border: `2px solid ${INK}`, boxShadow: "0 4px 0 rgba(16,38,46,0.18)" }}>
+          <div style={{ position: "relative", padding: "18px 18px 12px",
+            background: PAPER,
+            // The airmail stripes render as a real border (border-image), so the
+            // red/blue edge stays vivid while the note's centre is clean cream.
+            border: "15px solid transparent",
+            borderImage: `url("${UI}airmail-paper-texture.png") 84 stretch`,
+            boxShadow: "0 4px 0 rgba(16,38,46,0.18)" }}>
             <img src={`${UI}paperclip.png`} alt="" aria-hidden="true"
               style={{ position: "absolute", top: -15, left: 16, width: 34, height: "auto", filter: "drop-shadow(0 3px 3px rgba(0,0,0,0.35))" }} />
             <div style={{ textAlign: "center", marginBottom: 8, color: CORAL }}>
               <span style={{ display: "block", fontFamily: HAND, fontWeight: 700, fontSize: 33, lineHeight: 1.05 }}>A Note from Nigel</span>
-              <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 22, letterSpacing: "0.2em", fontWeight: 800 }}>ASSIGNMENT {step + 1} / {assignments.length}</span>
+              <span style={{ display: "block", fontFamily: "ui-monospace, monospace", fontSize: 20, letterSpacing: "0.1em", fontWeight: 800, whiteSpace: "nowrap" }}>ASSIGNMENT {step + 1} / {assignments.length}</span>
             </div>
             <div style={{ borderTop: `1px dashed ${INK}`, opacity: 0.35, margin: "0 0 12px" }} />
             {(isCatAsg || namesSubject) ? (
@@ -3154,7 +3165,7 @@ export default function ShutterbugWorld() {
             <img src={`${UI}map-ink-distress.png`} alt="" aria-hidden="true"
               style={{ position: "absolute", inset: 12, width: "calc(100% - 24px)", height: "calc(100% - 24px)", objectFit: "cover", opacity: 0.16, mixBlendMode: "multiply", pointerEvents: "none", borderRadius: 8 }} />
             <img src={`${UI}compass-rose.png`} alt="" aria-hidden="true"
-              style={{ position: "absolute", left: 22, bottom: 20, width: "clamp(58px, 9vw, 104px)", pointerEvents: "none", opacity: 0.92, filter: "drop-shadow(0 2px 3px rgba(0,0,0,0.35))" }} />
+              style={{ position: "absolute", left: 62, bottom: 42, width: "clamp(58px, 9vw, 104px)", pointerEvents: "none", opacity: 0.92, filter: "drop-shadow(0 2px 3px rgba(0,0,0,0.35))" }} />
             {[["cornerTL", { top: 2, left: 2 }, "rotate(0deg)"], ["cornerTR", { top: 2, right: 2 }, "rotate(90deg)"],
               ["cornerBR", { bottom: 2, right: 2 }, "rotate(180deg)"], ["cornerBL", { bottom: 2, left: 2 }, "rotate(270deg)"]].map(([k, pos, rot]) => (
               <img key={k} src={`${UI}atlas-corner.png`} alt="" aria-hidden="true"
@@ -3179,8 +3190,8 @@ export default function ShutterbugWorld() {
       {/* ===== Instruction ribbon — fixed to the very bottom of the screen so it's
               always visible without scrolling, whatever the panel height. ===== */}
       <div style={{ position: "fixed", left: "50%", bottom: 8, transform: "translateX(-50%)", zIndex: 20,
-        width: "min(940px, calc(100vw - 40px))", minHeight: 58, display: "flex",
-        alignItems: "center", justifyContent: "center", textAlign: "center", padding: "14px 76px",
+        width: "min(940px, calc(100vw - 40px))", minHeight: 116, display: "flex",
+        alignItems: "center", justifyContent: "center", textAlign: "center", padding: "28px 90px",
         background: `url("${UI}instruction-ribbon.png") center / 100% 100% no-repeat` }}>
         <span style={{ display: "inline-flex", alignItems: "center", gap: 10, fontFamily: HAND, fontWeight: 700, fontSize: 22, color: INK }}>
           <span aria-hidden="true" style={{ fontSize: 20 }}>🌍</span>{ribbonText}
