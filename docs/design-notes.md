@@ -55,9 +55,12 @@ silently regress.
   a trophy shelf of best "cover shots".
 
 ### Competitive
-- **Seeded Daily Expedition** (needs **no server**): everyone gets the same
-  clues/modifiers that day; produces a shareable result string. Highest-value,
-  lowest-cost competitive feature.
+- **Seeded Daily Expedition** — ✅ **BUILT** (`src/daily.js`, `src/rng.js`). One
+  fixed 5-shot run per day, seeded by day **and tier** (a Scout and an Expert
+  can't share one run, so each tier gets its own fixed run and the share card
+  names the tier). Generated from a *null* profile, or spaced repetition would
+  tailor "the same run" to each player. First completed run of the day is the one
+  that counts; replays are practice. Share text is spoiler-free by design.
 - **Beat-your-ghost**: race your own personal-best par days/score.
 - **Family board** on one device (multiple local profiles).
 - **Send-a-challenge**: share a seed code; both play the identical run.

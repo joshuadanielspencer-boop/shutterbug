@@ -13,16 +13,29 @@ npm run dev      # start dev server with hot reload → http://localhost:5173/
 npm run build    # production build to dist/ (also generates the PWA service worker)
 npm run preview  # serve the production build locally → http://localhost:4173/
 node scripts/gen-icons.mjs   # re-rasterize app/PWA icons from assets-src/icon.svg
+node scripts/gen-geography.mjs           # rebuild src/data/geography.js from Natural Earth
+node scripts/make-relief.mjs <NE1.tif> --width 8192 --out public/relief-world.jpg
 ```
 
 ```bash
-npm test         # run the Vitest data-invariant checks (test/data.test.js)
+npm test         # run the Vitest data-invariant checks (test/)
 ```
 
 `npm test` guards content **shape** (unique ids, valid category, in-range
 coords, freely-licensed photo URLs, each continent/category populated enough for
 missions). It does **not** check whether facts or greetings are *true* — a human
 must still verify those against a reliable source (rule 2).
+
+Two exceptions, where a test *does* check a fact, because the failure mode was a
+map that looked entirely plausible and was wrong:
+- **Water features** (`test/data.test.js`) pin each big river to the basin it must
+  lie in and a real city it must run past. Natural Earth names collide across
+  continents (there is a Colorado in Argentina, a Mackenzie in Queensland) and it
+  stores a long river under its *local* names, so a naive lookup silently produced
+  a Nile that stopped in Sudan.
+- **The Daily Expedition** (`test/daily.test.js`) pins the promise that everyone
+  playing on the same day at the same level flies the *same* run. One stray
+  `Math.random()` in the mission generator would break that invisibly.
 
 ### Deploy / install as an app
 
@@ -51,8 +64,10 @@ vite.config.js             # Vite + plugin-react + vite-plugin-pwa (manifest, SW
 package.json               # scripts and dependencies
 assets-src/icon.svg        # source art for the app icon (edit here, then gen-icons)
 scripts/gen-icons.mjs      # rasterizes icon.svg → public/*.png (needs sharp)
+scripts/gen-geography.mjs  # builds src/data/geography.js from Natural Earth vectors
+scripts/make-relief.mjs    # builds the relief plates (keys the ocean to the game palette)
 public/                    # static assets copied as-is + precached by the PWA
-  relief-world.jpg         #   equirectangular shaded-relief plate (continent zooms)
+  relief-world.jpg         #   equirectangular shaded-relief plate (8192x4096, continent zooms)
   relief-antarctica.jpg    #   polar relief plate for the Antarctica map
   *.png / icon.svg         #   generated PWA + favicon + apple-touch icons
 src/
@@ -60,11 +75,14 @@ src/
   index.css                # global reset / base styles
   shutterbug-world.jsx     # main game component (the whole game, for now)
   profiles.js              # localStorage profiles, bests, spaced-repetition, passport
+  rng.js                   # the one swappable RNG — withSeed() makes a run reproducible
+  daily.js                 # the Daily Expedition: day number, seed, share card
   robinson.js              # Robinson projection helpers for the world map
   data/
     locations.js           # game content: 144 places — clues, facts, photos, greetings, category
     categories.js          # the 14 subject categories + kinds + display metadata
     worldmap.js            # country outline paths + COUNTRY_CONTINENT colour map
+    geography.js           # GENERATED — rivers, lakes, seas, oceans, bays, gulfs
 .claude/                   # Claude Code project config (launch.json is shared)
 claude-code-game-build-guide.md   # design/build notes
 ```
@@ -84,6 +102,10 @@ reviewable, correctable, and expandable without touching UI code.
 > greeting, and subject `category`/`tags`) lives in `src/data/locations.js`; the
 > category registry is `src/data/categories.js` and the map/continent data is
 > `src/data/worldmap.js`. Add or correct content there, never inline in a component.
+>
+> `src/data/geography.js` (rivers, lakes, seas, oceans, bays, gulfs) is **generated**
+> — don't hand-edit it. Curate *which* features appear, and their display names, in
+> `scripts/gen-geography.mjs`, then re-run it.
 
 ### 2. Every fact and foreign-language greeting must be accurate and verifiable
 
@@ -105,7 +127,10 @@ source so it can be re-checked later.
 ## Notes
 
 - The world map is a real Robinson-projected vector map with colour-coded
-  continents; continent zooms use shaded-relief plates. Landmarks use real,
+  continents; continent zooms use shaded-relief plates. Rivers, lakes and the
+  named seas/oceans/bays are drawn over the relief as **vectors** (Natural Earth,
+  public domain) — the relief raster contains no lakes at all, and vectors stay
+  crisp at every zoom where a baked-in raster lake would blur. Landmarks use real,
   freely-licensed photos (Wikimedia Commons; attribution shown in-game), with the
   hand-drawn `icon` only as a fallback when a photo is missing.
 - No backend. Player profiles, scores, best times, stamps, and achievements
