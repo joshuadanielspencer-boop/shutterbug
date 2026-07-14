@@ -61,13 +61,9 @@ describe("locations", () => {
   });
 
   it("has all three clue tiers, and the reveal ladder withholds place names", () => {
-    // Reveal ladder: easy spells things out; MEDIUM names the COUNTRY but not the
-    // continent (Adventurer tier); hard is pure context — no country, continent, or
-    // city name. (Antarctica's "country" is itself, so skip it.)
-    // NOTE: the medium tier is mid-conversion to this new ladder (name the country,
-    // drop the continent). Until every medium clue is converted, we can't enforce
-    // "medium names the country / hides the continent" across the board, so the
-    // medium-specific checks are temporarily relaxed. The hard-tier guards stay on.
+    // Reveal ladder: easy spells things out; MEDIUM (Adventurer) names the COUNTRY
+    // but not the continent; hard is pure context — no country, continent, or city
+    // name. (Antarctica's "country" is itself, so skip its country/continent checks.)
     const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     const has = (text, word) => new RegExp("\\b" + esc(word) + "\\b", "i").test(text);
     for (const l of LOCATIONS) {
@@ -76,6 +72,15 @@ describe("locations", () => {
         expect(l[tier].length, `${l.id}.${tier} length`).toBeGreaterThan(20);
       }
       if (l.country !== "Antarctica") {
+        // Medium names the country (tolerant substring — abbreviations like
+        // "Solomon Is." and adjective forms like "South Korean" still count).
+        const norm = l.country.replace(/\.$/, "").toLowerCase();
+        expect(l.medium.toLowerCase().includes(norm), `${l.id}: medium must name the country`).toBe(true);
+        // Medium must not name the continent — unless the country name itself
+        // contains it (e.g. "South Africa" necessarily contains "Africa").
+        if (!l.country.toLowerCase().includes(l.continent.toLowerCase())) {
+          expect(has(l.medium, l.continent), `${l.id}: medium leaks continent`).toBe(false);
+        }
         expect(has(l.hard, l.country), `${l.id}: hard leaks country`).toBe(false);
       }
       expect(has(l.hard, l.continent), `${l.id}: hard leaks continent`).toBe(false);
