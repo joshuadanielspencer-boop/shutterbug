@@ -35,6 +35,8 @@ const HAND = '"Caveat", "Patrick Hand", "Bradley Hand", "Segoe Print", "Comic Sa
 // Mr. O has five looks; hand them out in a reshuffled cycle so he never repeats
 // until all five have appeared, and looks different each time he pops up.
 const MR_O_IMAGES = ["mr-o-1.png", "mr-o-2.png", "mr-o-3.png", "mr-o-4.png", "mr-o-5.png"];
+// Shown on the first run and every 5th after: how to research a clue.
+const MR_O_FIELDGUIDE_TIP = "Psst — if a clue's got you stumped, tap the Field Guide on the right and I'll research it for you. It costs half a travel day (free on a Scout trip!).";
 let _mrOQueue = [];
 function nextMrOImage() {
   if (_mrOQueue.length === 0) {
@@ -1159,6 +1161,12 @@ export default function ShutterbugWorld() {
     resetRiddles();
     setGameMode("assignments"); setExpedition(null);
     setScreen("play");
+    // Coaching: on the first run and every 5th after, Mr O reminds the player
+    // they can research a clue via the Field Guide (only where research applies).
+    const gamesPlayed = profile ? (profile.games || 0) : 0;
+    if (mode.research !== "off" && gamesPlayed % 5 === 0) {
+      setTimeout(() => setMrO(MR_O_FIELDGUIDE_TIP), 1600);
+    }
   }
 
   // ---- Grand Tour: build an itinerary of targets across continents on one shared ----
@@ -2685,7 +2693,7 @@ export default function ShutterbugWorld() {
   // size at every zoom. On-screen rx = rx_user·(W/box.w) and ry = ry_user·(H/box.h);
   // setting ry_user = k·box.h·(W/H) makes both equal k·W. W/H is the frame aspect.
   const pinR = (k) => ({ rx: k * box.w, ry: k * box.h * aspect });
-  const busy = !!flying || !!pending || !!riddle || (!isExplore && days <= 0);
+  const busy = !!flying || !!pending || !!riddle || !!mrO || (!isExplore && days <= 0);
   // Journey-tracker step, derived from phase (continent → country → destination → shot).
   const stepIdx = phase === "continent" ? 0 : phase === "country" ? 1 : (revealed ? 3 : 2);
   // Cap the atlas so the whole desk (header + map + ribbon) fits one 720-tall screen
@@ -4133,29 +4141,31 @@ function CountryPopup({ country, onClose, reduced }) {
 // Mr. O — the eager geography kid. A small, NON-blocking bubble that slides in at
 // the bottom-left with an "Oh! Did you know…?" fact, then dismisses itself after a
 // few seconds (or on tap). It never covers the map controls or steals a click.
+// Mr. O pops up BIG, over a dimmed screen that freezes play until the player
+// clicks (or presses a key) to dismiss him. No auto-dismiss.
 function MrOBubble({ fact, onClose, reduced }) {
   const [imgOk, setImgOk] = useState(true);
   const [img] = useState(nextMrOImage); // a fresh look each appearance
   useEffect(() => {
-    const id = setTimeout(onClose, 10000); // auto-dismiss
-    return () => clearTimeout(id);
-  }, [fact, onClose]);
+    const onKey = (e) => { if (e.key === "Escape" || e.key === "Enter" || e.key === " ") { e.preventDefault(); onClose(); } };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
   return (
-    <div style={{ position: "fixed", left: 16, bottom: 16, zIndex: 55, maxWidth: 680, pointerEvents: "none" }}>
-      <div className={reduced ? "" : "sbw-pop"} onClick={onClose}
-        style={{ display: "flex", alignItems: "center", gap: 4, pointerEvents: "auto", cursor: "pointer" }}>
-        {/* Mr. O — the full cut-out figure (public/odin.png); he gestures toward
-            the speech bubble on his right. Falls back to an emoji if the art is
-            missing, so it never shows a broken image. */}
+    <div role="dialog" aria-modal="true" aria-label={`${MR_O.name} says`} onClick={onClose}
+      style={{ position: "fixed", inset: 0, zIndex: 58, background: "rgba(8,20,24,0.66)",
+        display: "flex", alignItems: "flex-end", justifyContent: "center", gap: 0, padding: "0 20px", cursor: "pointer" }}>
+      <div className={reduced ? "" : "sbw-pop"} style={{ display: "flex", alignItems: "flex-end", gap: 6, maxWidth: 980, width: "100%", justifyContent: "center" }}>
         {imgOk ? (
           <img src={`${UI}${img}`} alt="" onError={() => setImgOk(false)}
-            style={{ height: 320, width: "auto", flex: "none", objectFit: "contain", filter: "drop-shadow(0 5px 9px rgba(0,0,0,0.36))" }} />
+            style={{ height: "min(66vh, 620px)", width: "auto", flex: "none", objectFit: "contain", filter: "drop-shadow(0 8px 16px rgba(0,0,0,0.5))" }} />
         ) : (
-          <div aria-hidden="true" style={{ fontSize: 96, lineHeight: 1, flex: "none", filter: "drop-shadow(0 2px 3px rgba(0,0,0,0.25))" }}>{MR_O.emoji}</div>
+          <div aria-hidden="true" style={{ fontSize: 160, lineHeight: 1, flex: "none" }}>{MR_O.emoji}</div>
         )}
-        <div style={{ background: "#fff", border: `3px solid ${OCEAN}`, borderRadius: "18px 18px 18px 4px", padding: "16px 20px", boxShadow: "0 7px 22px rgba(16,38,46,0.32)", marginBottom: 40 }}>
-          <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 13, letterSpacing: "0.12em", color: OCEAN, fontWeight: 700, marginBottom: 6 }}>{MR_O.name.toUpperCase()} · {MR_O.lead.toUpperCase()}</div>
-          <TypeLine text={fact} reduced={reduced} style={{ color: INK, fontSize: 20, lineHeight: 1.5 }} />
+        <div style={{ background: "#fff", border: `4px solid ${OCEAN}`, borderRadius: "22px 22px 22px 6px", padding: "22px 26px", boxShadow: "0 10px 30px rgba(16,38,46,0.4)", marginBottom: "12vh", maxWidth: 460 }}>
+          <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 15, letterSpacing: "0.12em", color: OCEAN, fontWeight: 800, marginBottom: 10 }}>{MR_O.name.toUpperCase()} · {MR_O.lead.toUpperCase()}</div>
+          <TypeLine text={fact} reduced={reduced} style={{ color: INK, fontSize: 22, lineHeight: 1.5 }} />
+          <div style={{ marginTop: 14, fontSize: 13, fontWeight: 700, color: INK, opacity: 0.55 }}>click to continue ▸</div>
         </div>
       </div>
     </div>
@@ -4178,8 +4188,8 @@ function RiddleModal({ riddle, onAnswer, onClose, gain, reduced }) {
         style={{ background: PAPER, borderRadius: 16, border: `3px solid ${OCEAN}`, boxShadow: "0 14px 44px rgba(0,0,0,0.35)", maxWidth: 560, width: "100%", padding: "22px 22px 24px", textAlign: "center" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, justifyContent: "center", marginBottom: 6 }}>
           {imgOk
-            ? <img src={`${UI}${img}`} alt="" onError={() => setImgOk(false)} style={{ height: 96, width: "auto", flex: "none", objectFit: "contain", filter: "drop-shadow(0 3px 5px rgba(0,0,0,0.3))" }} />
-            : <div aria-hidden="true" style={{ fontSize: 48, lineHeight: 1 }}>{MR_O.emoji}</div>}
+            ? <img src={`${UI}${img}`} alt="" onError={() => setImgOk(false)} style={{ height: 180, width: "auto", flex: "none", objectFit: "contain", filter: "drop-shadow(0 3px 5px rgba(0,0,0,0.3))" }} />
+            : <div aria-hidden="true" style={{ fontSize: 72, lineHeight: 1 }}>{MR_O.emoji}</div>}
           <div style={{ textAlign: "left" }}>
             <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.14em", color: OCEAN, fontWeight: 700 }}>{MR_O.name.toUpperCase()}</div>
             <div style={{ fontFamily: "ui-sans-serif, system-ui", fontWeight: 900, fontSize: 18, color: INK }}>{MR_O.riddleLead}</div>

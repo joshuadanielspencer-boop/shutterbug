@@ -241,6 +241,50 @@ export const MUSIC = (() => {
     N.A4, N.D5, N.Cn5,  N.B4, N.A4, N.G4,
     N.Fs4, N.E4, N.D4,  N.D4, 0, 0,
   ];
+  // Four more 8-bar jig phrases in D (major/mixolydian) — same 3+3 lilt, each
+  // ending on the tonic. One is chosen at random each time the opening plays.
+  const MELODY_2 = [
+    N.D4, N.A4, N.Fs4,  N.A4, N.D5, N.A4,
+    N.B4, N.G4, N.E4,   N.G4, N.B4, N.G4,
+    N.A4, N.Fs4, N.D4,  N.Fs4, N.A4, N.Fs4,
+    N.G4, N.E4, N.Cn5,  N.B4, N.A4, N.G4,
+    N.Fs4, N.A4, N.D5,  N.Cn5, N.B4, N.A4,
+    N.B4, N.G4, N.E4,   N.Fs4, N.G4, N.A4,
+    N.D5, N.Cn5, N.B4,  N.A4, N.G4, N.Fs4,
+    N.E4, N.Fs4, N.G4,  N.D4, 0, 0,
+  ];
+  const MELODY_3 = [
+    N.D4, N.E4, N.Fs4,  N.G4, N.A4, N.B4,
+    N.A4, N.Fs4, N.D4,  N.E4, N.Fs4, N.G4,
+    N.Fs4, N.G4, N.A4,  N.B4, N.Cn5, N.D5,
+    N.B4, N.G4, N.E4,   N.Fs4, 0, N.A4,
+    N.G4, N.Fs4, N.E4,  N.D4, N.E4, N.Fs4,
+    N.A4, N.G4, N.Fs4,  N.G4, N.A4, N.B4,
+    N.D5, N.B4, N.G4,   N.A4, N.Fs4, N.D4,
+    N.E4, N.Fs4, N.E4,  N.D4, 0, 0,
+  ];
+  const MELODY_4 = [
+    N.Fs4, N.A4, N.D5,  N.E5, N.D5, N.A4,
+    N.B4, N.D5, N.B4,   N.A4, N.Fs4, N.A4,
+    N.G4, N.B4, N.D5,   N.Cn5, N.A4, N.Fs4,
+    N.G4, N.A4, N.B4,   N.A4, 0, N.Fs4,
+    N.E5, N.D5, N.B4,   N.A4, N.G4, N.Fs4,
+    N.A4, N.G4, N.Fs4,  N.E4, N.Fs4, N.G4,
+    N.A4, N.D5, N.Cn5,  N.B4, N.A4, N.G4,
+    N.Fs4, N.E4, N.D4,  N.D4, 0, 0,
+  ];
+  const MELODY_5 = [
+    N.D4, N.Fs4, N.G4,  N.A4, N.Fs4, N.D4,
+    N.E4, N.G4, N.A4,   N.B4, N.A4, N.G4,
+    N.Fs4, N.A4, N.B4,  N.D5, N.B4, N.A4,
+    N.G4, N.Fs4, N.E4,  N.Fs4, 0, N.A4,
+    N.D5, N.B4, N.A4,   N.G4, N.Fs4, N.E4,
+    N.Fs4, N.G4, N.A4,  N.B4, N.Cn5, N.D5,
+    N.A4, N.Fs4, N.D4,  N.E4, N.Fs4, N.G4,
+    N.A4, N.Fs4, N.E4,  N.D4, 0, 0,
+  ];
+  const MELODIES = [MELODY, MELODY_2, MELODY_3, MELODY_4, MELODY_5];
+  let activeMelody = MELODY; // set at random on each fresh start()
   // A short reedy note — sawtooth through its own lowpass, quick attack and a
   // clipped tail so notes stay distinct at jig tempo. Chanter-like.
   const reed = (t, f, peak, dur) => {
@@ -260,7 +304,7 @@ export const MUSIC = (() => {
       if (!running || !ctx) return;
       const ahead = ctx.currentTime + 0.6;
       while (nextBeat < ahead) {
-        const f = MELODY[idx % MELODY.length];
+        const f = activeMelody[idx % activeMelody.length];
         const onDownbeat = (idx % 3) === 0;
         if (f) voice(nextBeat, f, (onDownbeat ? 0.13 : 0.09), onDownbeat ? EIGHTH * 1.1 : EIGHTH * 0.85, "reed", jigBus);
         idx += 1;
@@ -282,15 +326,20 @@ export const MUSIC = (() => {
   // loop is faded out at the map).
   const wake = (c) => { master.gain.cancelScheduledValues(c.currentTime); master.gain.setTargetAtTime(0.16, c.currentTime, 0.3); };
   return {
-    // Start (or resume) the looping Scottish jig — splash + meet screens.
+    // Start (or resume) the looping Scottish jig — splash + meet screens. On a
+    // FRESH start one of the five jig phrases is picked at random; the bus fades
+    // in over 1 second (and out over ~2s in fadeJig/stop).
     start() {
       try {
         const c = ac(); if (!c) return;
         wake(c);
         jigBus.gain.cancelScheduledValues(c.currentTime);
-        jigBus.gain.setTargetAtTime(1.0, c.currentTime, 0.5); // fade the jig in
+        jigBus.gain.setValueAtTime(Math.max(0.0001, jigBus.gain.value), c.currentTime);
+        jigBus.gain.linearRampToValueAtTime(1.0, c.currentTime + 1.0); // 1s fade-in
         if (running) return;
         running = true;
+        activeMelody = MELODIES[Math.floor(Math.random() * MELODIES.length)];
+        idx = 0; // start the chosen tune from its first bar
         nextBeat = Math.max(nextBeat, c.currentTime + 0.15);
         startDrone(c.currentTime + 0.1);
         if (!timer) timer = setInterval(schedule, 200);
