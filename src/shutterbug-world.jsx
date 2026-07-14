@@ -387,6 +387,20 @@ const countryKey = (continent, country) => `${continent}|${country}`;
 // reached from; `country` stays the primary (for its flag/greeting). Picking ANY
 // of its countries in the country layer counts as correct.
 const countriesOf = (l) => (l.countries && l.countries.length ? l.countries : [l.country]);
+// Bounding box of a country outline. The worldmap paths are absolute M/L coords
+// (no curves), so every number pairs up as an (x, y) point — enough to size a
+// zoom box to the country's real shape rather than just its landmark spread.
+const pathBBox = (d) => {
+  const nums = d && d.match(/-?\d+(?:\.\d+)?/g);
+  if (!nums || nums.length < 4) return null;
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  for (let i = 0; i + 1 < nums.length; i += 2) {
+    const x = +nums[i], y = +nums[i + 1];
+    if (x < minX) minX = x; if (x > maxX) maxX = x;
+    if (y < minY) minY = y; if (y > maxY) maxY = y;
+  }
+  return { minX, minY, maxX, maxY };
+};
 (() => {
   for (const cont of COUNTRY_LAYER_CONTINENTS) {
     const wrap = CONTINENT_META[cont] && CONTINENT_META[cont].mode === "wrap"; // Oceania: Pacific-centred
@@ -398,9 +412,18 @@ const countriesOf = (l) => (l.countries && l.countries.length ? l.countries : [l
       COUNTRY_LOCS[cont][country] = ls.map((l) => l.id);
       const xs = ls.map((l) => (wrap && l.x < 180 ? l.x + 360 : l.x)), ys = ls.map((l) => l.y);
       const minX = Math.min(...xs), maxX = Math.max(...xs), minY = Math.min(...ys), maxY = Math.max(...ys);
-      const cx = (minX + maxX) / 2, cy = (minY + maxY) / 2;
-      const side = Math.min(120, Math.max(16, Math.max(maxX - minX, maxY - minY) * 1.9));
-      COUNTRY_META[countryKey(cont, country)] = { box: { x: cx - side / 2, y: cy - side / 2, w: side, h: side }, cx, cy };
+      const cx = (minX + maxX) / 2, cy = (minY + maxY) / 2; // landmark centre — for the country label
+      // Zoom box: size it to the country's real BORDER extent (unioned with its
+      // landmarks) so small countries — Rwanda, etc. — fill the frame and show
+      // their shape, instead of floating tiny in a fixed 16° box. The wrap
+      // continent (Oceania) crosses the antimeridian, so keep its landmark box.
+      let bx0 = minX, bx1 = maxX, by0 = minY, by1 = maxY;
+      const bpath = !wrap && (WC_BY_NAME[country] || WC_BY_NAME[WC_ALIAS[country]]);
+      const bb = bpath && pathBBox(bpath);
+      if (bb) { bx0 = Math.min(bx0, bb.minX); bx1 = Math.max(bx1, bb.maxX); by0 = Math.min(by0, bb.minY); by1 = Math.max(by1, bb.maxY); }
+      const bcx = (bx0 + bx1) / 2, bcy = (by0 + by1) / 2; // centre on the country itself
+      const side = Math.min(120, Math.max(4.5, Math.max(bx1 - bx0, by1 - by0) * 1.5)); // 50% breathing room, tight floor
+      COUNTRY_META[countryKey(cont, country)] = { box: { x: bcx - side / 2, y: bcy - side / 2, w: side, h: side }, cx, cy };
     }
   }
 })();
