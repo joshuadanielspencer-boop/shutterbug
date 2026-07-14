@@ -244,10 +244,10 @@ export const ANECDOTES = {
   // hoist beams + forward lean; Edinburgh One O'Clock Gun (since 1861); Matterhorn
   // on Toblerone (with the hidden Bern bear); Alhambra = Arabic "the red one";
   // Segovia aqueduct devil legend; Cliffs of Moher = "Cliffs of Insanity" (The
-  // Princess Bride) + Harry Potter HBP; Budapest dome 96 m for 896/1896; Nyhavn's
+  // Princess Bride) + Harry Potter HBP; Budapest dome 315 feet (96 m) for 896/1896; Nyhavn's
   // former rowdy-sailor port; Meteora reached by rope nets/ladders; Cologne
-  // Cathedral survived WWII as a pilot landmark; Nîmes aqueduct's ~12.6 m drop over
-  // ~50 km; Giant's Causeway Finn McCool legend; Loch Ness 1934 "Surgeon's Photo"
+  // Cathedral survived WWII as a pilot landmark; Nîmes aqueduct's ~41 feet (12.6 m) drop over
+  // ~31 miles (50 km); Giant's Causeway Finn McCool legend; Loch Ness 1934 "Surgeon's Photo"
   // hoax; Mozart at Schönbrunn (1762, age 6); Table Mountain has more plant species
   // than the UK; Koutoubia minaret modelled the Giralda & Hassan Tower; Lalibela's
   // 11 tunnel-linked churches ("New Jerusalem"); Kilimanjaro's climate-zone climb;

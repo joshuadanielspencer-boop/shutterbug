@@ -404,3 +404,48 @@ describe("water features", () => {
       expect(LAKES.some((l) => l.name === name), `${name} is missing`).toBe(true);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Units. The game teaches American homeschoolers, so every measurement reads
+// IMPERIAL first with metric in parentheses — "12,388 feet (3,776 m)". The
+// conversions were done once, from one formula (scripts/imperial-first.mjs),
+// because doing 166 of them by hand is how a teaching tool ends up with one
+// wrong number in it. This stops a metric-only figure creeping back in later.
+// ---------------------------------------------------------------------------
+describe("measurements read imperial first", () => {
+  const METRIC = /\b\d[\d,.]*\s?(?:km|kilometres|kilometers|metres|meters|cm|centimetres|kg|tonnes|hectares)\b/i;
+  const SPELLED = /\b(?:one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|fifteen|sixteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundred|thousand)[- ](?:metres|meters|kilometres|kilometers|km)\b/i;
+  // "a mile" and "half a mile" count as imperial figures just as much as "1.2 miles".
+  const IMPERIAL = /\b(?:[\d][\d,.]*|a|an|half|quarter|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundred|thousand)[- ]?(?:miles?|feet|foot|ft|inch|inches|pounds?|lb|tons?|acres?)\b/i;
+
+  // Every player-facing string in a location: the three clue tiers and the fact.
+  const strings = [];
+  for (const l of LOCATIONS)
+    for (const k of ["easy", "medium", "hard", "fact"])
+      if (l[k]) strings.push([`${l.id}.${k}`, l[k]]);
+  for (const [country, info] of Object.entries(COUNTRY_INFO))
+    if (info.blurb) strings.push([`${country}.blurb`, info.blurb]);
+
+  it("no player-facing text gives metric without an imperial equivalent", () => {
+    for (const [where, text] of strings) {
+      if (!METRIC.test(text) && !SPELLED.test(text)) continue;
+      expect(IMPERIAL.test(text),
+        `${where}: gives a metric measurement with no imperial one — "${text.slice(0, 90)}…"`).toBe(true);
+    }
+  });
+
+  it("the imperial figure comes FIRST, with metric in parentheses", () => {
+    // The Bayterek Tower's cryptic clue is the one deliberate exception: its
+    // "ninety-seven metres" IS the riddle (the deck marks 1997, the year Astana
+    // became the capital), so leading with 318 feet would destroy the puzzle.
+    const EXCEPT = new Set(["bayterek.hard"]);
+    for (const [where, text] of strings) {
+      if (EXCEPT.has(where)) continue;
+      if (!METRIC.test(text) && !SPELLED.test(text)) continue;
+      const imp = text.search(IMPERIAL);
+      const met = Math.min(...[text.search(METRIC), text.search(SPELLED)].filter((i) => i >= 0));
+      expect(imp >= 0 && imp < met,
+        `${where}: leads with metric — imperial should come first, metric in parentheses`).toBe(true);
+    }
+  });
+});

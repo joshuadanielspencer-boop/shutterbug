@@ -27,7 +27,7 @@ export const MR_O = {
 // fact. Sources (verified 2026-07-11, Wikipedia/Britannica/standard references):
 // Sargasso Sea = only sea with no land coastline (bounded by ocean currents);
 // Swahili greetings "Jambo/Habari" (Kenya/East Africa); La Paz, Bolivia = world's
-// highest administrative capital (~3,640 m); Japan "Nippon" = origin of the sun;
+// highest administrative capital (~11,942 feet (3,640 m)); Japan "Nippon" = origin of the sun;
 // Danube flows through 10 countries (most of any river); India drives on the left;
 // China uses one official time zone despite its width; Thailand's currency = baht;
 // Istanbul straddles Europe & Asia across the Bosphorus; "safari" = "journey" in
@@ -41,9 +41,9 @@ export const MR_O_RIDDLES = [
   { q: "In which country would a local welcome you with the Swahili greeting “Jambo!”?",
     choices: ["Kenya", "Morocco", "Peru", "Thailand"], correct: "Kenya",
     explain: "“Jambo” and “Habari” are Swahili greetings, spoken in Kenya and across East Africa." },
-  { q: "Which is the world's highest capital, with its government seat over 3,600 m up in the Andes?",
+  { q: "Which is the world's highest capital, with its government seat over 11,800 feet (3,600 m) up in the Andes?",
     choices: ["La Paz, Bolivia", "Kathmandu, Nepal", "Quito, Ecuador", "Bogotá, Colombia"], correct: "La Paz, Bolivia",
-    explain: "La Paz, Bolivia's seat of government, sits about 3,640 m above sea level — the highest capital in the world." },
+    explain: "La Paz, Bolivia's seat of government, sits about 11,900 feet (3,640 m) above sea level — the highest capital in the world." },
   { q: "One big country's own name, “Nippon,” means “origin of the sun” — the Land of the Rising Sun. Which is it?",
     choices: ["Japan", "China", "South Korea", "Thailand"], correct: "Japan",
     explain: "“Nippon” (or “Nihon”) means “origin of the sun” — that's why Japan is called the Land of the Rising Sun." },

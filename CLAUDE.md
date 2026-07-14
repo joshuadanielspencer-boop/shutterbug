@@ -115,7 +115,24 @@ reliable source before it ships. Do not invent, approximate, or guess. If a clai
 cannot be verified, do not include it. When adding content, cite or note the
 source so it can be re-checked later.
 
-### 3. Accessibility is required, not optional
+### 3. Measurements are imperial first, metric in parentheses
+
+The game teaches American homeschoolers, so every player-facing measurement reads
+**imperial first with metric in brackets** — "12,388 feet (3,776 m)", "6.8 miles
+(11 km)". `npm test` fails any clue, fact or blurb that gives a metric figure with
+no imperial equivalent, or that leads with the metric one.
+
+The conversions were done once, from one formula (`scripts/imperial-first.mjs`),
+rather than by hand: 166 conversions typed out by hand is how a teaching tool ends
+up with one wrong number in it. Exact figures convert exactly; a *hedged* figure
+("about 11 km") converts to significant figures, because "about 6.84 miles" would
+claim a precision the "about" already disclaimed.
+
+One deliberate exception, marked in the test: the Bayterek Tower's cryptic clue
+keeps "ninety-seven metres" first, because that number IS the riddle — the tower's
+deck marks 1997, the year Astana became Kazakhstan's capital.
+
+### 4. Accessibility is required, not optional
 
 - **Colorblind-safe UI:** never rely on color alone to convey meaning; pair color
   with text, shape, icons, or patterns. Maintain sufficient contrast.
