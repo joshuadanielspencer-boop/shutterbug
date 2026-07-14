@@ -87,6 +87,13 @@ src/
 claude-code-game-build-guide.md   # design/build notes
 ```
 
+## What's left to build
+
+`docs/remaining-work.md` is the handoff list — every outstanding task, written so a
+fresh session can pick one up cold. Read it before starting anything new. Two items
+in it are **paused pending Joshua's artwork** (the avatar wiring, the award badges)
+and two **need his decision** (the Supabase backend, the Tauri desktop wrapper).
+
 ## Rules
 
 These are hard requirements for this project. Follow them in every change.
