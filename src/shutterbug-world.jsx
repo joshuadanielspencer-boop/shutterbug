@@ -11,6 +11,7 @@ import { COUNTRY_PEOPLE, peopleCards, greetingMeaning } from "./data/culture.js"
 import { categoryCountries, categoryMissionOK as missionOK } from "./missions.js";
 import { robinson, eqToRobinson, ROBINSON_W, ROBINSON_H } from "./robinson.js";
 import { rnd, shuffled, withSeed, randInt } from "./rng.js";
+import { flightDays, kmBetween, tourPar as par, routeCost as legCost } from "./routes.js";
 import { dayNumber, dailySeed, dailyKey, shareText, DAILY_ASSIGNMENTS } from "./daily.js";
 import { CATEGORIES, CATEGORY_ORDER, KIND_META, kindOf } from "./data/categories.js";
 import { ANECDOTES } from "./data/anecdotes.js";
@@ -195,20 +196,8 @@ const SHOT_COST = 0.5;
 // The traveller's home airport — where the very first flight departs from.
 const HUB = { x: 106, y: 49 };
 
-// Great-circle distance (km) between two MAP points. Our coords are x = lon+180
-// (0..360) and y = 90-lat (0..180); the haversine below is inherently
-// longitude-wrap-safe, so Pacific hops measure the short way round.
-const kmBetween = (a, b) => {
-  const toRad = (d) => (d * Math.PI) / 180;
-  const lat1 = toRad(90 - a.y), lat2 = toRad(90 - b.y);
-  const h = Math.sin(toRad(a.y - b.y) / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(toRad(b.x - a.x) / 2) ** 2;
-  return 2 * 6371 * Math.asin(Math.min(1, Math.sqrt(h)));
-};
-// A flight's cost in travel DAYS: the great-circle distance scaled and rounded to
-// the nearest HALF day, with a floor (even a short hop is half a day) and a cap so
-// no single leg is ruinous. Long hauls really do cost more than short ones.
-const FLIGHT_KM_PER_DAY = 6000;
-const flightDays = (from, to) => Math.max(0.5, Math.min(3, Math.round((kmBetween(from, to) / FLIGHT_KM_PER_DAY) * 2) / 2));
+// Flight costs and the Grand Tour's par live in src/routes.js, so `npm test` can
+// exercise the real routing rules (see the note there on why par must be exact).
 
 // ---- Grand Tour mode: instead of one assignment at a time, you get a whole ----
 // ---- itinerary of targets across several continents on ONE shared day budget, ----
@@ -217,16 +206,42 @@ const flightDays = (from, to) => Math.max(0.5, Math.min(3, Math.round((kmBetween
 // ---- continent you're already on is just the SHOT_COST — so grouping ----
 // ---- same-continent targets and planning an efficient route saves days. ----
 // ---- `reqs` = itinerary length; `slack` = spare days. ----
+// The Grand Tour is the ROUTE mode. Assignments is the deduction game — one clue
+// at a time, the next one hidden. Here you're told everything up front: what, and
+// where. The only question left is the ORDER, so that's the whole game.
+//
+// Which means the day budget has to be tight enough that ordering actually
+// decides the outcome. `slack` is spare days on top of a PERFECT route (see
+// tourPar): fly the best possible circuit and you bank `slack` days; fly a lazy
+// one — Asia, then South America, then back to Asia — and you run out.
+//
+// `points` = per target filed. `dayPoints` = per whole day you bring home. On the
+// harder tiers a banked day is worth as much as a photograph, which is the whole
+// argument of the mode: an efficient route IS the achievement.
 const TOUR_MODES = {
-  scout:  { reqs: 3, catShare: 0.22, labels: "all",   clue: "easy",   points: 2, slack: 6 },
-  easy:   { reqs: 4, catShare: 0.22, labels: "all",   clue: "easy",   points: 2, slack: 3 },
-  medium: { reqs: 5, catShare: 0.08, labels: "smart", clue: "medium", points: 2, slack: 2 },
-  hard:   { reqs: 6, catShare: 0.04, labels: "smart", clue: "hard",   points: 1, slack: 1 },
+  scout:  { reqs: 3, catShare: 0.22, labels: "all",   clue: "easy",   points: 2, dayPoints: 1, slack: 5 },
+  easy:   { reqs: 4, catShare: 0.22, labels: "all",   clue: "easy",   points: 2, dayPoints: 1, slack: 4 },
+  medium: { reqs: 5, catShare: 0.08, labels: "smart", clue: "medium", points: 2, dayPoints: 1, slack: 3 },
+  hard:   { reqs: 6, catShare: 0.04, labels: "smart", clue: "hard",   points: 1, dayPoints: 2, slack: 2 },
 };
-// Best achievable Grand Tour score: every target filed, the small day-bonus for an
-// efficient route, and full marks on the homecoming review quiz (≤5 questions).
-const tourMaxScore = (nReqs, difficulty) =>
-  nReqs * TOUR_MODES[difficulty].points + dayBonus(TOUR_MODES[difficulty].slack) + Math.min(5, nReqs) * QUIZ_BONUS;
+// Leaving the route you committed to costs a day. You may still do it — sometimes
+// you must — but it's a real price, so the plan is a decision and not a formality.
+const DEVIATION_COST = 1;
+
+// PAR — the cheapest possible flight cost for a set of continents, starting from
+// the home airport. This is the number the player is playing against, so it has to
+// be the TRUE optimum, not a greedy guess: a nearest-neighbour route is often
+// beatable, and a "par" you can beat by simply thinking about it is worse than no
+// par at all. At most six continents, so all 720 orders are checked exactly.
+const tourPar = (conts) => par(conts, CONTINENT_PIN, HUB);
+const routeCost = (order) => legCost(order, CONTINENT_PIN, HUB);
+
+// Best achievable Grand Tour score: every target filed, every slack day brought
+// home (which needs a par route AND no wrong shots), and full marks on the quiz.
+const tourMaxScore = (nReqs, difficulty) => {
+  const tm = TOUR_MODES[difficulty];
+  return nReqs * tm.points + tm.slack * tm.dayPoints + Math.min(5, nReqs) * QUIZ_BONUS;
+};
 
 // ---- Themed Expeditions: guided, curated Grand Tours around a single learning ----
 // theme (all wildlife, all volcanoes…). Each is a Grand Tour whose specific targets
@@ -801,7 +816,7 @@ const MODE_CARDS = [
   { id: "assignments", name: "Assignments", emoji: "📸", photoId: "paris",
     blurb: "One of Grandpa's dreams at a time — fly to the right place and photograph the right subject before your travel days run out." },
   { id: "tour", name: "Grand Tour", emoji: "🧳", photoId: "beijing",
-    blurb: "A whole itinerary of targets across continents on one shared day budget — plan an efficient route and shoot them in any order." },
+    blurb: "The route-planning game. You're told every target and exactly where it is — no deduction, no research, no hints. The whole challenge is the ORDER: sequence your stops up front against a par day-count, commit to the route, then fly it. Straying costs a day, and every day you bring home is worth points." },
   { id: "explore", name: "Explore", emoji: "🧭", photoId: "galapagos",
     blurb: "No timer, no score — roam the world, drill into any country, and read every place's story, culture card, and clues. Everywhere you visit is stamped in your passport." },
   { id: "quiz", name: "Quiz", emoji: "🧠", photoId: "xian",
@@ -1064,6 +1079,9 @@ export default function ShutterbugWorld() {
   const [dailyBanked, setDailyBanked] = useState(null);    // {result, wasFirst} once a Daily is filed
   const [tourReqs, setTourReqs] = useState([]); // Grand Tour itinerary: [{key,kind,continent,category?,targetId?,anchorId,label,done,filedId?}]
   const [tourOptions, setTourOptions] = useState({}); // Grand Tour: continent -> [city ids to show there]
+  // Grand Tour route plan: the stops, the order you committed to, PAR (the cheapest
+  // possible circuit), the budget derived from it, and how often you left the plan.
+  const [tourPlan, setTourPlan] = useState(null);
 
   // Player profiles (localStorage). profileName === null means "Guest — no saving".
   // Nobody is auto-selected at launch (hasChosen === false) so a player can't
@@ -1328,6 +1346,7 @@ export default function ShutterbugWorld() {
     setElapsedMs(0);
     setResearched({});
     setCityPlan(null);
+    setTourPlan(null);
     missesRef.current = {};
     riddleCountRef.current = 0;
     startRef.current = Date.now();
@@ -1407,24 +1426,28 @@ export default function ShutterbugWorld() {
     }
 
     // Budget: a generous route allowance (a distance-based flight to each visited
-    // continent — real chained routes are usually shorter) + one shot per target,
-    // plus buffer for wrong guesses and detours.
-    const routeCost = contsUsed.reduce((s, c) => s + flightDays(HUB, CONTINENT_PIN[c]), 0);
-    const budget = Math.ceil(routeCost + SHOT_COST * reqs.length + reqs.length + tm.slack);
+    // Budget = a PERFECT route + one shot per target + the tier's slack. The old
+    // budget assumed you flew home to the hub between every continent and then
+    // handed you a spare day per target on top, which made the route free — you
+    // could visit the continents in any order at all and still coast home. Now the
+    // only spare days you get are the slack, so the order is the game.
+    const par = tourPar(contsUsed);
+    const budget = Math.round((par.cost + SHOT_COST * reqs.length + tm.slack) * 10) / 10;
 
     setGameMode("tour"); setExpedition(null);
     setTourReqs(reqs);
     setTourOptions(opts);
+    setTourPlan({ conts: contsUsed, order: contsUsed.slice(), par, budget, committed: false, deviations: 0 });
     setAssignments([]); setOptionsByStep([]); setStep(0);
     setPhase("continent"); setPickedContinent(null); setPickedCountry(null); setCityPlan(null); setCurrent(null);
     poppedCountryRef.current = null;
     setDays(budget); setScore(0); setAlbum([]); setVisitedIds([]);
     setRevealed(false); setLastResult(null); setNewBadges([]); setPending(null);
     setElapsedMs(0); startRef.current = Date.now(); recorded.current = false;
-    setMsg({ type: "info", text: "Plan your route! Fly to a continent, photograph its targets, then fly on." });
+    setMsg({ type: "info", text: "Fly your route. Straying from it costs a day." });
     setFlying(null);
     resetRiddles();
-    setScreen("play");
+    setScreen("route");            // sequence the stops BEFORE you fly anywhere
   }
 
   // ---- Explore mode: no timer, no score, no losing. Fly anywhere, drill into any
@@ -1433,7 +1456,7 @@ export default function ShutterbugWorld() {
   function startExplore() {
     // music continues from the splash/meet screen and fades out at the map
     setGameMode("explore"); setExpedition(null);
-    setTourReqs([]); setTourOptions({});
+    setTourReqs([]); setTourOptions({}); setTourPlan(null);
     setAssignments([]); setOptionsByStep([]); setStep(0);
     setPhase("continent"); setPickedContinent(null); setPickedCountry(null); setCityPlan(null);
     setCurrent(null); setDays(0); setScore(0); setAlbum([]); setVisitedIds([]);
@@ -1501,10 +1524,15 @@ export default function ShutterbugWorld() {
       for (const l of order) { if (chosen.length >= total) break; if (l.continent === cont && !chosen.includes(l)) chosen.push(l); }
       opts[cont] = chosen.map((l) => l.id).sort(() => Math.random() - 0.5);
     }
-    const routeCost = contsUsed.reduce((s, c) => s + flightDays(HUB, CONTINENT_PIN[c]), 0);
-    const budget = Math.ceil(routeCost + SHOT_COST * reqs.length + reqs.length + tm.slack + 2); // a touch more generous — expeditions are for learning
+    const legs = contsUsed.reduce((s, c) => s + flightDays(HUB, CONTINENT_PIN[c]), 0);
+    const budget = Math.ceil(legs + SHOT_COST * reqs.length + reqs.length + tm.slack + 2); // a touch more generous — expeditions are for learning
     setExpedition(exp);
     setGameMode("tour");
+    // A themed Expedition is a GUIDED tour, not the route game: its stops are the
+    // theme's, in the order the theme gives them, so there is no route to commit to
+    // and no deviation to punish. Clearing the plan matters — a stale one left over
+    // from a real Grand Tour would silently start charging detour days here.
+    setTourPlan(null);
     setTourReqs(reqs); setTourOptions(opts);
     setAssignments([]); setOptionsByStep([]); setStep(0);
     setPhase("continent"); setPickedContinent(null); setPickedCountry(null); setCityPlan(null); setCurrent(null);
@@ -1750,13 +1778,18 @@ export default function ShutterbugWorld() {
       return;
     }
     if (gameMode === "tour") {
-      // Grand Tour: fly anywhere you like — it just costs a flight. No "wrong
-      // continent"; going somewhere with no targets is simply a wasted trip.
+      // Grand Tour: you may still fly anywhere — but you committed to an order, and
+      // leaving it costs a day on top of the flight. The "next stop" is the first
+      // continent on your plan that still has an unphotographed target, so finishing
+      // a continent early and moving on is never punished; skipping ahead is.
       const from = current ? loc(current) : (pickedContinent ? CONTINENT_PIN[pickedContinent] : HUB);
       const to = CONTINENT_PIN[cont];
       // Already on this continent? No real flight — skip animation/music/cost.
       const sameHere = !!current && loc(current).continent === cont;
-      const cost = sameHere ? 0 : flightDays(from, to); // distance-based: group nearby continents to save days
+      const nextStop = tourPlan && tourPlan.order.find((c) => tourReqs.some((r) => !r.done && r.continent === c));
+      const offPlan = !sameHere && nextStop && cont !== nextStop && pickedContinent !== cont;
+      const penalty = offPlan ? DEVIATION_COST : 0;
+      const cost = sameHere ? 0 : flightDays(from, to) + penalty; // distance-based: group nearby continents to save days
       const useCountry = COUNTRY_LAYER_CONTINENTS.has(cont); // every mode visits the country map
       if (!sameHere) sfx("plane");
       const finalize = () => {
@@ -1765,7 +1798,9 @@ export default function ShutterbugWorld() {
         setFlying(null); setPickedContinent(cont); setPickedCountry(null); setCityPlan(null);
         setPhase(useCountry ? "country" : "city"); setCurrent(null); setRevealed(false);
         poppedCountryRef.current = null; // let this continent's countries pop their card
-        const costTxt = sameHere ? "no days lost" : `−${cost} day${cost === 1 ? "" : "s"}`;
+        if (penalty) setTourPlan((p) => ({ ...p, deviations: p.deviations + 1 }));
+        const costTxt = sameHere ? "no days lost"
+          : `−${cost} day${cost === 1 ? "" : "s"}${penalty ? ` (${penalty} of them for leaving your route)` : ""}`;
         if (nd <= 0) return outOfDays(`You reached ${cont}, but the trip's budget is spent.`);
         const here = tourReqs.filter((r) => !r.done && r.continent === cont).length;
         const where = useCountry ? "Pick the country your next target is in." : "Photograph a target on your list.";
@@ -1979,12 +2014,16 @@ export default function ShutterbugWorld() {
         const remaining = nextReqs.filter((r) => !r.done).length;
         const found = req.kind === "category" ? `You found a ${CATEGORIES[req.category].noun} — ${clicked.subject}!` : `You bagged ${clicked.subject}!`;
         if (remaining === 0) {
-          const bonus = dayBonus(d);
+          // The route IS the score here: every whole day you bring home pays, and on
+          // Expert a banked day is worth twice a photograph. There's no cap — beating
+          // par by three days should feel like beating par by three days.
+          const banked = Math.max(0, Math.floor(d));
+          const bonus = banked * TOUR_MODES[difficulty].dayPoints;
           setScore((s) => s + gain + bonus);
           setElapsedMs(Date.now() - startRef.current);
           sfx("win");
           setPending({ kind: "tour-win", tone: "good", emoji: "🏆", title: "Grand Tour complete!",
-            subtitle: `${found} Every target on your itinerary is filed! +${gain}${bonus ? `, plus ${bonus} for ${d} day${d === 1 ? "" : "s"} to spare` : ""}.`,
+            subtitle: `${found} Every target filed! +${gain}${bonus ? `, plus ${bonus} for the ${banked} day${banked === 1 ? "" : "s"} you brought home` : ""}.`,
             fact: clicked.fact, photo: clicked.photo, category: clicked.category, buttonLabel: "See my results 📸" });
         } else if (d <= 0) {
           setScore((s) => s + gain);
@@ -2515,6 +2554,97 @@ export default function ShutterbugWorld() {
 
   // ---------- STREAK RESULTS ----------
 
+  // ---------- ROUTE PLANNER (Grand Tour) ----------
+  // The step that makes Grand Tour a different game from Assignments. There you're
+  // told one thing at a time and must deduce the rest. Here you're told everything
+  // up front — every target, and where it is — so the only question left is the
+  // ORDER, and you have to answer it before you fly, with the day-cost of your
+  // choice updating as you shuffle it. Par is the cheapest circuit that exists; the
+  // budget is par plus a few slack days, so a lazy order genuinely strands you.
+  if (screen === "route" && tourPlan) {
+    const order = tourPlan.order;
+    const cost = routeCost(order);
+    const over = Math.round((cost - tourPlan.par.cost) * 10) / 10;
+    const move = (i, d) => {
+      const j = i + d;
+      if (j < 0 || j >= order.length) return;
+      const next = order.slice();
+      [next[i], next[j]] = [next[j], next[i]];
+      setTourPlan((p) => ({ ...p, order: next }));
+    };
+    const legs = order.map((c, i) => ({
+      c, from: i ? order[i - 1] : "Home", days: flightDays(i ? CONTINENT_PIN[order[i - 1]] : HUB, CONTINENT_PIN[c]),
+      targets: tourReqs.filter((r) => r.continent === c).length,
+    }));
+    return (
+      <Frame>
+        <div style={{ maxWidth: 620, margin: "0 auto" }}>
+          <Stamp>Plan the Route</Stamp>
+          <h2 style={{ fontFamily: "ui-sans-serif, system-ui", fontWeight: 900, letterSpacing: "0.06em", fontSize: 26, color: INK, margin: "12px 0 4px", textAlign: "center" }}>
+            Sequence your stops
+          </h2>
+          <p style={{ color: INK, opacity: 0.75, fontSize: 14.5, lineHeight: 1.5, textAlign: "center", margin: "0 0 4px" }}>
+            You already know what to photograph and where. All that's left is the order —
+            and flying it badly costs days you don't have. Shuffle the stops until the
+            route is cheap, then commit to it.
+          </p>
+          <div style={{ background: PAPER, border: `2px solid ${OCEAN}`, borderRadius: 14, padding: "14px 16px", marginTop: 14 }}>
+            <ol style={{ listStyle: "none", margin: 0, padding: 0 }}>
+              {legs.map((leg, i) => (
+                <li key={leg.c} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0",
+                  borderBottom: i < legs.length - 1 ? `1px dashed ${PAPER_LINE}` : "none" }}>
+                  <span aria-hidden="true" style={{ fontFamily: "ui-monospace, monospace", fontWeight: 800, color: OCEAN, width: 20 }}>{i + 1}</span>
+                  <span style={{ flex: 1, minWidth: 0 }}>
+                    <span style={{ fontWeight: 800, color: INK, fontSize: 15 }}>{leg.c}</span>
+                    <span style={{ display: "block", fontSize: 12, color: INK, opacity: 0.65 }}>
+                      from {leg.from} · {leg.days} day{leg.days === 1 ? "" : "s"} · {leg.targets} target{leg.targets === 1 ? "" : "s"} here
+                    </span>
+                  </span>
+                  <button onClick={() => move(i, -1)} disabled={i === 0} aria-label={`Move ${leg.c} earlier`}
+                    style={{ ...routeBtn, opacity: i === 0 ? 0.3 : 1, cursor: i === 0 ? "default" : "pointer" }}>▲</button>
+                  <button onClick={() => move(i, 1)} disabled={i === legs.length - 1} aria-label={`Move ${leg.c} later`}
+                    style={{ ...routeBtn, opacity: i === legs.length - 1 ? 0.3 : 1, cursor: i === legs.length - 1 ? "default" : "pointer" }}>▼</button>
+                </li>
+              ))}
+            </ol>
+            {/* Cost against par. Never colour alone: the verdict is spelled out. */}
+            <div style={{ marginTop: 12, paddingTop: 10, borderTop: `2px solid ${PAPER_LINE}`, display: "flex", flexWrap: "wrap", gap: 12, alignItems: "baseline" }}>
+              <span style={{ fontFamily: "ui-monospace, monospace", fontWeight: 900, fontSize: 20, color: over <= 0 ? GREEN : over <= 1 ? INK : CORAL }}>
+                {cost} days
+              </span>
+              <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 12, color: INK, opacity: 0.65 }}>
+                PAR {tourPar(tourPlan.conts).cost} · your budget {tourPlan.budget}
+              </span>
+              <span aria-live="polite" style={{ fontSize: 13, fontWeight: 700, color: over <= 0 ? GREEN : CORAL, marginLeft: "auto" }}>
+                {over <= 0 ? "✓ A perfect circuit — nothing wasted." : `${over} day${over === 1 ? "" : "s"} longer than the best route`}
+              </span>
+            </div>
+          </div>
+          <p style={{ fontSize: 12.5, color: INK, opacity: 0.65, lineHeight: 1.5, marginTop: 10 }}>
+            Once you commit, straying from this order costs an extra day each time — so
+            plan for the whole trip, not just the next hop. Shots cost half a day each,
+            and every whole day you bring home is worth points.
+          </p>
+          <div style={{ display: "flex", gap: 10, justifyContent: "center", marginTop: 14, flexWrap: "wrap" }}>
+            {/* Solving the route FOR the player is the whole game handed over, so the
+                button only exists on the two scaffolded tiers — the same reveal ladder
+                the clues follow. Adventurer and Expert plan it themselves. */}
+            {TOUR_MODES[difficulty].labels === "all" && (
+              <button onClick={() => setTourPlan((p) => ({ ...p, order: tourPar(p.conts).order }))}
+                style={{ padding: "10px 18px", borderRadius: 10, border: `2px solid ${OCEAN}`, background: "transparent", color: OCEAN, fontWeight: 800, fontSize: 13.5, cursor: "pointer" }}>
+                Show me the best route
+              </button>
+            )}
+            <button onClick={() => { setTourPlan((p) => ({ ...p, committed: true })); setScreen("play"); }}
+              style={{ ...primaryBtn, margin: 0, padding: "11px 24px" }}>
+              Commit to this route ✈
+            </button>
+          </div>
+        </div>
+      </Frame>
+    );
+  }
+
   if (screen === "end") {
     const mode = MODES[difficulty];
     const isTourEnd = gameMode === "tour";
@@ -2918,7 +3048,7 @@ export default function ShutterbugWorld() {
   const ribbonText = inCity
     ? (isExplore ? "Click any pin to read a place's story." : "Click the right city on the map to take Grandpa's photo.")
     : inCountry ? "Which country does the clue point to? Click it on the map."
-    : (isTour ? "Pick the next continent to fly to — group nearby targets to save days."
+    : (isTour ? "Fly your route — straying from the order you committed to costs a day."
               : "Choose the continent that matches Grandpa's clue.");
   const gearItem = { textAlign: "left", background: "transparent", border: "none", borderRadius: 6, padding: "7px 9px", fontSize: 13, fontWeight: 700, color: INK, cursor: "pointer", whiteSpace: "nowrap" };
   return (
@@ -3017,6 +3147,7 @@ export default function ShutterbugWorld() {
                 </div>
               )}
               <Itinerary reqs={tourReqs} here={inCity ? pickedContinent : null} />
+              {tourPlan && tourPlan.committed && <RouteStrip plan={tourPlan} reqs={tourReqs} here={pickedContinent} />}
             </>
           ) : (
           <div style={{ position: "relative", padding: "18px 18px 12px",
@@ -3599,6 +3730,38 @@ function CategoryBadge({ category, size = "md", style }) {
 }
 // Grand Tour itinerary: the editor's checklist of targets. Ticks off as you file
 // each one; targets on the continent you're standing on are flagged "here now".
+// The route you committed to, on screen for the whole trip — because you're being
+// scored against it, and a plan you can't see is a plan you can't fly. The stop
+// you're due at next is marked in words as well as colour (rule 3): a child who
+// can't tell teal from grey still needs to know where they're supposed to be.
+function RouteStrip({ plan, reqs, here }) {
+  const nextStop = plan.order.find((c) => reqs.some((r) => !r.done && r.continent === c));
+  return (
+    <div style={{ background: PAPER, border: `1px dashed ${OCEAN}`, borderRadius: 6, padding: "10px 14px", marginTop: 10 }}>
+      <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.2em", color: OCEAN, marginBottom: 7 }}>
+        ✈ THE ROUTE YOU COMMITTED TO
+      </div>
+      <ol style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexWrap: "wrap", gap: 6 }}>
+        {plan.order.map((c, i) => {
+          const done = !reqs.some((r) => !r.done && r.continent === c);
+          const next = c === nextStop;
+          return (
+            <li key={c} style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12.5,
+              fontWeight: next ? 800 : 600, color: done ? GREEN : next ? OCEAN : INK, opacity: done || next ? 1 : 0.6 }}>
+              {i > 0 && <span aria-hidden="true" style={{ opacity: 0.4 }}>›</span>}
+              <span>{done ? "✓ " : ""}{c}{next ? " (next)" : ""}</span>
+            </li>
+          );
+        })}
+      </ol>
+      <div style={{ fontSize: 11.5, color: INK, opacity: 0.7, marginTop: 7, lineHeight: 1.45 }}>
+        Par {plan.par.cost} days · you planned {routeCost(plan.order)}
+        {plan.deviations > 0 && ` · ${plan.deviations} detour${plan.deviations === 1 ? "" : "s"} off the route, ${plan.deviations * DEVIATION_COST} day${plan.deviations * DEVIATION_COST === 1 ? "" : "s"} lost`}
+      </div>
+    </div>
+  );
+}
+
 function Itinerary({ reqs, here }) {
   const doneN = reqs.filter((r) => r.done).length;
   return (
@@ -4360,6 +4523,9 @@ function PeoplePhoto({ country }) {
     </figure>
   );
 }
+
+const routeBtn = { background: "transparent", border: `1.5px solid ${OCEAN}`, color: OCEAN,
+  borderRadius: 6, fontSize: 12, lineHeight: 1, padding: "6px 9px", fontWeight: 800, cursor: "pointer" };
 
 const peopleArrow = { background: "transparent", border: `1.5px solid ${OCEAN}`, color: OCEAN,
   borderRadius: 6, cursor: "pointer", fontSize: 11, lineHeight: 1, padding: "4px 8px", fontWeight: 700 };

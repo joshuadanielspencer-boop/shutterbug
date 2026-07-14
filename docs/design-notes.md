@@ -109,33 +109,30 @@ modifier + a debrief/renown end screen.
 
 ## 4. Mode differentiation
 
-The three modes should test three different verbs:
+**Grand Tour — ✅ BUILT (the route-optimisation mode).**
 
-- **Assignments = deduce.** One clue at a time, next one hidden. You *can't* plan
-  ahead — that's the point. Skill: reading clues + geography knowledge.
-- **Grand Tour = optimise.** The whole itinerary is visible; the challenge is
-  *routing* on a tight day budget. To sharpen it:
-  - tighter days + a visible "par" ("a sharp planner does this in ~22 days")
-  - **commit your route first** — sequence your stops with a live day-cost preview,
-    then execute; going off-plan costs extra
-  - score **efficiency** (days banked), not just shots
-  - drop research/hints entirely (you already know what and where)
-- **Journeys = retrace.** A *new* mode: the route is given in historical order.
-  Low deduction, high storytelling. Reuses the Grand Tour engine with a fixed sequence.
+Assignments is the *deduction* game: one clue at a time, the next one hidden.
+Grand Tour is now the *route* game: you're told every target and exactly where it
+is — no research, no hints, nothing to deduce — so the only question left is the
+ORDER, and that's the whole game.
 
-### Themed Journey ideas
-- **Famous journeys**: Marco Polo's Silk Road · Magellan · Lewis & Clark · Darwin's
-  *Beagle* · Ibn Battuta · Amundsen · the Oregon Trail
-- **Bible**: Paul's missionary journeys · the Exodus route · Holy Land geography ·
-  Seven Churches of Revelation · Abraham: Ur → Canaan
-- **Historic USA**: the 13 Colonies · National Parks · Route 66 · Civil War sites
-- **Other**: Seven Summits · Seven Wonders · Great Rivers · Age of Discovery
+- **Par** (`src/routes.js`) is the cheapest circuit that exists, solved exactly by
+  branch-and-bound over every ordering, not greedily. A par you can beat by
+  accident is worse than no par at all — and the day budget is derived *from* par,
+  so a loose par silently makes the ordering stop mattering. A test proves par
+  equals brute force.
+- **The budget is tight**: par + half a day per shot + a few slack days. (The old
+  budget assumed you flew home to the hub between every continent and then added a
+  spare day per target, which made the route effectively free.)
+- **Commit your route up front** on a planning screen: shuffle the stops with a
+  live running day-cost against par, then commit. Leaving that order later costs
+  an extra day each time — you may still do it, but it's a real price.
+- **Score on efficiency**: points per target filed, plus points per whole day you
+  bring home. On Expert a banked day is worth twice a photograph.
+- "Show me the best route" exists only on Scout/Explorer — the same reveal ladder
+  the clues follow. Adventurer and Expert plan it themselves.
 
-⚠️ **Content is the gating cost**, especially Bible and history: some sites are
-genuinely contested (e.g. the Exodus route, Mount Sinai's location). Source each
-location, and label traditional-vs-disputed rather than asserting.
-
----
+Themed Expeditions stay *guided* tours (a fixed thematic list, no route commit).
 
 ## 5. Infrastructure feasibility
 
