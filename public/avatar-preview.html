@@ -34,7 +34,9 @@
 
 <script>
 const G = { head:[3,2], eyes:[3,2], hat:[4,3], hairshort:[4,4], hairlong:[4,4], outfit:[6,3] };
-const B = "/assets/shutterbug-ui/avatar/";
+// relative, so this page works both locally (served at /) and on GitHub Pages
+// (served under /shutterbug/)
+const B = "assets/shutterbug-ui/avatar/";
 for (const [kind,[c,r]] of Object.entries(G)) {
   const box = document.getElementById(kind);
   for (let y=0;y<r;y++) for (let x=0;x<c;x++) {
