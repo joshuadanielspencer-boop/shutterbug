@@ -152,3 +152,77 @@ export const COUNTRY_INFO = {
 // Continents where the country-map layer is active (Medium/Hard only). Antarctica
 // (polar, no countries) stays continent-only.
 export const COUNTRY_LAYER_CONTINENTS = new Set(["North America", "South America", "Europe", "Africa", "Asia", "Oceania"]);
+
+// Native country names (endonyms) — the name a country uses for itself.
+// Shown alongside the English name, e.g. "Germany (Deutschland)".
+//
+// SOURCE: Wikipedia, "List of countries and dependencies and their capitals in
+// native languages" (retrieved 2026-07). Where that table lists several
+// languages, the country's primary/most-widely-used official language was
+// chosen — no names were invented. Individually re-checked against each
+// country's own Wikipedia article: India (Hindi भारत, not Bengali), Thailand,
+// Morocco (al-Maghrib), Tunisia (Arabic, not Tifinagh), Taiwan (the geographic
+// name 臺灣 — the entry takes no political position).
+// Countries whose endonym is identical to the English name (Chile, Canada,
+// Mali, the UK, the US, Nigeria, Ghana…) are omitted — there is nothing to show.
+// `roman` is the romanization for non-Latin scripts.
+export const COUNTRY_NATIVE = {
+  "Algeria": { name: "الجزائر", roman: "Al-Jazā'ir" },
+  "Austria": { name: "Österreich" },
+  "Bangladesh": { name: "বাংলাদেশ", roman: "Bānglādesh" },
+  "Belgium": { name: "België · Belgique · Belgien" },
+  "Brazil": { name: "Brasil" },
+  "Cambodia": { name: "កម្ពុជា", roman: "Kămpŭchéa" },
+  "Cameroon": { name: "Cameroun" },
+  "China": { name: "中国", roman: "Zhōngguó" },
+  "Croatia": { name: "Hrvatska" },
+  "Czechia": { name: "Česko" },
+  "Dem. Rep. Congo": { name: "République démocratique du Congo" },
+  "Denmark": { name: "Danmark" },
+  "Egypt": { name: "مصر", roman: "Misr" },
+  "Ethiopia": { name: "ኢትዮጵያ", roman: "Ityop'ia" },
+  "Fiji": { name: "Viti" },
+  "Finland": { name: "Suomi" },
+  "French Polynesia": { name: "Polynésie française" },
+  "Germany": { name: "Deutschland" },
+  "Greece": { name: "Ελλάδα", roman: "Ellada" },
+  "Greenland": { name: "Kalaallit Nunaat" },
+  "Hungary": { name: "Magyarország" },
+  "Iceland": { name: "Ísland" },
+  "India": { name: "भारत", roman: "Bhārat" },
+  "Iran": { name: "ایران", roman: "Īrān" },
+  "Ireland": { name: "Éire" },
+  "Italy": { name: "Italia" },
+  "Japan": { name: "日本", roman: "Nihon" },
+  "Jordan": { name: "الأردن", roman: "Al-’Urdun" },
+  "Kazakhstan": { name: "Қазақстан", roman: "Qazaqstan" },
+  "Madagascar": { name: "Madagasikara" },
+  "Mongolia": { name: "Монгол Улс", roman: "Mongol Uls" },
+  "Morocco": { name: "المغرب", roman: "al-Maghrib" },
+  "Myanmar": { name: "မြန်မာ", roman: "Myanma" },
+  "Nepal": { name: "नेपाल", roman: "Nepāl" },
+  "Netherlands": { name: "Nederland" },
+  "New Caledonia": { name: "Nouvelle-Calédonie" },
+  "New Zealand": { name: "Aotearoa" },
+  "Norway": { name: "Norge" },
+  "Papua New Guinea": { name: "Papua Niugini" },
+  "Philippines": { name: "Pilipinas" },
+  "Poland": { name: "Polska" },
+  "Russia": { name: "Россия", roman: "Rossiya" },
+  "Saudi Arabia": { name: "المملكة العربية السعودية", roman: "Al-Mamlaka Al-‘Arabiyyah as Sa‘ūdiyyah" },
+  "Singapore": { name: "Singapura" },
+  "Solomon Is.": { name: "Solomon Aelan" },
+  "South Africa": { name: "Suid-Afrika" },
+  "South Korea": { name: "한국", roman: "Hanguk" },
+  "Spain": { name: "España" },
+  "Sri Lanka": { name: "ශ්‍රී ලංකාව", roman: "Sri Lankā" },
+  "Sudan": { name: "السودان", roman: "As-Sudan" },
+  "Sweden": { name: "Sverige" },
+  "Switzerland": { name: "Schweiz · Suisse · Svizzera · Svizra" },
+  "Taiwan": { name: "臺灣", roman: "Táiwān" },
+  "Thailand": { name: "ไทย", roman: "Thai" },
+  "Tunisia": { name: "تونس", roman: "Tūnis" },
+  "Turkey": { name: "Türkiye" },
+  "United Arab Emirates": { name: "الإمارات العربيّة المتّحدة", roman: "Al-’Imārat Al-‘Arabiyyah Al-Muttaḥidah" },
+  "Uzbekistan": { name: "O‘zbekiston" },
+};

@@ -5,7 +5,7 @@ import { WORLD_COUNTRIES, COUNTRY_CONTINENT } from "./data/worldmap.js";
 // only used by the world map, so it's loaded lazily (see the effect below) to
 // keep it out of the first paint. worldmap.js stays eager — its outlines feed the
 // sepia background on every screen and the quiz's shape questions.
-import { COUNTRY_INFO, COUNTRY_LAYER_CONTINENTS } from "./data/countries.js";
+import { COUNTRY_INFO, COUNTRY_LAYER_CONTINENTS, COUNTRY_NATIVE } from "./data/countries.js";
 import { COUNTRY_PEOPLE, greetingMeaning } from "./data/culture.js";
 import { categoryCountries, categoryMissionOK as missionOK } from "./missions.js";
 import { robinson, eqToRobinson, ROBINSON_W, ROBINSON_H } from "./robinson.js";
@@ -4115,7 +4115,18 @@ function CountryCard({ country, reduced }) {
     <div style={{ marginTop: 10, background: PAPER, border: `1px solid ${PAPER_LINE}`, borderRadius: 8, padding: 12, textAlign: "left" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
         <span aria-hidden="true" style={{ fontSize: 92, lineHeight: 1 }}>{COUNTRY_FLAG[country] || "🏳️"}</span>
-        <span style={{ fontWeight: 900, color: INK, fontSize: 19 }}>{country}</span>
+        <span>
+          <span style={{ display: "block", fontWeight: 900, color: INK, fontSize: 19 }}>{country}</span>
+          {/* The endonym — what the country calls itself (see COUNTRY_NATIVE). */}
+          {COUNTRY_NATIVE[country] && (
+            <span style={{ display: "block", color: OCEAN, fontSize: 14, fontWeight: 700, marginTop: 1 }}>
+              {COUNTRY_NATIVE[country].name}
+              {COUNTRY_NATIVE[country].roman && (
+                <span style={{ fontWeight: 600, opacity: 0.75 }}> · {COUNTRY_NATIVE[country].roman}</span>
+              )}
+            </span>
+          )}
+        </span>
         {info && <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, color: INK, opacity: 0.55, marginLeft: "auto" }}>{info.region}</span>}
       </div>
       <PeoplePhoto people={people} />

@@ -6,6 +6,7 @@ import { describe, it, expect } from "vitest";
 import { LOCATIONS } from "../src/data/locations.js";
 import { CATEGORIES, CATEGORY_ORDER, KIND_META } from "../src/data/categories.js";
 import { WORLD_COUNTRIES, COUNTRY_CONTINENT } from "../src/data/worldmap.js";
+import { COUNTRY_NATIVE } from "../src/data/countries.js";
 import { COUNTRY_INFO } from "../src/data/countries.js";
 import { categoryCountries, categoryMissionOK } from "../src/missions.js";
 import { COUNTRY_PEOPLE, GREETING_MEANING } from "../src/data/culture.js";
@@ -273,6 +274,24 @@ describe("culture cards", () => {
     for (const l of LOCATIONS) {
       if (!l.greeting?.text) continue;
       expect(GREETING_MEANING[l.greeting.text], `no gloss for "${l.greeting.text}" (${l.country})`).toBeTruthy();
+    }
+  });
+
+  it("native country names are real endonyms, and only for countries we have", () => {
+    const known = new Set(LOCATIONS.map((l) => l.country));
+    for (const [country, v] of Object.entries(COUNTRY_NATIVE)) {
+      // must belong to a country that actually appears in the game
+      expect(known.has(country), `${country}: native name for an unknown country`).toBe(true);
+      expect(typeof v.name, `${country}.name`).toBe("string");
+      expect(v.name.length, `${country}.name empty`).toBeGreaterThan(1);
+      // an endonym identical to the English name teaches nothing — don't ship it
+      const norm = (s) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z]/g, "");
+      if (!v.roman) {
+        expect(norm(v.name) === norm(country), `${country}: native name is the same as English`).toBe(false);
+      }
+      // non-Latin scripts must carry a romanization so kids can say it
+      const hasNonLatin = /[^\u0000-\u024F\u1E00-\u1EFF\s·‘’ʻʼ'.-]/.test(v.name);
+      if (hasNonLatin) expect(typeof v.roman, `${country}: non-Latin script needs a romanization`).toBe("string");
     }
   });
 });
