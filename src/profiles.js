@@ -12,6 +12,7 @@
 // Countries and continents are derived from these on the fly (see passportData).
 // ===========================================================================
 import { LOCATIONS } from "./data/locations.js";
+import { rnd } from "./rng.js";
 import { kindOf } from "./data/categories.js";
 
 const KEY = "shutterbug.v1";
@@ -203,6 +204,37 @@ export function recordQuiz(name, { score = 0, correct = 0, total = 0 } = {}) {
   return { isBest, best: (p.quizBest && p.quizBest.score) || 0 };
 }
 
+// ---- The Daily Expedition ----------------------------------------------
+// One official attempt per day per tier: the FIRST completed run is the one that
+// counts, so nobody can quietly re-roll a bad day. You can still replay it — the
+// game just calls that a practice run and leaves the banked result alone.
+export function dailyResult(profile, key) {
+  return (profile && profile.daily && profile.daily[key]) || null;
+}
+// Returns the result now on record — which is the EXISTING one if today was
+// already played, so the caller can tell the player their run didn't overwrite it.
+export function recordDaily(name, key, result) {
+  const s = read();
+  const p = s.profiles[name];
+  if (!p) return { banked: result, wasFirst: false };
+  p.daily = p.daily || {};
+  const wasFirst = !p.daily[key];
+  if (wasFirst) p.daily[key] = { ...result, at: Date.now() };
+  p.lastPlayed = Date.now();
+  s.lastProfile = name;
+  write(s);
+  return { banked: p.daily[key], wasFirst };
+}
+// How many days in a row, ending today, this player has filed a daily (at any
+// tier). The one number that actually brings a kid back tomorrow.
+export function dailyStreak(profile, today) {
+  const done = (profile && profile.daily) || {};
+  const played = new Set(Object.keys(done).map((k) => Number(k.split("|")[0])));
+  let n = 0;
+  for (let d = today; played.has(d); d--) n++;
+  return n;
+}
+
 // Explore mode: stamp every place the player visited into the passport (counts
 // as "visited", not "photographed/mastered") without recording a scored game.
 export function recordExplore(name, visitedIds = []) {
@@ -236,7 +268,7 @@ export function weightFor(profile, id) {
 export function freshFirst(profile) {
   const loc = (profile && profile.loc) || {};
   return LOCATIONS
-    .map((l) => ({ id: l.id, t: (loc[l.id] && loc[l.id].t) || 0, r: Math.random() }))
+    .map((l) => ({ id: l.id, t: (loc[l.id] && loc[l.id].t) || 0, r: rnd() }))
     .sort((a, b) => (a.t - b.t) || (a.r - b.r))
     .map((x) => x.id);
 }
@@ -246,7 +278,7 @@ export function freshFirst(profile) {
 // guests and brand-new players get uniform variety.
 export function weightedOrder(profile) {
   return LOCATIONS
-    .map((l) => ({ id: l.id, k: Math.pow(Math.random() || 1e-9, 1 / weightFor(profile, l.id)) }))
+    .map((l) => ({ id: l.id, k: Math.pow(rnd() || 1e-9, 1 / weightFor(profile, l.id)) }))
     .sort((a, b) => b.k - a.k)
     .map((x) => x.id);
 }
@@ -410,12 +442,13 @@ export const UNLOCK_REQ = {
   expeditions: "Photograph 25 places",
 };
 export function unlocks(profile) {
-  if (!profile) return { assignments: true, explore: true, quiz: true, tour: true, scout: true, easy: true, medium: true, hard: true, expeditions: true };
+  if (!profile) return { assignments: true, daily: true, explore: true, quiz: true, tour: true, scout: true, easy: true, medium: true, hard: true, expeditions: true };
   const mastered = distinctMastered(profile);
   const games = profile.games || 0;
   const contTouched = Object.values(continentTotals(passportData(profile).countries)).filter((v) => v.mastered > 0).length;
   return {
     assignments: true,
+    daily: true,     // always available — the whole point is that it is there every day
     explore: true,
     scout: true,
     easy: true,

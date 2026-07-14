@@ -10,12 +10,15 @@ import { RIVERS, LAKES, MARINE } from "./data/geography.js";
 import { COUNTRY_PEOPLE, greetingMeaning } from "./data/culture.js";
 import { categoryCountries, categoryMissionOK as missionOK } from "./missions.js";
 import { robinson, eqToRobinson, ROBINSON_W, ROBINSON_H } from "./robinson.js";
+import { rnd, shuffled, withSeed, randInt } from "./rng.js";
+import { dayNumber, dailySeed, dailyKey, shareText, DAILY_ASSIGNMENTS } from "./daily.js";
 import { CATEGORIES, CATEGORY_ORDER, KIND_META, kindOf } from "./data/categories.js";
 import { ANECDOTES } from "./data/anecdotes.js";
 import { TUNES, tuneKeyFor } from "./data/tunes.js";
 import { GRANDPA, INTRO_BEATS, SENDOFF_BEATS, NOTE_HEADER, GUIDEBOOK,
   HOMECOMING_INTRO, WRONG_REACTIONS, ACHIEVEMENT_INTRO, DREAM_FULFILLED,
   END_WIN, END_LOSE, MEET_LINES, MEET_RUN, MEET_ASK, UNLOCK_LINES, RANKUP_LINE } from "./data/grandpa.js";
+import { dailyResult, recordDaily, dailyStreak } from "./profiles.js";
 import { listProfiles, lastProfileName, getProfile, createProfile, setLastProfile,
   deleteProfile, renameProfile, setAvatar, setProfileFlag, recordGame, recordExplore, recordQuiz,
   weightedOrder, freshFirst, passportData, achievements, topScores, storageAvailable,
@@ -550,15 +553,15 @@ function makeAssignmentPlan(mode, anchors, order) {
     const chosen = [anchor];
     for (const l of order) { if (chosen.length >= want) break; if (l.continent === anchor.continent && !chosen.includes(l) && far(l, chosen)) chosen.push(l); }
     for (const l of order) { if (chosen.length >= want) break; if (l.continent === anchor.continent && !chosen.includes(l)) chosen.push(l); }
-    return chosen.map((l) => l.id).sort(() => Math.random() - 0.5);
+    return shuffled(chosen.map((l) => l.id));
   };
   // Country-layer options: the anchor + other landmarks in the SAME country.
   const buildCountryOptions = (anchor) => {
     const chosen = [anchor];
     for (const l of order) { if (chosen.length >= want) break; if (l.country === anchor.country && l.continent === anchor.continent && !chosen.includes(l)) chosen.push(l); }
-    return chosen.map((l) => l.id).sort(() => Math.random() - 0.5);
+    return shuffled(chosen.map((l) => l.id));
   };
-  const shuffle = (a) => a.slice().sort(() => Math.random() - 0.5);
+  const shuffle = shuffled;
   // Countries shown in the country step: the correct one(s) plus decoys, capped.
   const pickCountries = (continent, mustInclude) => {
     const all = LAYER_COUNTRY_LIST[continent] || [];
@@ -570,7 +573,7 @@ function makeAssignmentPlan(mode, anchors, order) {
   const assignmentObjs = [], options = [];
   for (const anchor of anchors) {
     const continent = anchor.continent;
-    if (Math.random() < mode.catShare && categoryMissionOK(anchor.category, continent, mode)) {
+    if (rnd() < mode.catShare && categoryMissionOK(anchor.category, continent, mode)) {
       // Every offered country really has one of these — no plausible-but-rejected decoys.
       const valid = categoryCountries(continent, anchor.category);
       const countries = usesCountryLayer(mode, continent)
@@ -602,13 +605,13 @@ function pickAnchors(profile, order, n) {
   freshFirst(profile).forEach((id) => { if (anchorIds.length < needFresh) take(id); });
   order.forEach((l) => { if (anchorIds.length < n) take(l.id); });            // fill the rest, weighted
   freshFirst(profile).forEach((id) => { if (anchorIds.length < n) take(id); }); // safety net (tiny catalogs)
-  return anchorIds.slice(0, n).map((id) => BY_ID[id]).sort(() => Math.random() - 0.5);
+  return shuffled(anchorIds.slice(0, n).map((id) => BY_ID[id]));
 }
 
 // Pick one value from [{ v, w }] weighted by w.
 const weightedPick = (items) => {
   const total = items.reduce((s, x) => s + x.w, 0);
-  let r = Math.random() * total;
+  let r = rnd() * total;
   for (const x of items) { r -= x.w; if (r <= 0) return x.v; }
   return items[items.length - 1].v;
 };
@@ -664,7 +667,7 @@ const rankFor = (pct) => {
 // inside Education mode).
 // ===========================================================================
 const QUIZ_CONTINENTS = Object.keys(CONTINENT_PIN);
-const shuffleArr = (a) => a.slice().sort(() => Math.random() - 0.5);
+const shuffleArr = shuffled;
 const pickN = (pool, n, exclude = new Set()) => shuffleArr(pool.filter((x) => !exclude.has(x))).slice(0, n);
 // Countries whose capital is a single unambiguous city, so "what is the capital
 // of X?" has one right answer. Multi-seated capitals (South Africa, Bolivia,
@@ -796,6 +799,8 @@ const MODE_CARDS = [
     blurb: "No timer, no score — roam the world, drill into any country, and read every place's story, culture card, and clues. Everywhere you visit is stamped in your passport." },
   { id: "quiz", name: "Quiz", emoji: "🧠", photoId: "xian",
     blurb: "Ten fast multiple-choice questions — name the landmark from its photo, place it on the map, or know the capital. Build a streak for bonus points." },
+  { id: "daily", name: "Daily Expedition", emoji: "📅", photoId: "cairo",
+    blurb: "Today's expedition — five shots, and it's the SAME five for everyone playing at your level today. Finish it and you get a little result card to share. One official run a day: the first one counts." },
 ];
 // The Grand Tour's itinerary choices: a classic random tour, or one of the themed
 // expeditions (each a curated tour with a lesson). Shown as chips under the cards
@@ -845,19 +850,29 @@ const inView = (b, box) => b[0] <= box.x + box.w && b[2] >= box.x && b[1] <= box
 // A label whose anchor is only just off the edge is nudged back in (the Pacific's
 // anchor sits near the antimeridian, which IS the world map's edge). Anything
 // anchored further out than that is not drawn at all — never dragged into frame.
-function WaterLabel({ f, size, stretch, upper, box }) {
+function WaterLabel({ f, size, stretch, upper, box, avoid }) {
   const text = upper ? f.name.toUpperCase() : f.name;
-  // Rough half-width of the rendered string, in user units. Serif italic averages
-  // a bit over half the font size per glyph; the ocean labels also get letter-spaced.
-  const halfW = 0.5 * text.length * size * (upper ? 0.62 : 0.5) * stretch;
-  const lx = Math.min(Math.max(f.lx, box.x + halfW), box.x + box.w - halfW);
+  // Rough half-width of the rendered string, in user units. A serif italic runs a
+  // bit over half the font size per glyph; ocean names are also letter-spaced, and
+  // forgetting to count THAT is what left "NORTH PACIFIC OCEAN" missing its N.
+  const halfW = 0.5 * text.length * size * (upper ? 0.62 + 0.12 : 0.5) * stretch;
+  let lx = Math.min(Math.max(f.lx, box.x + halfW), box.x + box.w - halfW);
   const ly = Math.min(Math.max(f.ly, box.y + size), box.y + box.h - size);
   if (Math.abs(lx - f.lx) > halfW || Math.abs(ly - f.ly) > size) return null;
+  // The compass rose sits in the map's bottom-left corner. A name landing under it
+  // is unreadable, so slide it clear along its own line of latitude — for an ocean
+  // that spans every longitude (the Southern Ocean does) any longitude is equally
+  // true, so this moves the label without moving the fact.
+  if (avoid && lx - halfW < avoid.x1 && lx + halfW > avoid.x0 && ly > avoid.y0) {
+    const shifted = avoid.x1 + halfW;
+    if (shifted + halfW > box.x + box.w) return null;   // nowhere clear to put it
+    lx = shifted;
+  }
   return (
     <text x={0} y={0} transform={`translate(${lx} ${ly}) scale(${stretch} 1)`}
       textAnchor="middle" dominantBaseline="middle" fontSize={size}
       fontFamily="Georgia, 'Times New Roman', serif" fontStyle="italic"
-      letterSpacing={upper ? size * 0.18 : 0}
+      letterSpacing={upper ? size * 0.12 : 0}
       fill={SEA_DEEP} stroke={PAPER} strokeWidth="3" strokeOpacity="0.75"
       vectorEffect="non-scaling-stroke" paintOrder="stroke"
       style={{ pointerEvents: "none" }}>
@@ -883,6 +898,9 @@ function WaterFeatures({ box, vbW, vbH, zoomed, frameAR, labels = true }) {
   // counter-stretched back to the right shape.
   const size = 0.016 * (zoomed ? Math.max(vbW, frameAR * vbH) : frameAR * box.h);
   const stretch = zoomed ? 1 : box.w / (frameAR * box.h);
+  // Where the decorative compass rose sits, as a fraction of the frame (see the
+  // atlas furniture below the map) — labels give it a wide berth.
+  const avoid = { x0: box.x, x1: box.x + 0.22 * box.w, y0: box.y + 0.72 * box.h };
   const shown = (f) => f.tier <= max;
   const lakes = zoomed ? LAKES.filter((f) => shown(f) && inView(f.b, box)) : [];
   const rivers = zoomed ? RIVERS.filter((f) => shown(f) && inView(f.b, box)) : [];
@@ -904,10 +922,53 @@ function WaterFeatures({ box, vbW, vbH, zoomed, frameAR, labels = true }) {
           strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
       ))}
       {labels && [...rivers, ...lakes, ...marine].map((f) => (
-        <WaterLabel key={"l" + f.id} f={f} size={f.kind === "ocean" ? size * 1.15 : size}
-          stretch={stretch} upper={f.kind === "ocean"} box={box} />
+        <WaterLabel key={"l" + f.id} f={f} size={f.kind === "ocean" ? size * 1.02 : size}
+          stretch={stretch} upper={f.kind === "ocean"} box={box} avoid={avoid} />
       ))}
     </g>
+  );
+}
+
+// ---- The Daily's result card -----------------------------------------------
+// Shown on the results screen after a Daily Expedition. The share text is
+// deliberately SPOILER-FREE — it says how you did, never where you went — so a
+// child can paste it to a cousin without ruining their run.
+function DailyShare({ banked, thisRun }) {
+  const [copied, setCopied] = useState(false);
+  const official = banked && banked.wasFirst;
+  const show = (banked && banked.banked) || thisRun;
+  const text = shareText(show);
+  const copy = () => {
+    // The clipboard API needs a secure context and can be refused outright, so
+    // there's always the textarea below to select from by hand.
+    const done = () => { setCopied(true); setTimeout(() => setCopied(false), 2000); };
+    if (navigator.clipboard?.writeText) navigator.clipboard.writeText(text).then(done, () => {});
+    else done();
+  };
+  return (
+    <div style={{ marginTop: 18, background: PAPER, border: `2px solid ${OCEAN}`, borderRadius: 14,
+      padding: "14px 16px", maxWidth: 520, margin: "18px auto 0", textAlign: "left" }}>
+      <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.16em", color: OCEAN, marginBottom: 8 }}>
+        📅 DAY {show.day} · {show.label.toUpperCase()}
+      </div>
+      <pre style={{ margin: 0, fontFamily: "ui-monospace, monospace", fontSize: 14, lineHeight: 1.6,
+        color: INK, whiteSpace: "pre-wrap", wordBreak: "break-word" }}>{text}</pre>
+      {!official && banked && (
+        <p style={{ margin: "10px 0 0", fontSize: 13, color: INK, opacity: 0.75, lineHeight: 1.45 }}>
+          That was a practice run — your official Day {show.day} result was already filed, so it stands.
+        </p>
+      )}
+      <div style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 12, flexWrap: "wrap" }}>
+        <button onClick={copy}
+          style={{ padding: "8px 16px", borderRadius: 8, border: `2px solid ${OCEAN}`, background: OCEAN,
+            color: "#fff", fontWeight: 800, fontSize: 13, cursor: "pointer" }}>
+          {copied ? "Copied! ✓" : "Copy my result 📋"}
+        </button>
+        <span aria-live="polite" style={{ fontSize: 12.5, color: INK, opacity: 0.7 }}>
+          {copied ? "Paste it to whoever you're racing." : "Everyone playing today at this level flew the same five."}
+        </span>
+      </div>
+    </div>
   );
 }
 
@@ -982,11 +1043,18 @@ export default function ShutterbugWorld() {
   const riddleSeen = useRef([]);            // riddle indices shown this session
   const shotsSinceRiddleRef = useRef(0);    // shots taken since the last riddle
   const riddleEveryRef = useRef(1 + Math.floor(Math.random() * 5)); // next trigger: a random 1–5
+  const riddleSeedRef = useRef(null);   // set on a Daily, so its riddle cadence is shared
+  // Per-assignment shot record, for the Daily share card: how many wrong city
+  // shots were taken on each one before it was filed. index -> misses.
+  const missesRef = useRef({});
+  const riddleCountRef = useRef(0);
   const riddleDueRef = useRef(false);       // a riddle is queued to open once the shot result is dismissed
   const [elapsedMs, setElapsedMs] = useState(0); // final game time, shown on the results screen
   const [liveNow, setLiveNow] = useState(0); // ticks while playing so the on-screen timer updates
   const [albumView, setAlbumView] = useState(null); // album photo opened into a big popup
-  const [gameMode, setGameMode] = useState("assignments"); // "assignments" | "tour" (Grand Tour)
+  const [gameMode, setGameMode] = useState("assignments"); // "assignments" | "daily" | "tour" | "explore" | "quiz"
+  const [dailyDay, setDailyDay] = useState(null);          // the day number, when this run IS the Daily
+  const [dailyBanked, setDailyBanked] = useState(null);    // {result, wasFirst} once a Daily is filed
   const [tourReqs, setTourReqs] = useState([]); // Grand Tour itinerary: [{key,kind,continent,category?,targetId?,anchorId,label,done,filedId?}]
   const [tourOptions, setTourOptions] = useState({}); // Grand Tour: continent -> [city ids to show there]
 
@@ -1204,6 +1272,7 @@ export default function ShutterbugWorld() {
   function setOff() {
     const u = unlocks(profileName ? getProfile(profileName) : null);
     if (gameMode === "quiz" && u.quiz) return startQuiz();
+    if (gameMode === "daily") return startGame(dayNumber());
     if (gameMode === "explore") return startExplore();
     if (gameMode === "tour" && u.tour) {
       const themed = tourTheme !== "classic" && u.expeditions;
@@ -1212,16 +1281,24 @@ export default function ShutterbugWorld() {
     return startGame(); // assignments (always unlocked) — also the safe fallback
   }
 
-  function startGame() {
+  // `daily` (a day number) turns this into the Daily Expedition: the whole plan is
+  // built inside withSeed, so every player on this day and tier gets the identical
+  // run — and it's built from a NULL profile, because the usual spaced-repetition
+  // ordering would otherwise tailor the run to whoever is playing, which is exactly
+  // what a shared daily must not do.
+  function startGame(daily = null) {
     // music continues from the splash/meet screen and fades out at the map
-    const mode = modePlan(difficulty);
+    const mode = daily ? { ...modePlan(difficulty), assignments: DAILY_ASSIGNMENTS } : modePlan(difficulty);
     const profile = profileName ? getProfile(profileName) : null;
     // Weighted order surfaces the active player's missed/unmastered places more
     // often (a plain shuffle for guests). Used to fill the non-fresh anchor slots
     // and to pick same-continent city decoys.
-    const order = weightedOrder(profile).map((id) => BY_ID[id]);
-    const anchors = pickAnchors(profile, order, mode.assignments);
-    const { assignmentObjs, options } = makeAssignmentPlan(mode, anchors, order);
+    const plan = () => {
+      const order = weightedOrder(daily ? null : profile).map((id) => BY_ID[id]);
+      const anchors = pickAnchors(daily ? null : profile, order, mode.assignments);
+      return makeAssignmentPlan(mode, anchors, order);
+    };
+    const { assignmentObjs, options } = daily ? withSeed(dailySeed(daily, difficulty), plan) : plan();
     setAssignments(assignmentObjs);
     setOptionsByStep(options);
     setStep(0);
@@ -1244,17 +1321,25 @@ export default function ShutterbugWorld() {
     setElapsedMs(0);
     setResearched({});
     setCityPlan(null);
+    missesRef.current = {};
+    riddleCountRef.current = 0;
     startRef.current = Date.now();
     recorded.current = false;
-    setMsg({ type: "info", text: "Read Grandpa's note, then pick the right continent on the map." });
+    setMsg({ type: "info", text: daily
+      ? `Day ${daily} — the same expedition everyone else is flying today. Good luck!`
+      : "Read Grandpa's note, then pick the right continent on the map." });
     setFlying(null);
-    resetRiddles();
-    setGameMode("assignments"); setExpedition(null);
+    // Riddles carry a small score bonus, so on a daily the cadence is seeded too —
+    // otherwise two players on the "identical" run would be offered a different
+    // number of chances to earn it.
+    resetRiddles(daily ? dailySeed(daily, difficulty) + "|riddles" : null);
+    setDailyDay(daily);
+    setGameMode(daily ? "daily" : "assignments"); setExpedition(null);
     setScreen("play");
     // Coaching: on the first run and every 5th after, Mr O reminds the player
     // they can research a clue via the Field Guide (only where research applies).
     const gamesPlayed = profile ? (profile.games || 0) : 0;
-    if (mode.research !== "off" && gamesPlayed % 5 === 0) {
+    if (!daily && mode.research !== "off" && gamesPlayed % 5 === 0) {
       setTimeout(() => setMrO(MR_O_FIELDGUIDE_TIP), 1600);
     }
   }
@@ -1483,11 +1568,13 @@ export default function ShutterbugWorld() {
   }
 
   // ---- Mr. O's double-points riddle ----------------------------------------
-  // Fresh riddle cadence at the start of each scored run.
-  function resetRiddles() {
+  // Fresh riddle cadence at the start of each scored run. A daily passes a seed so
+  // the cadence — and so the number of bonus chances — is the same for everyone.
+  function resetRiddles(seed = null) {
     setRiddle(null);
     shotsSinceRiddleRef.current = 0;
-    riddleEveryRef.current = 1 + Math.floor(Math.random() * 5);
+    riddleSeedRef.current = seed;
+    riddleEveryRef.current = seed ? withSeed(seed, () => 1 + randInt(5)) : 1 + Math.floor(Math.random() * 5);
     riddleDueRef.current = false;
   }
   // Count each shot; once we've taken as many as this window's random target
@@ -1497,7 +1584,9 @@ export default function ShutterbugWorld() {
     shotsSinceRiddleRef.current += 1;
     if (shotsSinceRiddleRef.current >= riddleEveryRef.current) {
       shotsSinceRiddleRef.current = 0;
-      riddleEveryRef.current = 1 + Math.floor(Math.random() * 5);
+      riddleEveryRef.current = riddleSeedRef.current
+        ? withSeed(riddleSeedRef.current + "|" + riddleCountRef.current++, () => 1 + randInt(5))
+        : 1 + Math.floor(Math.random() * 5);
       riddleDueRef.current = true;
     }
   }
@@ -1587,6 +1676,25 @@ export default function ShutterbugWorld() {
         // First time the dream is complete, queue Grandpa's triumphant scene.
         const updated = getProfile(profileName);
         if (updated && !updated.dreamDone && dreamFulfilled(updated)) setDreamPending(true);
+      }
+      // The Daily's shareable result. Built OUTSIDE the profile check: a guest flew
+      // the same expedition as everybody else and should still get a card to paste —
+      // they just have nowhere to bank it. WITH a profile, only the first completed
+      // run of the day counts at this tier, and recordDaily hands back whatever is
+      // already on record, so a replay can be told apart from the official attempt.
+      if (dailyDay) {
+        const filedIds = album.map((p) => p.id);
+        const marks = assignments.map((a, i) => {
+          const filed = a.type === "category"
+            ? album.some((p) => p.category === a.category && p.continent === a.continent)
+            : filedIds.includes(a.targetId);
+          return !filed ? "missed" : (missesRef.current[i] ? "second" : "first");
+        });
+        const result = { day: dailyDay, difficulty, label: MODES[difficulty].label,
+          score: tidyScore(score), marks, daysLeft: days };
+        setDailyBanked(profileName
+          ? recordDaily(profileName, dailyKey(dailyDay, difficulty), result)
+          : { banked: result, wasFirst: true });
       }
     }
     if (screen === "start") recorded.current = false;
@@ -1766,7 +1874,13 @@ export default function ShutterbugWorld() {
       const mustInc = a.type === "specific" ? [a.targetId]
         : ownIds.filter((id) => BY_ID[id].category === a.category).slice(0, 2);
       const cap = MODES[difficulty].cityDecoys + 1;
-      const plan = { ids: pickCountryCityIds(pickedContinent, country, mustInc, cap), wide: !hasBox };
+      // On a Daily this is picked from a seed derived from the country itself, not
+      // from the run's RNG stream: the player might reach this country in any order,
+      // or after any number of riddles, and the pins must still match everyone else's.
+      const pins = () => pickCountryCityIds(pickedContinent, country, mustInc, cap);
+      const plan = { ids: dailyDay
+        ? withSeed(dailySeed(dailyDay, difficulty) + "|pins|" + pickedContinent + "|" + country, pins)
+        : pins(), wide: !hasBox };
       setCityPlan(plan);
       setPickedCountry(country);
       setPhase("city");
@@ -1945,6 +2059,7 @@ export default function ShutterbugWorld() {
       if (d <= 0) outOfDays(`That's ${clicked.subject}, not ${wantTxt} — and the trip's over.`);
       else {
         sfx("fail");
+        missesRef.current[step] = (missesRef.current[step] || 0) + 1;
         const rightId = a.type === "specific" ? a.targetId : (cityPlan?.ids || []).find((oid) => BY_ID[oid] && BY_ID[oid].category === a.category);
         flashRight("city", rightId); // Scout: glow the right pin
         setPending({ kind: "wrong", tone: "bad", emoji: "❌", title: "Not the assignment", hint: warmth,
@@ -2123,7 +2238,7 @@ export default function ShutterbugWorld() {
           <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap", marginTop: 8 }}>
             <button onClick={setOff} disabled={!meetReady} aria-disabled={!meetReady}
               style={{ ...primaryBtn, opacity: meetReady ? 1 : 0.5, cursor: meetReady ? "pointer" : "default" }}>
-              {gameMode === "quiz" ? "Start the quiz 🧠" : gameMode === "explore" ? "Start exploring 🧭"
+              {gameMode === "quiz" ? "Start the quiz 🧠" : gameMode === "daily" ? `Fly today's expedition 📅` : gameMode === "explore" ? "Start exploring 🧭"
                 : gameMode === "tour" ? (tourTheme === "classic" ? "Set off on the Grand Tour ✈" : `Set off: ${TOUR_THEMES.find((t) => t.id === tourTheme)?.title} 🗺️`)
                 : "Set off with the camera 📷"}
             </button>
@@ -2396,6 +2511,7 @@ export default function ShutterbugWorld() {
   if (screen === "end") {
     const mode = MODES[difficulty];
     const isTourEnd = gameMode === "tour";
+    const isDailyEnd = gameMode === "daily";
     const totalTargets = isTourEnd ? tourReqs.length : assignments.length;
     const maxScore = isTourEnd ? tourMaxScore(tourReqs.length, difficulty) : maxScoreFor(assignments.length, mode);
     // Clamp at 1: distance flights vary slightly by the exact cities visited, so a
@@ -2409,7 +2525,7 @@ export default function ShutterbugWorld() {
           <Stamp>Roll Developed</Stamp>
           <h2 style={{ fontFamily: "ui-sans-serif, system-ui", fontWeight: 900, letterSpacing: "0.08em", fontSize: 30, color: INK, margin: "10px 0 4px" }}>{album.length} / {totalTargets} shots filed</h2>
           <p style={{ fontFamily: "ui-monospace, monospace", fontSize: 22, color: CORAL, fontWeight: 700, margin: "6px 0" }}>{score} pts · ⏱ {fmtTime(elapsedMs)}</p>
-          <p style={{ fontFamily: "ui-monospace, monospace", fontSize: 12, color: INK, opacity: 0.6, margin: "0 0 6px", letterSpacing: "0.06em" }}>{isTourEnd ? "Grand Tour" : "Assignments"} · {mode.label} · {Math.round(pct * 100)}% of a perfect run</p>
+          <p style={{ fontFamily: "ui-monospace, monospace", fontSize: 12, color: INK, opacity: 0.6, margin: "0 0 6px", letterSpacing: "0.06em" }}>{isDailyEnd ? `Daily Expedition · Day ${dailyDay}` : isTourEnd ? "Grand Tour" : "Assignments"} · {mode.label} · {Math.round(pct * 100)}% of a perfect run</p>
           {quizBonus > 0 && <p style={{ fontFamily: "ui-monospace, monospace", fontSize: 12, color: GREEN, fontWeight: 700, margin: "0 0 6px" }}>+{tidyScore(quizBonus)} review-quiz extra credit ✔</p>}
           <p style={{ color: INK, fontWeight: 700, marginTop: 6 }}>{r.title}</p>
           <p style={{ color: INK, opacity: 0.7, marginTop: 2 }}>{r.note}</p>
@@ -2425,6 +2541,8 @@ export default function ShutterbugWorld() {
               </div>
             </div>
           )}
+
+          {isDailyEnd && dailyBanked && <DailyShare banked={dailyBanked} />}
 
           {profileName && (lastResult?.isBest || lastResult?.isBestTime) && (
             <div style={{ marginTop: 10, display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap" }}>
