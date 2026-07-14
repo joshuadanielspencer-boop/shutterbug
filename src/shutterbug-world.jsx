@@ -2937,22 +2937,30 @@ export default function ShutterbugWorld() {
                   {[...Array(13)].map((_, i) => <line key={"v" + i} x1={i * 30} y1="0" x2={i * 30} y2="180" stroke={SEA_DEEP} strokeWidth="0.4" />)}
                 </pattern>
               </defs>
-              {/* World step: stylised ocean band. Country/City step: a CRISP VECTOR
-                  map (no pixelation at any zoom) — ocean fill + every country drawn
-                  as a real polygon, so borders stay sharp and shapes read clearly.
-                  Antarctica keeps its south-polar relief plate (it has no countries). */}
+              {/* World step: the flat colour-coded continent map. Country/City step: a
+                  PHYSICAL SHADED-RELIEF plate (mountains, deserts, plains, lakes) with
+                  the country borders drawn over it. The relief image is equirectangular
+                  and the zoomed maps use the same lon/lat space (x = lon+180, y = 90−lat),
+                  so it lines up exactly with the country paths and the city pins.
+                  Antarctica keeps its own south-polar plate (it has no countries). */}
               {zoomed ? (
                 plateMode === "polar" ? (
                   <image href={`${BASE}relief-antarctica.jpg`} xlinkHref={`${BASE}relief-antarctica.jpg`} x="0" y="0" width={ANT_PLATE} height={ANT_PLATE} preserveAspectRatio="none" />
                 ) : (
                   <g shapeRendering="geometricPrecision">
-                    <rect x={box.x} y={box.y} width={box.w} height={box.h} fill={SEA} />
-                    {/* land: all countries (drawn a second time, shifted +360°, for the
+                    {/* the relief plate (drawn a second time, shifted +360°, for the
                         Pacific-centred Oceania view that crosses the antimeridian) */}
+                    {(plateMode === "wrap" ? [0, 360] : [0]).map((off) => (
+                      // width is a hair over 360 so the two plates overlap and the
+                      // antimeridian join doesn't show as a seam
+                      <image key={"relief" + off} href={`${BASE}relief-world.jpg`} xlinkHref={`${BASE}relief-world.jpg`}
+                        x={off} y="0" width="360.4" height="180" preserveAspectRatio="none" />
+                    ))}
+                    {/* country borders over the relief */}
                     {(plateMode === "wrap" ? [0, 360] : [0]).map((off) => (
                       <g key={off} transform={off ? `translate(${off} 0)` : undefined}>
                         {WORLD_COUNTRIES.map((c) => (
-                          <path key={c.name} d={c.d} fill={LAND} fillRule="evenodd" stroke={LAND_EDGE} strokeWidth="0.35" vectorEffect="non-scaling-stroke" />
+                          <path key={c.name} d={c.d} fill="none" fillRule="evenodd" stroke={INK} strokeOpacity="0.5" strokeWidth="0.5" vectorEffect="non-scaling-stroke" />
                         ))}
                       </g>
                     ))}
