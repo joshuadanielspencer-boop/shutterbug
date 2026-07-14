@@ -154,12 +154,17 @@ function PhotoCredit({ photo, style }) {
 // rights live. `points` = points per filed shot. On top: a small day-bonus for
 // efficient routes and ½-point extra credit per correct homecoming review
 // question (see dayBonus / QUIZ_BONUS below).
+// Difficulty tiers, mapped to age/grade bands. Internal keys stay easy/medium/hard
+// (so saved best scores keep working); `scout` is the new gentlest tier. The
+// player-facing names are Scout / Explorer / Adventurer / Expert.
 const MODES = {
-  easy:   { label: "Easy",   assignments: 5, cityDecoys: 2, daysPer: 3, points: 3, slack: 6, labels: "all",   clue: "easy",   catShare: 0.22, countryOpts: 5, research: "half", hints: true,
+  scout:  { label: "Scout",    ages: "K–2 · ages 5–7",    assignments: 3, cityDecoys: 1, daysPer: 5, points: 3, slack: 10, labels: "all", clue: "easy",   catShare: 0.22, countryOpts: 4, research: "free", hints: true, readAloud: true, flashOnWrong: true,
+            blurb: "A gentle 3-shot outing for the youngest travellers. Clues name the country, every pin is labelled, clues are read aloud, wrong guesses gently flash the right answer, and there's no real time pressure." },
+  easy:   { label: "Explorer", ages: "grades 3–5 · ages 8–10", assignments: 5, cityDecoys: 2, daysPer: 3, points: 3, slack: 6, labels: "all",   clue: "easy",   catShare: 0.22, countryOpts: 5, research: "half", hints: true,
             blurb: "A short 5-shot trip. Clues name the country, every pin is labelled, a category badge tells you what kind of place it is, wrong guesses get warm/cold hints, and Research for a Clue costs just ½ a day." },
-  medium: { label: "Medium", assignments: 9, cityDecoys: 3, daysPer: 3, points: 2, slack: 6, labels: "smart", clue: "medium", catShare: 0.08, countryOpts: 5, research: "half", hints: true,
+  medium: { label: "Adventurer", ages: "grades 6–8 · ages 11–13", assignments: 9, cityDecoys: 3, daysPer: 3, points: 2, slack: 6, labels: "smart", clue: "medium", catShare: 0.08, countryOpts: 5, research: "half", hints: true,
             blurb: "A 9-shot expedition. Clues name the continent but hide the country; labels appear on hover; a category badge still helps; Research costs ½ a day." },
-  hard:   { label: "Hard",   assignments: 14, cityDecoys: 4, daysPer: 2, points: 1, slack: 5, labels: "smart", clue: "hard",   catShare: 0.04, countryOpts: 7, research: "off",  hints: false,
+  hard:   { label: "Expert",   ages: "high school & up", assignments: 14, cityDecoys: 4, daysPer: 2, points: 1, slack: 5, labels: "smart", clue: "hard",   catShare: 0.04, countryOpts: 7, research: "off",  hints: false,
             blurb: "A long 14-shot grand expedition for experts. Pure-context clues — no place names, no country labels on the map, no category badge, no warm/cold hints, and no Research. You're on your own." },
 };
 // A small efficiency reward: +1 point per 2 full travel days you bank, capped so
@@ -170,7 +175,7 @@ const dayBonus = (days) => Math.min(DAY_BONUS_CAP, Math.floor(Math.max(0, days) 
 const QUIZ_BONUS = 0.5;
 // Round a score to at most one decimal place (quiz extra credit is in halves).
 const tidyScore = (n) => Math.round(n * 10) / 10;
-const MODE_ORDER = ["easy", "medium", "hard"];
+const MODE_ORDER = ["scout", "easy", "medium", "hard"];
 
 const modePlan = (key) => {
   const m = MODES[key];
@@ -207,6 +212,7 @@ const flightDays = (from, to) => Math.max(0.5, Math.min(3, Math.round((kmBetween
 // ---- same-continent targets and planning an efficient route saves days. ----
 // ---- `reqs` = itinerary length; `slack` = spare days. ----
 const TOUR_MODES = {
+  scout:  { reqs: 3, catShare: 0.22, labels: "all",   clue: "easy",   points: 2, slack: 6 },
   easy:   { reqs: 4, catShare: 0.22, labels: "all",   clue: "easy",   points: 2, slack: 3 },
   medium: { reqs: 5, catShare: 0.08, labels: "smart", clue: "medium", points: 2, slack: 2 },
   hard:   { reqs: 6, catShare: 0.04, labels: "smart", clue: "hard",   points: 1, slack: 1 },
@@ -843,6 +849,7 @@ export default function ShutterbugWorld() {
   const [revealed, setRevealed] = useState(false); // has the current city's photo been shot?
   const [flashKey, setFlashKey] = useState(0); // bump to replay the shutter flash
   const [soundOn, setSoundOn] = useState(true);
+  const [flashHint, setFlashHint] = useState(null); // Scout: {type, key} of the correct answer to gently flash after a wrong pick
   const [musicOn, setMusicOn] = useState(() => { try { return localStorage.getItem("shutterbug.music") !== "off"; } catch { return true; } });
   useEffect(() => { try { localStorage.setItem("shutterbug.music", musicOn ? "on" : "off"); } catch { /* ignore */ } }, [musicOn]);
   // Music by screen: the passport is quiet; arriving at the results ends the
@@ -967,6 +974,9 @@ export default function ShutterbugWorld() {
   // Spoken map-arrival announcements — held back ~1s so the voice lands a beat
   // after you touch down, not on top of the arrival.
   const say = (text) => { if (soundOn) setTimeout(() => { if (soundOn) speakEn(text); }, 1000); };
+  // Scout tier only: after a wrong pick, gently flash the CORRECT answer's region
+  // or pin so the youngest players can find it. Clears once they pick correctly.
+  const flashRight = (type, key) => { if (key && MODES[difficulty] && MODES[difficulty].flashOnWrong) setFlashHint({ type, key }); };
 
   useEffect(() => () => timer.current && clearTimeout(timer.current), []);
 
@@ -1562,6 +1572,7 @@ export default function ShutterbugWorld() {
     const cost = sameHere ? 0 : flightDays(from, to); // distance-based: farther continents cost more
     const costTxt = `−${cost} day${cost === 1 ? "" : "s"}`;
     if (cont === target.continent) {
+      setFlashHint(null); // right continent — stop any Scout hint flash
       const useCountry = usesCountryLayer(MODES[difficulty], cont);
       if (!sameHere) sfx("plane");
       const finalize = () => {
@@ -1585,6 +1596,7 @@ export default function ShutterbugWorld() {
       const nd = Math.round((days - cost) * 10) / 10; // a wrong continent is a wasted flight
       setDays(nd);
       sfx("fail");
+      flashRight("continent", target.continent); // Scout: glow the right continent
       if (nd <= 0) outOfDays(`${cont} wasn't right, and that was your last day.`);
       else setPending({ kind: "wrong", tone: "bad", emoji: "❌", title: sameHere ? "Still the wrong continent" : "Not that continent",
         subtitle: sameHere
@@ -1632,6 +1644,7 @@ export default function ShutterbugWorld() {
       ? countryHasCategory(pickedContinent, country, a.category)
       : countriesOf(target).includes(country); // border landmarks accept either country
     if (ok) {
+      setFlashHint(null); // right country — stop any Scout hint flash
       // You picked this country, so the city step shows ONLY its own landmarks —
       // never neighbours from other countries (that made the card say "You're in
       // Austria" while showing German pins). A country with 3+ landmarks zooms in
@@ -1670,6 +1683,7 @@ export default function ShutterbugWorld() {
       else {
         // Gentle nudge: the first letter of a country that IS right.
         const goal = a && a.type === "category" ? (a.countries || [])[0] : (countriesOf(target)[0]);
+        flashRight("country", goal); // Scout: glow the right country
         setPending({ kind: "wrongcountry", tone: "bad", emoji: "❌", title: "Not that country",
           subtitle: `${why} Half a day gone — read the clue and the country notes, then try again.`,
           hint: (MODES[difficulty].hints && goal) ? `The country you're after starts with “${goal[0]}”.` : null,
@@ -1789,6 +1803,7 @@ export default function ShutterbugWorld() {
       return;
     }
     if (win) {
+      setFlashHint(null); // right shot — stop any Scout hint flash
       const gain = MODES[difficulty].points;
       setAlbum((al) => (al.some((x) => x.id === clicked.id) ? al : [...al, { id: clicked.id, subject: clicked.subject, flag: clicked.flag, city: clicked.city, country: clicked.country, continent: clicked.continent, category: clicked.category, fact: clicked.fact, icon: clicked.icon, photo: clicked.photo, greeting: clicked.greeting }]));
       const found = a.type === "category" ? `You found a ${CATEGORIES[a.category].noun} — ${clicked.subject}!` : `You photographed ${clicked.subject}.`;
@@ -1825,6 +1840,8 @@ export default function ShutterbugWorld() {
       if (d <= 0) outOfDays(`That's ${clicked.subject}, not ${wantTxt} — and the trip's over.`);
       else {
         sfx("fail");
+        const rightId = a.type === "specific" ? a.targetId : (cityPlan?.ids || []).find((oid) => BY_ID[oid] && BY_ID[oid].category === a.category);
+        flashRight("city", rightId); // Scout: glow the right pin
         setPending({ kind: "wrong", tone: "bad", emoji: "❌", title: "Not the assignment", hint: warmth,
           subtitle: `That's ${clicked.subject}${a.type === "category" ? ` — a ${CATEGORIES[clicked.category].name}` : ""}. The editor wants ${wantTxt}. Half a day gone — pick another city.`,
           buttonLabel: "Keep looking 🔍" });
@@ -2434,9 +2451,10 @@ export default function ShutterbugWorld() {
             <StatCard label="Stamps earned" value={`${pp.masteredCount} / ${pp.totalCountries}`} />
             <StatCard label="Countries visited" value={`${pp.visitedCount}`} />
             <StatCard label="Trips taken" value={`${profile.games || 0}`} />
-            <StatCard label="Best · Easy" value={best.easy ? String(best.easy) : "—"} />
-            <StatCard label="Best · Medium" value={best.medium ? String(best.medium) : "—"} />
-            <StatCard label="Best · Hard" value={best.hard ? String(best.hard) : "—"} />
+            {best.scout ? <StatCard label="Best · Scout" value={String(best.scout)} /> : null}
+            <StatCard label="Best · Explorer" value={best.easy ? String(best.easy) : "—"} />
+            <StatCard label="Best · Adventurer" value={best.medium ? String(best.medium) : "—"} />
+            <StatCard label="Best · Expert" value={best.hard ? String(best.hard) : "—"} />
           </div>
 
           <div style={{ marginTop: 12, display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
@@ -2646,7 +2664,7 @@ export default function ShutterbugWorld() {
   // The world map FILLS it (stretched, straight grid — deliberately not a true
   // Robinson globe); every continent/country zoom instead FITS inside it,
   // undistorted, with ~10% margin (letterboxed over blue ocean).
-  const FRAME_AR = 1.6;                 // fixed 8:5 atlas window
+  const FRAME_AR = 1.45;                // fixed atlas window (a touch taller than 8:5)
   const VB_PAD = 0.1;                   // 10% margin around a fitted zoom
   const frameAspect = String(FRAME_AR);
   const par = zoomed ? "xMidYMid meet" : "none";
@@ -2691,12 +2709,12 @@ export default function ShutterbugWorld() {
         {/* Travel-days calendar — centered over the bar, oversized, overruns the teal. */}
         {!isExplore ? (
           <div style={{ position: "absolute", left: "50%", top: "54%", transform: "translate(-50%, -50%)", zIndex: 2,
-            display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", width: 187, height: 160,
-            paddingTop: 10, backgroundImage: `url("${UI}days-calendar.png")`, backgroundSize: "contain",
+            display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", width: 176, height: 168,
+            backgroundImage: `url("${UI}days-calendar-blank-no-clock.png")`, backgroundSize: "contain",
             backgroundRepeat: "no-repeat", backgroundPosition: "center", filter: "drop-shadow(0 4px 5px rgba(0,0,0,0.35))" }}>
-            <span style={{ fontFamily: "ui-monospace, monospace", fontWeight: 900, fontSize: 54, lineHeight: 1,
+            <span style={{ fontFamily: "ui-monospace, monospace", fontWeight: 900, fontSize: 38, lineHeight: 1,
               color: days <= 1 ? CORAL : days <= 2.5 ? "#B8860B" : INK }}>{days}</span>
-            <span style={{ fontSize: 8, fontWeight: 800, letterSpacing: "0.1em", color: INK }}>DAYS LEFT</span>
+            <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: "0.1em", color: INK }}>DAYS LEFT</span>
           </div>
         ) : (
           <span style={{ position: "absolute", left: "50%", top: "50%", transform: "translate(-50%,-50%)",
@@ -2777,8 +2795,8 @@ export default function ShutterbugWorld() {
             <img src={`${UI}paperclip.png`} alt="" aria-hidden="true"
               style={{ position: "absolute", top: -15, left: 16, width: 34, height: "auto", filter: "drop-shadow(0 3px 3px rgba(0,0,0,0.35))" }} />
             <div style={{ textAlign: "center", marginBottom: 8, color: CORAL }}>
-              <span style={{ display: "block", fontFamily: HAND, fontWeight: 700, fontSize: 25, lineHeight: 1.05 }}>A Note from Nigel</span>
-              <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.2em", fontWeight: 800 }}>ASSIGNMENT {step + 1} / {assignments.length}</span>
+              <span style={{ display: "block", fontFamily: HAND, fontWeight: 700, fontSize: 33, lineHeight: 1.05 }}>A Note from Nigel</span>
+              <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 22, letterSpacing: "0.2em", fontWeight: 800 }}>ASSIGNMENT {step + 1} / {assignments.length}</span>
             </div>
             <div style={{ borderTop: `1px dashed ${INK}`, opacity: 0.35, margin: "0 0 12px" }} />
             {(isCatAsg || namesSubject) ? (
@@ -2929,7 +2947,7 @@ export default function ShutterbugWorld() {
                   {[...Array(5)].map((_, i) => { const y = box.y + (box.h * (i + 1)) / 6; return <line key={"h" + i} x1={box.x} y1={y} x2={box.x + box.w} y2={y} />; })}
                 </g>
                 {robinsonCountries ? CONTINENTS.map((cont) => (
-                  <g key={cont} className="sbw-cont" role="button" tabIndex={busy ? -1 : 0}
+                  <g key={cont} className={`sbw-cont${flashHint && flashHint.type === "continent" && flashHint.key === cont ? " sbw-flash-hint" : ""}`} role="button" tabIndex={busy ? -1 : 0}
                      aria-label={`Choose ${cont}`} onClick={() => pickContinent(cont)}
                      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); pickContinent(cont); } }}
                      style={{ cursor: busy ? "default" : "pointer" }}>
@@ -2994,7 +3012,7 @@ export default function ShutterbugWorld() {
                   if (!cm) return null;
                   const d = wcPath(country);
                   return (
-                    <g key={country} className="sbw-country" role="button" tabIndex={busy ? -1 : 0}
+                    <g key={country} className={`sbw-country${flashHint && flashHint.type === "country" && flashHint.key === country ? " sbw-flash-hint" : ""}`} role="button" tabIndex={busy ? -1 : 0}
                        aria-label={`Choose ${country}`} onClick={() => pickCountry(country)}
                        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); pickCountry(country); } }}
                        style={{ cursor: busy ? "default" : "pointer" }}>
@@ -3094,7 +3112,7 @@ export default function ShutterbugWorld() {
                 const alwaysLabel = mode.labels === "all" || isCurrent;
                 const emoji = (CATEGORIES[l.category] || {}).emoji || "📍";
                 return (
-                  <g key={id} className={`sbw-pin${alwaysLabel ? "" : " sbw-pin--hide"}`}
+                  <g key={id} className={`sbw-pin${alwaysLabel ? "" : " sbw-pin--hide"}${flashHint && flashHint.type === "city" && flashHint.key === id ? " sbw-flash-hint" : ""}`}
                      role="button" tabIndex={busy ? -1 : 0}
                      aria-label={`Photograph ${l.city}, ${l.country} (${(CATEGORIES[l.category] || {}).name || "place"})`}
                      onClick={() => photographCity(id)}
@@ -3164,7 +3182,7 @@ export default function ShutterbugWorld() {
         width: "min(940px, calc(100vw - 40px))", minHeight: 58, display: "flex",
         alignItems: "center", justifyContent: "center", textAlign: "center", padding: "14px 76px",
         background: `url("${UI}instruction-ribbon.png") center / 100% 100% no-repeat` }}>
-        <span style={{ display: "inline-flex", alignItems: "center", gap: 10, fontWeight: 800, fontSize: 15.5, color: INK }}>
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 10, fontFamily: HAND, fontWeight: 700, fontSize: 22, color: INK }}>
           <span aria-hidden="true" style={{ fontSize: 20 }}>🌍</span>{ribbonText}
         </span>
       </div>
@@ -3204,6 +3222,10 @@ function Frame({ children, desk = false }) {
         .sbw-tool img{ transition: transform .14s ease, filter .14s ease; }
         .sbw-tool:hover img, .sbw-tool:focus-visible img{ transform: translateY(-3px) rotate(-1.5deg); filter: drop-shadow(0 9px 11px rgba(0,0,0,0.5)); }
         .sbw-tool:focus-visible{ outline: 3px solid ${GOLD}; outline-offset: 3px; border-radius: 10px; }
+        /* Scout hint: pulse a bright white glow around the correct answer. */
+        .sbw-flash-hint{ animation: sbw-hint 0.9s ease-in-out infinite; }
+        @keyframes sbw-hint{ 0%,100%{ filter: drop-shadow(0 0 0.5px #fff) } 50%{ filter: drop-shadow(0 0 2.5px #fff) drop-shadow(0 0 2.5px #fff) brightness(1.25) } }
+        body.sbw-no-anim .sbw-flash-hint{ animation: none; filter: drop-shadow(0 0 2px #fff) drop-shadow(0 0 2px #fff) }
         .sbw-cont{ outline: none; transition: filter .12s ease; }
         .sbw-cont path{ transition: filter .12s ease; }
         .sbw-cont:hover path,

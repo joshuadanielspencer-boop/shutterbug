@@ -410,13 +410,14 @@ export const UNLOCK_REQ = {
   expeditions: "Photograph 25 places",
 };
 export function unlocks(profile) {
-  if (!profile) return { assignments: true, explore: true, quiz: true, tour: true, easy: true, medium: true, hard: true, expeditions: true };
+  if (!profile) return { assignments: true, explore: true, quiz: true, tour: true, scout: true, easy: true, medium: true, hard: true, expeditions: true };
   const mastered = distinctMastered(profile);
   const games = profile.games || 0;
   const contTouched = Object.values(continentTotals(passportData(profile).countries)).filter((v) => v.mastered > 0).length;
   return {
     assignments: true,
     explore: true,
+    scout: true,
     easy: true,
     quiz: games >= 1,
     medium: games >= 1,
