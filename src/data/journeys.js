@@ -364,6 +364,334 @@ export const JOURNEYS = [
       },
     ],
   },
+
+  // -------------------------------------------------------------------------
+  // THE TRANSCONTINENTAL RAILROAD. Two companies building toward each other,
+  // east-to-west here; the wide box needs the letterbox aspect.
+  // -------------------------------------------------------------------------
+  {
+    id: "transcontinental",
+    title: "The Transcontinental Railroad",
+    emoji: "🚂",
+    era: "1863–1869",
+    region: "North America",
+    blurb: "Two railroads race toward each other to tie the country together with iron rails.",
+    intro: "Before 1869, crossing America meant months by wagon or a long sail around South America. "
+      + "Then two companies began laying track toward each other — the Union Pacific building west from "
+      + "the Missouri River, the Central Pacific blasting east through the Sierra Nevada. Follow the "
+      + "rails from Omaha to the Pacific.",
+    outro: "When the two lines met, a journey that once took months could be made in about a week. For "
+      + "the first time, the whole country was tied together by rail.",
+    source: "https://en.wikipedia.org/wiki/First_transcontinental_railroad",
+    aspect: 2.3,
+    pad: 0.06,
+    stops: [
+      {
+        id: "omaha", name: "Omaha", place: "Nebraska", when: "Building began 1863",
+        ...at(41.25861, -95.93750),
+        prompt: "The eastern starting point, on the Missouri River, where the Union Pacific began laying track west.",
+        fact: "Omaha, on the Missouri River, was the eastern end of the Union Pacific Railroad. From here crews laid track westward across the plains of Nebraska and Wyoming, mile after mile toward the mountains.",
+        source: "https://en.wikipedia.org/wiki/Omaha,_Nebraska",
+      },
+      {
+        id: "cheyenne", name: "Cheyenne", place: "Wyoming", when: "1867",
+        ...at(41.14000, -104.82028),
+        prompt: "A town the railroad conjured almost overnight as the tracks climbed toward the Rockies.",
+        fact: "Cheyenne sprang up in 1867 as a Union Pacific railhead and grew so fast it was nicknamed the \"Magic City of the Plains.\" From here the line climbed toward the highest ground on the whole route.",
+        source: "https://en.wikipedia.org/wiki/Cheyenne,_Wyoming",
+      },
+      {
+        id: "promontory", name: "Promontory Summit", place: "Utah", when: "10 May 1869",
+        ...at(41.61861, -112.54750),
+        prompt: "The meeting place — where the two railroads finally joined, and a golden spike was driven.",
+        fact: "At Promontory Summit on May 10, 1869, the Union Pacific and Central Pacific rails met, and a ceremonial golden spike was driven to mark the finished line. The country could now be crossed by train.",
+        source: "https://en.wikipedia.org/wiki/Promontory,_Utah",
+      },
+      {
+        id: "donner-pass", name: "Donner Pass", place: "California", when: "Tunneled 1866–67",
+        ...at(39.31444, -120.32694),
+        prompt: "The hardest stretch of all: a crossing of the Sierra Nevada, blasted through solid granite.",
+        fact: "To cross the Sierra Nevada, Central Pacific crews — most of them Chinese immigrants — bored tunnels through granite near Donner Pass, about 7,000 feet (2,100 m) up, working through winters of tremendous snow.",
+        source: "https://en.wikipedia.org/wiki/Donner_Pass",
+      },
+      {
+        id: "sacramento", name: "Sacramento", place: "California", when: "Building began 1863",
+        ...at(38.58167, -121.49444),
+        prompt: "The western end of the line, where the Central Pacific started building east toward the mountains.",
+        fact: "Sacramento was the western terminus, where the Central Pacific began laying track eastward in 1863. With the rails joined, people and goods could cross the entire country in about a week instead of months.",
+        source: "https://en.wikipedia.org/wiki/Sacramento,_California",
+      },
+    ],
+  },
+
+  // -------------------------------------------------------------------------
+  // ROUTE 66. The Mother Road, Chicago to the Pacific. Wide east-west box.
+  // -------------------------------------------------------------------------
+  {
+    id: "route66",
+    title: "Route 66",
+    emoji: "🚗",
+    era: "1926–1985",
+    region: "North America",
+    blurb: "The \"Mother Road\" — about 2,400 miles of highway from Chicago to the California coast.",
+    intro: "In 1926 a new highway strung together towns from the Midwest to the Pacific: U.S. Route 66. "
+      + "For decades it carried families west — Dust Bowl migrants first, then road-trippers chasing "
+      + "diners, motels and the open road. Drive it from Chicago to the sea.",
+    outro: "Newer interstate highways eventually bypassed Route 66, and it was taken off the map in 1985. "
+      + "But the \"Mother Road\" lives on in song and story, and in the towns it once fed.",
+    source: "https://en.wikipedia.org/wiki/U.S._Route_66",
+    aspect: 2.2,
+    pad: 0.05,
+    stops: [
+      {
+        id: "chicago", name: "Chicago", place: "Illinois", when: "The start",
+        ...at(41.88194, -87.62778),
+        prompt: "The eastern end of the road, on the shore of a Great Lake.",
+        fact: "Route 66 began in downtown Chicago, on the shore of Lake Michigan, and ran southwest — the start of a road that stretched about 2,400 miles (3,900 km) to the Pacific Ocean.",
+        source: "https://en.wikipedia.org/wiki/Chicago",
+      },
+      {
+        id: "st-louis", name: "St. Louis", place: "Missouri", when: "Gateway to the West",
+        ...at(38.62722, -90.19778),
+        prompt: "The Gateway to the West, where the road crossed a mighty river.",
+        fact: "At St. Louis the highway crossed the Mississippi River — long thought of as the gateway between the settled East and the western frontier.",
+        source: "https://en.wikipedia.org/wiki/St._Louis",
+      },
+      {
+        id: "oklahoma-city", name: "Oklahoma City", place: "Oklahoma", when: "The southern plains",
+        ...at(35.46861, -97.52139),
+        prompt: "Near the middle of the route, out on the southern plains.",
+        fact: "Oklahoma City sits close to the middle of Route 66. Oklahoma was hit hard by the 1930s Dust Bowl, and many families packed up and followed this very road west, hoping for work in California.",
+        source: "https://en.wikipedia.org/wiki/Oklahoma_City",
+      },
+      {
+        id: "amarillo", name: "Amarillo", place: "Texas", when: "The Texas Panhandle",
+        ...at(35.19917, -101.84528),
+        prompt: "A dead-straight run across the flat Texas Panhandle.",
+        fact: "Route 66 crossed only a short slice of Texas, through the flat, wide Panhandle around Amarillo — high-plains cattle country under an enormous sky.",
+        source: "https://en.wikipedia.org/wiki/Amarillo,_Texas",
+      },
+      {
+        id: "albuquerque", name: "Albuquerque", place: "New Mexico", when: "The high desert",
+        ...at(35.08440, -106.65030),
+        prompt: "Where the road ran straight down the main street of an old Spanish city.",
+        fact: "In Albuquerque, Route 66 ran right through town along Central Avenue, past neon-lit motels. The city was founded by Spanish colonists in 1706, more than two centuries before the highway arrived.",
+        source: "https://en.wikipedia.org/wiki/Albuquerque,_New_Mexico",
+      },
+      {
+        id: "flagstaff", name: "Flagstaff", place: "Arizona", when: "The Arizona pines",
+        ...at(35.18056, -111.62000),
+        prompt: "A cool, high mountain town in the pines — the nearest big stop to the Grand Canyon.",
+        fact: "Flagstaff sits at about 7,000 feet (2,100 m) among ponderosa pines, a cool break on the desert route and the closest large town to the Grand Canyon.",
+        source: "https://en.wikipedia.org/wiki/Flagstaff,_Arizona",
+      },
+      {
+        id: "santa-monica", name: "Santa Monica", place: "California", when: "Journey's end",
+        ...at(34.02194, -118.48139),
+        prompt: "The end of the road, at a pier on the Pacific Ocean.",
+        fact: "Route 66 ended near the Santa Monica Pier, on the Pacific coast just west of Los Angeles — the end of the road, about 2,400 miles (3,900 km) from where it began in Chicago.",
+        source: "https://en.wikipedia.org/wiki/Santa_Monica,_California",
+      },
+    ],
+  },
+
+  // -------------------------------------------------------------------------
+  // THE THIRTEEN COLONIES. Not one expedition but a tour down the seaboard,
+  // north to south — a tall box, so a near-square aspect.
+  // -------------------------------------------------------------------------
+  {
+    id: "thirteen-colonies",
+    title: "The Thirteen Colonies",
+    emoji: "📜",
+    era: "1607–1776",
+    region: "North America",
+    blurb: "The thirteen British colonies that became the United States, north to south down the Atlantic coast.",
+    intro: "Before there was a United States, there were thirteen British colonies strung along the "
+      + "Atlantic coast of North America. Travel down the seaboard from New Hampshire to Georgia and meet "
+      + "each one — the colonies that in 1776 declared their independence and became a new nation.",
+    outro: "In 1776 these thirteen colonies declared independence, and after the Revolutionary War they "
+      + "became the first states of the United States of America. Their thirteen stripes are still on the flag.",
+    source: "https://en.wikipedia.org/wiki/Thirteen_Colonies",
+    aspect: 1.0,
+    pad: 0.08,
+    stops: [
+      {
+        id: "new-hampshire", name: "New Hampshire", place: "Portsmouth", when: "Settled 1623",
+        ...at(43.05806, -70.78250),
+        prompt: "The northernmost colony — a coast of fishing, shipbuilding, and tall pines.",
+        fact: "The Province of New Hampshire was the northernmost of the thirteen colonies. Its main port, Portsmouth, lived by fishing and shipbuilding, and its tall pines were cut for masts for the Royal Navy.",
+        source: "https://en.wikipedia.org/wiki/Portsmouth,_New_Hampshire",
+      },
+      {
+        id: "massachusetts", name: "Massachusetts", place: "Boston", when: "Settled 1620",
+        ...at(42.36028, -71.05778),
+        prompt: "Home of the Pilgrims and the Puritans — and later the spark of the Revolution.",
+        fact: "Massachusetts began with the Pilgrims at Plymouth in 1620 and the Puritans at Boston soon after. A century and a half later, Boston's Tea Party and the battles at Lexington and Concord helped start the American Revolution.",
+        source: "https://en.wikipedia.org/wiki/Boston",
+      },
+      {
+        id: "rhode-island", name: "Rhode Island", place: "Providence", when: "Founded 1636",
+        ...at(41.82361, -71.42222),
+        prompt: "The smallest colony, founded as a refuge for freedom of religion.",
+        fact: "Rhode Island, the smallest colony, was founded in 1636 by Roger Williams after he was banished from Massachusetts. He built it as a place of religious freedom, welcoming those other colonies turned away.",
+        source: "https://en.wikipedia.org/wiki/Providence,_Rhode_Island",
+      },
+      {
+        id: "connecticut", name: "Connecticut", place: "Hartford", when: "Founded 1636",
+        ...at(41.76250, -72.67417),
+        prompt: "A colony of river towns, with one of the earliest written frameworks of government.",
+        fact: "Connecticut grew from Puritan towns along the Connecticut River, with Hartford at its heart. Its Fundamental Orders of 1639 were among the earliest documents to lay out how a government should work.",
+        source: "https://en.wikipedia.org/wiki/Hartford,_Connecticut",
+      },
+      {
+        id: "new-york", name: "New York", place: "New York City", when: "Dutch 1624; English 1664",
+        ...at(40.71280, -74.00610),
+        prompt: "A colony that began as a Dutch trading post before the English took it over.",
+        fact: "New York began as the Dutch colony of New Netherland, with its port New Amsterdam on Manhattan. In 1664 the English took it and renamed both the colony and the city New York.",
+        source: "https://en.wikipedia.org/wiki/New_York_City",
+      },
+      {
+        id: "new-jersey", name: "New Jersey", place: "Trenton", when: "English from 1664",
+        ...at(40.22028, -74.76583),
+        prompt: "A small colony between two big rivers — and later a Revolutionary battlefield.",
+        fact: "New Jersey lay between the Hudson and Delaware rivers, farmland dotted with towns. In the winter of 1776 Washington crossed the icy Delaware to win a crucial battle at Trenton.",
+        source: "https://en.wikipedia.org/wiki/Trenton,_New_Jersey",
+      },
+      {
+        id: "pennsylvania", name: "Pennsylvania", place: "Philadelphia", when: "Founded 1681",
+        ...at(39.95280, -75.16360),
+        prompt: "William Penn's colony — a haven for Quakers, and the city where independence was declared.",
+        fact: "Pennsylvania was founded in 1681 by William Penn as a haven for Quakers, known for tolerance. Its city Philadelphia became the largest in the colonies, and there in 1776 the Declaration of Independence was signed.",
+        source: "https://en.wikipedia.org/wiki/Philadelphia",
+      },
+      {
+        id: "delaware", name: "Delaware", place: "Dover", when: "Settled 1638",
+        ...at(39.15806, -75.52444),
+        prompt: "A tiny colony first settled by Swedes — and, later, the first state to ratify the Constitution.",
+        fact: "Delaware began in 1638 as New Sweden, the first Swedish colony in America, before passing to the Dutch and then the English. In 1787 it would become the first state to ratify the U.S. Constitution.",
+        source: "https://en.wikipedia.org/wiki/Dover,_Delaware",
+      },
+      {
+        id: "maryland", name: "Maryland", place: "Annapolis", when: "Founded 1632",
+        ...at(38.97306, -76.50111),
+        prompt: "A colony founded as a refuge for Catholics, around a great tidal bay.",
+        fact: "Maryland was founded in 1632 under a charter to Lord Baltimore, partly as a refuge for English Catholics. It grew tobacco along the shores of the Chesapeake Bay, with Annapolis as its capital.",
+        source: "https://en.wikipedia.org/wiki/Annapolis,_Maryland",
+      },
+      {
+        id: "virginia", name: "Virginia", place: "Williamsburg", when: "Settled 1607",
+        ...at(37.27083, -76.70694),
+        prompt: "The oldest colony, begun at Jamestown — the largest and most populous of the thirteen.",
+        fact: "Virginia was the first permanent English colony, begun at Jamestown in 1607. It grew rich on tobacco and became the largest colony; its capital moved to Williamsburg, and many early U.S. presidents came from here.",
+        source: "https://en.wikipedia.org/wiki/Williamsburg,_Virginia",
+      },
+      {
+        id: "north-carolina", name: "North Carolina", place: "New Bern", when: "Carolina 1663",
+        ...at(35.09583, -77.07222),
+        prompt: "A colony of scattered farms and pine forests tapped for the navy's tar and pitch.",
+        fact: "North Carolina was part of the Province of Carolina from 1663 before becoming its own colony. Its pine forests were tapped for the tar, pitch and turpentine that sealed wooden ships; New Bern served as its colonial capital.",
+        source: "https://en.wikipedia.org/wiki/New_Bern,_North_Carolina",
+      },
+      {
+        id: "south-carolina", name: "South Carolina", place: "Charleston", when: "Settled 1670",
+        ...at(32.81389, -79.93194),
+        prompt: "A wealthy colony of rice and indigo plantations around a busy southern port.",
+        fact: "South Carolina, settled from 1670, grew wealthy on rice and indigo worked by enslaved Africans. Its port, Charleston, was one of the busiest in the colonies and the largest city in the American South.",
+        source: "https://en.wikipedia.org/wiki/Charleston,_South_Carolina",
+      },
+      {
+        id: "georgia", name: "Georgia", place: "Savannah", when: "Founded 1732",
+        ...at(32.08111, -81.09111),
+        prompt: "The last and southernmost colony, planned street by street around its first city.",
+        fact: "Georgia, founded in 1732 by James Oglethorpe, was the last of the thirteen colonies. Its first city, Savannah, was carefully laid out around a grid of open squares that still shape the city today.",
+        source: "https://en.wikipedia.org/wiki/Savannah,_Georgia",
+      },
+    ],
+  },
+
+  // -------------------------------------------------------------------------
+  // PAUL'S FIRST MISSIONARY JOURNEY. A CONTESTED route (see the file header):
+  // this is the TRADITIONAL path traced from the Book of Acts. The big cities
+  // are well documented; a couple of small towns are located only by tradition
+  // and archaeology, and the intro + those stops SAY so (never a guess as fact).
+  // Each stop carries `certainty` — "documented" or "traditional".
+  // -------------------------------------------------------------------------
+  {
+    id: "paul-first-journey",
+    title: "Paul's First Journey",
+    emoji: "⛵",
+    era: "c. AD 46–48",
+    region: "Asia",
+    blurb: "The traditionally acknowledged route of the apostle Paul's first missionary journey, from Antioch across Cyprus and Asia Minor.",
+    intro: "According to the Book of Acts, the apostle Paul set out from Antioch around AD 46 on the first "
+      + "of his missionary journeys — by ship to Cyprus, then up into the mountains of Asia Minor (modern "
+      + "Turkey). This is the route as it has traditionally been traced. Scholars broadly agree on the "
+      + "larger cities; the exact sites of a couple of small towns are known only from later inscriptions "
+      + "and archaeology, so those are the popularly acknowledged locations rather than certainties.",
+    outro: "Paul returned the way he had come, back to Antioch. His later journeys would carry him across "
+      + "the Aegean into Greece, and at last all the way to Rome.",
+    source: "https://en.wikipedia.org/wiki/Paul_the_Apostle",
+    aspect: 1.5,
+    pad: 0.09,
+    stops: [
+      {
+        id: "antioch", name: "Antioch", place: "Syria (Antakya, Turkey)", when: "Setting out, c. AD 46",
+        ...at(36.20250, 36.16056), certainty: "documented",
+        prompt: "The home church on the Orontes River, where the journey began.",
+        fact: "Paul set out from Antioch in Syria, then one of the largest cities of the Roman Empire and the base of the early church that sent him and Barnabas on their way.",
+        source: "https://en.wikipedia.org/wiki/Antioch",
+      },
+      {
+        id: "salamis", name: "Salamis", place: "Cyprus", when: "c. AD 46", certainty: "documented",
+        ...at(35.18333, 33.90000),
+        prompt: "The first landfall across the sea, a great port on the island of Cyprus.",
+        fact: "Sailing to Cyprus, Paul and Barnabas landed at Salamis, a large port on the island's east coast, and began teaching there. Its ruins can still be visited today.",
+        source: "https://en.wikipedia.org/wiki/Salamis,_Cyprus",
+      },
+      {
+        id: "paphos", name: "Paphos", place: "Cyprus", when: "c. AD 46", certainty: "documented",
+        ...at(34.76667, 32.41667),
+        prompt: "Right across the island, to the Roman governor's capital.",
+        fact: "At Paphos, the Roman capital of Cyprus, Acts says Paul met the island's governor. It was the westernmost point of the journey's leg across Cyprus before the party turned back to the mainland.",
+        source: "https://en.wikipedia.org/wiki/Paphos",
+      },
+      {
+        id: "perga", name: "Perga", place: "Pamphylia (Turkey)", when: "c. AD 46", certainty: "documented",
+        ...at(36.96139, 30.85389),
+        prompt: "Back on the mainland, a city on the coastal plain before the climb into the highlands.",
+        fact: "Landing in Pamphylia on the southern coast of Asia Minor, Paul's party stopped at Perga before heading up into the mountains. Its Roman ruins still stand.",
+        source: "https://en.wikipedia.org/wiki/Perga",
+      },
+      {
+        id: "pisidian-antioch", name: "Pisidian Antioch", place: "Anatolia (Turkey)", when: "c. AD 47", certainty: "documented",
+        ...at(38.30611, 31.18917),
+        prompt: "A hard climb up into the highlands, to a Roman colony that shared its name with the starting city.",
+        fact: "Pisidian Antioch, high in the mountains of central Anatolia, was a Roman colony where Paul is said to have preached in the synagogue. Its site is a known archaeological ruin near modern Yalvaç.",
+        source: "https://en.wikipedia.org/wiki/Antioch_of_Pisidia",
+      },
+      {
+        id: "iconium", name: "Iconium", place: "Konya (Turkey)", when: "c. AD 47", certainty: "documented",
+        ...at(37.87444, 32.49306),
+        prompt: "An ancient city, and unlike some stops on this route, one still lived in today.",
+        fact: "Iconium — the modern city of Konya — was the next stop. Unlike several small towns on the route, it has been continuously inhabited ever since, so there is no doubt where it is.",
+        source: "https://en.wikipedia.org/wiki/Konya",
+      },
+      {
+        id: "lystra", name: "Lystra", place: "Anatolia (Turkey)", when: "c. AD 47", certainty: "traditional",
+        ...at(37.60194, 32.33833),
+        prompt: "A small town whose place on the map rests on an old inscription, not certainty.",
+        fact: "Lystra was a small Roman town. Its location was pinned down only in 1885, from an inscribed stone found near the village of Hatunsaray, so its spot on the map comes from archaeology rather than certainty.",
+        source: "https://en.wikipedia.org/wiki/Lystra",
+      },
+      {
+        id: "derbe", name: "Derbe", place: "Anatolia (Turkey)", when: "c. AD 47 — the turning point", certainty: "traditional",
+        ...at(37.34927, 33.36171),
+        prompt: "The farthest point of the journey, after which Paul turned back for home.",
+        fact: "Derbe was the turning point: from here Paul retraced his steps toward Antioch. Its exact site is identified from inscriptions and is still debated by scholars, so it is placed here by the best available evidence.",
+        source: "https://en.wikipedia.org/wiki/Derbe",
+      },
+    ],
+  },
 ];
 
 export const JOURNEY_BY_ID = Object.fromEntries(JOURNEYS.map((j) => [j.id, j]));

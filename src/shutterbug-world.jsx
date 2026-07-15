@@ -2893,7 +2893,13 @@ export default function ShutterbugWorld() {
           <div ref={journeyMapRef} style={{ position: "relative", borderRadius: 12, overflowX: "auto", overflowY: "hidden",
             border: `3px solid ${OCEAN_DEEP}`, background: SEA, WebkitOverflowScrolling: "touch" }}>
             <svg viewBox={`${box.x} ${box.y} ${box.w} ${box.h}`} preserveAspectRatio="xMidYMid meet"
-              style={{ width: "100%", minWidth: JOURNEY_AR >= 2 ? 1000 : 620, display: "block", aspectRatio: String(JOURNEY_AR) }}>
+              style={JOURNEY_AR < 1.6
+                // A tall route (a north–south run like the Thirteen Colonies) is driven
+                // by HEIGHT and capped, so the whole map fits one screen with every stop
+                // visible, instead of running off the bottom. A wide route fills the
+                // width and pans sideways as before.
+                ? { height: "min(calc(100vh - 300px), 560px)", width: "auto", maxWidth: "100%", margin: "0 auto", display: "block", aspectRatio: String(JOURNEY_AR) }
+                : { width: "100%", minWidth: JOURNEY_AR >= 2 ? 1000 : 620, display: "block", aspectRatio: String(JOURNEY_AR) }}>
               {/* One copy of the world per tile the box crosses. For every route that
                   stays put this is a single tile and nothing changes; for a
                   circumnavigation it is what lets the trail keep sailing west. */}
