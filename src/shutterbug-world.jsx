@@ -43,7 +43,8 @@ const HAND = '"Caveat", "Patrick Hand", "Bradley Hand", "Segoe Print", "Comic Sa
 // until all five have appeared, and looks different each time he pops up.
 const MR_O_IMAGES = ["mr-o-1.png", "mr-o-2.png", "mr-o-3.png", "mr-o-4.png", "mr-o-5.png"];
 // Shown on the first run and every 5th after: how to research a clue.
-const MR_O_FIELDGUIDE_TIP = "Psst — if a clue's got you stumped, tap the Field Guide on the right and I'll research it for you. It costs half a travel day (free on a Scout trip!).";
+// Worded so it reads naturally after Mr O's "Oh! Did you know…" lead.
+const MR_O_FIELDGUIDE_TIP = "if a clue's got you stumped, you can tap the Field Guide on the right and I'll research it for you? It costs half a travel day (free on a Scout trip!).";
 let _mrOQueue = [];
 function nextMrOImage() {
   if (_mrOQueue.length === 0) {
@@ -181,6 +182,12 @@ const MODES = {
 // correct homecoming review question adds to the trip score.
 const DAY_BONUS_CAP = 3;
 const dayBonus = (days) => Math.min(DAY_BONUS_CAP, Math.floor(Math.max(0, days) / 2));
+// A "perfect shot" is one filed on the FIRST subject-click at the destination — no
+// wrong guess (the same first-try notion the passport marks "first" and the Daily
+// share card counts). It earns a small flat bonus on top of the shot's points, so
+// precision is rewarded — worth proportionally the most on Expert, where a shot is
+// only 1 point to begin with. Wrong-guess shots still score, just without this.
+const PERFECT_BONUS = 1;
 const QUIZ_BONUS = 0.5;
 // Round a score to at most one decimal place (quiz extra credit is in halves).
 const tidyScore = (n) => Math.round(n * 10) / 10;
@@ -2143,29 +2150,36 @@ export default function ShutterbugWorld() {
     if (win) {
       setFlashHint(null); // right shot — stop any Scout hint flash
       const gain = MODES[difficulty].points;
+      // Perfect = the correct subject on the first click here (no wrong guess).
+      const perfect = !missesRef.current[step];
+      const pBonus = perfect ? PERFECT_BONUS : 0;
+      const perfectTxt = pBonus ? ` (+${pBonus} for a perfect first-try shot!)` : "";
       setAlbum((al) => (al.some((x) => x.id === clicked.id) ? al : [...al, { id: clicked.id, subject: clicked.subject, flag: clicked.flag, city: clicked.city, country: clicked.country, continent: clicked.continent, category: clicked.category, fact: clicked.fact, icon: clicked.icon, photo: clicked.photo, greeting: clicked.greeting }]));
       const found = a.type === "category" ? `You found a ${CATEGORIES[a.category].noun} — ${clicked.subject}!` : `You photographed ${clicked.subject}.`;
       const done = step + 1 >= assignments.length;
       if (done) {
         const bonus = dayBonus(d);
-        setScore((s) => s + gain + bonus);
+        setScore((s) => s + gain + bonus + pBonus);
         setElapsedMs(Date.now() - startRef.current);
         sfx("win");
         setPending({ kind: "win", tone: "good", emoji: "🏆", title: "Trip complete!",
-          subtitle: `${found} +${gain}${bonus ? `, plus ${bonus} for ${d} day${d === 1 ? "" : "s"} to spare` : ""}.`,
+          subtitle: `${found} +${gain}${perfectTxt}${bonus ? `, plus ${bonus} for ${d} day${d === 1 ? "" : "s"} to spare` : ""}.`,
           fact: clicked.fact, photo: clicked.photo, category: clicked.category, buttonLabel: "See my results 📸" });
       } else if (d <= 0) {
-        setScore((s) => s + gain);
+        setScore((s) => s + gain + pBonus);
         setElapsedMs(Date.now() - startRef.current);
         sfx("lose");
         setPending({ kind: "lose", tone: "bad", emoji: "⏳", title: "Got the shot — but out of days!",
-          subtitle: `${found} (+${gain}) — but that spent your last travel day.`,
+          subtitle: `${found} (+${gain}${perfectTxt}) — but that spent your last travel day.`,
           fact: clicked.fact, buttonLabel: "See my results" });
       } else {
-        setScore((s) => s + gain);
+        setScore((s) => s + gain + pBonus);
         sfx("success");
-        setPending({ kind: "correct", tone: "good", emoji: "✅", title: "Perfect shot!",
-          subtitle: `${found} +${gain} points!`,
+        // "Perfect shot!" is now earned — a first-try shot. A shot filed after a
+        // wrong guess still counts, but it's a plainer "Nice shot!".
+        setPending({ kind: "correct", tone: "good", emoji: perfect ? "🎯" : "✅",
+          title: perfect ? "Perfect shot!" : "Nice shot!",
+          subtitle: perfect ? `${found} +${gain}${perfectTxt}` : `${found} +${gain} points.`,
           fact: clicked.fact, photo: clicked.photo, category: clicked.category, buttonLabel: "Next assignment ✈" });
       }
     } else {
@@ -3845,7 +3859,7 @@ export default function ShutterbugWorld() {
                 so it never steals a continent tap. */}
             <button onClick={() => openCurio("compass")} title="About the compass" aria-label="About the compass"
               disabled={flying}
-              style={{ position: "absolute", left: 62, bottom: 42, width: "clamp(58px, 9vw, 104px)", height: "clamp(58px, 9vw, 104px)",
+              style={{ position: "absolute", left: 104, bottom: 92, width: "clamp(58px, 9vw, 104px)", height: "clamp(58px, 9vw, 104px)",
                 padding: 0, border: "none", background: "transparent", cursor: flying ? "default" : "help", zIndex: 4 }}>
               <img src={`${UI}compass-rose.png`} alt="" aria-hidden="true"
                 style={{ width: "100%", height: "100%", objectFit: "contain", opacity: 0.92, filter: "drop-shadow(0 2px 3px rgba(0,0,0,0.35))" }} />
@@ -4348,7 +4362,6 @@ function ResultModal({ data, onContinue, reduced }) {
   const good = data.tone === "good";
   const accent = good ? GREEN : CORAL;
   const hasPhoto = !!data.photo?.src;
-  const [mroImg] = useState(nextMrOImage); // Mr. O's look for the "did you know" card
   // With both a photo and a fact, they sit side by side (the fact reads as a
   // caption next to the shot); they stack on narrow screens via flex-wrap.
   const sideBySide = hasPhoto && !!data.fact;
@@ -4367,13 +4380,13 @@ function ResultModal({ data, onContinue, reduced }) {
       </div>
     </div>
   );
+  // The place fact, presented plainly — no Mr O here. He's reserved for his own
+  // big, screen-dimming random appearance; the result card just teaches the fact
+  // about the shot you just took.
   const factEl = data.fact && (
-    <div style={{ display: "flex", alignItems: "flex-start", gap: 8, background: "#fff", border: `1px dashed ${OCEAN}`, borderRadius: 10, padding: "12px 14px", textAlign: "left" }}>
-      <img src={`${UI}${mroImg}`} alt="" aria-hidden="true" style={{ width: 52, height: 52, flex: "0 0 auto", objectFit: "contain", objectPosition: "top", filter: "drop-shadow(0 2px 3px rgba(0,0,0,0.28))" }} />
-      <div>
-        <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 10.5, letterSpacing: "0.14em", color: OCEAN, fontWeight: 700, marginBottom: 4 }}>OH! DID YOU KNOW…</div>
-        <TypeLine text={data.fact} reduced={reduced} style={{ color: INK, fontSize: 13.5, lineHeight: 1.5 }} />
-      </div>
+    <div style={{ background: "#fff", border: `1px dashed ${OCEAN}`, borderRadius: 10, padding: "12px 14px", textAlign: "left" }}>
+      <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 10.5, letterSpacing: "0.14em", color: OCEAN, fontWeight: 700, marginBottom: 4 }}>📌 ABOUT THIS PLACE</div>
+      <TypeLine text={data.fact} reduced={reduced} style={{ color: INK, fontSize: 13.5, lineHeight: 1.5 }} />
     </div>
   );
   return (
@@ -4936,8 +4949,10 @@ function MrOBubble({ fact, onClose, reduced }) {
           <div aria-hidden="true" style={{ fontSize: 160, lineHeight: 1, flex: "none" }}>{MR_O.emoji}</div>
         )}
         <div style={{ background: "#fff", border: `4px solid ${OCEAN}`, borderRadius: "22px 22px 22px 6px", padding: "22px 26px", boxShadow: "0 10px 30px rgba(16,38,46,0.4)", marginBottom: "12vh", maxWidth: 460 }}>
-          <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 15, letterSpacing: "0.12em", color: OCEAN, fontWeight: 800, marginBottom: 10 }}>{MR_O.name.toUpperCase()} · {MR_O.lead.toUpperCase()}</div>
-          <TypeLine text={fact} reduced={reduced} style={{ color: INK, fontSize: 22, lineHeight: 1.5 }} />
+          <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 15, letterSpacing: "0.12em", color: OCEAN, fontWeight: 800, marginBottom: 10 }}>{MR_O.name.toUpperCase()}</div>
+          {/* His catchphrase leads the spoken line itself (not the header): "Oh! Did
+              you know… <fact>". */}
+          <TypeLine text={`${MR_O.lead} ${fact}`} reduced={reduced} style={{ color: INK, fontSize: 22, lineHeight: 1.5 }} />
           <div style={{ marginTop: 14, fontSize: 13, fontWeight: 700, color: INK, opacity: 0.55 }}>click to continue ▸</div>
         </div>
       </div>
