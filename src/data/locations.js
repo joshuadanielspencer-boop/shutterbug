@@ -4190,9 +4190,9 @@ export const LOCATIONS = [
     medium: "Word from the United States: each winter these gentle grey sea cows crowd into springs that stay a steady mild warmth all year round. Photograph a manatee.",
     hard: "A slow, whiskered plant-eater the size of a small car drifts in a warm blue spring; long ago sailors mistook its kind for mermaids. Bring me the manatee.",
     fact: "Each winter, hundreds of West Indian manatees gather in the warm, spring-fed waters around Crystal River, Florida, where the water holds near 72 F (22 C) year-round.",
-    photo: { src: "https://commons.wikimedia.org/wiki/Special:FilePath/Crystal_River_NWR_manatees_(5120918943).jpg?width=800",
-      credit: "U.S. Fish and Wildlife Service", license: "Public domain", licenseUrl: "",
-      source: "https://commons.wikimedia.org/wiki/File:Crystal_River_NWR_manatees_(5120918943).jpg" },
+    photo: { src: "https://commons.wikimedia.org/wiki/Special:FilePath/Manatee_in_crystal_river.JPG?width=800",
+      credit: "Robxwiki", license: "CC BY-SA 4.0", licenseUrl: "https://creativecommons.org/licenses/by-sa/4.0/",
+      source: "https://commons.wikimedia.org/wiki/File:Manatee_in_crystal_river.JPG" },
     greeting: {"text":"Hello","language":"English","pronunciation":null} },
   // --- china wave (verified 2026-07-11; Commons API license checks) ---
   { id: "forbiddencity", city: "Beijing", country: "China", flag: "🇨🇳", continent: "Asia",
