@@ -48,6 +48,14 @@ export const CURIOSITY_DECKS = [
           + "world you carry around in your head.",
         source: null,
       },
+      {
+        id: "logo-film",
+        title: "Every frame counts",
+        body: "Grandpa's camera uses real film — a common roll holds just 24 or 36 pictures, and you "
+          + "can't see any of them until the roll is developed. That's why he said to make every shot "
+          + "count: no deleting, no trying again.",
+        source: "https://en.wikipedia.org/wiki/135_film",
+      },
     ],
   },
 
@@ -80,6 +88,22 @@ export const CURIOSITY_DECKS = [
           + "around the world.",
         source: "https://en.wikipedia.org/wiki/International_Date_Line",
       },
+      {
+        id: "cal-around",
+        title: "Around the world, faster and faster",
+        body: "Magellan's expedition took almost three years to sail all the way around the world "
+          + "(1519–1522). In 1889 the reporter Nellie Bly did it in 72 days. Today a jet can circle the "
+          + "whole globe in under two days.",
+        source: "https://en.wikipedia.org/wiki/Circumnavigation",
+      },
+      {
+        id: "cal-leap",
+        title: "The day February borrows",
+        body: "Earth takes about 365 and a quarter days to circle the Sun, not a tidy 365. So every four "
+          + "years we tuck in one extra day — February 29 — to keep the calendar lined up with the seasons. "
+          + "Those are leap years.",
+        source: "https://en.wikipedia.org/wiki/Leap_year",
+      },
     ],
   },
 
@@ -111,6 +135,30 @@ export const CURIOSITY_DECKS = [
           + "everyone found their way. A map is just as correct upside down.",
         source: "https://en.wikipedia.org/wiki/North_is_up",
       },
+      {
+        id: "comp-latlon",
+        title: "Every place has an address",
+        body: "Two sets of lines pin down any spot on Earth. Latitude lines run side to side, counted from "
+          + "the Equator (0°). Longitude lines run pole to pole, counted from the Prime Meridian (0°) through "
+          + "Greenwich, England. Give both numbers and you've named one exact point on the whole planet.",
+        source: "https://en.wikipedia.org/wiki/Geographic_coordinate_system",
+      },
+      {
+        id: "comp-polaris",
+        title: "The star that stands still",
+        body: "At night in the Northern Hemisphere you can find north with no compass at all: Polaris, the "
+          + "North Star, sits almost exactly above the North Pole, so it barely moves while every other star "
+          + "wheels around it through the night.",
+        source: "https://en.wikipedia.org/wiki/Polaris",
+      },
+      {
+        id: "comp-scale",
+        title: "How a map shrinks the world",
+        body: "A map's scale tells you how much the world was shrunk to fit on the page. The little scale bar "
+          + "shows what one inch stands for — a mile, ten miles, a hundred — so you can measure a real "
+          + "distance with your finger.",
+        source: "https://en.wikipedia.org/wiki/Scale_(map)",
+      },
     ],
   },
 
@@ -141,6 +189,29 @@ export const CURIOSITY_DECKS = [
           + "called Pangaea. It slowly broke apart, and the pieces drifted to where they are now — which is "
           + "why the east coast of South America looks like it would fit into the west coast of Africa.",
         source: "https://en.wikipedia.org/wiki/Pangaea",
+      },
+      {
+        id: "cont-biggest",
+        title: "Biggest and smallest",
+        body: "Asia is far and away the largest continent — about 17.2 million square miles (44.6 million "
+          + "km²), close to a third of all the land on Earth. Australia is the smallest.",
+        source: "https://en.wikipedia.org/wiki/Continent",
+      },
+      {
+        id: "cont-africa54",
+        title: "The continent of many flags",
+        body: "Africa is made up of 54 countries — more than any other continent. Asia has the most people, "
+          + "but Africa flies the most flags.",
+        source: "https://en.wikipedia.org/wiki/List_of_sovereign_states_and_dependent_territories_in_Africa",
+        asOf: 2025,
+      },
+      {
+        id: "cont-highlow",
+        title: "The roof and the floor",
+        body: "The highest point on land is the summit of Mount Everest, in Asia, at 29,032 feet (8,849 m). "
+          + "The lowest dry land is the shore of the Dead Sea, also in Asia, about 1,410 feet (430 m) below "
+          + "sea level.",
+        source: "https://en.wikipedia.org/wiki/Extreme_points_of_Earth",
       },
     ],
   },
@@ -176,6 +247,29 @@ export const CURIOSITY_DECKS = [
           + "flag, and the world's shortest railway.",
         source: "https://en.wikipedia.org/wiki/Vatican_City",
       },
+      {
+        id: "ctry-biggest",
+        title: "The biggest country",
+        body: "Russia is the largest country on Earth by a huge margin — so wide it spreads across 11 time "
+          + "zones. You could drop the next-biggest country, Canada, inside it and still have room left over.",
+        source: "https://en.wikipedia.org/wiki/List_of_countries_and_dependencies_by_area",
+      },
+      {
+        id: "ctry-most",
+        title: "The most people",
+        body: "In 2023 India passed China to become the most populous country in the world, home to more "
+          + "than 1.4 billion people. Between them, those two countries hold over a third of everyone alive.",
+        source: "https://en.wikipedia.org/wiki/List_of_countries_and_dependencies_by_population",
+        asOf: 2023,
+      },
+      {
+        id: "ctry-landlocked",
+        title: "Countries with no coast",
+        body: "Some countries touch no sea at all — they're landlocked, like Mongolia and Bolivia. Two are "
+          + "even \"doubly landlocked,\" ringed only by other landlocked countries: Liechtenstein in Europe "
+          + "and Uzbekistan in Asia.",
+        source: "https://en.wikipedia.org/wiki/Landlocked_country",
+      },
     ],
   },
 
@@ -209,6 +303,33 @@ export const CURIOSITY_DECKS = [
           + "place to bits has a name now: over-tourism.",
         source: "https://en.wikipedia.org/wiki/Overtourism",
       },
+      {
+        id: "dest-wonders",
+        title: "The new seven wonders",
+        body: "The ancient Seven Wonders are nearly all long gone, so in 2007 the world voted for seven new "
+          + "ones: the Great Wall of China, Petra, the Colosseum, Chichén Itzá, Machu Picchu, the Taj Mahal, "
+          + "and Christ the Redeemer.",
+        source: "https://en.wikipedia.org/wiki/New7Wonders_of_the_World",
+        asOf: 2007,
+      },
+      {
+        id: "dest-airport",
+        title: "The busiest airport",
+        body: "The world's busiest airport sits in Atlanta, USA — Hartsfield-Jackson has handled more "
+          + "passengers than any other airport almost every year since 1998, over 100 million of them in "
+          + "2024 alone.",
+        source: "https://en.wikipedia.org/wiki/List_of_busiest_airports_by_passenger_traffic",
+        asOf: 2024,
+      },
+      {
+        id: "dest-heritage",
+        title: "Treasures worth protecting",
+        body: "UNESCO keeps a list of World Heritage Sites — places so special the whole world helps look "
+          + "after them, from the Pyramids of Egypt to the Grand Canyon. Italy has more than any other "
+          + "country, with 61.",
+        source: "https://en.wikipedia.org/wiki/World_Heritage_Site",
+        asOf: 2025,
+      },
     ],
   },
 
@@ -240,6 +361,30 @@ export const CURIOSITY_DECKS = [
           + "your subject dead center, place it along one of the lines or where two of them cross. Almost "
           + "every photo you love secretly does this.",
         source: "https://en.wikipedia.org/wiki/Rule_of_thirds",
+      },
+      {
+        id: "photo-first",
+        title: "The first photograph",
+        body: "The oldest photograph that still survives was made in France by Nicéphore Niépce around 1826 "
+          + "— a hazy rooftop view that needed the camera to hold perfectly still for hours to soak up "
+          + "enough light.",
+        source: "https://en.wikipedia.org/wiki/View_from_the_Window_at_Le_Gras",
+      },
+      {
+        id: "photo-color",
+        title: "The first color photo",
+        body: "For a long time every photo was black and white. The first lasting color photograph came in "
+          + "1861 from the scientist James Clerk Maxwell, who shot the same ribbon three times — through red, "
+          + "green and blue filters — and combined them into one.",
+        source: "https://en.wikipedia.org/wiki/History_of_photography",
+      },
+      {
+        id: "photo-golden",
+        title: "The golden hour",
+        body: "Photographers love the hour just after sunrise and just before sunset. The Sun rides low, so "
+          + "the light turns soft and gold and the shadows stretch long — far kinder to a picture than the "
+          + "harsh glare of noon.",
+        source: "https://en.wikipedia.org/wiki/Golden_hour_(photography)",
       },
     ],
   },
