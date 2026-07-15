@@ -215,7 +215,7 @@ export const JOURNEYS = [
       {
         id: "plymouth", name: "Plymouth", place: "England", when: "27 December 1831",
         ...at(50.37139, -4.14222),
-        prompt: "A survey ship leaves an English harbour two days after Christmas, carrying a young man with no job, no pay, and no idea what he is starting.",
+        prompt: "A survey ship leaves an English harbor two days after Christmas, carrying a young man with no job, no pay, and no idea what he is starting.",
         fact: "HMS Beagle sailed from Plymouth on 27 December 1831 under Captain Robert FitzRoy, to survey the coasts of South America. Charles Darwin, aged 22, came aboard as an unpaid naturalist and gentleman companion. He very nearly did not come at all: his father thought the whole thing a waste of a career.",
         source: "https://en.wikipedia.org/wiki/Second_voyage_of_HMS_Beagle",
       },
@@ -380,7 +380,7 @@ export const JOURNEY_BY_ID = Object.fromEntries(JOURNEYS.map((j) => [j.id, j]));
 // So each stop is placed at whichever copy of itself is nearest the previous
 // stop, i.e. the shorter sail. The route can then run off the edge of the world
 // and keep going, and the map is tiled to follow it — which is why Spain shows
-// up at both ends of the Magellan map. That is not a rendering artefact. That is
+// up at both ends of the Magellan map. That is not a rendering artifact. That is
 // the lesson.
 //
 // (This assumes no single leg jumps more than 180° of longitude. None does — the

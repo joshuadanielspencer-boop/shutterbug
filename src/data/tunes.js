@@ -1,7 +1,7 @@
 // ===========================================================================
 // COUNTRY-ARRIVAL MUSIC — short melodies played (synthesized, no files) for a
-// few seconds when the traveller lands in a country. Two kinds:
-//   1. A handful of RECOGNISABLE public-domain folk/traditional melodies for
+// few seconds when the traveler lands in a country. Two kinds:
+//   1. A handful of RECOGNIZABLE public-domain folk/traditional melodies for
 //      countries that have a famous one (Ode to Joy, Frère Jacques, …). These
 //      are all long-out-of-copyright compositions, played as original synthesis
 //      (no recordings), so there is nothing to license.
@@ -17,11 +17,11 @@
 // frequencies and renders them with the named timbre. Keep each tune ~5–9 s.
 //
 // This is DATA (CLAUDE.md rule 1): melodies + the country→tune mapping live here,
-// never inline in the component. Grow the recognisable-tune list over time.
+// never inline in the component. Grow the recognizable-tune list over time.
 // ===========================================================================
 
 export const TUNES = {
-  // ---- Recognisable public-domain melodies (opening phrase) ----
+  // ---- Recognizable public-domain melodies (opening phrase) ----
   // Germany — "Ode to Joy" (Beethoven, 1824; public domain).
   odeToJoy: { timbre: "reed", spb: 0.34, seq: [
     ["E4",1],["E4",1],["F4",1],["G4",1],["G4",1],["F4",1],["E4",1],["D4",1],
@@ -37,11 +37,16 @@ export const TUNES = {
     ["C4",1],["E4",1],["F4",1],["G4",2.5],["r",0.5],["C4",1],["E4",1],["F4",1],["G4",2.5],["r",0.5],
     ["C4",1],["E4",1],["F4",1],["G4",1],["E4",1],["C4",1],["E4",1],["D4",2],
   ] },
-  // United Kingdom — the Westminster ("Big Ben") chime, bell timbre; public domain.
-  westminster: { timbre: "bell", spb: 0.5, seq: [
-    ["E4",1],["D4",1],["C4",1],["G3",2],["r",0.5],
-    ["C4",1],["E4",1],["D4",1],["G3",2],["r",0.5],
-    ["G3",1],["D4",1],["E4",1],["C4",2],
+  // United Kingdom — "Rule, Britannia!" (Thomas Arne, 1740; public domain). The
+  // opening phrase of the melody, in D major, played on a regal brass timbre.
+  // Transcribed from the D-major score at abcnotation.com (Arne march setting).
+  ruleBritannia: { timbre: "brass", spb: 0.4, seq: [
+    ["A4",0.5],
+    ["D5",1],["D5",1],["D5",0.25],["E5",0.25],["F#5",0.25],["G5",0.25],["A5",0.5],["D5",0.5],
+    ["E5",1.5],["F#5",0.25],["G5",0.25],["F#5",1],["r",0.5],["A4",0.5],
+    ["D5",0.25],["E5",0.25],["D5",0.25],["E5",0.25],["F#5",0.25],["G5",0.25],["F#5",0.25],["G5",0.25],["A5",0.5],["E5",0.5],["F#5",0.5],["E5",0.5],
+    ["D5",0.5],["E5",0.25],["F#5",0.25],["E5",0.5],["D5",0.5],["C#5",1.5],["A4",0.5],
+    ["D5",2],
   ] },
   // Mexico — "La Cucaracha" (traditional; public domain).
   cucaracha: { timbre: "guitar", spb: 0.26, seq: [
@@ -101,17 +106,17 @@ export const TUNES = {
   ] },
 };
 
-// Specific recognisable tunes, by country.
+// Specific recognizable tunes, by country.
 export const COUNTRY_TUNE = {
   "Germany": "odeToJoy",
   "France": "frereJacques",
   "United States": "saints",
-  "United Kingdom": "westminster",
+  "United Kingdom": "ruleBritannia",
   "Mexico": "cucaracha",
   "Australia": "matilda",
 };
 
-// Regional motif, by country — gives a country a fitting regional flavour when it
+// Regional motif, by country — gives a country a fitting regional flavor when it
 // has no specific tune. (Only countries whose *region* differs from a plain
 // continent default need listing; everything else falls back to CONTINENT_MOTIF.)
 export const COUNTRY_MOTIF = {

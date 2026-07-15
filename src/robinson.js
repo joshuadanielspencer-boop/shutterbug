@@ -20,7 +20,7 @@ const RX0 = 180;   // x of the prime meridian (lon 0)
 const RY0 = 91.3;  // y of the equator (lat 0), north pole near y=0
 
 // Central meridian. The world map is cropped from Hawaiʻi (~155°W) eastward all the
-// way round to Russia's far east (~180°E) — a ~335° span. Centred on lon 0 that
+// way round to Russia's far east (~180°E) — a ~335° span. Centered on lon 0 that
 // span wraps at the antimeridian and Russia's Chukotka appears twice (a red sliver
 // on the far left). Centring on ~11°E instead puts the projection SEAM at ~169°W,
 // in the empty Pacific just west of Hawaiʻi and off the left edge of the crop, so

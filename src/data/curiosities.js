@@ -27,7 +27,7 @@ export const CURIOSITY_DECKS = [
       {
         id: "logo-how",
         title: "How the game works",
-        body: "You are a travelling photographer. Read the editor's clue, fly to the right city, "
+        body: "You are a traveling photographer. Read the editor's clue, fly to the right city, "
           + "and photograph the right subject before your travel days run out. Every correct shot "
           + "teaches a real fact about a real place.",
         source: null,
@@ -68,7 +68,7 @@ export const CURIOSITY_DECKS = [
         title: "Why clocks change as you travel",
         body: "The Earth turns 15 degrees every hour, so the world is split into 24 time zones — noon "
           + "should be when the Sun is highest. Not all are neat hours: India runs half an hour off its "
-          + "neighbours, and Nepal is 45 minutes off. China is wide enough for five zones but uses just one.",
+          + "neighbors, and Nepal is 45 minutes off. China is wide enough for five zones but uses just one.",
         source: "https://en.wikipedia.org/wiki/Time_zone",
       },
       {
@@ -162,7 +162,7 @@ export const CURIOSITY_DECKS = [
         id: "ctry-blocs",
         title: "Clubs of countries",
         body: "Countries team up in groups. Nearly all of them belong to the United Nations (193). Twenty-"
-          + "seven share the European Union. The three neighbours of North America — the United States, "
+          + "seven share the European Union. The three neighbors of North America — the United States, "
           + "Mexico and Canada — trade together under USMCA. And a bloc called BRICS grew to eleven members "
           + "in 2025.",
         source: "https://en.wikipedia.org/wiki/BRICS",
@@ -237,7 +237,7 @@ export const CURIOSITY_DECKS = [
         id: "photo-thirds",
         title: "The rule of thirds",
         body: "Split the picture into a grid of nine, like a noughts-and-crosses board. Instead of parking "
-          + "your subject dead centre, place it along one of the lines or where two of them cross. Almost "
+          + "your subject dead center, place it along one of the lines or where two of them cross. Almost "
           + "every photo you love secretly does this.",
         source: "https://en.wikipedia.org/wiki/Rule_of_thirds",
       },

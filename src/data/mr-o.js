@@ -108,7 +108,7 @@ export const MR_O_FACTS = [
   // ---- North America ----
   { where: "North America", text: "Canada has more lakes than every other country in the world combined." },
   { where: "North America", text: "Greenland is the world's largest island — Australia is bigger, but it counts as a continent instead." },
-  { where: "North America", text: "Denali in Alaska is the highest peak in North America, at about 20,300 feet (6,190 metres)." },
+  { where: "North America", text: "Denali in Alaska is the highest peak in North America, at about 20,300 feet (6,190 meters)." },
   { where: "North America", text: "The Great Lakes together hold about a fifth of all the fresh surface water on Earth." },
   { where: "North America", text: "Death Valley in California is North America's hottest, lowest spot — it dips below sea level." },
   { where: "North America", text: "Mexico City is slowly sinking, because it's built on the soft bed of a drained lake." },
@@ -117,7 +117,7 @@ export const MR_O_FACTS = [
   { where: "South America", text: "Chile is one of the longest, thinnest countries — over 2,500 miles (4,000 km) long but rarely 125 miles (200 km) wide." },
   { where: "South America", text: "The Amazon carries more water than the next several biggest rivers on Earth combined." },
   { where: "South America", text: "The Atacama Desert in Chile is the driest place on Earth — parts may go years, even decades, without rain." },
-  { where: "South America", text: "Angel Falls in Venezuela is the world's tallest waterfall, plunging more than 3,000 feet (about 980 metres)." },
+  { where: "South America", text: "Angel Falls in Venezuela is the world's tallest waterfall, plunging more than 3,000 feet (about 980 meters)." },
   // ---- Oceania ----
   { where: "Oceania", text: "The Pacific is the biggest ocean, larger than all the land on Earth put together." },
   { where: "Oceania", text: "Australia is the only country that is also a whole continent all by itself." },
@@ -134,6 +134,6 @@ export const MR_O_FACTS = [
   { where: null, text: "Russia is so wide it spreads across 11 time zones — when it's breakfast on one side, it's bedtime on the other!" },
   { where: null, text: "There are nearly 200 countries in the world today." },
   { where: null, text: "The equator is an imaginary line around the middle of the Earth, where it stays warm all year round." },
-  { where: null, text: "Earth has five oceans; the Southern Ocean around Antarctica was the last to be recognised." },
+  { where: null, text: "Earth has five oceans; the Southern Ocean around Antarctica was the last to be recognized." },
   { where: null, text: "A compass needle points to the magnetic north pole, which slowly drifts and isn't quite at the true North Pole." },
 ];

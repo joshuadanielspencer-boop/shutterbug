@@ -36,10 +36,10 @@ export const routeCost = (order, pins, hub) => round1(order.reduce(
   (sum, c, i) => sum + flightDays(i ? pins[order[i - 1]] : hub, pins[c]), 0));
 
 // PAR — the cheapest flight cost for a SET of continents, in any order, starting
-// from the home airport. An open path, not a loop: the traveller doesn't fly home.
+// from the home airport. An open path, not a loop: the traveler doesn't fly home.
 //
-// This is a travelling-salesman path, and it's solved EXACTLY (branch-and-bound
-// over every order) rather than greedily. A nearest-neighbour route is frequently
+// This is a traveling-salesman path, and it's solved EXACTLY (branch-and-bound
+// over every order) rather than greedily. A nearest-neighbor route is frequently
 // beatable — which would mean the player could beat "par" by accident. At most six
 // continents, so the worst case is 720 orders: instant, and correct.
 export function tourPar(conts, pins, hub) {

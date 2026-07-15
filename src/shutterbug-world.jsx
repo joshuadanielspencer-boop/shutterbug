@@ -169,7 +169,7 @@ function PhotoCredit({ photo, style }) {
 // player-facing names are Scout / Explorer / Adventurer / Expert.
 const MODES = {
   scout:  { label: "Scout",    ages: "K–2 · ages 5–7",    assignments: 3, cityDecoys: 1, daysPer: 5, points: 3, slack: 10, labels: "all", clue: "easy",   catShare: 0.22, countryOpts: 4, research: "free", hints: true, readAloud: true, flashOnWrong: true,
-            blurb: "A gentle 3-shot outing for the youngest travellers. Clues name the country, every pin is labelled, clues are read aloud, wrong guesses gently flash the right answer, and there's no real time pressure." },
+            blurb: "A gentle 3-shot outing for the youngest travelers. Clues name the country, every pin is labelled, clues are read aloud, wrong guesses gently flash the right answer, and there's no real time pressure." },
   easy:   { label: "Explorer", ages: "grades 3–5 · ages 8–10", assignments: 5, cityDecoys: 2, daysPer: 3, points: 3, slack: 6, labels: "all",   clue: "easy",   catShare: 0.22, countryOpts: 5, research: "half", hints: true,
             blurb: "A short 5-shot trip. Clues name the country, every pin is labelled, a category badge tells you what kind of place it is, wrong guesses get warm/cold hints, and Research for a Clue costs just ½ a day." },
   medium: { label: "Adventurer", ages: "grades 6–8 · ages 11–13", assignments: 9, cityDecoys: 3, daysPer: 3, points: 2, slack: 6, labels: "smart", clue: "medium", catShare: 0.08, countryOpts: 5, research: "half", hints: true,
@@ -202,7 +202,7 @@ const modePlan = (key) => {
 // real decision, not a free guess.
 const SHOT_COST = 0.5;
 
-// The traveller's home airport — where the very first flight departs from.
+// The traveler's home airport — where the very first flight departs from.
 const HUB = { x: 106, y: 49 };
 
 // Flight costs and the Grand Tour's par live in src/routes.js, so `npm test` can
@@ -239,7 +239,7 @@ const DEVIATION_COST = 1;
 
 // PAR — the cheapest possible flight cost for a set of continents, starting from
 // the home airport. This is the number the player is playing against, so it has to
-// be the TRUE optimum, not a greedy guess: a nearest-neighbour route is often
+// be the TRUE optimum, not a greedy guess: a nearest-neighbor route is often
 // beatable, and a "par" you can beat by simply thinking about it is worse than no
 // par at all. At most six continents, so all 720 orders are checked exactly.
 const tourPar = (conts) => par(conts, CONTINENT_PIN, HUB);
@@ -255,7 +255,7 @@ const tourMaxScore = (nReqs, difficulty) => {
 // ---- Themed Expeditions: guided, curated Grand Tours around a single learning ----
 // theme (all wildlife, all volcanoes…). Each is a Grand Tour whose specific targets
 // are drawn from the theme, with an intro "lesson". `pick` selects the theme's
-// members; the itinerary favours one target per continent for a round-the-world feel.
+// members; the itinerary favors one target per continent for a round-the-world feel.
 const EXPEDITIONS = [
   { id: "wildlife", title: "Wildlife Safari", emoji: "🦁", lesson: "Photograph the world's most amazing animals — each a star of its own home. From pandas to penguins, every stop is a creature found in one special place.", pick: (l) => l.category === "wildlife" },
   { id: "volcano", title: "Ring of Fire", emoji: "🌋", lesson: "Chase the planet's volcanoes and hot springs. Most ring the Pacific Ocean, along the cracks where Earth's giant plates grind together.", pick: (l) => l.category === "volcano" },
@@ -266,8 +266,8 @@ const EXPEDITIONS = [
 ];
 
 const BY_ID = Object.fromEntries(LOCATIONS.map((l) => [l.id, l]));
-// Each continent gets its own colour on the world map — the player picks a
-// continent by its colour/shape, with no text labels (the easy clue names it,
+// Each continent gets its own color on the world map — the player picks a
+// continent by its color/shape, with no text labels (the easy clue names it,
 // and every clickable region carries an aria-label for screen readers).
 const CONTINENT_COLOR = {
   "North America": "#3B76C9", // blue
@@ -279,7 +279,7 @@ const CONTINENT_COLOR = {
   "Antarctica": "#EDEDE6",    // white
 };
 // The world (continent-selection) map is a Robinson projection. Its viewBox is
-// this tall, with the ~182.6-tall map centred in it — so it fills the square frame
+// this tall, with the ~182.6-tall map centerd in it — so it fills the square frame
 // with a gentle stretch and blank margins top/bottom (and rounded blank corners).
 // A taller viewBox scales the map DOWN vertically within the square frame: 262→288
 // compresses it ~10% so the world reads less stretched/elongated.
@@ -297,11 +297,29 @@ const _NORTH_LAND_Y = eqToRobinson(180, 6.3).y;    // ~83.7°N — northernmost 
 const _ANT_SOUTH = eqToRobinson(180, 171).y;       // ~81°S
 const _WORLD_TOP = (_NORTH_LAND_Y - 0.05 * _ANT_SOUTH) / 0.95; // 5% ocean margin above the northernmost land
 // Right edge at New Zealand's east coast — the map's rightmost land in this
-// re-centred projection (NZ sits at lower latitude than Russia's far east, so it
+// re-centerd projection (NZ sits at lower latitude than Russia's far east, so it
 // projects a little further right). Russia stays a hair inside the edge; Oceania is
 // no longer clipped.
 const _RIGHT_X = eqToRobinson(357, 127).x + 3;
 const WORLD_BOX = { x: _LEFT_X, y: _WORLD_TOP, w: _RIGHT_X - _LEFT_X, h: _ANT_SOUTH - _WORLD_TOP };
+
+// The USA's Aleutian Islands cross the antimeridian; in this re-centerd Robinson
+// projection their western tail wraps to the FAR RIGHT of the map (out by Russia),
+// where it would light up as "North America" on mouseover. Every legitimate North
+// American point projects to x < ~230, while the wrapped Aleutian slivers all land
+// at x > 300 — so dropping any subpath that lies entirely in the far-right zone
+// removes the artifact and leaves the rest of the map exactly as it is.
+const WORLD_WRAP_CUT = 250;
+const trimWrappedSubpaths = (d) => {
+  if (!d || d.indexOf("M") < 0) return d;
+  const kept = d.split("M").filter(Boolean).filter((s) => {
+    const nums = s.match(/-?\d+(?:\.\d+)?/g);
+    if (!nums) return false;
+    for (let i = 0; i + 1 < nums.length; i += 2) if (+nums[i] <= WORLD_WRAP_CUT) return true; // keep: has a non-wrapped point
+    return false; // whole subpath sits in the far-right wrap zone → drop it
+  });
+  return kept.length ? "M" + kept.join("M") : d;
+};
 
 // The Robinson map outline (filled as ocean) and a light graticule, both static.
 const ROBINSON_OUTLINE = (() => {
@@ -331,7 +349,7 @@ const CONTINENTS = CONTINENT_ORDER.filter((c) => LOCATIONS.some((l) => l.contine
 
 // Per-continent zoom box (SVG viewBox), derived from that continent's locations.
 // It is a SQUARE so it fills the square map frame with no distortion, sized to
-// contain every location on the continent (plus breathing room) and centred on
+// contain every location on the continent (plus breathing room) and centerd on
 // them. For a wide, scattered continent (Oceania, Antarctica) the square can spill
 // past the map edges into open ocean — that's fine, the frame just shows more sea.
 // Antarctica is drawn on a south-polar relief image (a square plate), not the
@@ -341,7 +359,7 @@ const CONTINENT_META = (() => {
   const meta = {};
   for (const c of CONTINENTS) {
     if (c === "Antarctica") { meta[c] = { mode: "polar", box: { x: 0, y: 0, w: ANT_PLATE, h: ANT_PLATE } }; continue; }
-    // Oceania is Pacific-centred: pull its eastern-Pacific points (Hawaiʻi, Bora
+    // Oceania is Pacific-centerd: pull its eastern-Pacific points (Hawaiʻi, Bora
     // Bora, Easter I., x<180) across the antimeridian so the region reads as one
     // block instead of being split to opposite edges of a world map.
     const wrap = c === "Oceania";
@@ -420,7 +438,7 @@ const WC_BY_NAME = Object.fromEntries(WORLD_COUNTRIES.map((c) => [c.name, c.d]))
 const WC_ALIAS = { "United States": "United States of America" };
 const wcPath = (country) => WC_BY_NAME[country] || WC_BY_NAME[WC_ALIAS[country]];
 // The sticker book's fixed page layout: every country in the game, grouped by
-// continent — including countries the traveller hasn't touched yet, so the empty
+// continent — including countries the traveler hasn't touched yet, so the empty
 // slots show what's left to collect.
 const STICKER_PAGES = (() => {
   const seen = {};
@@ -455,11 +473,11 @@ const countriesOf = (l) => (l.countries && l.countries.length ? l.countries : [l
 // (no curves), so every number pairs up as an (x, y) point — enough to size a
 // zoom box to the country's real shape rather than just its landmark spread.
 //
-// `refX` is a longitude the country is known to sit near (its landmarks' centre).
+// `refX` is a longitude the country is known to sit near (its landmarks' center).
 // Every point is measured in the wrap-around nearest that reference, because a
 // country whose outline crosses the antimeridian would otherwise measure as if it
 // spanned the entire planet: the USA's Aleutians run past 180°E, so a raw box put
-// its "centre" on the prime meridian and the United States map opened on AFRICA.
+// its "center" on the prime meridian and the United States map opened on AFRICA.
 // `clip` (optional): ignore points more than this many degrees from (refX, refY),
 // so a country's FAR-FLUNG overseas territories — French Guiana, Réunion, the
 // Azores — don't blow the zoom box out to span the whole planet. The mainland (near
@@ -481,7 +499,7 @@ const pathBBox = (d, refX, refY = null, clip = Infinity) => {
 };
 (() => {
   for (const cont of COUNTRY_LAYER_CONTINENTS) {
-    const wrap = CONTINENT_META[cont] && CONTINENT_META[cont].mode === "wrap"; // Oceania: Pacific-centred
+    const wrap = CONTINENT_META[cont] && CONTINENT_META[cont].mode === "wrap"; // Oceania: Pacific-centerd
     const byC = {};
     for (const l of LOCATIONS) if (l.continent === cont) for (const c of countriesOf(l)) (byC[c] = byC[c] || []).push(l);
     LAYER_COUNTRY_LIST[cont] = Object.keys(byC);
@@ -490,7 +508,7 @@ const pathBBox = (d, refX, refY = null, clip = Infinity) => {
       COUNTRY_LOCS[cont][country] = ls.map((l) => l.id);
       const xs = ls.map((l) => (wrap && l.x < 180 ? l.x + 360 : l.x)), ys = ls.map((l) => l.y);
       const minX = Math.min(...xs), maxX = Math.max(...xs), minY = Math.min(...ys), maxY = Math.max(...ys);
-      const cx = (minX + maxX) / 2, cy = (minY + maxY) / 2; // landmark centre — for the country label
+      const cx = (minX + maxX) / 2, cy = (minY + maxY) / 2; // landmark center — for the country label
       // Zoom box: size it to the country's real BORDER extent (unioned with its
       // landmarks) so small countries — Rwanda, etc. — fill the frame and show
       // their shape, instead of floating tiny in a fixed 16° box. The wrap
@@ -506,7 +524,7 @@ const pathBBox = (d, refX, refY = null, clip = Infinity) => {
       const clip = Math.max(7, landSpan * 2.5);
       const bb = bpath && pathBBox(bpath, cx, cy, clip);
       if (bb) { bx0 = Math.min(bx0, bb.minX); bx1 = Math.max(bx1, bb.maxX); by0 = Math.min(by0, bb.minY); by1 = Math.max(by1, bb.maxY); }
-      const bcx = (bx0 + bx1) / 2, bcy = (by0 + by1) / 2; // centre on the country itself
+      const bcx = (bx0 + bx1) / 2, bcy = (by0 + by1) / 2; // center on the country itself
       const side = Math.min(120, Math.max(4.5, Math.max(bx1 - bx0, by1 - by0) * 1.5)); // 50% breathing room, tight floor
       COUNTRY_META[countryKey(cont, country)] = { box: { x: bcx - side / 2, y: bcy - side / 2, w: side, h: side }, cx, cy };
     }
@@ -534,7 +552,7 @@ const countryHasCategory = (continent, country, category) =>
   (COUNTRY_LOCS[continent]?.[country] || []).some((id) => BY_ID[id].category === category);
 
 // Real lon/lat of each Antarctic subject → a position on the polar relief plate
-// (azimuthal: distance from the centred pole grows with distance from the pole;
+// (azimuthal: distance from the centerd pole grows with distance from the pole;
 // longitude sets the bearing). ANT_ROT/ANT_DIR orient it to match the image.
 // lon/lat are kept roughly real for bearing/distance, but a few are nudged within
 // their region (Ross Sea / Victoria Land) so the pins don't overlap on the plate.
@@ -652,7 +670,7 @@ function makeAssignmentPlan(mode, anchors, order) {
   return { assignmentObjs, options };
 }
 
-// FNV-1a string hash — used to derive a traveller's stable default avatar.
+// FNV-1a string hash — used to derive a traveler's stable default avatar.
 const hashStr = (str) => { let h = 2166136261 >>> 0; for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; };
 
 // Pick n DISTINCT anchor locations, at least 40% of them genuinely NEW to this
@@ -891,7 +909,7 @@ const MODE_CARDS = [
 ];
 // The Grand Tour's itinerary choices: a classic random tour, or one of the themed
 // expeditions (each a curated tour with a lesson). Shown as chips under the cards
-// when the Grand Tour card is selected — themed tours are a flavour of Grand Tour,
+// when the Grand Tour card is selected — themed tours are a flavor of Grand Tour,
 // not a separate mode.
 const TOUR_THEMES = [{ id: "classic", title: "Classic", emoji: "🎲", lesson: "A round-the-world itinerary drawn fresh from the whole collection — targets across the continents on one shared day budget." }, ...EXPEDITIONS];
 const cardThumb = (id) => { const l = BY_ID[id]; if (!l?.photo?.src) return null; const src = l.photo.src; return src.includes("?") ? src : src + "?width=480"; };
@@ -932,7 +950,7 @@ const waterTier = (boxW) => (boxW > 150 ? 1 : boxW > 30 ? 2 : 3);
 const inView = (b, box) => b[0] <= box.x + box.w && b[2] >= box.x && b[1] <= box.y + box.h && b[3] >= box.y;
 
 // A water label. Dark blue with a pale halo, so it stays legible on BOTH the dark
-// sea and the pale land — never relying on colour alone to be readable (rule 3).
+// sea and the pale land — never relying on color alone to be readable (rule 3).
 // `stretch` undoes the world map's non-uniform squash so glyphs aren't distorted.
 // A label whose anchor is only just off the edge is nudged back in (the Pacific's
 // anchor sits near the antimeridian, which IS the world map's edge). Anything
@@ -1158,13 +1176,13 @@ export default function ShutterbugWorld() {
 
   // Player profiles (localStorage). profileName === null means "Guest — no saving".
   // Nobody is auto-selected at launch (hasChosen === false) so a player can't
-  // accidentally continue someone else's saved game; they must pick a traveller
+  // accidentally continue someone else's saved game; they must pick a traveler
   // (or Guest) first. hasChosen distinguishes "Guest picked" from "nothing picked".
   const [canSave] = useState(() => storageAvailable());
   const [profiles, setProfiles] = useState(() => (canSave ? listProfiles() : []));
   const [profileName, setProfileName] = useState(null);
   const [hasChosen, setHasChosen] = useState(false);
-  const [promptTraveler, setPromptTraveler] = useState(false); // nudge to pick a traveller
+  const [promptTraveler, setPromptTraveler] = useState(false); // nudge to pick a traveler
   const [newName, setNewName] = useState("");
   const [lastResult, setLastResult] = useState(null); // {isBest, isBestTime} after a recorded game
   const [newBadges, setNewBadges] = useState([]); // achievements newly earned this game
@@ -1193,6 +1211,10 @@ export default function ShutterbugWorld() {
   const [expedition, setExpedition] = useState(null); // active themed expedition {id,title,emoji,lesson} (a curated Grand Tour)
   const [guestMet, setGuestMet] = useState(false); // has a guest (no profile) met Grandpa Nigel this session?
   const [countryPopup, setCountryPopup] = useState(null); // culture card popup shown on arrival in a country
+  // Which map pin / country the mouse (or keyboard focus) is over. Names hide until
+  // hovered, and a hovered pin is repainted last so its icon rides on top.
+  const [hoverPin, setHoverPin] = useState(null);
+  const [hoverCountry, setHoverCountry] = useState(null);
   const [mrO, setMrO] = useState(null); // Mr. O's "Oh, did you know?" bubble (a fact string, or null)
   const mrOSeen = useRef([]); // indices shown this session, so he doesn't repeat
   // Mr. O pops up ~30% of the time on touching down at a new continent, with a
@@ -1254,7 +1276,7 @@ export default function ShutterbugWorld() {
 
   const sfx = (name, ...args) => { if (soundOn && SFX[name]) SFX[name](...args); };
   const music = (name, ...args) => { if (musicOn && MUSIC[name]) MUSIC[name](...args); };
-  // Tap-to-learn: open a field-note deck, and record each card a saved traveller reads
+  // Tap-to-learn: open a field-note deck, and record each card a saved traveler reads
   // so poking around counts toward "Curiosities found". Guests just don't persist.
   const openCurio = (deckId) => { if (CURIOSITY_DECK_BY_ID[deckId]) { sfx("click"); setCurioDeck(deckId); } };
   const onCurioSeen = useCallback((cardId) => {
@@ -1305,7 +1327,7 @@ export default function ShutterbugWorld() {
     : (pickedCountry && COUNTRY_LOCS[pickedContinent] && COUNTRY_LOCS[pickedContinent][pickedCountry]) ? COUNTRY_LOCS[pickedContinent][pickedCountry]
     : (optionsByStep[step] || []);
 
-  // --- Story frame: the very first expedition a traveller sets out on opens
+  // --- Story frame: the very first expedition a traveler sets out on opens
   // with Grandpa Nigel's story (once per profile / once per guest session).
   // Afterward the chosen expedition launches straight away. ----
   const hasMetNigel = () => (profileName ? !!getProfile(profileName)?.metNigel : guestMet);
@@ -1330,7 +1352,7 @@ export default function ShutterbugWorld() {
     if (run) run(); else setScreen("start");
   }
   // From the splash "Continue/Begin your adventure" button: go to the meet-Grandpa
-  // screen (where the mode + difficulty are chosen). A brand-new traveller sees
+  // screen (where the mode + difficulty are chosen). A brand-new traveler sees
   // Grandpa's one-time intro story first, then lands on the meet screen.
   function enterMeetScreen() {
     // Pick Grandpa's line + his nod to the last trip once, so they don't reshuffle
@@ -1344,7 +1366,7 @@ export default function ShutterbugWorld() {
     else pool = MEET_RUN.rough;
     const comment = pool[Math.floor(Math.random() * pool.length)];
 
-    // Rank-up + newly-unlocked news (saved travellers only). On the very first
+    // Rank-up + newly-unlocked news (saved travelers only). On the very first
     // meet we baseline silently; after that, Grandpa announces what's new.
     const news = [];
     if (profile) {
@@ -1365,7 +1387,7 @@ export default function ShutterbugWorld() {
       if (!u[difficulty]) setDifficulty("easy");
     }
     setMeetInfo({ line, comment, news });
-    setMeetTyped(0); // Grandpa starts talking; controls stay greyed until he's done
+    setMeetTyped(0); // Grandpa starts talking; controls stay grayed until he's done
     setScreen("meet");
   }
   function goToMeet() {
@@ -1375,7 +1397,7 @@ export default function ShutterbugWorld() {
     pendingRunRef.current = enterMeetScreen; // after the intro story, land on the meet screen
     setScreen("intro");
   }
-  // Create a brand-new traveller and set off in one go (from the Create modal).
+  // Create a brand-new traveler and set off in one go (from the Create modal).
   // Uses the created name directly so it doesn't depend on not-yet-flushed state.
   // A new profile can't have met Grandpa, so the intro story always plays first,
   // then the meet screen. Returns false if the name is blank or already taken.
@@ -2040,7 +2062,7 @@ export default function ShutterbugWorld() {
     if (ok) {
       setFlashHint(null); // right country — stop any Scout hint flash
       // You picked this country, so the city step shows ONLY its own landmarks —
-      // never neighbours from other countries (that made the card say "You're in
+      // never neighbors from other countries (that made the card say "You're in
       // Austria" while showing German pins). A country with 3+ landmarks zooms in
       // tight; a thinner one keeps the continent view (so the lone pin isn't lost
       // in a hard zoom) but still shows only that country's own places. Countries
@@ -2281,7 +2303,7 @@ export default function ShutterbugWorld() {
   if (screen === "meet") {
     const prof = profileName ? getProfile(profileName) : null;
     const showRunNote = !!(prof && prof.games > 0 && meetInfo?.comment);
-    // Grandpa's greeting types out first; his choices stay greyed and non-clickable
+    // Grandpa's greeting types out first; his choices stay grayed and non-clickable
     // until every line of his has finished (tap the text to hurry it along).
     const meetReady = meetTyped >= (1 + (showRunNote ? 1 : 0));
     const u = unlocks(prof);
@@ -2314,7 +2336,7 @@ export default function ShutterbugWorld() {
             </div>
           )}
 
-          {/* Grandpa's choices — greyed out and non-interactive until he's finished
+          {/* Grandpa's choices — grayed out and non-interactive until he's finished
               talking, so nobody clicks past his greeting before it's on screen. */}
           <div style={{ opacity: meetReady ? 1 : 0.5, pointerEvents: meetReady ? "auto" : "none", transition: "opacity .25s" }}>
           {/* Pick a way to play */}
@@ -2474,7 +2496,7 @@ export default function ShutterbugWorld() {
       <Frame>
         <div style={{ maxWidth: 960, margin: "0 auto", textAlign: "center", padding: "8px 4px" }}>
           {/* Hand-illustrated splash covering most of the screen, with the launch
-              button overlaid near the bottom-centre of the artwork. The title and
+              button overlaid near the bottom-center of the artwork. The title and
               tagline live in the image, so no text heading is needed. */}
           <div style={{ position: "relative", width: "100%", maxWidth: 940, margin: "0 auto" }}>
             <img src={`${BASE}splash.jpg`} alt="Shutterbug — A World Photo Safari"
@@ -2499,7 +2521,7 @@ export default function ShutterbugWorld() {
             </div>
           </div>
 
-          {/* One centred column: traveller, then a picture-first grid of mode cards
+          {/* One centerd column: traveler, then a picture-first grid of mode cards
               (each wearing a landmark photo from the game's own collection), then
               difficulty stamps and one big launch button. Long explanations live
               behind each card's ⓘ. */}
@@ -2524,7 +2546,7 @@ export default function ShutterbugWorld() {
                     border: `1.5px dashed ${INK}`, background: (hasChosen && profileName === null) ? INK : "transparent", color: (hasChosen && profileName === null) ? PAPER : INK }}>
                   Guest
                 </button>
-                {/* New traveller: opens the Create modal (name + design + begin). */}
+                {/* New traveler: opens the Create modal (name + design + begin). */}
                 <button onClick={() => { startMusicMaybe(); setCreateOpen(true); }} disabled={!canSave} title={canSave ? "Create a new traveler" : "This browser can't save progress"}
                   style={{ padding: "7px 14px", borderRadius: 20, cursor: canSave ? "pointer" : "default", fontWeight: 800, fontSize: 13,
                     border: `1.5px solid ${GREEN}`, background: "transparent", color: GREEN, opacity: canSave ? 1 : 0.5 }}>
@@ -2633,7 +2655,7 @@ export default function ShutterbugWorld() {
     const q = quiz.questions[quiz.i];
     const answered = quiz.answeredIdx !== null;
     const loc = home ? BY_ID[q.id] : null;
-    // Homecoming: keep the answer buttons greyed until Grandpa's line has finished
+    // Homecoming: keep the answer buttons grayed until Grandpa's line has finished
     // typing, so the child reads his question before picking (only gates homecoming).
     const homeReady = !home || homeTypedI === quiz.i;
     return (
@@ -2648,7 +2670,7 @@ export default function ShutterbugWorld() {
                 {/* key by quiz.i so the line remounts every question — otherwise, when
                     two questions share the same intro text ("And this one…"), TypeLine's
                     effect wouldn't re-run, onDone wouldn't fire, and the answers would
-                    stay greyed out forever (the player couldn't continue). */}
+                    stay grayed out forever (the player couldn't continue). */}
                 <TypeLine key={quiz.i} text={quiz.i === 0 ? HOMECOMING_INTRO : "And this one — do you remember?"} reduced={prefersReduced}
                   onDone={() => setHomeTypedI(quiz.i)}
                   style={{ color: INK, fontSize: 16, lineHeight: 1.5, textAlign: "left", margin: 0 }} />
@@ -2758,7 +2780,7 @@ export default function ShutterbugWorld() {
       <Frame>
         {/* A route that circles the globe gets a wider page than a wagon trail does:
             the pins on a world map are small enough already without squeezing them
-            into 900px. Everything still centres, and narrow screens just cap out. */}
+            into 900px. Everything still centers, and narrow screens just cap out. */}
         <div style={{ maxWidth: JOURNEY_AR >= 2 ? 1200 : 900, margin: "0 auto" }}>
           <div style={{ textAlign: "center" }}>
             <Stamp>{j.title}</Stamp>
@@ -2829,7 +2851,7 @@ export default function ShutterbugWorld() {
                     <circle cx={x} cy={s2.y} r={pin(0.016)} fill={done ? GREEN : PAPER}
                       stroke={INK} strokeWidth="1.5" vectorEffect="non-scaling-stroke" />
                     {/* the number is the point — this is an ORDERED route, and a pin you
-                        can only tell apart by colour tells a colourblind child nothing. */}
+                        can only tell apart by color tells a colorblind child nothing. */}
                     <text x={x} y={s2.y} textAnchor="middle" dominantBaseline="central"
                       fontSize={PIN_R * 1.19} fontFamily="ui-monospace, monospace" fontWeight="800"
                       fill={done ? "#fff" : INK} style={{ pointerEvents: "none" }}>{i + 1}</text>
@@ -2840,7 +2862,7 @@ export default function ShutterbugWorld() {
                       </circle>
                     )}
                     {done && (() => {
-                      // A centred label on a pin near the frame's edge runs off it and gets
+                      // A centerd label on a pin near the frame's edge runs off it and gets
                       // cut in half ("Sanlúcar de Bar"). The stops at the two ends of a
                       // round-the-world route are ALWAYS at the edge, so those labels turn
                       // and read inward instead.
@@ -2955,7 +2977,7 @@ export default function ShutterbugWorld() {
                 </li>
               ))}
             </ol>
-            {/* Cost against par. Never colour alone: the verdict is spelled out. */}
+            {/* Cost against par. Never color alone: the verdict is spelled out. */}
             <div style={{ marginTop: 12, paddingTop: 10, borderTop: `2px solid ${PAPER_LINE}`, display: "flex", flexWrap: "wrap", gap: 12, alignItems: "baseline" }}>
               <span style={{ fontFamily: "ui-monospace, monospace", fontWeight: 900, fontSize: 20, color: over <= 0 ? GREEN : over <= 1 ? INK : CORAL }}>
                 {cost} days
@@ -3240,7 +3262,7 @@ export default function ShutterbugWorld() {
 
           {passportPage === "stamps" && (<>
           {/* ---- STICKER BOOK: one page per continent, one slot per country. ----
-               A mastered country's slot fills with the photo the traveller actually
+               A mastered country's slot fills with the photo the traveler actually
                earned there — the gaps are the invitation to keep flying. */}
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", margin: "4px 0 4px", flexWrap: "wrap", gap: 8 }}>
             <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.18em", color: INK, opacity: 0.6 }}>STICKER BOOK</span>
@@ -3297,7 +3319,7 @@ export default function ShutterbugWorld() {
           })}
           </>)}
 
-          {/* Remove traveller — two-step so it can't be clicked by accident. */}
+          {/* Remove traveler — two-step so it can't be clicked by accident. */}
           <div className="sbw-noprint" style={{ marginTop: 28, paddingTop: 16, borderTop: `1px solid ${PAPER_LINE}`, textAlign: "center" }}>
             {confirmRemove ? (
               <div>
@@ -3351,7 +3373,7 @@ export default function ShutterbugWorld() {
     : (target ? (target[tier] || target.hard) : ""));
   const inCountry = phase === "country";
   const inCity = phase === "city";
-  // Which country the traveller is "in" right now, for the country card. Easy
+  // Which country the traveler is "in" right now, for the country card. Easy
   // mode has no country step, but a specific mission's country is known as soon
   // as you land on the continent (the easy clue names it anyway); category
   // missions and tours span countries, so theirs appears after the shot instead.
@@ -3364,8 +3386,18 @@ export default function ShutterbugWorld() {
   const countryBox = inCity && pickedCountry && !(cityPlan && cityPlan.wide) && COUNTRY_META[countryKey(pickedContinent, pickedCountry)] ? COUNTRY_META[countryKey(pickedContinent, pickedCountry)].box : null;
   const plateMode = zoomed ? (contMeta ? contMeta.mode : "equirect") : "world";
   const box = !zoomed ? WORLD_BOX : (countryBox || (contMeta ? contMeta.box : WORLD_BOX));
+  // A couple of maps read too "vertically smushed" at true equirect scale (high
+  // latitudes stretch horizontally), so those get a gentle vertical exaggeration:
+  // the whole plate is scaled ~15% taller about the box center. Only Europe (its
+  // continent map) and the United Kingdom (its country map) opt in.
+  const mapStretchY = (inCountry && pickedContinent === "Europe") ? 1.15
+    : (inCity && pickedCountry === "United Kingdom") ? 1.15
+    : 1;
+  const mapPivotY = box.y + box.h / 2;
+  const mapTransform = mapStretchY === 1 ? undefined
+    : `translate(0 ${(mapPivotY * (1 - mapStretchY)).toFixed(3)}) scale(1 ${mapStretchY})`;
   // Where a location's pin sits on the current plate (polar for Antarctica, shifted
-  // across the antimeridian for Pacific-centred Oceania, else the plain map coords).
+  // across the antimeridian for Pacific-centerd Oceania, else the plain map coords).
   const pinXY = (l) => plateMode === "polar" ? antPlate(l.id)
     : { x: (plateMode === "wrap" && l.x < 180) ? l.x + 360 : l.x, y: l.y };
   // The atlas frame is a FIXED rectangle (never changes size/aspect across maps).
@@ -3427,7 +3459,12 @@ export default function ShutterbugWorld() {
             background: "transparent", border: "none", cursor: "help",
             backgroundImage: `url("${UI}days-calendar-blank-no-clock.png")`, backgroundSize: "contain",
             backgroundRepeat: "no-repeat", backgroundPosition: "center", filter: "drop-shadow(0 4px 5px rgba(0,0,0,0.35))" }}>
-            <span style={{ fontFamily: "ui-monospace, monospace", fontWeight: 900, fontSize: 38, lineHeight: 1,
+            {/* A half-day reading ("2.5") is three glyphs wide and used to crowd the
+                calendar's edges, so tuck the tracking in (and trim the size a hair)
+                only when there's a fractional ".5"; whole numbers keep their size. */}
+            <span style={{ fontFamily: "ui-monospace, monospace", fontWeight: 900,
+              fontSize: Number.isInteger(days) ? 38 : 34, lineHeight: 1,
+              letterSpacing: Number.isInteger(days) ? 0 : "-0.06em",
               color: days <= 1 ? CORAL : days <= 2.5 ? "#B8860B" : INK }}>{days}</span>
             <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: "0.1em", color: INK }}>DAYS LEFT</span>
           </button>
@@ -3435,15 +3472,24 @@ export default function ShutterbugWorld() {
           <span style={{ position: "absolute", left: "50%", top: "50%", transform: "translate(-50%,-50%)",
             fontFamily: "ui-monospace, monospace", fontSize: 16, fontWeight: 800 }} title="Places discovered">📸 {album.length} discovered</span>
         )}
-        {/* Avatar + greeting — doubled in size; marginRight keeps it clear of the gear. */}
+        {/* Avatar + greeting — doubled in size; marginRight keeps it clear of the gear.
+            A saved traveler's avatar is a button: tapping it opens the Customize
+            Traveler editor (a guest has no saved avatar to customise). */}
         <div style={{ display: "flex", alignItems: "center", gap: 14, marginRight: 18 }}>
-          <div style={{ width: 84, height: 84, borderRadius: "50%", border: `4px solid ${GOLD}`, background: PAPER,
-            overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", flex: "0 0 auto",
-            boxShadow: "0 2px 5px rgba(0,0,0,0.4)" }}>
-            {profileName
-              ? <Avatar spec={avatarFor(getProfile(profileName))} size={76} />
-              : <img src={`${UI}player-portrait.png`} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />}
-          </div>
+          {profileName ? (
+            <button onClick={() => setAvatarEdit(true)} title="Customize traveler" aria-label="Customize traveler"
+              style={{ width: 84, height: 84, borderRadius: "50%", border: `4px solid ${GOLD}`, background: PAPER,
+                overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", flex: "0 0 auto",
+                padding: 0, cursor: "pointer", boxShadow: "0 2px 5px rgba(0,0,0,0.4)" }}>
+              <Avatar spec={avatarFor(getProfile(profileName))} size={76} />
+            </button>
+          ) : (
+            <div style={{ width: 84, height: 84, borderRadius: "50%", border: `4px solid ${GOLD}`, background: PAPER,
+              overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", flex: "0 0 auto",
+              boxShadow: "0 2px 5px rgba(0,0,0,0.4)" }}>
+              <img src={`${UI}player-portrait.png`} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+            </div>
+          )}
           <div style={{ lineHeight: 1.2 }}>
             <div style={{ fontWeight: 900, fontSize: 26, letterSpacing: "0.03em" }}>HI, {(profileName || "EXPLORER").toUpperCase()}!</div>
             <div style={{ fontSize: 15, opacity: 0.8 }}>Let's capture the world.</div>
@@ -3508,7 +3554,7 @@ export default function ShutterbugWorld() {
           <div style={{ position: "relative", padding: "18px 18px 12px",
             background: PAPER,
             // The airmail stripes render as a real border (border-image), so the
-            // red/blue edge stays vivid while the note's centre is clean cream.
+            // red/blue edge stays vivid while the note's center is clean cream.
             border: "15px solid transparent",
             borderImage: `url("${UI}airmail-paper-texture.png") 84 stretch`,
             boxShadow: "0 4px 0 rgba(16,38,46,0.18)" }}>
@@ -3521,25 +3567,27 @@ export default function ShutterbugWorld() {
             <div style={{ borderTop: `1px dashed ${INK}`, opacity: 0.35, margin: "0 0 12px" }} />
             {(isCatAsg || namesSubject) ? (
               <>
-                <p style={{ margin: 0, color: INK, fontFamily: HAND, lineHeight: 1.35, fontSize: 18 }}>Bring me a photo of <b>{promptSubject}</b>.{showTypeBadge && badgeCat && <> <CategoryBadge category={badgeCat} size="sm" style={{ verticalAlign: "middle" }} /></>}</p>
+                <p style={{ margin: 0, color: INK, fontFamily: HAND, lineHeight: 1.35, fontSize: 18 }}>Bring me a photo of <b>{promptSubject}</b>.</p>
                 <TypeLine text={clue} reduced={prefersReduced} style={{ margin: "6px 0 0", color: INK, opacity: 0.9, fontFamily: HAND, lineHeight: 1.35, fontSize: 16.5 }} />
               </>
             ) : (
-              <>
-                <TypeLine text={clue} reduced={prefersReduced} style={{ margin: 0, color: INK, fontFamily: HAND, lineHeight: 1.35, fontSize: 18 }} />
-                {showTypeBadge && badgeCat && <div style={{ marginTop: 10 }}><CategoryBadge category={badgeCat} size="sm" style={{ verticalAlign: "middle" }} /></div>}
-              </>
+              <TypeLine text={clue} reduced={prefersReduced} style={{ margin: 0, color: INK, fontFamily: HAND, lineHeight: 1.35, fontSize: 18 }} />
             )}
+            {/* The landmark-type marker rides at the very END of Nigel's note (just
+                above his signature), not mid-note. */}
+            {showTypeBadge && badgeCat && <div style={{ marginTop: 10 }}><CategoryBadge category={badgeCat} size="sm" style={{ verticalAlign: "middle" }} /></div>}
             <img src={`${UI}grandpa-signature.png`} alt={`— ${GRANDPA.name}`}
               style={{ display: "block", width: 150, maxWidth: "72%", marginTop: 6, marginLeft: "auto", opacity: 0.92 }} />
           </div>
           )}
           {/* Journey tracker (assignments): reflects continent → country →
               destination → photograph progress. Tour uses its own itinerary above. */}
-          {!isTour && !isExplore && <PhaseTracker stepIdx={stepIdx} onCurio={openCurio} />}
+          {!isTour && !isExplore && <PhaseTracker stepIdx={stepIdx} onCurio={openCurio}
+            continentName={pickedContinent} countryName={ctxCountry}
+            onCountryInfo={(c) => { if (COUNTRY_INFO[c]) setCountryPopup(c); }} />}
 
           {/* Tap-to-learn tracker: poking at the chrome (logo, calendar, compass, the
-              step markers) is its own kind of progress. Saved travellers only — guests
+              step markers) is its own kind of progress. Saved travelers only — guests
               don't persist, so a counter would be stuck at zero. */}
           {profileName && (
             <p style={{ margin: "10px 2px 0", fontSize: 11.5, fontWeight: 700, color: INK, opacity: 0.7,
@@ -3569,7 +3617,7 @@ export default function ShutterbugWorld() {
             <div style={{ marginTop: 12, background: "#fff", border: `1px solid ${PAPER_LINE}`, borderRadius: 8, padding: 14, textAlign: "center" }}>
               <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.18em", color: INK, opacity: 0.6 }}>YOUR SHOT</div>
               <div style={{ margin: "8px 0", position: "relative", overflow: "hidden", borderRadius: 4 }}>
-                {/* The film "develops": washed-out and grey at first, colour blooming in.
+                {/* The film "develops": washed-out and gray at first, color blooming in.
                     Shown at the image's own aspect ratio — cover-cropping cut wide
                     subjects (all of Victoria Falls) down to a slice. */}
                 <div key={`dev${flashKey}`} className={prefersReduced ? undefined : "sbw-develop"}>
@@ -3647,7 +3695,11 @@ export default function ShutterbugWorld() {
                   {[...Array(13)].map((_, i) => <line key={"v" + i} x1={i * 30} y1="0" x2={i * 30} y2="180" stroke={SEA_DEEP} strokeWidth="0.4" />)}
                 </pattern>
               </defs>
-              {/* World step: the flat colour-coded continent map. Country/City step: a
+              {/* Everything is drawn inside one group so a whole map can be given the
+                  gentle vertical exaggeration (Europe / UK); it's the identity transform
+                  for every other view. */}
+              <g transform={mapTransform}>
+              {/* World step: the flat color-coded continent map. Country/City step: a
                   PHYSICAL SHADED-RELIEF plate (mountains, deserts, plains, lakes) with
                   the country borders drawn over it. The relief image is equirectangular
                   and the zoomed maps use the same lon/lat space (x = lon+180, y = 90−lat),
@@ -3659,7 +3711,7 @@ export default function ShutterbugWorld() {
                 ) : (
                   <g shapeRendering="geometricPrecision">
                     {/* the relief plate (drawn a second time, shifted +360°, for the
-                        Pacific-centred Oceania view that crosses the antimeridian) */}
+                        Pacific-centerd Oceania view that crosses the antimeridian) */}
                     {(plateMode === "wrap" ? [0, 360] : [0]).map((off) => (
                       // width is a hair over 360 so the two plates overlap and the
                       // antimeridian join doesn't show as a seam
@@ -3675,7 +3727,7 @@ export default function ShutterbugWorld() {
                       </g>
                     ))}
                     {/* rivers, lakes and sea names on top of the terrain. The plate
-                        is drawn twice for the Pacific-centred view, so these are too —
+                        is drawn twice for the Pacific-centerd view, so these are too —
                         each copy culled against the box shifted back into its own space. */}
                     {(plateMode === "wrap" ? [0, 360] : [0]).map((off) => (
                       <g key={"w" + off} transform={off ? `translate(${off} 0)` : undefined}>
@@ -3689,7 +3741,7 @@ export default function ShutterbugWorld() {
                 <>
                 {/* World map: the whole frame is filled deep blue (no globe oval),
                     overlaid with a straight lat/long grid, then each continent as
-                    one colour-coded region. Deliberately a flat rectangle map. */}
+                    one color-coded region. Deliberately a flat rectangle map. */}
                 <rect x={box.x} y={box.y} width={box.w} height={box.h} fill={SEA} />
                 <g stroke={SEA_LINE} strokeWidth="0.4" fill="none" opacity="0.4" vectorEffect="non-scaling-stroke">
                   {[...Array(11)].map((_, i) => { const x = box.x + (box.w * (i + 1)) / 12; return <line key={"v" + i} x1={x} y1={box.y} x2={x} y2={box.y + box.h} />; })}
@@ -3701,7 +3753,7 @@ export default function ShutterbugWorld() {
                      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); pickContinent(cont); } }}
                      style={{ cursor: busy ? "default" : "pointer" }}>
                     {robinsonCountries.filter((c) => COUNTRY_CONTINENT[c.name] === cont).map((c) => (
-                      <path key={c.name} d={c.d} fill={CONTINENT_COLOR[cont]} fillRule="evenodd" stroke={INK} strokeWidth="0.3" vectorEffect="non-scaling-stroke" />
+                      <path key={c.name} d={cont === "North America" ? trimWrappedSubpaths(c.d) : c.d} fill={CONTINENT_COLOR[cont]} fillRule="evenodd" stroke={INK} strokeWidth="0.3" vectorEffect="non-scaling-stroke" />
                     ))}
                   </g>
                 )) : (
@@ -3723,42 +3775,15 @@ export default function ShutterbugWorld() {
                   continent relief, each labelled — pick the one the clue points to. */}
               {inCountry && (() => {
                 const list = (asg && asg.countries) || LAYER_COUNTRY_LIST[pickedContinent] || [];
-                // Melanesia's markers sit a few degrees apart, so their labels used to
-                // print on top of one another. Walk them left-to-right and lift each
-                // label just far enough to clear the labels already placed — testing
-                // the real rectangles, so a distant country (New Zealand, far south)
-                // never gets bumped up merely for sharing a column with Fiji.
-                // Lay out every country label so none overlaps. Each label wants to
-                // sit just above its country; if that spot is taken it steps up, then
-                // down, then further up/down (alternating, so the stack stays compact
-                // and near the country and doesn't run off the top of the plate). Size
-                // estimates err GENEROUS — monospace advance + the paint-order stroke
-                // halo + a gap — so what the layout thinks fits really does.
-                const CHAR_W = 0.0195, STEP = 0.05, PAD = 0.006 * box.w; // box.w / box.h units
-                const topLim = box.y + 0.018 * box.h, botLim = box.y + box.h - 0.018 * box.h;
-                const placed = [];
-                const yOf = {};              // country -> chosen text baseline y
-                const baseY = (cm) => cm.cy - 0.032 * box.h; // its preferred spot
-                for (const country of [...list].sort((a, b) => {
-                  const A = COUNTRY_META[countryKey(pickedContinent, a)], B = COUNTRY_META[countryKey(pickedContinent, b)];
-                  return (A ? A.cx : 0) - (B ? B.cx : 0);
-                })) {
-                  const cm = COUNTRY_META[countryKey(pickedContinent, country)];
-                  if (!cm) continue;
-                  const halfW = (country.length * CHAR_W * box.w) / 2 + PAD;
-                  const top = (y) => y - 0.034 * box.h, bot = (y) => y + 0.010 * box.h; // label's visual box
-                  const hits = (y) => placed.some((q) => cm.cx - halfW < q.r && cm.cx + halfW > q.l && top(y) < q.b && bot(y) > q.t);
-                  const within = (y) => top(y) >= topLim && bot(y) <= botLim;
-                  const cands = [baseY(cm)];
-                  for (let k = 1; k <= 9; k++) { cands.push(cm.cy - (0.032 + k * STEP) * box.h); cands.push(cm.cy + (0.030 + (k - 1) * STEP) * box.h); }
-                  let y = cands.find((c) => within(c) && !hits(c));
-                  if (y === undefined) y = cands.find((c) => !hits(c)) ?? baseY(cm); // last resort
-                  placed.push({ l: cm.cx - halfW, r: cm.cx + halfW, t: top(y), b: bot(y) });
-                  yOf[country] = y;
-                }
+                // Only ONE country name is ever on screen (the hovered one), so the
+                // old collision-avoidance layout is gone — a label simply sits just
+                // above its own country. No two can overlap because no two show at once.
+                const baseY = (cm) => cm.cy - 0.032 * box.h; // just above the country
                 const wrapPlate = plateMode === "wrap";
-                // Hard mode hides the names on outline continents — tell them apart by
-                // shape + the hover highlight. Marker (Oceania) steps keep labels.
+                // Hard mode hides the names entirely (tell countries apart by shape +
+                // the hover highlight). Every other mode CAN show a name — but only for
+                // the country the mouse/keyboard is currently on, so no two ever overlap
+                // and the map invites you to explore each country to read it.
                 const showLabels = wrapPlate || mode.clue !== "hard";
                 // First pass: the clickable country region (outline or marker), no
                 // text — labels come in a second pass so no region can cover a label.
@@ -3770,8 +3795,10 @@ export default function ShutterbugWorld() {
                     <g key={country} className={`sbw-country${flashHint && flashHint.type === "country" && flashHint.key === country ? " sbw-flash-hint" : ""}`} role="button" tabIndex={busy ? -1 : 0}
                        aria-label={`Choose ${country}`} onClick={() => pickCountry(country)}
                        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); pickCountry(country); } }}
+                       onMouseEnter={() => setHoverCountry(country)} onMouseLeave={() => setHoverCountry((c) => (c === country ? null : c))}
+                       onFocus={() => setHoverCountry(country)} onBlur={() => setHoverCountry((c) => (c === country ? null : c))}
                        style={{ cursor: busy ? "default" : "pointer" }}>
-                      {/* Selectable countries wear their CONTINENT's colour (purple
+                      {/* Selectable countries wear their CONTINENT's color (purple
                           Europe, red Asia…) so they read at a glance as part of it,
                           not a generic green blob. */}
                       {(!wrapPlate && d)
@@ -3780,27 +3807,16 @@ export default function ShutterbugWorld() {
                     </g>
                   );
                 });
-                // Second pass, EVERY continent: labels lifted into collision-free
-                // lanes (computed above) with a hairline leader back to the country,
-                // so no two country names ever overlap on any continent map.
-                const labels = showLabels ? list.map((country) => {
-                  const cm = COUNTRY_META[countryKey(pickedContinent, country)];
-                  if (!cm) return null;
-                  const y = yOf[country] ?? baseY(cm);
-                  const moved = Math.abs(y - baseY(cm)) > 0.006 * box.h; // needs a leader?
-                  const above = y < cm.cy;
-                  return (
-                    <g key={"lbl" + country} style={{ pointerEvents: "none" }}>
-                      {moved && (
-                        <line x1={cm.cx} y1={above ? cm.cy - 0.03 * box.h : cm.cy + 0.02 * box.h}
-                          x2={cm.cx} y2={above ? y + 0.006 * box.h : y - 0.026 * box.h}
-                          stroke={PAPER} strokeWidth="1" vectorEffect="non-scaling-stroke" opacity="0.8" />
-                      )}
-                      <text x={cm.cx} y={y} fontSize={0.055 * box.h} fontFamily="ui-monospace, monospace" fontWeight="800" fill={INK} textAnchor="middle"
-                        style={{ paintOrder: "stroke", stroke: PAPER, strokeWidth: 0.02 * box.h }}>{country}</text>
-                    </g>
-                  );
-                }) : [];
+                // Second pass: the ONE hovered/focused country's name, drawn on top of
+                // every region so nothing can cover it. Hidden entirely in Hard mode.
+                const hov = showLabels && hoverCountry && list.includes(hoverCountry)
+                  ? COUNTRY_META[countryKey(pickedContinent, hoverCountry)] : null;
+                const labels = hov ? [(
+                  <g key={"lbl" + hoverCountry} style={{ pointerEvents: "none" }}>
+                    <text x={hov.cx} y={baseY(hov)} fontSize={0.055 * box.h} fontFamily="ui-monospace, monospace" fontWeight="800" fill={INK} textAnchor="middle"
+                      style={{ paintOrder: "stroke", stroke: PAPER, strokeWidth: 0.02 * box.h }}>{hoverCountry}</text>
+                  </g>
+                )] : [];
                 return regions.concat(labels);
               })()}
 
@@ -3860,21 +3876,26 @@ export default function ShutterbugWorld() {
               )}
 
               {/* city pins (city phase): the target + same-continent decoys. Each pin
-                  carries its subject's CATEGORY EMOJI on a light disc — a colour-blind-
+                  carries its subject's CATEGORY EMOJI on a light disc — a color-blind-
                   safe, at-a-glance clue to what kind of place it is (mountain, temple…),
                   so the player can match it against the editor's clue. */}
-              {inCity && cityOptions.map((id) => {
+              {/* Draw the hovered/focused pin LAST so its icon (and revealed name) ride
+                  on top of every neighbor. */}
+              {inCity && (hoverPin && cityOptions.includes(hoverPin)
+                ? [...cityOptions.filter((x) => x !== hoverPin), hoverPin]
+                : cityOptions).map((id) => {
                 const l = loc(id);
                 const { x: px, y: py } = pinXY(l);
                 const isCurrent = id === current;
-                const alwaysLabel = mode.labels === "all" || isCurrent;
                 const emoji = (CATEGORIES[l.category] || {}).emoji || "📍";
                 return (
-                  <g key={id} className={`sbw-pin${alwaysLabel ? "" : " sbw-pin--hide"}${flashHint && flashHint.type === "city" && flashHint.key === id ? " sbw-flash-hint" : ""}`}
+                  <g key={id} className={`sbw-pin sbw-pin--hide${flashHint && flashHint.type === "city" && flashHint.key === id ? " sbw-flash-hint" : ""}`}
                      role="button" tabIndex={busy ? -1 : 0}
                      aria-label={`Photograph ${l.city}, ${l.country} (${(CATEGORIES[l.category] || {}).name || "place"})`}
                      onClick={() => photographCity(id)}
                      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); photographCity(id); } }}
+                     onMouseEnter={() => setHoverPin(id)} onMouseLeave={() => setHoverPin((p) => (p === id ? null : p))}
+                     onFocus={() => setHoverPin(id)} onBlur={() => setHoverPin((p) => (p === id ? null : p))}
                      style={{ cursor: busy ? "default" : "pointer" }}>
                     <ellipse cx={px} cy={py} {...pinR(0.095)} fill="transparent" />
                     <ellipse cx={px} cy={py} {...pinR(isCurrent ? 0.078 : 0.066)} fill={isCurrent ? "rgba(233,92,66,0.22)" : "rgba(255,255,255,0.82)"} stroke={isCurrent ? CORAL : INK} strokeWidth={isCurrent ? "1.4" : "1"} vectorEffect="non-scaling-stroke" />
@@ -3898,6 +3919,7 @@ export default function ShutterbugWorld() {
                     fill="#2E6FC9" style={{ paintOrder: "stroke", stroke: "#fff", strokeWidth: sz * 0.26, pointerEvents: "none" }}>★</text>
                 );
               })}
+              </g>
             </svg>
             {/* Tap anywhere on the map during a flight to land early. */}
             {flying && (
@@ -3962,6 +3984,19 @@ export default function ShutterbugWorld() {
           (not to the map behind it). */}
       {albumView && <LandmarkModal p={albumView} onClose={() => { setAlbumView(null); setAlbumOpen(true); }} reduced={prefersReduced} />}
       {countryPopup && <CountryPopup country={countryPopup} onClose={() => setCountryPopup(null)} reduced={prefersReduced} />}
+      {/* Customize Traveler, reachable mid-trip by tapping the header avatar. No
+          remove option here (deleting the traveler you're playing as would end the
+          run); that lives on the start screen. */}
+      {avatarEdit && profileName && (
+        <AvatarEditor name={profileName} initial={getProfile(profileName)?.avatar}
+          onSave={(spec) => { setAvatar(profileName, spec); setAvatarEdit(false); refreshProfiles(); sfx("stamp"); }}
+          onRename={(want) => {
+            const nn = renameProfile(profileName, want);
+            if (nn) { setProfileName(nn); setLastProfile(nn); refreshProfiles(); sfx("stamp"); return true; }
+            return false;
+          }}
+          onClose={() => setAvatarEdit(false)} />
+      )}
       {curioDeck && CURIOSITY_DECK_BY_ID[curioDeck] && (
         <CuriosityCard deck={CURIOSITY_DECK_BY_ID[curioDeck]}
           seen={profileName ? curiositiesSeen(getProfile(profileName)) : {}}
@@ -4037,7 +4072,7 @@ function Frame({ children, desk = false }) {
         /* Result popup pop-in. */
         .sbw-pop{ animation: sbw-pop 0.22s cubic-bezier(.2,.8,.3,1.2); }
         @keyframes sbw-pop{ 0%{ transform: scale(0.82); opacity: 0 } 100%{ transform: scale(1); opacity: 1 } }
-        /* Photo develops like film: washed-out grey blooming into full colour. */
+        /* Photo develops like film: washed-out gray blooming into full color. */
         .sbw-develop{ animation: sbw-develop 1.5s ease-out both; }
         @keyframes sbw-develop{
           0%{ filter: brightness(2.1) saturate(0) contrast(0.75) sepia(0.35) }
@@ -4051,7 +4086,7 @@ function Frame({ children, desk = false }) {
           100%{ opacity: 0; transform: translateY(108vh) rotate(var(--spin, 540deg)) }
         }
         /* Print: the passport doubles as a homeschool record. Hide the chrome,
-           keep the colours, and don't split a sticker across two pages. */
+           keep the colors, and don't split a sticker across two pages. */
         @media print {
           .sbw-noprint { display: none !important; }
           body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
@@ -4091,12 +4126,12 @@ function Frame({ children, desk = false }) {
   );
 }
 // Big obvious success/failure popup that pauses play until the player clicks on.
-// Pick readable text (ink or white) for a coloured pill background.
+// Pick readable text (ink or white) for a colored pill background.
 const textOn = (hex) => {
   const n = parseInt(hex.slice(1), 16);
   return (0.299 * ((n >> 16) & 255) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)) > 150 ? INK : "#fff";
 };
-// Little coloured pill naming a subject's category (🌋 Volcano, 💦 Waterfall…).
+// Little colored pill naming a subject's category (🌋 Volcano, 💦 Waterfall…).
 function CategoryBadge({ category, size = "md", style }) {
   const c = CATEGORIES[category];
   if (!c) return null;
@@ -4113,8 +4148,8 @@ function CategoryBadge({ category, size = "md", style }) {
 // each one; targets on the continent you're standing on are flagged "here now".
 // The route you committed to, on screen for the whole trip — because you're being
 // scored against it, and a plan you can't see is a plan you can't fly. The stop
-// you're due at next is marked in words as well as colour (rule 3): a child who
-// can't tell teal from grey still needs to know where they're supposed to be.
+// you're due at next is marked in words as well as color (rule 3): a child who
+// can't tell teal from gray still needs to know where they're supposed to be.
 function RouteStrip({ plan, reqs, here }) {
   const nextStop = plan.order.find((c) => reqs.some((r) => !r.done && r.continent === c));
   return (
@@ -4189,11 +4224,22 @@ const PHASE_STEPS = [
   { key: "destination", label: "Destination", hint: "Narrow it down.", icon: "itinerary-destination.png" },
   { key: "photograph", label: "Photograph", hint: "Take the perfect shot!", icon: "itinerary-photograph.png" },
 ];
-function PhaseTracker({ stepIdx, onCurio }) {
+function PhaseTracker({ stepIdx, onCurio, continentName, countryName, onCountryInfo }) {
   return (
     <ol style={{ listStyle: "none", margin: "12px 0 0", padding: 0, display: "flex", flexDirection: "column", gap: 7 }}>
       {PHASE_STEPS.map((s, i) => {
         const active = i === stepIdx, done = i < stepIdx;
+        // Once a step is completed, its sub-line stops nagging ("Pick the correct
+        // continent") and simply names the place chosen — the continent you flew to,
+        // the country you found.
+        let hint = s.hint;
+        if (s.key === "continent" && done && continentName) hint = continentName;
+        if (s.key === "country" && done && countryName) hint = countryName;
+        // Once the right country is located, its step opens that country's culture
+        // card (flag, greeting, people) on click — distinct from the ⓘ, which
+        // explains what a country IS.
+        const infoable = s.key === "country" && done && !!countryName && !!onCountryInfo;
+        const LabelTag = infoable ? "button" : "span";
         // Each step is also a tap-to-learn card (what a continent / country /
         // destination is; how a photograph works). The ⓘ makes that discoverable
         // without competing with the step's job of showing where you are.
@@ -4206,11 +4252,15 @@ function PhaseTracker({ stepIdx, onCurio }) {
               background: active ? CORAL : done ? GREEN : "transparent", color: active || done ? "#fff" : INK,
               border: active || done ? "none" : `2px solid ${INK}` }}>{done ? "✓" : i + 1}</span>
             <img src={`${UI}${s.icon}`} alt="" style={{ width: 30, height: 30, objectFit: "contain", flex: "0 0 auto" }} />
-            <span style={{ lineHeight: 1.2, flex: 1, minWidth: 0 }}>
+            <LabelTag {...(infoable ? { type: "button", onClick: () => onCountryInfo(countryName), title: `About ${countryName}` } : {})}
+              style={{ lineHeight: 1.2, flex: 1, minWidth: 0, textAlign: "left",
+                ...(infoable ? { cursor: "pointer", background: "transparent", border: "none", padding: 0, font: "inherit" } : {}) }}>
               <span style={{ display: "block", fontWeight: 800, fontSize: 13.5, letterSpacing: "0.04em",
                 color: active ? CORAL : INK, textTransform: "uppercase" }}>{s.label}</span>
-              <span style={{ display: "block", fontSize: 11.5, color: INK, opacity: 0.7 }}>{s.hint}</span>
-            </span>
+              <span style={{ display: "block", fontSize: 11.5, color: infoable ? OCEAN : INK, opacity: infoable ? 0.9 : 0.7, fontWeight: infoable ? 700 : 400 }}>
+                {hint}{infoable && <span aria-hidden="true"> · tap for its card 🪪</span>}
+              </span>
+            </LabelTag>
             <button onClick={() => onCurio(s.key)} aria-label={`Learn: what is a ${s.label.toLowerCase()}?`}
               title={`What is a ${s.label.toLowerCase()}?`}
               style={{ flex: "0 0 auto", width: 30, height: 30, borderRadius: "50%", border: `1.5px solid ${OCEAN}`,
@@ -4316,7 +4366,7 @@ function FieldGuideModal({ note, spent, onClose }) {
   );
 }
 // The passport as an openable booklet popup: page 0 is the identity/profile
-// spread (avatar in the photo frame + traveller stats); pages 1..N are the
+// spread (avatar in the photo frame + traveler stats); pages 1..N are the
 // accomplishment spreads (country stamps + keepsakes), paged with arrows.
 function PassportModal({ profile, onClose }) {
   const [page, setPage] = useState(0);
@@ -4363,8 +4413,8 @@ function PassportModal({ profile, onClose }) {
           style={{ position: "absolute", top: "2%", right: "4%", background: "rgba(16,38,46,0.7)", color: "#fff", border: "none", borderRadius: "50%", width: 30, height: 30, fontSize: 18, lineHeight: 1, cursor: "pointer", zIndex: 3 }}>×</button>
         {!profile ? (
           <div style={{ position: "absolute", left: "54%", top: "34%", width: "34%", textAlign: "center", color: INK }}>
-            <div style={{ fontWeight: 800, fontSize: 15 }}>No traveller yet</div>
-            <div style={{ fontSize: 13, opacity: 0.75, marginTop: 6 }}>Create a traveller to earn a passport of stamps and keepsakes.</div>
+            <div style={{ fontWeight: 800, fontSize: 15 }}>No traveler yet</div>
+            <div style={{ fontSize: 13, opacity: 0.75, marginTop: 6 }}>Create a traveler to earn a passport of stamps and keepsakes.</div>
           </div>
         ) : isProfile ? (
           <>
@@ -4375,7 +4425,7 @@ function PassportModal({ profile, onClose }) {
             </div>
             {/* Identity details (right page) */}
             <div style={{ position: "absolute", left: "53%", top: "17%", width: "37%", color: INK, textAlign: "left" }}>
-              <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 10, letterSpacing: "0.16em", color: OCEAN, opacity: 0.8 }}>TRAVELLER</div>
+              <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 10, letterSpacing: "0.16em", color: OCEAN, opacity: 0.8 }}>TRAVELER</div>
               <div style={{ fontWeight: 900, fontSize: 24, lineHeight: 1.1, color: INK, overflow: "hidden", textOverflow: "ellipsis" }}>{profile.name}</div>
               <div style={{ fontWeight: 800, fontSize: 14, color: CORAL, marginTop: 3 }}>★ {rank.title}</div>
               <div style={{ marginTop: 12, display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px 12px", fontSize: 12.5 }}>
@@ -4427,7 +4477,7 @@ function ResultModal({ data, onContinue, reduced }) {
   // caption next to the shot); they stack on narrow screens via flex-wrap.
   const sideBySide = hasPhoto && !!data.fact;
   // A true polaroid: white frame with a deep bottom lip; the print ejects and the
-  // image "develops" (grey → colour) under a white shutter flash. The polaroid
+  // image "develops" (gray → color) under a white shutter flash. The polaroid
   // FRAME is static (always shown); only the eject/develop/flash are motion.
   const photoEl = hasPhoto && (
     <div className={reduced ? undefined : "sbw-polaroid"} key={`pol-${data.photo.src}`}
@@ -4457,29 +4507,46 @@ function ResultModal({ data, onContinue, reduced }) {
         style={{ background: PAPER, borderRadius: 16, border: `3px solid ${accent}`, boxShadow: "0 14px 44px rgba(0,0,0,0.35)", maxWidth: sideBySide ? 840 : 620, width: "100%", maxHeight: "92vh", overflowY: "auto", padding: "34px 40px", textAlign: "center" }}>
         <div style={{ fontSize: 56, lineHeight: 1 }} aria-hidden="true">{data.emoji}</div>
         <h2 style={{ fontFamily: "ui-sans-serif, system-ui", fontWeight: 900, fontSize: 26, color: accent, margin: "10px 0 6px" }}>{data.title}</h2>
-        {data.category && <div style={{ marginBottom: 10 }}><CategoryBadge category={data.category} /></div>}
+        {/* Extra breathing room below the "Ancient Wonder" badge so the header
+            doesn't crowd the photo. */}
+        {data.category && <div style={{ marginBottom: 20 }}><CategoryBadge category={data.category} /></div>}
         {sideBySide ? (
-          <div style={{ display: "flex", gap: 14, alignItems: "center", flexWrap: "wrap", margin: "6px 0 12px" }}>
+          // Photo on the left; the ABOUT box, the outcome line, and the Next button
+          // all stack in a column to its right — so the whole card stays compact.
+          <div style={{ display: "flex", gap: 16, alignItems: "flex-start", flexWrap: "wrap", margin: "0 0 4px", textAlign: "left" }}>
             <div style={{ flex: "1 1 300px", minWidth: 240 }}>{photoEl}</div>
-            <div style={{ flex: "1 1 240px", minWidth: 220 }}>{factEl}</div>
+            <div style={{ flex: "1 1 240px", minWidth: 220, display: "flex", flexDirection: "column", gap: 12 }}>
+              {factEl}
+              {/* Game-mechanic text (what you shot, points) appears INSTANTLY. */}
+              <p style={{ color: INK, fontSize: 15, lineHeight: 1.5, margin: 0 }}>{data.subtitle}</p>
+              {data.hint && (
+                <p style={{ color: OCEAN, fontSize: 14, fontWeight: 700, lineHeight: 1.45, margin: 0 }}>
+                  <span aria-hidden="true">💡 </span>{data.hint}
+                </p>
+              )}
+              <button autoFocus onClick={onContinue}
+                style={{ ...primaryBtn, alignSelf: "flex-start", background: accent, boxShadow: `0 4px 0 ${good ? "#2E7A55" : "#A93A28"}` }}>
+                {data.buttonLabel}
+              </button>
+            </div>
           </div>
-        ) : hasPhoto ? (
-          <div style={{ margin: "0 auto 10px", maxWidth: 500 }}>{photoEl}</div>
-        ) : null}
-        {/* Game-mechanic text (what you shot, points) appears INSTANTLY — only
-            "someone speaking" / new-info text (the fact) types gradually. */}
-        <p style={{ color: INK, fontSize: 15, lineHeight: 1.5, margin: "0 auto", maxWidth: 340 }}>{data.subtitle}</p>
-        {data.hint && (
-          <p style={{ color: OCEAN, fontSize: 14, fontWeight: 700, lineHeight: 1.45, margin: "10px auto 0", maxWidth: 340 }}>
-            <span aria-hidden="true">💡 </span>{data.hint}
-          </p>
+        ) : (
+          <>
+            {hasPhoto && <div style={{ margin: "0 auto 10px", maxWidth: 500 }}>{photoEl}</div>}
+            <p style={{ color: INK, fontSize: 15, lineHeight: 1.5, margin: "0 auto", maxWidth: 340 }}>{data.subtitle}</p>
+            {data.hint && (
+              <p style={{ color: OCEAN, fontSize: 14, fontWeight: 700, lineHeight: 1.45, margin: "10px auto 0", maxWidth: 340 }}>
+                <span aria-hidden="true">💡 </span>{data.hint}
+              </p>
+            )}
+            {/* Fact with no photo (e.g. the out-of-days screen) still shows below. */}
+            {factEl && <div style={{ marginTop: 14 }}>{factEl}</div>}
+            <button autoFocus onClick={onContinue}
+              style={{ ...primaryBtn, marginTop: 20, background: accent, boxShadow: `0 4px 0 ${good ? "#2E7A55" : "#A93A28"}` }}>
+              {data.buttonLabel}
+            </button>
+          </>
         )}
-        {/* Fact with no photo (e.g. the out-of-days screen) still shows below. */}
-        {!sideBySide && factEl && <div style={{ marginTop: 14 }}>{factEl}</div>}
-        <button autoFocus onClick={onContinue}
-          style={{ ...primaryBtn, marginTop: 20, background: accent, boxShadow: `0 4px 0 ${good ? "#2E7A55" : "#A93A28"}` }}>
-          {data.buttonLabel}
-        </button>
       </div>
     </div>
   );
@@ -4531,14 +4598,14 @@ function LandmarkModal({ p, onClose, reduced }) {
   );
 }
 // ===========================================================================
-// TRAVELLER AVATARS — a layered SVG portrait built from a tiny spec object
+// TRAVELER AVATARS — a layered SVG portrait built from a tiny spec object
 // { skin, hair, hairColor, hat, shirt } (all indices), stored per profile in
 // localStorage. Profiles that never opened the editor get a stable default
 // derived from their name, so every board shows a face from day one.
 // ===========================================================================
 // Skin was already a good range; the rest gained a lot more variety (more hair
-// styles, a much wider colour wheel for hair and shirts, and an optional pair of
-// glasses) so two travellers rarely look alike.
+// styles, a much wider color wheel for hair and shirts, and an optional pair of
+// glasses) so two travelers rarely look alike.
 const AVATAR_SKIN = ["#F7D7C4", "#EFC3A4", "#E7B48F", "#D9A184", "#B97F5E", "#8E5B3F", "#6A4430", "#4A2E1E"];
 const AVATAR_HAIRC = ["#2B2118", "#4A3325", "#5C4030", "#8A6238", "#C99C4F", "#E6CE8A", "#8A3B24", "#C4483F", "#E4873C", "#9AA0A3", "#E9E6E1", "#3E73B0", "#C25FA0", "#5FA36B", "#8E6FC1"];
 const AVATAR_SHIRT = ["#E96A4C", "#2E6E75", "#3E8E5A", "#D9A036", "#8E6FC1", "#1F3D66", "#C25FA0", "#4FA6C4", "#7A8A3A", "#B23A48", "#2B2B2B", "#EDE6D2"];
@@ -4548,7 +4615,7 @@ const AVATAR_GLASSES = ["none", "round", "square", "sunglasses"];
 const AVATAR_DIMS = [
   { key: "skin", label: "Skin", n: AVATAR_SKIN.length, swatch: (i) => AVATAR_SKIN[i] },
   { key: "hair", label: "Hair", n: AVATAR_HAIR.length, name: (i) => AVATAR_HAIR[i] },
-  { key: "hairColor", label: "Hair colour", n: AVATAR_HAIRC.length, swatch: (i) => AVATAR_HAIRC[i] },
+  { key: "hairColor", label: "Hair color", n: AVATAR_HAIRC.length, swatch: (i) => AVATAR_HAIRC[i] },
   { key: "glasses", label: "Glasses", n: AVATAR_GLASSES.length, name: (i) => AVATAR_GLASSES[i] },
   { key: "hat", label: "Hat", n: AVATAR_HAT.length, name: (i) => AVATAR_HAT[i] },
   { key: "shirt", label: "Shirt", n: AVATAR_SHIRT.length, swatch: (i) => AVATAR_SHIRT[i] },
@@ -4687,7 +4754,7 @@ function Avatar({ spec, size = 24, title }) {
   );
 }
 
-// The "Customize Traveler" modal: rename the traveller, restyle their avatar
+// The "Customize Traveler" modal: rename the traveler, restyle their avatar
 // (one row of ◀ ▶ steppers per dimension, live preview, randomize), or remove
 // them. Everything is a real button/field, so it is fully keyboard-operable.
 function AvatarEditor({ name, initial, onSave, onClose, onRename, onRemove }) {
@@ -4762,7 +4829,7 @@ function AvatarEditor({ name, initial, onSave, onClose, onRename, onRemove }) {
           <button onClick={() => onSave(spec)} style={{ padding: "9px 18px", borderRadius: 8, border: "none", background: GREEN, color: "#fff", fontWeight: 800, cursor: "pointer" }}>Save</button>
           <button onClick={onClose} style={{ padding: "9px 14px", borderRadius: 8, border: `1.5px solid ${INK}`, background: "transparent", color: INK, fontWeight: 700, cursor: "pointer" }}>Cancel</button>
         </div>
-        {/* Remove traveller — two-step so it can't be clicked by accident. */}
+        {/* Remove traveler — two-step so it can't be clicked by accident. */}
         {onRemove && (
           <div style={{ marginTop: 14, paddingTop: 12, borderTop: `1px solid ${PAPER_LINE}` }}>
             {confirmRemove ? (
@@ -4786,7 +4853,7 @@ function AvatarEditor({ name, initial, onSave, onClose, onRename, onRemove }) {
   );
 }
 
-// "Create New Traveler" — name the traveller, design their avatar, and set off,
+// "Create New Traveler" — name the traveler, design their avatar, and set off,
 // all from one popup. onCreate(name, spec) saves the profile (returns false if
 // the name is blank or taken); onBegin() launches straight into the adventure.
 function CreateTravelerModal({ onSubmit, onClose }) {
@@ -4882,7 +4949,7 @@ function PeoplePhoto({ country }) {
 
           NOT loading="lazy": the image sits inside this overflow:hidden frame, and a
           lazy image clipped by its container never intersects the viewport, so it
-          never loads — the card showed an empty grey box. It's one image, and the
+          never loads — the card showed an empty gray box. It's one image, and the
           player has already flown here, so eager is right anyway. */}
       <div style={{ width: "100%", aspectRatio: "16 / 9", borderRadius: 4, overflow: "hidden", background: "#DCE9EC" }}>
         <img src={people.src} alt={people.caption} decoding="async"
@@ -4892,7 +4959,7 @@ function PeoplePhoto({ country }) {
       </div>
       {/* Which of this country's peoples you're looking at, and how to see the
           others. The count is spelled out ("1 of 3") rather than shown as dots —
-          a position you can only read from colour or size is no position at all
+          a position you can only read from color or size is no position at all
           (rule 3). Both arrows are real buttons, so they're keyboard-reachable. */}
       {many && (
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 6 }}>
@@ -4919,7 +4986,7 @@ const routeBtn = { background: "transparent", border: `1.5px solid ${OCEAN}`, co
 const peopleArrow = { background: "transparent", border: `1.5px solid ${OCEAN}`, color: OCEAN,
   borderRadius: 6, cursor: "pointer", fontSize: 11, lineHeight: 1, padding: "4px 8px", fontWeight: 700 };
 
-// The country card — the game's cultural centrepiece, shown the moment you're
+// The country card — the game's cultural centerpiece, shown the moment you're
 // in a country in ANY mode: the country and its flag, a photo of its people in
 // traditional dress, how they say hello, then the capital and a short story.
 function CountryCard({ country, reduced }) {

@@ -24,7 +24,7 @@ export const GRANDPA = {
   emoji: "👴",
 };
 
-// Shown once, the first time a traveller sets out. Each entry is one beat,
+// Shown once, the first time a traveler sets out. Each entry is one beat,
 // revealed at reading speed; keep each short enough to read in one breath.
 export const INTRO_BEATS = [
   "Come in, come in — pull up a chair beside me a moment.",
@@ -80,7 +80,7 @@ export const END_WIN = [
   "Perfect, just perfect. You've made an old man's whole week.",
   "Every shot landed. I couldn't have done better myself in my dreams — and I dreamed plenty.",
   "Splendid work out there! These pictures will hang on my wall for years.",
-  "You did it, and you did it beautifully. That's my traveller.",
+  "You did it, and you did it beautifully. That's my traveler.",
   "Oh, wonderful! It's like I went there myself, sitting right here in this chair.",
   "Bravo! A full roll and not a shot wasted. You've a real gift, you have.",
 ];
@@ -107,7 +107,7 @@ export const MEET_LINES = [
   "The map is not the world, laddie. You have to go and stand in it.",
   "I've read about a thousand places. You get to smell the air in them. Don't take that for granted.",
   "Getting lost is just the map's way of showing you something you didn't plan to see.",
-  "A good traveller has no fixed plans and is not intent on arriving. Mind you, do watch the calendar.",
+  "A good traveler has no fixed plans and is not intent on arriving. Mind you, do watch the calendar.",
   "The whole world is a book, and those who don't travel read only a page. You're on chapter two hundred!",
   "When you meet folk who don't look like you or talk like you — that's not a wrong turn. That's the whole point.",
   "Wherever you go becomes a part of you somehow. So choose your places well.",
@@ -120,8 +120,8 @@ export const MEET_LINES = [
   "The journey of a thousand miles begins with picking the right continent. No pressure.",
   "I'm too old to climb the mountain, but I can still climb it through your eyes. Show me the top.",
   "Take the picture, then put the camera down for a minute. Some things you keep in here.",
-  "There are no foreign lands. It's the traveller who's foreign. Go be a delightful stranger.",
-  "A ship in harbour is safe — but that's not what ships are for. Nor cameras. Nor grandchildren!",
+  "There are no foreign lands. It's the traveler who's foreign. Go be a delightful stranger.",
+  "A ship in harbor is safe — but that's not what ships are for. Nor cameras. Nor grandchildren!",
   "Some journeys take you far away so you can appreciate coming home. But we'll do the far-away part first.",
   "If it were easy, everyone would've photographed it. The tricky ones are the trophies.",
   "Adventure is worthwhile in itself, they say. And it pairs beautifully with a good photograph.",
@@ -132,7 +132,7 @@ export const MEET_LINES = [
   "Not all who wander are lost. But do glance at your travel days now and again, eh?",
   "Once a year, go somewhere you've never been before. And since you're already up — why not now?",
 ];
-// After a saved traveller's first trip, Grandpa nods to how it went. The
+// After a saved traveler's first trip, Grandpa nods to how it went. The
 // component picks a pool from the last result; each entry is a whole line.
 export const MEET_RUN = {
   great: [
@@ -148,18 +148,18 @@ export const MEET_RUN = {
   rough: [
     "Last trip was a bit of a scramble, eh? No shame in it — the world's a big place. Fresh start.",
     "The days ran out on you last time. Happens to the best of us. Let's plan this one a touch tighter.",
-    "Don't fret about last time. Every traveller has a trip that fights back. Dust off and off we go.",
+    "Don't fret about last time. Every traveler has a trip that fights back. Dust off and off we go.",
   ],
   firstTime: [
     "First trip, is it? Oh, I do envy you. Nothing quite like the first time the world opens up.",
     "Your very first expedition! Take your time, read the clues, and don't forget to look up now and then.",
-    "A brand-new traveller! Here — take the camera, and I'll wait right here for every story.",
+    "A brand-new traveler! Here — take the camera, and I'll wait right here for every story.",
   ],
 };
 // Grandpa's lead-in to choosing a mode + difficulty on the meet screen.
 export const MEET_ASK = "Now then — what sort of adventure are we after today?";
 
-// When the traveller has newly unlocked something, Grandpa announces it on the
+// When the traveler has newly unlocked something, Grandpa announces it on the
 // meet screen. Keyed by the unlock id (see profiles.js → unlocks()).
 export const UNLOCK_LINES = {
   medium: "You've got a trip under your belt now — I reckon you're ready for a tougher clue. Medium's open to you!",
@@ -168,7 +168,7 @@ export const UNLOCK_LINES = {
   hard: "Stamps on three continents — you know your way around the globe now. If you're brave, Hard mode is unlocked. No hints, mind!",
   expeditions: "Twenty-five places! Extraordinary. I've unlocked the Themed Expeditions — curated grand tours, each with a little lesson.",
 };
-// When the traveller's press rank goes up, Grandpa tips his hat. Filled with the
+// When the traveler's press rank goes up, Grandpa tips his hat. Filled with the
 // new rank title.
 export const RANKUP_LINE = (title) => `And would you look — the paper's promoted you to ${title}! Wear it proudly.`;
 

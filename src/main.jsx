@@ -28,7 +28,7 @@ class ErrorBoundary extends React.Component {
             <div style={{ fontSize: 44 }} aria-hidden="true">📷</div>
             <h1 style={{ fontSize: 22, fontWeight: 900, margin: "8px 0 6px" }}>Oops — the camera jammed!</h1>
             <p style={{ fontSize: 15, lineHeight: 1.5, opacity: 0.85, margin: "0 0 16px" }}>
-              Something went wrong for a moment. Your saved travellers and passport are safe — tap below to pick up again.
+              Something went wrong for a moment. Your saved travelers and passport are safe — tap below to pick up again.
             </p>
             <button onClick={() => this.setState((s) => ({ failed: false, resetKey: s.resetKey + 1 }))}
               style={{ background: "#C65B3E", color: "#fff", border: "none", borderRadius: 12, padding: "12px 22px", fontWeight: 800, fontSize: 16, cursor: "pointer", boxShadow: "0 4px 0 #A93A28" }}>

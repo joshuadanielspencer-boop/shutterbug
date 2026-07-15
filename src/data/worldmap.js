@@ -195,7 +195,7 @@ export const WORLD_COUNTRIES = [
 
 // ===========================================================================
 // COUNTRY → CONTINENT — which continent each country above belongs to, so the
-// world map can colour each continent (see CONTINENT_COLOR in the component) and
+// world map can color each continent (see CONTINENT_COLOR in the component) and
 // make it clickable. Transcontinental judgment calls:
 //   • Russia and Turkey → Asia. Both straddle the Europe/Asia line but, by land
 //     area, are generally treated as Asian for geographic purposes. (Their

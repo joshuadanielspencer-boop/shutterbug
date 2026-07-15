@@ -3,7 +3,7 @@
 //
 // All three are self-contained Web Audio / Web Speech engines: they ship no
 // audio files, work offline, and never touch the game state or React. Moved out
-// of the main component verbatim so the game logic reads cleanly; behaviour is
+// of the main component verbatim so the game logic reads cleanly; behavior is
 // unchanged. Each guards every call so an audio hiccup can never break gameplay.
 // ===========================================================================
 import { TUNES, tuneKeyFor } from "./data/tunes.js";
@@ -129,7 +129,7 @@ export const SFX = (() => {
 // ---- Background music (Web Audio): a Scottish jig ---------------------------
 // A lilting 6/8 folk jig over a bagpipe-style drone (tonic + fifth), composed
 // live by a look-ahead scheduler and looping a fixed melody in D Mixolydian
-// (the natural-7th that gives Scottish and Irish tunes their colour). Ships no
+// (the natural-7th that gives Scottish and Irish tunes their color). Ships no
 // audio files and works offline. It has its own context and mute toggle,
 // separate from the sound effects. start() must be called from a user gesture
 // (a click handler) to satisfy autoplay rules, especially on iPad Safari.
@@ -378,20 +378,28 @@ export const MUSIC = (() => {
       countryActive = false;
       if (countryTimer) { clearTimeout(countryTimer); countryTimer = null; }
     },
-    // ~4-second lively jig over a flight, on master (independent of the loop).
+    // Travel music over a flight: a lively jig that plays for ~2 seconds and fades
+    // to silence over those same 2 seconds, so the music eases out as the plane
+    // cruises rather than cutting off. Routed through its own fade bus (independent
+    // of the looping jig), so the fade never touches other one-shots.
     travelJig() {
       try {
         this.stopCountry(); // you're leaving the country — silence its tune
         const c = ac(); if (!c) return;
         wake(c);
         const t0 = c.currentTime + 0.04;
-        const n = Math.floor(4.0 / EIGHTH);
+        const FADE = 2.0; // seconds: play and fade out together
+        const fade = ctx.createGain();
+        fade.gain.setValueAtTime(1, t0);
+        fade.gain.linearRampToValueAtTime(0.0001, t0 + FADE);
+        fade.connect(master);
+        const n = Math.floor(FADE / EIGHTH);
         for (let i = 0; i < n; i++) {
           const f = MELODY[i % MELODY.length];
-          if (f) voice(t0 + i * EIGHTH, f, i % 3 === 0 ? 0.12 : 0.085, EIGHTH * 0.95, "reed", master);
+          if (f) voice(t0 + i * EIGHTH, f, i % 3 === 0 ? 0.12 : 0.085, EIGHTH * 0.95, "reed", fade);
         }
         // a light low pulse on the downbeats for lift
-        for (let i = 0; i < n; i += 6) voice(t0 + i * EIGHTH, 146.83, 0.06, EIGHTH * 3, "reed", master);
+        for (let i = 0; i < n; i += 6) voice(t0 + i * EIGHTH, 146.83, 0.06, EIGHTH * 3, "reed", fade);
       } catch { /* ignore */ }
     },
     // The country's tune, LOOPED while the player is in that country (a gap
@@ -427,7 +435,7 @@ export const MUSIC = (() => {
         master.gain.setTargetAtTime(0.0001, tc + 1.4, 0.5); // let it ring, then fade
       } catch { /* ignore */ }
     },
-    // A short, slow, wistful Scottish air — played once when the traveller comes
+    // A short, slow, wistful Scottish air — played once when the traveler comes
     // home to Grandpa's homecoming quiz. Gentle flute-like voice over a soft D
     // drone; nostalgic, not the lively jig. Ends by letting the last note ring.
     homecoming() {

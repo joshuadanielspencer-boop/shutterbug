@@ -79,7 +79,7 @@ export function createProfile(rawName) {
   return s.profiles[name];
 }
 
-// Save the traveller's avatar (a small spec object the Avatar component
+// Save the traveler's avatar (a small spec object the Avatar component
 // renders; see AVATAR_PARTS in the game component). null clears it back to
 // the name-derived default.
 export function setAvatar(name, avatar) {
@@ -90,7 +90,7 @@ export function setAvatar(name, avatar) {
   write(s);
 }
 
-// Curiosity layer: remember which tap-to-learn field-note cards a traveller has
+// Curiosity layer: remember which tap-to-learn field-note cards a traveler has
 // read, so "Curiosities found: X / Y" counts poking around as progress. Stored as
 // a plain map of card id → true. Returns the updated set size, or 0 for guests.
 export function markCuriositySeen(name, cardId) {
@@ -107,7 +107,7 @@ export function curiositiesSeen(profile) {
 }
 
 // Persist a small arbitrary flag on a profile (e.g. story progress like
-// whether the traveller has met Grandpa Nigel yet). Unknown keys are fine.
+// whether the traveler has met Grandpa Nigel yet). Unknown keys are fine.
 export function setProfileFlag(name, key, value) {
   const s = read();
   const p = s.profiles[name];
@@ -131,9 +131,9 @@ export function deleteProfile(name) {
   write(s);
 }
 
-// Rename a traveller, keeping all their progress. Profiles are keyed by name, so
+// Rename a traveler, keeping all their progress. Profiles are keyed by name, so
 // this re-keys the object and its `name` field. Returns the new name on success,
-// or null if the new name is empty or already taken by a DIFFERENT traveller.
+// or null if the new name is empty or already taken by a DIFFERENT traveler.
 export function renameProfile(oldName, rawNew) {
   const newName = String(rawNew || "").trim().slice(0, MAX_NAME);
   if (!newName) return null;
@@ -141,7 +141,7 @@ export function renameProfile(oldName, rawNew) {
   const p = s.profiles[oldName];
   if (!p) return null;
   if (newName === oldName) return oldName;                 // nothing to do
-  if (s.profiles[newName]) return null;                    // would clobber another traveller
+  if (s.profiles[newName]) return null;                    // would clobber another traveler
   p.name = newName;
   s.profiles[newName] = p;
   delete s.profiles[oldName];
@@ -191,7 +191,7 @@ export function recordGame(name, { difficulty, score, timeMs = 0, won = false, r
   correctIds.forEach((id) => { bump(id, "c").last = "c"; });
   missedIds.forEach((id) => { const e = bump(id, "m"); if (e.last !== "c") e.last = "m"; });
   // Stamp when each place was last encountered (flown to or photographed) so the
-  // game can favour genuinely NEW/least-recent places each playthrough.
+  // game can favor genuinely NEW/least-recent places each playthrough.
   const now = Date.now();
   [...new Set([...visitedIds, ...correctIds])].forEach((id) => { if (p.loc[id]) p.loc[id].t = now; });
 
@@ -299,8 +299,8 @@ export function weightedOrder(profile) {
     .map((x) => x.id);
 }
 
-// Leaderboard: the top-N single best scores across all saved travellers. Each
-// traveller contributes their highest score (over difficulties); returns
+// Leaderboard: the top-N single best scores across all saved travelers. Each
+// traveler contributes their highest score (over difficulties); returns
 // [{ name, score, difficulty }] sorted high→low. Guests aren't saved, so they
 // never appear.
 export function topScores(n = 5) {
@@ -415,13 +415,13 @@ export function achievements(profile) {
   add("globe", "Globetrotter", "🌍", contSet.size, 7);
   add("record", "Record Breaker", "🏅", superHave, 8);
   add("m25", "Shutterbug", "📸", distinct, 25);
-  add("m50", "Seasoned Traveller", "🧳", distinct, 50);
+  add("m50", "Seasoned Traveler", "🧳", distinct, 50);
   add("m100", "Around the World", "🗺️", distinct, 100);
   return list;
 }
 
 // ---- Career rank + unlocks ------------------------------------------------
-// A traveller's PERSISTENT rank grows with how many distinct places they've
+// A traveler's PERSISTENT rank grows with how many distinct places they've
 // photographed (mastered) across all their trips — separate from the per-trip
 // "how did this run go" title on the results screen. It's their press card.
 export function distinctMastered(profile) {
@@ -447,7 +447,7 @@ export function careerRank(profile) {
 }
 
 // Which modes / difficulties / itineraries this profile has unlocked. New
-// travellers start simple; more opens up as they collect the world, so the game
+// travelers start simple; more opens up as they collect the world, so the game
 // reveals itself gradually (Grandpa narrates each unlock on the meet screen).
 // Guests (no profile) get everything — they can't progress, so nothing to gate.
 export const UNLOCK_REQ = {

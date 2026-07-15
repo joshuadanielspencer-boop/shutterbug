@@ -70,14 +70,20 @@ export function GradualText({ text, reduced, onDone, cps = 42, style }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [text, reduced]);
   const busy = n < text.length;
+  // The full text is laid out invisibly underneath so the box takes its FINAL size
+  // from the start and never grows as the words type in (both layers share one grid
+  // cell). The visible layer stacks on top and reveals gradually.
   return (
     <p onClick={busy ? finish : undefined}
       onKeyDown={busy ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); finish(); } } : undefined}
       role={busy ? "button" : undefined} tabIndex={busy ? 0 : undefined}
       aria-label={busy ? text : undefined}
-      style={{ cursor: busy ? "pointer" : "default", ...style }}>
-      <span aria-hidden={busy ? "true" : undefined}>{text.slice(0, n)}</span>
-      {busy && <span aria-hidden="true" style={{ opacity: 0.35 }}>▌</span>}
+      style={{ cursor: busy ? "pointer" : "default", display: "grid", ...style }}>
+      <span aria-hidden="true" style={{ gridArea: "1 / 1", visibility: "hidden" }}>{text}</span>
+      <span style={{ gridArea: "1 / 1" }}>
+        <span aria-hidden={busy ? "true" : undefined}>{text.slice(0, n)}</span>
+        {busy && <span aria-hidden="true" style={{ opacity: 0.35 }}>▌</span>}
+      </span>
     </p>
   );
 }
@@ -105,12 +111,26 @@ export function TypeLine({ text, reduced, style, inline = false, cps = 45, onDon
   }, [str, reduced]);
   const busy = n < str.length;
   const complete = () => { if (idRef.current) { clearInterval(idRef.current); idRef.current = null; } setN(str.length); if (onDone) onDone(); };
-  const Tag = inline ? "span" : "p";
+  // Block usage reserves its FINAL size up front (a hidden full-text layer under the
+  // visible one, sharing a grid cell) so the box never grows as the text types in.
+  // Inline usage stays in normal flow (it lives inside an already-sized sentence).
+  if (inline) {
+    return (
+      <span onClick={busy ? complete : undefined} aria-label={busy ? str : undefined}
+        style={{ cursor: busy ? "pointer" : "inherit", ...style }}>
+        <span aria-hidden={busy ? "true" : undefined}>{str.slice(0, n)}</span>
+        {busy && <span aria-hidden="true" style={{ opacity: 0.4 }}>▌</span>}
+      </span>
+    );
+  }
   return (
-    <Tag onClick={busy ? complete : undefined} aria-label={busy ? str : undefined}
-      style={{ cursor: busy ? "pointer" : "inherit", ...(inline ? {} : { margin: 0 }), ...style }}>
-      <span aria-hidden={busy ? "true" : undefined}>{str.slice(0, n)}</span>
-      {busy && <span aria-hidden="true" style={{ opacity: 0.4 }}>▌</span>}
-    </Tag>
+    <p onClick={busy ? complete : undefined} aria-label={busy ? str : undefined}
+      style={{ cursor: busy ? "pointer" : "inherit", margin: 0, display: "grid", ...style }}>
+      <span aria-hidden="true" style={{ gridArea: "1 / 1", visibility: "hidden" }}>{str}</span>
+      <span style={{ gridArea: "1 / 1" }}>
+        <span aria-hidden={busy ? "true" : undefined}>{str.slice(0, n)}</span>
+        {busy && <span aria-hidden="true" style={{ opacity: 0.4 }}>▌</span>}
+      </span>
+    </p>
   );
 }

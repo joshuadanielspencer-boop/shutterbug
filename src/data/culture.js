@@ -194,7 +194,7 @@ export const COUNTRY_PEOPLE = {
     src: "https://commons.wikimedia.org/wiki/Special:FilePath/Two_women_wearing_Kangas.jpg?width=800",
     source: "https://commons.wikimedia.org/wiki/File:Two_women_wearing_Kangas.jpg",
     credit: "Sophiestolle", license: "CC BY-SA 4.0",
-    caption: "Two women in Tanzania wear colourful kanga cloths printed with Swahili sayings",
+    caption: "Two women in Tanzania wear colorful kanga cloths printed with Swahili sayings",
   },
   "Namibia": {
     src: "https://commons.wikimedia.org/wiki/Special:FilePath/Herero%20lady%20%285%29.jpg?width=800",
@@ -242,7 +242,7 @@ export const COUNTRY_PEOPLE = {
     src: "https://commons.wikimedia.org/wiki/Special:FilePath/%C2%A9SUD2018-Sari%20Omer%20-0061.jpg?width=800",
     source: "https://commons.wikimedia.org/wiki/File:%C2%A9SUD2018-Sari_Omer_-0061.jpg",
     credit: "Sari Omer", license: "CC BY-SA 4.0",
-    caption: "Sudanese women in colourful toub celebrating together, Darfur, Sudan",
+    caption: "Sudanese women in colorful toub celebrating together, Darfur, Sudan",
   },
 
   // ---- Asia (reviewed batch; Japan & India in the pilot above) ----------
@@ -256,7 +256,7 @@ export const COUNTRY_PEOPLE = {
     src: "https://commons.wikimedia.org/wiki/Special:FilePath/Korea%20Spring%20of%20Insadong%2010%20%2813326749133%29.jpg?width=800",
     source: "https://commons.wikimedia.org/wiki/File:Korea_Spring_of_Insadong_10_(13326749133).jpg",
     credit: "Korea.net / Korean Culture and Information Service (Jeon Han)", license: "CC BY-SA 2.0",
-    caption: "Women in colourful hanbok at the Insadong hanbok parade in Seoul, South Korea",
+    caption: "Women in colorful hanbok at the Insadong hanbok parade in Seoul, South Korea",
   },
   "Thailand": {
     src: "https://commons.wikimedia.org/wiki/Special:FilePath/4%20Couple%20in%20traditional%20thai%20dress.jpg?width=800",
@@ -408,7 +408,7 @@ export const COUNTRY_PEOPLE = {
     src: "https://commons.wikimedia.org/wiki/Special:FilePath/Feria%20abril%202011%200001.jpg?width=800",
     source: "https://commons.wikimedia.org/wiki/File:Feria%20abril%202011%200001.jpg",
     credit: "Sevilla Congress & Convention Bureau", license: "CC BY-SA 4.0",
-    caption: "Women in colourful ruffled flamenco dresses at Seville's April Fair",
+    caption: "Women in colorful ruffled flamenco dresses at Seville's April Fair",
   },
   "Portugal": {
     src: "https://commons.wikimedia.org/wiki/Special:FilePath/Pa%C3%A7os%20do%20Concelho%20de%20Angra%20do%20Hero%C3%ADsmo%20-%20Folclore.jpg?width=800",
@@ -471,7 +471,7 @@ export const COUNTRY_PEOPLE = {
     src: "https://commons.wikimedia.org/wiki/Special:FilePath/Ixil%20young%20woman%20with%20ceremonial%20dress.jpg?width=800",
     source: "https://commons.wikimedia.org/wiki/File:Ixil%20young%20woman%20with%20ceremonial%20dress.jpg",
     credit: "Sigrid Marisol Aguilar Jocol", license: "CC BY-SA 4.0",
-    caption: "A young Ixil Maya woman in her people's colourful ceremonial dress, in Guatemala's highlands",
+    caption: "A young Ixil Maya woman in her people's colorful ceremonial dress, in Guatemala's highlands",
     portrait: true, // no free landscape photo of this dress exists — show it whole
   },
   "Panama": {
@@ -608,7 +608,7 @@ export const COUNTRY_PEOPLE = {
     src: "https://commons.wikimedia.org/wiki/Special:FilePath/Dances%20-%20Tortuguero%20-%20Costa%20Rica.jpg?width=800",
     source: "https://commons.wikimedia.org/wiki/File:Dances_-_Tortuguero_-_Costa_Rica.jpg",
     credit: "Mimostralia", license: "CC BY-SA 4.0",
-    caption: "Young folk dancers in colourful traje típico at Tortuguero, Costa Rica",
+    caption: "Young folk dancers in colorful traje típico at Tortuguero, Costa Rica",
   },
   "Haiti": {
     src: "https://commons.wikimedia.org/wiki/Special:FilePath/Kanaval%20in%20Jacmel%20Haiti%202014%2018.jpg?width=800",
@@ -770,19 +770,19 @@ export const COUNTRY_PEOPLE = {
     src: "https://commons.wikimedia.org/wiki/Special:FilePath/Keld%20Gydum-IMG%204003%20%C3%A5benthus%20frederikshavn%20havn%20cropped.JPG?width=800",
     source: "https://commons.wikimedia.org/wiki/File:Keld_Gydum-IMG_4003_%C3%A5benthus_frederikshavn_havn_cropped.JPG",
     credit: "Keld Gydum", license: "CC BY-SA 2.5 dk",
-    caption: "Danish folk dancers in traditional dress at a harbour festival in Frederikshavn",
+    caption: "Danish folk dancers in traditional dress at a harbor festival in Frederikshavn",
   },
   "Tunisia": {
     src: "https://commons.wikimedia.org/wiki/Special:FilePath/Fille%20mariage%20Djerba.jpg?width=800",
     source: "https://commons.wikimedia.org/wiki/File:Fille_mariage_Djerba.jpg",
     credit: "Souad Anane Lesina", license: "CC BY-SA 3.0",
-    caption: "A girl in traditional Tunisian dress and gold jewellery at a wedding celebration on Djerba",
+    caption: "A girl in traditional Tunisian dress and gold jewelry at a wedding celebration on Djerba",
   },
   "Bangladesh": {
     src: "https://commons.wikimedia.org/wiki/Special:FilePath/Mangal%20Shobhajatra%201.jpg?width=800",
     source: "https://commons.wikimedia.org/wiki/File:Mangal_Shobhajatra_1.jpg",
     credit: "Mustmamun", license: "CC BY-SA 4.0",
-    caption: "Colourful masks at the Mangal Shobhajatra parade for Pohela Boishakh, the Bengali New Year, in Dhaka",
+    caption: "Colorful masks at the Mangal Shobhajatra parade for Pohela Boishakh, the Bengali New Year, in Dhaka",
   },
   "Uruguay": {
     src: "https://commons.wikimedia.org/wiki/Special:FilePath/Desfile%20de%20Llamadas%202020%20-%20Barrio%20Sur%20-%20Montevideo%20-%20Uruguay%20200214-1020898-jikatu%20%2849538521121%29.jpg?width=800",
