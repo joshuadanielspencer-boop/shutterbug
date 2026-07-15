@@ -530,6 +530,25 @@ const pathBBox = (d, refX, refY = null, clip = Infinity) => {
     }
   }
 })();
+// ---- Overseas-territory locator insets ------------------------------------
+// A country's zoom box hugs its mainland (France's would otherwise have to span
+// the whole globe to include French Guiana AND Réunion), so its far-flung
+// territories fall off-frame. These small LOCATOR insets put each back: a tiny
+// silhouette of the region it sits in, with a marker + name, so a child still
+// learns "France reaches all the way over here too". lon/lat in degrees; the
+// equirectangular plate is x = lon+180, y = 90−lat.
+const OVERSEAS_INSETS = {
+  France: [
+    { name: "French Guiana",           cLon: -53,   cLat: 3.5,   w: 26, dots: [[-53, 4]] },
+    { name: "Guadeloupe & Martinique", cLon: -61.4, cLat: 15.4,  w: 13, dots: [[-61.5, 16.2], [-61, 14.6]] },
+    { name: "Réunion",                 cLon: 53,    cLat: -21,   w: 20, dots: [[55.5, -21.1]] },
+    { name: "Mayotte",                 cLon: 45.5,  cLat: -12.8, w: 15, dots: [[45.2, -12.8]] },
+  ],
+};
+// Each world-country's plate bounding box, computed once, so an inset draws only
+// the handful of silhouettes that fall inside its little window (not all ~200
+// every time the map re-renders on hover).
+const WC_BBOXES = WORLD_COUNTRIES.map((c) => ({ d: c.d, bb: pathBBox(c.d, null) })).filter((c) => c.bb);
 // Does this assignment use the country layer? Medium/Hard on a layer-continent —
 // both specific missions (pick the target's country) and category missions (pick
 // any country on the continent that has a member of the wanted category).
@@ -932,6 +951,60 @@ function ShapeView({ d }) {
     <svg role="img" aria-label="A mystery country's outline" style={{ width: "100%", maxWidth: 300, height: 190, display: "block", margin: "0 auto" }}>
       <path ref={ref} d={d} fillRule="evenodd" fill={OCEAN} stroke={INK} strokeWidth="1" vectorEffect="non-scaling-stroke" />
     </svg>
+  );
+}
+// A row of small LOCATOR insets along the bottom of a country plate, one per
+// overseas territory (see OVERSEAS_INSETS). Each is its own little equirectangular
+// window onto the region the territory sits in — nearby land drawn as a tan
+// silhouette, a coral marker on the territory, its name on a banner. All in the
+// plate's coordinate space, so it rides inside the same map <svg>.
+function OverseasInsets({ specs, box }) {
+  const n = specs.length;
+  const gap = 0.012 * box.w;
+  const rowW = box.w * 0.96;
+  const iw = (rowW - gap * (n - 1)) / n;
+  const ih = iw * 0.72;
+  const x0 = box.x + (box.w - rowW) / 2;
+  const y0 = box.y + box.h - ih - 0.055 * box.h;     // above the bottom edge, clear of the brass corner art
+  const bandH = 0.03 * box.h;
+  return (
+    <g style={{ pointerEvents: "none" }}>
+      {specs.map((s, i) => {
+        const ix = x0 + i * (iw + gap), iy = y0;
+        const cx = s.cLon + 180, cy = 90 - s.cLat;     // window centre, plate coords
+        const sc = iw / s.w;                            // plate units → inset units
+        const halfWx = s.w / 2, halfWy = (ih / sc) / 2; // window half-extents (degrees)
+        const cxi = ix + iw / 2, cyi = iy + ih / 2;
+        const T = `translate(${(cxi - sc * cx).toFixed(2)} ${(cyi - sc * cy).toFixed(2)}) scale(${sc.toFixed(3)})`;
+        const near = WC_BBOXES.filter(({ bb }) => bb.maxX >= cx - halfWx && bb.minX <= cx + halfWx && bb.maxY >= cy - halfWy && bb.minY <= cy + halfWy);
+        const clip = `sbw-inset-${i}`;
+        const r = 0.012 * box.w;
+        // Shrink the name to fit the inset width (so "Guadeloupe & Martinique" isn't cut).
+        const fs = Math.min(0.019 * box.h, (iw * 0.92) / (s.name.length * 0.52));
+        return (
+          <g key={s.name}>
+            <defs><clipPath id={clip}><rect x={ix} y={iy} width={iw} height={ih} rx={r} /></clipPath></defs>
+            <rect x={ix} y={iy} width={iw} height={ih} rx={r} fill={SEA_DEEP} stroke={PAPER} strokeWidth="1.4" vectorEffect="non-scaling-stroke" />
+            {/* Regional land silhouette + territory marker, clipped to the inset window. */}
+            <g clipPath={`url(#${clip})`}>
+              <g transform={T}>
+                {near.map(({ d }, j) => <path key={j} d={d} fill="#E8D6A2" fillRule="evenodd" stroke="#7A6438" strokeWidth="0.5" vectorEffect="non-scaling-stroke" />)}
+              </g>
+              {s.dots.map(([lon, lat], j) => {
+                const dx = cxi + sc * (lon + 180 - cx), dy = cyi + sc * (90 - lat - cy);
+                return <g key={j}>
+                  <circle cx={dx} cy={dy} r={0.14 * ih} fill="none" stroke="#fff" strokeWidth="2.4" vectorEffect="non-scaling-stroke" />
+                  <circle cx={dx} cy={dy} r={0.095 * ih} fill={CORAL} stroke={INK} strokeWidth="1" vectorEffect="non-scaling-stroke" />
+                </g>;
+              })}
+            </g>
+            {/* Name banner — OUTSIDE the clip so a long label is never truncated. */}
+            <rect x={ix} y={iy + ih - bandH} width={iw} height={bandH} fill="rgba(16,38,46,0.86)" />
+            <text x={cxi} y={iy + ih - bandH * 0.3} textAnchor="middle" fontSize={fs} fontFamily="ui-sans-serif, system-ui" fontWeight="800" fill="#fff">{s.name}</text>
+          </g>
+        );
+      })}
+    </g>
   );
 }
 
@@ -3919,6 +3992,13 @@ export default function ShutterbugWorld() {
                     fill="#2E6FC9" style={{ paintOrder: "stroke", stroke: "#fff", strokeWidth: sz * 0.26, pointerEvents: "none" }}>★</text>
                 );
               })}
+
+              {/* Overseas-territory locator insets — only on a country plate that has
+                  far-flung territories off-frame (France: Guiana, the Antilles, Réunion,
+                  Mayotte). */}
+              {countryBox && pickedCountry && OVERSEAS_INSETS[pickedCountry] && (
+                <OverseasInsets specs={OVERSEAS_INSETS[pickedCountry]} box={box} />
+              )}
               </g>
             </svg>
             {/* Tap anywhere on the map during a flight to land early. */}
