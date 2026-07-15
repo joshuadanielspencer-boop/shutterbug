@@ -152,12 +152,22 @@ export const COUNTRY_PEOPLE = {
     credit: "Isiyekala", license: "CC BY-SA 4.0",
     caption: "Kikuyu women dancers in traditional dress with cowrie-shell headbands, Kenya",
   },
-  "New Zealand": {
-    src: "https://commons.wikimedia.org/wiki/Special:FilePath/Maori_men%27s_cultural_performance_group_%28AM_78261-1%29.jpg?width=800",
-    source: "https://commons.wikimedia.org/wiki/File:Maori_men%27s_cultural_performance_group_(AM_78261-1).jpg",
-    credit: "T. W. Collins / Auckland War Memorial Museum", license: "CC BY 4.0",
-    caption: "Māori men perform a haka (Auckland Museum, 1943)",
-  },
+  "New Zealand": [
+    {
+      src: "https://commons.wikimedia.org/wiki/Special:FilePath/Maori_men%27s_cultural_performance_group_%28AM_78261-1%29.jpg?width=800",
+      source: "https://commons.wikimedia.org/wiki/File:Maori_men%27s_cultural_performance_group_(AM_78261-1).jpg",
+      credit: "T. W. Collins / Auckland War Memorial Museum", license: "CC BY 4.0",
+      people: "Māori",
+      caption: "Māori men perform a haka (Auckland Museum, 1943)",
+    },
+    {
+      src: "https://commons.wikimedia.org/wiki/Special:FilePath/Kia_Aroha_College%2C_Siva_performance_at_ASB_Polyfest._(POLY-D-2015-103).jpg?width=800",
+      source: "https://commons.wikimedia.org/wiki/File:Kia_Aroha_College%2C_Siva_performance_at_ASB_Polyfest._(POLY-D-2015-103).jpg",
+      credit: "Smita Biswas", license: "CC BY 4.0",
+      people: "Samoan New Zealander",
+      caption: "A Samoan Siva Samoa dance at Auckland's Polyfest — the dancer wears a lava-lava wrap and a tuiga headpiece",
+    },
+  ],
 
   // ---- Africa (reviewed batch) ------------------------------------------
   "Egypt": {
@@ -184,12 +194,30 @@ export const COUNTRY_PEOPLE = {
     credit: "Pambelle12", license: "CC BY-SA 4.0",
     caption: "A woman in Ghana wears bright kente cloth and beads",
   },
-  "South Africa": {
-    src: "https://commons.wikimedia.org/wiki/Special:FilePath/Ndebele_woman.jpg?width=800",
-    source: "https://commons.wikimedia.org/wiki/File:Ndebele_woman.jpg",
-    credit: "Steve Evans", license: "CC BY 3.0",
-    caption: "An Ndebele woman of South Africa in traditional beaded neck rings",
-  },
+  "South Africa": [
+    {
+      src: "https://commons.wikimedia.org/wiki/Special:FilePath/Ndebele_woman.jpg?width=800",
+      source: "https://commons.wikimedia.org/wiki/File:Ndebele_woman.jpg",
+      credit: "Steve Evans", license: "CC BY 3.0",
+      people: "Ndebele",
+      caption: "An Ndebele woman of South Africa in traditional beaded neck rings",
+    },
+    {
+      src: "https://commons.wikimedia.org/wiki/Special:FilePath/Xhosa_traditionally_dressed_women.jpg?width=800",
+      source: "https://commons.wikimedia.org/wiki/File:Xhosa_traditionally_dressed_women.jpg",
+      credit: "Mike Barwood", license: "CC BY-SA 2.0",
+      people: "Xhosa",
+      caption: "Xhosa women in traditional dress, one wearing a head-scarf of indigo shweshwe cloth",
+    },
+    {
+      src: "https://commons.wikimedia.org/wiki/Special:FilePath/Zulu_dance.JPG?width=800",
+      source: "https://commons.wikimedia.org/wiki/File:Zulu_dance.JPG",
+      credit: "Svdmolen", license: "CC BY 3.0",
+      people: "Zulu",
+      caption: "Zulu dancers in traditional dress during a performance in South Africa",
+      portrait: true,
+    },
+  ],
   "Tanzania": {
     src: "https://commons.wikimedia.org/wiki/Special:FilePath/Two_women_wearing_Kangas.jpg?width=800",
     source: "https://commons.wikimedia.org/wiki/File:Two_women_wearing_Kangas.jpg",
@@ -492,13 +520,24 @@ export const COUNTRY_PEOPLE = {
     credit: "Vadeve", license: "Public domain",
     caption: "Young women in Greenland's kalaallisuut, with beaded collars and tall white sealskin boots",
   },
-  "Canada": {
-    src: "https://commons.wikimedia.org/wiki/Special:FilePath/Dancer%20on%20Pow-Wow%202016%20in%20Wendake%2C%20Quebec%2C%20Canada.jpg?width=800",
-    source: "https://commons.wikimedia.org/wiki/File:Dancer%20on%20Pow-Wow%202016%20in%20Wendake%2C%20Quebec%2C%20Canada.jpg",
-    credit: "Marc Lautenbacher", license: "CC BY-SA 4.0",
-    caption: "A First Nations dancer in traditional regalia at the powwow in Wendake, Quebec",
-    portrait: true, // no free landscape photo of this dress exists — show it whole
-  },
+  "Canada": [
+    {
+      src: "https://commons.wikimedia.org/wiki/Special:FilePath/Dancer%20on%20Pow-Wow%202016%20in%20Wendake%2C%20Quebec%2C%20Canada.jpg?width=800",
+      source: "https://commons.wikimedia.org/wiki/File:Dancer%20on%20Pow-Wow%202016%20in%20Wendake%2C%20Quebec%2C%20Canada.jpg",
+      credit: "Marc Lautenbacher", license: "CC BY-SA 4.0",
+      people: "First Nations",
+      caption: "A First Nations dancer in traditional regalia at the powwow in Wendake, Quebec",
+      portrait: true, // no free landscape photo of this dress exists — show it whole
+    },
+    {
+      src: "https://commons.wikimedia.org/wiki/Special:FilePath/Drumdance.jpg?width=800",
+      source: "https://commons.wikimedia.org/wiki/File:Drumdance.jpg",
+      credit: "Arctichistorian01", license: "CC BY 3.0",
+      people: "Inuit",
+      caption: "An Inuit dancer at the Drum Dance Festival in Gjoa Haven, Nunavut",
+      portrait: true,
+    },
+  ],
   // The United States is the clearest case for rotating cards: a single photo of
   // any one of its peoples would misrepresent the country. These three are a floor,
   // not a full account — Hispanic/Latino and Asian American communities are each
@@ -540,13 +579,23 @@ export const COUNTRY_PEOPLE = {
     caption: "Aymara women in El Alto in the traditional pollera skirt and bowler hat",
     portrait: true, // no free landscape photo of this dress exists — show it whole
   },
-  "Brazil": {
-    src: "https://commons.wikimedia.org/wiki/Special:FilePath/Baiana%20em%20desfile%20de%202%20de%20Julho%20em%20S%C3%A3o%20F%C3%A9lix.jpg?width=800",
-    source: "https://commons.wikimedia.org/wiki/File:Baiana%20em%20desfile%20de%202%20de%20Julho%20em%20S%C3%A3o%20F%C3%A9lix.jpg",
-    credit: "ExpressaoSAMPA", license: "CC BY-SA 4.0",
-    caption: "A woman in the Baiana dress of Bahia — white lace blouse, headwrap and full floral skirt",
-    portrait: true, // no free landscape photo of this dress exists — show it whole
-  },
+  "Brazil": [
+    {
+      src: "https://commons.wikimedia.org/wiki/Special:FilePath/Baiana%20em%20desfile%20de%202%20de%20Julho%20em%20S%C3%A3o%20F%C3%A9lix.jpg?width=800",
+      source: "https://commons.wikimedia.org/wiki/File:Baiana%20em%20desfile%20de%202%20de%20Julho%20em%20S%C3%A3o%20F%C3%A9lix.jpg",
+      credit: "ExpressaoSAMPA", license: "CC BY-SA 4.0",
+      people: "Afro-Brazilian",
+      caption: "A woman in the Baiana dress of Bahia — white lace blouse, headwrap and full floral skirt",
+      portrait: true, // no free landscape photo of this dress exists — show it whole
+    },
+    {
+      src: "https://commons.wikimedia.org/wiki/Special:FilePath/Akiaboro_Kayap%C3%B3_-_Kayapo_-_149656.jpg?width=800",
+      source: "https://commons.wikimedia.org/wiki/File:Akiaboro_Kayap%C3%B3_-_Kayapo_-_149656.jpg",
+      credit: "Valter Campanato / Agência Brasil", license: "CC BY 3.0 BR",
+      people: "Indigenous (Kayapó)",
+      caption: "Akyboro Kayapó, a leader of the Kayapó people, in traditional dress at a national gathering of Indigenous peoples",
+    },
+  ],
   "Chile": {
     src: "https://commons.wikimedia.org/wiki/Special:FilePath/Traditional%20dress%20of%20the%20Chilean%20cueca%2C%20a%20national%20dance.jpg?width=800",
     source: "https://commons.wikimedia.org/wiki/File:Traditional%20dress%20of%20the%20Chilean%20cueca%2C%20a%20national%20dance.jpg",
@@ -577,13 +626,23 @@ export const COUNTRY_PEOPLE = {
     credit: "EsAvila", license: "CC BY-SA 4.0",
     caption: "Macushi people of Guyana dance in fibre skirts and feathered headdresses",
   },
-  "Australia": {
-    src: "https://commons.wikimedia.org/wiki/Special:FilePath/Boigu%20dance.jpg?width=800",
-    source: "https://commons.wikimedia.org/wiki/File:Boigu%20dance.jpg",
-    credit: "u-turn77", license: "CC BY 2.0",
-    caption: "A Torres Strait Islander dancer in a feathered dhari headdress and woven grass cape",
-    portrait: true, // no free landscape photo of this dress exists — show it whole
-  },
+  "Australia": [
+    {
+      src: "https://commons.wikimedia.org/wiki/Special:FilePath/Boigu%20dance.jpg?width=800",
+      source: "https://commons.wikimedia.org/wiki/File:Boigu%20dance.jpg",
+      credit: "u-turn77", license: "CC BY 2.0",
+      people: "Torres Strait Islander",
+      caption: "A Torres Strait Islander dancer in a feathered dhari headdress and woven grass cape",
+      portrait: true, // no free landscape photo of this dress exists — show it whole
+    },
+    {
+      src: "https://commons.wikimedia.org/wiki/Special:FilePath/1st_Brigade_welcomes_Marines_to_Australia_150422-M-BL930-533.jpg?width=800",
+      source: "https://commons.wikimedia.org/wiki/File:1st_Brigade_welcomes_Marines_to_Australia_150422-M-BL930-533.jpg",
+      credit: "Cpl. Angel Serna", license: "Public domain",
+      people: "Aboriginal Australian",
+      caption: "Aboriginal Australian men perform traditional music and dance at a Welcome to Country ceremony near Darwin",
+    },
+  ],
   "French Polynesia": {
     src: "https://commons.wikimedia.org/wiki/Special:FilePath/Danse%20Heiva%202014-3424.jpg?width=800",
     source: "https://commons.wikimedia.org/wiki/File:Danse%20Heiva%202014-3424.jpg",
@@ -742,12 +801,29 @@ export const COUNTRY_PEOPLE = {
   },
 
   // ---- Headline-countries batch (landscape, reviewed) ----
-  "Malaysia": {
-    src: "https://commons.wikimedia.org/wiki/Special:FilePath/Malaysian%20Muslim%20dance%20%2829161038635%29.jpg?width=800",
-    source: "https://commons.wikimedia.org/wiki/File:Malaysian_Muslim_dance_(29161038635).jpg",
-    credit: "Thomas Quine", license: "CC BY 2.0",
-    caption: "Dancers in traditional Malay dress performing at the Sarawak Cultural Village",
-  },
+  "Malaysia": [
+    {
+      src: "https://commons.wikimedia.org/wiki/Special:FilePath/Malaysian%20Muslim%20dance%20%2829161038635%29.jpg?width=800",
+      source: "https://commons.wikimedia.org/wiki/File:Malaysian_Muslim_dance_(29161038635).jpg",
+      credit: "Thomas Quine", license: "CC BY 2.0",
+      people: "Malay",
+      caption: "Dancers in traditional Malay dress performing at the Sarawak Cultural Village",
+    },
+    {
+      src: "https://commons.wikimedia.org/wiki/Special:FilePath/HUMAN_INTEREST_(8414586118).jpg?width=800",
+      source: "https://commons.wikimedia.org/wiki/File:HUMAN_INTEREST_(8414586118).jpg",
+      credit: "Firdaus Latif", license: "CC BY-SA 2.0",
+      people: "Chinese Malaysian",
+      caption: "A lion dance for Chinese New Year at a shopping district in Kuala Lumpur",
+    },
+    {
+      src: "https://commons.wikimedia.org/wiki/Special:FilePath/Colourful_Unity_of_Love_towards_God.jpg?width=800",
+      source: "https://commons.wikimedia.org/wiki/File:Colourful_Unity_of_Love_towards_God.jpg",
+      credit: "Puvent Santhrasagaran", license: "CC BY-SA 4.0",
+      people: "Indian Malaysian",
+      caption: "Hindu devotees at the Thaipusam festival at the Batu Caves near Kuala Lumpur",
+    },
+  ],
   "Kazakhstan": {
     src: "https://commons.wikimedia.org/wiki/Special:FilePath/Nauryz%20celebration.jpg?width=800",
     source: "https://commons.wikimedia.org/wiki/File:Nauryz_celebration.jpg",
