@@ -373,6 +373,17 @@ const CONTINENT_META = (() => {
       meta[c] = { mode: "equirect", box: { x: cx - w / 2, y: cy - h / 2, w, h }, cx, cy };
       continue;
     }
+    if (c === "North America") {
+      // The default square padded a ~100°-wide span to a ~135° square, floating the
+      // continent in a sea of ocean and sky. Hug the content instead, and set the
+      // height to the frame's own aspect so the relief plate fills the frame with no
+      // letterboxed band. Hawaiʻi (a US state, filed here with North America) sits
+      // just inside the western edge, so it stays on-map and clickable.
+      const w = Math.max(40, (maxX - minX) * 1.06);
+      const h = w / 1.45; // 1.45 = the atlas frame's aspect (FRAME_AR in the component)
+      meta[c] = { mode: "equirect", box: { x: cx - w / 2, y: cy - h / 2, w, h }, cx, cy };
+      continue;
+    }
     if (wrap) {
       // Oceania sprawls ~120° of longitude (Australia to Rapa Nui) but only ~64° of
       // latitude. Forcing it into a SQUARE — as every other continent is — made the
@@ -1058,6 +1069,11 @@ export default function ShutterbugWorld() {
     // and resumes here on a return trip so every playthrough is scored to it.
     else { MUSIC.stopCountry(); if (musicOn) MUSIC.start(); }
   }, [screen]); // eslint-disable-line react-hooks/exhaustive-deps
+  // The country's looping tune belongs to the country map (the "city" step). The
+  // screen-level effect above only fires when the whole SCREEN changes, so leaving
+  // the country a different way — stepping back, flying on, finishing the trip —
+  // used to leave its tune playing. Stop it whenever we're not on the country map.
+  useEffect(() => { if (phase !== "city") MUSIC.stopCountry(); }, [phase]);
   // Start the splash jig on the player's first interaction (autoplay rules need a
   // gesture, so we can't begin it on load — the first tap does it).
   const startMusicMaybe = () => { if (musicOn) MUSIC.start(); };
@@ -3660,7 +3676,10 @@ export default function ShutterbugWorld() {
                 )}
                 {/* The oceans and the great seas, named — drawn last so they sit over
                     the water, but pointer-transparent so every continent stays clickable. */}
-                <WaterFeatures box={box} vbW={box.w} vbH={box.h} zoomed={false} frameAR={FRAME_AR} />
+                {/* No water NAMES on the world map — the seas/oceans are places to
+                    photograph, not text over the continents you're trying to click.
+                    (Labels stay on the zoomed continent/country maps.) */}
+                <WaterFeatures box={box} vbW={box.w} vbH={box.h} zoomed={false} frameAR={FRAME_AR} labels={false} />
                 </>
               )}
 
@@ -3900,7 +3919,9 @@ export default function ShutterbugWorld() {
       {albumOpen && <AlbumModal album={album} onPick={(p) => { setAlbumOpen(false); setAlbumView(p); }} onClose={() => setAlbumOpen(false)} />}
       {guideOpen && <FieldGuideModal note={researched[step]} spent={guideFresh && researchCost > 0} onClose={() => setGuideOpen(false)} />}
       {pending && <ResultModal data={pending} onContinue={continueFromResult} reduced={prefersReduced} />}
-      {albumView && <LandmarkModal p={albumView} onClose={() => setAlbumView(null)} reduced={prefersReduced} />}
+      {/* A photo is only ever opened FROM the album, so closing it returns there
+          (not to the map behind it). */}
+      {albumView && <LandmarkModal p={albumView} onClose={() => { setAlbumView(null); setAlbumOpen(true); }} reduced={prefersReduced} />}
       {countryPopup && <CountryPopup country={countryPopup} onClose={() => setCountryPopup(null)} reduced={prefersReduced} />}
       {curioDeck && CURIOSITY_DECK_BY_ID[curioDeck] && (
         <CuriosityCard deck={CURIOSITY_DECK_BY_ID[curioDeck]}
@@ -4189,7 +4210,8 @@ function OpenBook({ img, label, onClose, left, right, footer }) {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
-  const pageBase = { position: "absolute", top: "13%", height: "72%", display: "flex", flexDirection: "column" };
+  // Content is inset well clear of the printed page edges (was hugging them).
+  const pageBase = { position: "absolute", top: "17%", height: "64%", display: "flex", flexDirection: "column" };
   return (
     <div role="dialog" aria-modal="true" aria-label={label} onClick={onClose}
       style={{ position: "fixed", inset: 0, background: "rgba(16,38,46,0.66)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 10, padding: 16, zIndex: 56 }}>
@@ -4199,8 +4221,8 @@ function OpenBook({ img, label, onClose, left, right, footer }) {
           filter: "drop-shadow(0 16px 40px rgba(0,0,0,0.5))" }}>
         <button onClick={onClose} aria-label="Close" title="Close"
           style={{ position: "absolute", top: "1%", right: "3%", background: "rgba(16,38,46,0.7)", color: "#fff", border: "none", borderRadius: "50%", width: 30, height: 30, fontSize: 18, lineHeight: 1, cursor: "pointer", zIndex: 3 }}>×</button>
-        <div style={{ ...pageBase, left: "12.5%", width: "33.5%" }}>{left}</div>
-        <div style={{ ...pageBase, left: "54%", width: "33.5%" }}>{right}</div>
+        <div style={{ ...pageBase, left: "15.5%", width: "29%" }}>{left}</div>
+        <div style={{ ...pageBase, left: "55.5%", width: "29%" }}>{right}</div>
       </div>
       {footer}
     </div>
@@ -4217,7 +4239,7 @@ function AlbumModal({ album, onPick, onClose }) {
       <div style={{ height: 64, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", background: "#10262E" }}>
         <Photo photo={p.photo} icon={p.icon} alt={p.subject} size={62} />
       </div>
-      <div style={{ fontWeight: 700, fontSize: 10, color: INK, marginTop: 3, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{p.flag} {p.city}</div>
+      <div style={{ fontFamily: HAND, fontWeight: 700, fontSize: 13.5, color: INK, marginTop: 2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{p.flag} {p.city}</div>
     </button>
   );
   const grid = (list) => (
@@ -4247,7 +4269,7 @@ function FieldGuideModal({ note, spent, onClose }) {
     <OpenBook img="field-guide-open-blank.png" label="Field guide" onClose={onClose}
       left={<>
         <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.18em", color: GREEN, fontWeight: 800, marginBottom: 10 }}>📗 FIELD GUIDE</div>
-        <p style={{ margin: "0 0 10px", color: INK, opacity: 0.85, fontSize: 13.5, lineHeight: 1.5, fontStyle: "italic" }}>{line} It yields:</p>
+        <p style={{ margin: "0 0 10px", color: INK, opacity: 0.9, fontFamily: HAND, fontSize: 18, lineHeight: 1.35 }}>{line} It yields:</p>
       </>}
       right={<div style={{ display: "flex", flexDirection: "column", justifyContent: "center", height: "100%" }}>
         <div style={{ color: INK, fontFamily: HAND, fontSize: 19, lineHeight: 1.4 }}>{note || "Nothing new this time — read Grandpa's note and trust your map sense!"}</div>

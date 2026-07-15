@@ -1632,10 +1632,10 @@ export const LOCATIONS = [
     greeting: { text: "Hola", language: "Spanish", pronunciation: "OH-lah" } },
 
   // ---- Oceania — Pacific volcanoes and peaks ----
-  { id: "kilauea", city: "Hawaii", country: "United States", flag: "🇺🇸", continent: "Oceania",
+  { id: "kilauea", city: "Hawaii", country: "United States", flag: "🇺🇸", continent: "North America",
     x: 24.7, y: 70.6,
     subject: "Kīlauea", icon: "", category: "volcano", tags: ["most-active"],
-    easy: "On the island of Hawaiʻi in the United States, out in Oceania — one of the world's most active volcanoes, erupting again and again and paving the island with fresh black rock.",
+    easy: "On the island of Hawaiʻi, a US state out in the Pacific Ocean — one of the world's most active volcanoes, erupting again and again and paving the island with fresh black rock.",
     medium: "Word from a tropical island of the United States: one of the most active volcanoes on Earth erupts here again and again, its glowing lava cooling into brand-new black land. Photograph the volcano.",
     hard: "One of the planet's most restless volcanoes, it erupts again and again on a warm Pacific island, its rivers of lava hissing and building fresh new ground. Bring me the volcano.",
     fact: "Kīlauea, on the island of Hawaiʻi, is one of the world's most active volcanoes and has erupted many times in recent decades, adding fresh rock to the island.",
