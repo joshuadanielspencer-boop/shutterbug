@@ -3374,9 +3374,10 @@ export default function ShutterbugWorld() {
   const busy = !!flying || !!pending || !!riddle || !!mrO || (!isExplore && days <= 0);
   // Journey-tracker step, derived from phase (continent → country → destination → shot).
   const stepIdx = phase === "continent" ? 0 : phase === "country" ? 1 : (revealed ? 3 : 2);
-  // Cap the atlas so the whole desk (header + map + ribbon) fits one 720-tall screen
-  // without scrolling; the map stays square-limited and the panel hugs it.
-  const MAP_CAP = "min(calc(100vh - 258px), 560px)";
+  // Cap the atlas so the whole desk (header + map + ribbon) fits one screen with NO
+  // scrolling — the game is meant to lock to a fixed window (a desktop app), never
+  // scroll. The 560px cap holds on tall screens; on shorter ones the map shrinks.
+  const MAP_CAP = "min(calc(100vh - 262px), 560px)";
   // A short live instruction for the bottom ribbon, matched to the current phase.
   const ribbonText = inCity
     ? (isExplore ? "Click any pin to read a place's story." : "Click the right city on the map to take Grandpa's photo.")
@@ -3389,7 +3390,7 @@ export default function ShutterbugWorld() {
       {/* The play screen is a full-height column: header up top, the desk grid in
           the middle, and the instruction ribbon pinned to the bottom of the
           screen (so it's always visible without scrolling). */}
-      <div style={{ display: "flex", flexDirection: "column", minHeight: "calc(100vh - 40px)", paddingBottom: 78 }}>
+      <div style={{ display: "flex", flexDirection: "column", minHeight: "calc(100vh - 40px)", paddingBottom: 78, boxSizing: "border-box" }}>
       {/* ===== Desk header bar (teal leather chrome) ===== */}
       <header style={{ position: "relative", display: "flex", alignItems: "center", gap: 14, flexWrap: "nowrap",
         background: `linear-gradient(${OCEAN}, ${OCEAN_DEEP})`, border: `2px solid ${INK}`, borderRadius: 12,
