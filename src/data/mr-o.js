@@ -15,7 +15,9 @@ export const MR_O = {
   name: "Mr. O",
   emoji: "🧒",
   lead: "Oh! Did you know…",
-  riddleLead: "Riddle me this…",
+  // The riddle now opens with the same catchphrase as the fact bubble, so Mr. O
+  // has one recognisable "Oh! Did you know…" hook whether he's sharing or quizzing.
+  riddleLead: "Oh! Did you know…",
 };
 
 // ---- Mr. O's DOUBLE-POINTS RIDDLES ---------------------------------------

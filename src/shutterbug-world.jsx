@@ -854,7 +854,7 @@ function quizQuestionFor(l) {
     const opts = shuffleArr([answer, ...filled]);
     return { kind, prompt: `What is the capital of ${l.country}?`, photo: null,
       options: opts.map((o) => ({ label: o, correct: o === answer })),
-      explain: `${answer} is the capital of ${l.country}. ${COUNTRY_INFO[l.country].blurb}` };
+      explain: `${answer} is the capital of ${l.country}.${COUNTRY_INFO[l.country] ? ` ${COUNTRY_INFO[l.country].blurb}` : ""}` };
   }
   if (kind === "category") {
     const names = CATEGORY_ORDER.map((c) => CATEGORIES[c].name);
