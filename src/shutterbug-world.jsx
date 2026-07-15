@@ -366,8 +366,8 @@ const CONTINENT_META = (() => {
       // bottom — pulling Greenland, half of Africa and a slab of Asia into frame.
       // Hug the content instead (a wide, short box); the frame takes the box's
       // aspect ratio, so nothing distorts.
-      const w = Math.max(40, (maxX - minX) * 1.10);
-      const h = Math.max(40, (maxY - minY) * 1.50); // headroom for the country labels
+      const w = Math.max(40, (maxX - minX) * 1.04);
+      const h = Math.max(40, (maxY - minY) * 1.28); // some headroom for the country labels
       meta[c] = { mode: "equirect", box: { x: cx - w / 2, y: cy - h / 2, w, h }, cx, cy };
       continue;
     }
@@ -460,16 +460,23 @@ const countriesOf = (l) => (l.countries && l.countries.length ? l.countries : [l
 // country whose outline crosses the antimeridian would otherwise measure as if it
 // spanned the entire planet: the USA's Aleutians run past 180°E, so a raw box put
 // its "centre" on the prime meridian and the United States map opened on AFRICA.
-const pathBBox = (d, refX) => {
+// `clip` (optional): ignore points more than this many degrees from (refX, refY),
+// so a country's FAR-FLUNG overseas territories — French Guiana, Réunion, the
+// Azores — don't blow the zoom box out to span the whole planet. The mainland (near
+// the landmarks) is kept; the distant enclaves are dropped from the box.
+const pathBBox = (d, refX, refY = null, clip = Infinity) => {
   const nums = d && d.match(/-?\d+(?:\.\d+)?/g);
   if (!nums || nums.length < 4) return null;
   const near = (x) => (refX == null ? x : x + 360 * Math.round((refX - x) / 360));
   let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
   for (let i = 0; i + 1 < nums.length; i += 2) {
     const x = near(+nums[i]), y = +nums[i + 1];
+    if (Math.abs(x - refX) > clip) continue;
+    if (refY != null && Math.abs(y - refY) > clip) continue;
     if (x < minX) minX = x; if (x > maxX) maxX = x;
     if (y < minY) minY = y; if (y > maxY) maxY = y;
   }
+  if (minX === Infinity) return null;
   return { minX, minY, maxX, maxY };
 };
 (() => {
@@ -490,7 +497,14 @@ const pathBBox = (d, refX) => {
       // continent (Oceania) crosses the antimeridian, so keep its landmark box.
       let bx0 = minX, bx1 = maxX, by0 = minY, by1 = maxY;
       const bpath = !wrap && (WC_BY_NAME[country] || WC_BY_NAME[WC_ALIAS[country]]);
-      const bb = bpath && pathBBox(bpath, cx);   // measured around the country's own landmarks
+      // Only measure the border NEAR the landmarks: a country's overseas territories
+      // (France's French Guiana/Réunion, Portugal's Azores/Madeira) sit thousands of
+      // miles from its mainland and would otherwise stretch the zoom box across the
+      // whole world. The clip scales with how spread the landmarks are — a big country
+      // with far-flung landmarks (Russia) keeps a wide window; a compact one stays tight.
+      const landSpan = Math.max(maxX - minX, maxY - minY);
+      const clip = Math.max(7, landSpan * 2.5);
+      const bb = bpath && pathBBox(bpath, cx, cy, clip);
       if (bb) { bx0 = Math.min(bx0, bb.minX); bx1 = Math.max(bx1, bb.maxX); by0 = Math.min(by0, bb.minY); by1 = Math.max(by1, bb.maxY); }
       const bcx = (bx0 + bx1) / 2, bcy = (by0 + by1) / 2; // centre on the country itself
       const side = Math.min(120, Math.max(4.5, Math.max(bx1 - bx0, by1 - by0) * 1.5)); // 50% breathing room, tight floor
