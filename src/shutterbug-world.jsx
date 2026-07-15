@@ -647,7 +647,29 @@ function pickAnchors(profile, order, n) {
   freshFirst(profile).forEach((id) => { if (anchorIds.length < needFresh) take(id); });
   order.forEach((l) => { if (anchorIds.length < n) take(l.id); });            // fill the rest, weighted
   freshFirst(profile).forEach((id) => { if (anchorIds.length < n) take(id); }); // safety net (tiny catalogs)
-  return shuffled(anchorIds.slice(0, n).map((id) => BY_ID[id]));
+  let ids = anchorIds.slice(0, n);
+
+  // Spread the trip across the map: every run should span at least THREE continents
+  // (or as many as it's long, for a 1–2 shot outing), so the weighting can't clump a
+  // whole trip on one continent. This is fully deterministic given `ids` + `order`
+  // (no fresh randomness), so the seeded Daily still hands everyone the identical run.
+  const target = Math.min(3, n);
+  const contsOf = (list) => new Set(list.map((id) => BY_ID[id].continent));
+  if (contsOf(ids).size < target) {
+    const have = contsOf(ids);
+    for (const cand of order) {
+      if (have.size >= target) break;
+      const cont = BY_ID[cand.id].continent;
+      if (have.has(cont) || ids.includes(cand.id)) continue;
+      // Replace one anchor from the most-represented continent (never its last).
+      const counts = {};
+      ids.forEach((id) => { const c = BY_ID[id].continent; counts[c] = (counts[c] || 0) + 1; });
+      const victimCont = Object.keys(counts).sort((a, b) => counts[b] - counts[a])[0];
+      const victimIdx = ids.findIndex((id) => BY_ID[id].continent === victimCont);
+      if (victimIdx >= 0) { ids[victimIdx] = cand.id; have.add(cont); }
+    }
+  }
+  return shuffled(ids.map((id) => BY_ID[id]));
 }
 
 // Pick one value from [{ v, w }] weighted by w.
