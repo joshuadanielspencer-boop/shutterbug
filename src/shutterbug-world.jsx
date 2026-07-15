@@ -289,12 +289,18 @@ const CONTINENT_COLOR = {
 //  • the northernmost land (~83.7°N, Greenland/Russia) sits ~10% down from the top.
 const _HAWAII_X = eqToRobinson(24.5, 70.1).x;      // lon −155.5°, lat 19.9°
 const _NORTH_LAND_Y = eqToRobinson(180, 6.3).y;    // ~83.7°N — northernmost land
-const _SOUTH_Y = eqToRobinson(180, 180).y;         // 90°S — Antarctica's bottom
-const _WORLD_TOP = (_NORTH_LAND_Y - 0.10 * _SOUTH_Y) / 0.90; // 10% margin above the north
-const WORLD_BOX = { x: _HAWAII_X, y: _WORLD_TOP, w: ROBINSON_W - _HAWAII_X, h: _SOUTH_Y - _WORLD_TOP };
-// The projected ice-shelf band: Antarctica's polygon only spans part of the map's
-// width and stops above the bottom, so we fill from ~72°S down to the frame edge.
-const ANT_BAND_TOP = eqToRobinson(180, 162).y; // lat −72°
+// The bottom edge sits at Antarctica's own southern COASTLINE (its polygon reaches
+// ~85°S), so the continent is flush with the frame bottom as a real shape — no
+// full-width ice-shelf band, blue ocean on either side of it like every other
+// continent.
+const _ANT_SOUTH = eqToRobinson(180, 175.3).y;     // ~85.7°S — Antarctica's projected south coast
+const _WORLD_TOP = (_NORTH_LAND_Y - 0.05 * _ANT_SOUTH) / 0.95; // 5% ocean margin above the northernmost land
+// The right edge sits at Russia's far east (Cape Dezhnev), so Russia's eastern
+// coast is flush with the frame's right side. This also crops out the far-west
+// Aleutian islets, which — with the re-centred projection — fall just past the
+// seam and would otherwise re-appear as specks on the right.
+const _RUSSIA_EAST_X = eqToRobinson(10.34, 24).x + 1.5;  // lon 169.7°W, lat 66°N, +margin
+const WORLD_BOX = { x: _HAWAII_X, y: _WORLD_TOP, w: _RUSSIA_EAST_X - _HAWAII_X, h: _ANT_SOUTH - _WORLD_TOP };
 
 // The Robinson map outline (filled as ocean) and a light graticule, both static.
 const ROBINSON_OUTLINE = (() => {
@@ -3678,14 +3684,6 @@ export default function ShutterbugWorld() {
                      aria-label={`Choose ${cont}`} onClick={() => pickContinent(cont)}
                      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); pickContinent(cont); } }}
                      style={{ cursor: busy ? "default" : "pointer" }}>
-                    {/* Antarctica's polygon stops short of the map's edges and its
-                        bottom, leaving ocean in the corners. Project the ice shelf as
-                        a full-width band from ~72°S down to the frame's bottom edge,
-                        drawn BEHIND the real coastline so the coast still reads. */}
-                    {cont === "Antarctica" && (
-                      <rect x={box.x} y={ANT_BAND_TOP} width={box.w} height={Math.max(0, box.y + box.h - ANT_BAND_TOP)}
-                        fill={CONTINENT_COLOR[cont]} />
-                    )}
                     {robinsonCountries.filter((c) => COUNTRY_CONTINENT[c.name] === cont).map((c) => (
                       <path key={c.name} d={c.d} fill={CONTINENT_COLOR[cont]} fillRule="evenodd" stroke={INK} strokeWidth="0.3" vectorEffect="non-scaling-stroke" />
                     ))}

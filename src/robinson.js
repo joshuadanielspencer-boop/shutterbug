@@ -19,11 +19,22 @@ const RS = 67.5;   // scale (chosen so the map is ~360 wide at the equator)
 const RX0 = 180;   // x of the prime meridian (lon 0)
 const RY0 = 91.3;  // y of the equator (lat 0), north pole near y=0
 
+// Central meridian. The world map is cropped from Hawaiʻi (~155°W) eastward all the
+// way round to Russia's far east (~180°E) — a ~335° span. Centred on lon 0 that
+// span wraps at the antimeridian and Russia's Chukotka appears twice (a red sliver
+// on the far left). Centring on ~11°E instead puts the projection SEAM at ~169°W,
+// in the empty Pacific just west of Hawaiʻi and off the left edge of the crop, so
+// Russia stays a single contiguous shape on the right with nothing wrapping back.
+const LON0 = 11;
+
 export const ROBINSON_W = 2 * 0.8487 * Math.PI * RS; // ≈ 360 (full width at equator)
 export const ROBINSON_H = 2 * 1.3523 * RS;           // ≈ 182.6 (pole to pole)
 
 // (lon°, lat°) → projected {x, y}. Linear interpolation between table rows.
-export function robinson(lon, lat) {
+export function robinson(lonRaw, lat) {
+  // Shift to the central meridian, wrapped into [-180, 180].
+  let lon = lonRaw - LON0;
+  if (lon > 180) lon -= 360; else if (lon < -180) lon += 360;
   const a = Math.min(90, Math.abs(lat));
   const i = Math.min(17, Math.floor(a / 5));
   const f = (a - i * 5) / 5;
