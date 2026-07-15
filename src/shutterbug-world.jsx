@@ -287,20 +287,21 @@ const CONTINENT_COLOR = {
 //  • left edge sits at Hawaii's longitude (Hawaii flush left),
 //  • bottom edge at the South Pole (Antarctica flush with the bottom),
 //  • the northernmost land (~83.7°N, Greenland/Russia) sits ~10% down from the top.
-const _HAWAII_X = eqToRobinson(24.5, 70.1).x;      // lon −155.5°, lat 19.9°
+// Left edge a touch EAST of Hawaiʻi, trimming the empty east-Pacific margin (Hawaiʻi
+// itself is a speck and may sit right on the edge — that's fine).
+const _LEFT_X = eqToRobinson(24.5, 70.1).x + 14;
 const _NORTH_LAND_Y = eqToRobinson(180, 6.3).y;    // ~83.7°N — northernmost land
-// The bottom edge sits at Antarctica's own southern COASTLINE (its polygon reaches
-// ~85°S), so the continent is flush with the frame bottom as a real shape — no
-// full-width ice-shelf band, blue ocean on either side of it like every other
-// continent.
-const _ANT_SOUTH = eqToRobinson(180, 175.3).y;     // ~85.7°S — Antarctica's projected south coast
+// Bottom edge clips Antarctica's deepest ice (~81°S) so the continent's coastline
+// sits FLUSH along the frame bottom (a real shape, blue ocean on either side) rather
+// than floating with its single southern tip touching.
+const _ANT_SOUTH = eqToRobinson(180, 171).y;       // ~81°S
 const _WORLD_TOP = (_NORTH_LAND_Y - 0.05 * _ANT_SOUTH) / 0.95; // 5% ocean margin above the northernmost land
-// The right edge sits at Russia's far east (Cape Dezhnev), so Russia's eastern
-// coast is flush with the frame's right side. This also crops out the far-west
-// Aleutian islets, which — with the re-centred projection — fall just past the
-// seam and would otherwise re-appear as specks on the right.
-const _RUSSIA_EAST_X = eqToRobinson(10.34, 24).x + 1.5;  // lon 169.7°W, lat 66°N, +margin
-const WORLD_BOX = { x: _HAWAII_X, y: _WORLD_TOP, w: _RUSSIA_EAST_X - _HAWAII_X, h: _ANT_SOUTH - _WORLD_TOP };
+// Right edge at New Zealand's east coast — the map's rightmost land in this
+// re-centred projection (NZ sits at lower latitude than Russia's far east, so it
+// projects a little further right). Russia stays a hair inside the edge; Oceania is
+// no longer clipped.
+const _RIGHT_X = eqToRobinson(357, 127).x + 3;
+const WORLD_BOX = { x: _LEFT_X, y: _WORLD_TOP, w: _RIGHT_X - _LEFT_X, h: _ANT_SOUTH - _WORLD_TOP };
 
 // The Robinson map outline (filled as ocean) and a light graticule, both static.
 const ROBINSON_OUTLINE = (() => {
@@ -3756,9 +3757,12 @@ export default function ShutterbugWorld() {
                        aria-label={`Choose ${country}`} onClick={() => pickCountry(country)}
                        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); pickCountry(country); } }}
                        style={{ cursor: busy ? "default" : "pointer" }}>
+                      {/* Selectable countries wear their CONTINENT's colour (purple
+                          Europe, red Asia…) so they read at a glance as part of it,
+                          not a generic green blob. */}
                       {(!wrapPlate && d)
-                        ? <path d={d} fillRule="evenodd" fill="rgba(62,155,110,0.42)" stroke={INK} strokeWidth="0.6" vectorEffect="non-scaling-stroke" />
-                        : <ellipse cx={cm.cx} cy={cm.cy} {...pinR(0.028)} fill="rgba(62,155,110,0.75)" stroke={PAPER} strokeWidth="1" vectorEffect="non-scaling-stroke" />}
+                        ? <path d={d} fillRule="evenodd" fill={CONTINENT_COLOR[pickedContinent]} fillOpacity="0.62" stroke={INK} strokeWidth="0.6" vectorEffect="non-scaling-stroke" />
+                        : <ellipse cx={cm.cx} cy={cm.cy} {...pinR(0.028)} fill={CONTINENT_COLOR[pickedContinent]} fillOpacity="0.9" stroke={PAPER} strokeWidth="1" vectorEffect="non-scaling-stroke" />}
                     </g>
                   );
                 });
@@ -3778,8 +3782,8 @@ export default function ShutterbugWorld() {
                           x2={cm.cx} y2={above ? y + 0.006 * box.h : y - 0.026 * box.h}
                           stroke={PAPER} strokeWidth="1" vectorEffect="non-scaling-stroke" opacity="0.8" />
                       )}
-                      <text x={cm.cx} y={y} fontSize={0.03 * box.h} fontFamily="ui-monospace, monospace" fontWeight="800" fill={INK} textAnchor="middle"
-                        style={{ paintOrder: "stroke", stroke: PAPER, strokeWidth: 0.012 * box.h }}>{country}</text>
+                      <text x={cm.cx} y={y} fontSize={0.055 * box.h} fontFamily="ui-monospace, monospace" fontWeight="800" fill={INK} textAnchor="middle"
+                        style={{ paintOrder: "stroke", stroke: PAPER, strokeWidth: 0.02 * box.h }}>{country}</text>
                     </g>
                   );
                 }) : [];
@@ -3824,12 +3828,12 @@ export default function ShutterbugWorld() {
                 );
               })()}
 
-              {/* Highlight the country you're standing in (city step): fill its shape
-                  in warm gold with a bold coral border so it POPS off the map — this
-                  teaches the player the country's shape, size, and place in the world.
-                  Its name rides in a banner across the top. */}
+              {/* Outline the country you're standing in (city step) with a bold border
+                  and NO fill, so the relief inside shows through — the player sees the
+                  country's real mountains, rivers and coasts. Its name rides in a
+                  banner across the top. */}
               {inCity && pickedCountry && plateMode !== "wrap" && wcPath(pickedCountry) && (
-                <path d={wcPath(pickedCountry)} fillRule="evenodd" fill="rgba(240,165,0,0.5)" stroke={CORAL} strokeWidth="2.4" strokeLinejoin="round" vectorEffect="non-scaling-stroke" style={{ pointerEvents: "none" }} />
+                <path d={wcPath(pickedCountry)} fillRule="evenodd" fill="none" stroke={CORAL} strokeWidth="3.4" strokeLinejoin="round" vectorEffect="non-scaling-stroke" style={{ pointerEvents: "none" }} />
               )}
               {inCity && (ctxCountry || pickedCountry) && (
                 <g style={{ pointerEvents: "none" }}>
@@ -3858,11 +3862,11 @@ export default function ShutterbugWorld() {
                      onClick={() => photographCity(id)}
                      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); photographCity(id); } }}
                      style={{ cursor: busy ? "default" : "pointer" }}>
-                    <ellipse cx={px} cy={py} {...pinR(0.05)} fill="transparent" />
-                    <ellipse cx={px} cy={py} {...pinR(isCurrent ? 0.04 : 0.034)} fill={isCurrent ? "rgba(233,92,66,0.22)" : "rgba(255,255,255,0.82)"} stroke={isCurrent ? CORAL : INK} strokeWidth={isCurrent ? "1.4" : "1"} vectorEffect="non-scaling-stroke" />
-                    {isCurrent && <ellipse cx={px} cy={py} {...pinR(0.052)} fill="none" stroke="#FFFFFF" strokeWidth="3" vectorEffect="non-scaling-stroke" className="sbw-ping" />}
-                    <text x={px} y={py} fontSize={0.056 * box.h} textAnchor="middle" dominantBaseline="central" style={{ pointerEvents: "none" }}>{emoji}</text>
-                    <text className="sbw-label" x={px + 0.04 * box.w} y={py - 0.036 * box.h} fontSize={0.022 * box.h} fontFamily="ui-monospace, monospace" fill={INK} style={{ paintOrder: "stroke", stroke: PAPER, strokeWidth: 0.006 * box.h }}>{l.city}</text>
+                    <ellipse cx={px} cy={py} {...pinR(0.095)} fill="transparent" />
+                    <ellipse cx={px} cy={py} {...pinR(isCurrent ? 0.078 : 0.066)} fill={isCurrent ? "rgba(233,92,66,0.22)" : "rgba(255,255,255,0.82)"} stroke={isCurrent ? CORAL : INK} strokeWidth={isCurrent ? "1.4" : "1"} vectorEffect="non-scaling-stroke" />
+                    {isCurrent && <ellipse cx={px} cy={py} {...pinR(0.1)} fill="none" stroke="#FFFFFF" strokeWidth="3" vectorEffect="non-scaling-stroke" className="sbw-ping" />}
+                    <text x={px} y={py} fontSize={0.11 * box.h} textAnchor="middle" dominantBaseline="central" style={{ pointerEvents: "none" }}>{emoji}</text>
+                    <text className="sbw-label" x={px + 0.075 * box.w} y={py - 0.05 * box.h} fontSize={0.03 * box.h} fontFamily="ui-monospace, monospace" fill={INK} style={{ paintOrder: "stroke", stroke: PAPER, strokeWidth: 0.008 * box.h }}>{l.city}</text>
                   </g>
                 );
               })}
@@ -3899,7 +3903,7 @@ export default function ShutterbugWorld() {
                 so it never steals a continent tap. */}
             <button onClick={() => openCurio("compass")} title="About the compass" aria-label="About the compass"
               disabled={flying}
-              style={{ position: "absolute", left: 104, bottom: 92, width: "clamp(58px, 9vw, 104px)", height: "clamp(58px, 9vw, 104px)",
+              style={{ position: "absolute", left: 60, bottom: 54, width: "clamp(58px, 9vw, 104px)", height: "clamp(58px, 9vw, 104px)",
                 padding: 0, border: "none", background: "transparent", cursor: flying ? "default" : "help", zIndex: 4 }}>
               <img src={`${UI}compass-rose.png`} alt="" aria-hidden="true"
                 style={{ width: "100%", height: "100%", objectFit: "contain", opacity: 0.92, filter: "drop-shadow(0 2px 3px rgba(0,0,0,0.35))" }} />
@@ -3914,13 +3918,13 @@ export default function ShutterbugWorld() {
         {/* ===== Right tool rail — evenly spaced over the desk height, no labels ===== */}
         <div style={{ flex: "0 0 210px", alignSelf: "stretch", display: "flex", flexDirection: "column",
           justifyContent: "space-evenly", alignItems: "center", padding: "8px 0" }}>
-          <ToolButton img="passport.png" label="Passport" onClick={() => { setGearOpen(false); setPassportOpen(true); }} />
-          <ToolButton img="photo-album.png" label="Photo Album" onClick={() => setAlbumOpen(true)} />
           {!isTour && !isExplore && (
             <ToolButton img="field-guide.png" label="Field Guide — research the clue"
               onClick={() => { setGearOpen(false); const fresh = !researched[step] && mode.research !== "off"; if (fresh) doResearch(); setGuideFresh(fresh); setGuideOpen(true); }}
               disabled={busy || (mode.research === "off")} />
           )}
+          <ToolButton img="photo-album.png" label="Photo Album" onClick={() => setAlbumOpen(true)} />
+          <ToolButton img="passport.png" label="Passport" onClick={() => { setGearOpen(false); setPassportOpen(true); }} />
         </div>
       </div>
 
@@ -4436,7 +4440,7 @@ function ResultModal({ data, onContinue, reduced }) {
     <div role="dialog" aria-modal="true" aria-label={data.title}
       style={{ position: "fixed", inset: 0, background: "rgba(16,38,46,0.62)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16, zIndex: 50 }}>
       <div className={reduced ? "" : "sbw-pop"}
-        style={{ background: PAPER, borderRadius: 16, border: `3px solid ${accent}`, boxShadow: "0 14px 44px rgba(0,0,0,0.35)", maxWidth: sideBySide ? 760 : 560, width: "100%", maxHeight: "92vh", overflowY: "auto", padding: "26px 22px", textAlign: "center" }}>
+        style={{ background: PAPER, borderRadius: 16, border: `3px solid ${accent}`, boxShadow: "0 14px 44px rgba(0,0,0,0.35)", maxWidth: sideBySide ? 840 : 620, width: "100%", maxHeight: "92vh", overflowY: "auto", padding: "34px 40px", textAlign: "center" }}>
         <div style={{ fontSize: 56, lineHeight: 1 }} aria-hidden="true">{data.emoji}</div>
         <h2 style={{ fontFamily: "ui-sans-serif, system-ui", fontWeight: 900, fontSize: 26, color: accent, margin: "10px 0 6px" }}>{data.title}</h2>
         {data.category && <div style={{ marginBottom: 10 }}><CategoryBadge category={data.category} /></div>}

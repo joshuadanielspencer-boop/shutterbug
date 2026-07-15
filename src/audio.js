@@ -338,8 +338,13 @@ export const MUSIC = (() => {
         jigBus.gain.linearRampToValueAtTime(1.0, c.currentTime + 1.0); // 1s fade-in
         if (running) return;
         running = true;
-        activeMelody = MELODIES[Math.floor(Math.random() * MELODIES.length)];
-        idx = 0; // start the chosen tune from its first bar
+        // Chain THREE of the five phrases into one long set (~3× a single phrase),
+        // so the opening jig — heard across several click-through screens — takes far
+        // longer to come back around and never feels like a short loop. (Math.random
+        // here is fine: this is audio, not the seeded game RNG.)
+        const order = [...MELODIES].sort(() => Math.random() - 0.5).slice(0, 3);
+        activeMelody = order.flat();
+        idx = 0; // start the chosen set from its first bar
         nextBeat = Math.max(nextBeat, c.currentTime + 0.15);
         startDrone(c.currentTime + 0.1);
         if (!timer) timer = setInterval(schedule, 200);
@@ -396,14 +401,11 @@ export const MUSIC = (() => {
         this.stopCountry();
         const c = ac(); if (!c) return;
         wake(c);
-        const key = tuneKeyFor(country, continent);
+        // Play the country's tune ONCE and let it end — no looping while the player
+        // lingers on the country map. (stopCountry still exists to cancel it if a
+        // future caller re-loops; here there's just the single play-through.)
         countryActive = true;
-        const loop = () => {
-          if (!countryActive || !ctx) return;
-          const dur = playTune(key);
-          countryTimer = setTimeout(loop, Math.max(3000, (dur + 3) * 1000));
-        };
-        loop();
+        playTune(tuneKeyFor(country, continent));
       } catch { /* ignore */ }
     },
     // End-of-run flourish: stop the loop, then a brief celebratory jig run that
