@@ -69,7 +69,58 @@ export const CATEGORY_ART = {
   cityscape: "badges/category-city-slicker-badge.png",
 };
 
-// Art for the non-category achievements — the career ranks, kind mega-badges and
-// special medals. Not drawn yet (docs/art-assets-needed.md §4, §6, §7), so these
-// stay empty and those badges keep rendering their emoji until the art lands.
-export const ACHIEVEMENT_ART = {};
+// The non-category achievements, keyed by the ids `achievements()` builds in
+// profiles.js. Two families share this map because they share that id space: the
+// three kind mega-badges (earned by completing a whole family of categories) and
+// the seven special medals (milestones and superlatives).
+export const ACHIEVEMENT_ART = {
+  kind_built:   "medals/mega-master-builder-badge.png",
+  kind_natural: "medals/mega-force-of-nature-badge.png",
+  kind_living:  "medals/mega-life-lister-badge.png",
+  summits:      "medals/medal-continental-giants.png",
+  unesco:       "medals/medal-world-heritage.png",
+  globe:        "medals/medal-globetrotter.png",
+  record:       "medals/medal-record-breaker.png",
+  m25:          "medals/medal-shutterbug-25.png",
+  m50:          "medals/medal-seasoned-traveler-50.png",
+  m100:         "medals/medal-around-the-world-100.png",
+};
+
+// The six career ranks, keyed by the `tier` index careerRank() returns (0–5,
+// matching PRESS_RANKS in profiles.js). Not an achievement id — the rank is a
+// single escalating title, not a badge you collect, so it gets its own map.
+export const RANK_ART = [
+  "ranks/rank-1-cub-reporter-insignia.png",
+  "ranks/rank-2-field-stringer-insignia.png",
+  "ranks/rank-3-roving-correspondent-insignia.png",
+  "ranks/rank-4-bureau-chief-insignia.png",
+  "ranks/rank-5-globe-editor-insignia.png",
+  "ranks/rank-6-photographer-laureate-insignia.png",
+];
+
+// One roundel per continent, keyed by the continent names LOCATIONS uses.
+// NOTE: these are deliberately uniform teal-and-gold — the continent is read from
+// the landmass shape, NOT from a colour. They do not match the game's continent
+// palette on the world map (North America blue, Africa gold…). See
+// docs/art-assets-needed.md §8 before pairing one with a coloured map region.
+export const ROUNDEL_ART = {
+  "North America": "roundels/roundel-north-america.png",
+  "South America": "roundels/roundel-south-america.png",
+  "Europe":        "roundels/roundel-europe.png",
+  "Africa":        "roundels/roundel-africa.png",
+  "Asia":          "roundels/roundel-asia.png",
+  "Oceania":       "roundels/roundel-oceania.png",
+  "Antarctica":    "roundels/roundel-antarctica.png",
+};
+
+// One-off ornaments. `bestScore`/`bestTime`/`quiz` mark the records board;
+// `unlocked` is the wax seal for a newly opened mode or difficulty; `mastered`
+// is the single generic marker reused for every fully-mastered place (there are
+// 437 — never one per location).
+export const RECORD_ART = {
+  bestScore: "medals/rosette-best-score.png",
+  bestTime:  "medals/medal-best-time.png",
+  quiz:      "medals/rosette-quiz.png",
+};
+export const SEAL_UNLOCKED = "medals/seal-unlocked.png";
+export const MARKER_MASTERED = "medals/marker-mastered.png";

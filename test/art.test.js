@@ -12,12 +12,28 @@ import { describe, it, expect } from "vitest";
 import { existsSync, readdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { join } from "node:path";
-import { DIFFICULTY_ART, MODE_ART, THEME_ART, CATEGORY_ART, ACHIEVEMENT_ART } from "../src/data/art.js";
+import { DIFFICULTY_ART, MODE_ART, THEME_ART, CATEGORY_ART, ACHIEVEMENT_ART,
+  RANK_ART, ROUNDEL_ART, RECORD_ART, SEAL_UNLOCKED, MARKER_MASTERED } from "../src/data/art.js";
 import { CATEGORIES } from "../src/data/categories.js";
+import { achievements, careerRank } from "../src/profiles.js";
+import { LOCATIONS } from "../src/data/locations.js";
+
+// PRESS_RANKS isn't exported; careerRank walks it, so the top tier's index+1 is
+// the count. A 7th rank added there must come with a 7th insignia.
+const PRESS_RANK_COUNT = careerRank({ loc: Object.fromEntries(LOCATIONS.map((l) => [l.id, { c: 1 }])) }).tier + 1;
 
 const UI_DIR = fileURLToPath(new URL("../public/assets/shutterbug-ui/", import.meta.url));
-const REGISTRIES = { DIFFICULTY_ART, MODE_ART, THEME_ART, CATEGORY_ART, ACHIEVEMENT_ART };
-const ART_FOLDERS = ["badges", "modes", "themes", "difficulty"];
+// Every registry, normalized to a {key: path} map — RANK_ART is an array (keyed by
+// rank tier) and the two ornaments are bare strings, but they all need the same
+// "does this file exist / is it claimed" coverage.
+const REGISTRIES = {
+  DIFFICULTY_ART, MODE_ART, THEME_ART, CATEGORY_ART, ACHIEVEMENT_ART,
+  RANK_ART: { ...RANK_ART },
+  ROUNDEL_ART,
+  RECORD_ART,
+  ORNAMENTS: { seal: SEAL_UNLOCKED, marker: MARKER_MASTERED },
+};
+const ART_FOLDERS = ["badges", "modes", "themes", "difficulty", "ranks", "medals", "roundels"];
 
 // The keys each registry must cover, mirrored from the game. Kept literal rather
 // than imported: shutterbug-world.jsx is the whole game component and importing
@@ -26,6 +42,7 @@ const ART_FOLDERS = ["badges", "modes", "themes", "difficulty"];
 const DIFFICULTY_KEYS = ["scout", "easy", "medium", "hard"];
 const MODE_KEYS = ["assignments", "tour", "explore", "quiz", "journey", "daily"];
 const THEME_KEYS = ["classic", "wildlife", "volcano", "mountain", "waterfall", "ruins", "heritage"];
+const CONTINENTS = ["North America", "South America", "Europe", "Africa", "Asia", "Oceania", "Antarctica"];
 
 describe("art registry", () => {
   it("every registered path points at a file that exists", () => {
@@ -58,6 +75,30 @@ describe("art registry", () => {
 
   it("covers all 14 subject categories, and invents no key that isn't one", () => {
     expect(Object.keys(CATEGORY_ART).sort()).toEqual(Object.keys(CATEGORIES).sort());
+  });
+
+  it("covers every achievement id that achievements() actually emits", () => {
+    // The real list, computed from a profile — not a hand-copy that can drift.
+    // Category badges live in CATEGORY_ART, so the rest must be in ACHIEVEMENT_ART.
+    const ids = achievements({ loc: {} }).map((a) => a.id).filter((id) => !id.startsWith("cat_"));
+    expect(Object.keys(ACHIEVEMENT_ART).sort()).toEqual(ids.sort());
+  });
+
+  it("every achievement has art or an emoji to fall back to, and never neither", () => {
+    for (const a of achievements({ loc: {} })) {
+      expect(a.art || a.emoji, `${a.id} would render as nothing`).toBeTruthy();
+    }
+  });
+
+  it("has one insignia per career rank, in tier order", () => {
+    expect(RANK_ART.length).toBe(PRESS_RANK_COUNT);
+    RANK_ART.forEach((p, i) => expect(p, `tier ${i}`).toContain(`rank-${i + 1}-`));
+  });
+
+  it("has a roundel for every continent the locations use", () => {
+    expect(Object.keys(ROUNDEL_ART).sort()).toEqual([...CONTINENTS].sort());
+    const used = [...new Set(LOCATIONS.map((l) => l.continent))];
+    for (const c of used) expect(ROUNDEL_ART, `no roundel for ${c}`).toHaveProperty(c);
   });
 
   // The other direction: a file sitting in the folder that no key points at is

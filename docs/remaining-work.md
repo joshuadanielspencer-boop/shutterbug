@@ -4,7 +4,7 @@ A handoff document. Everything here is written so a **new session with no memory
 the previous ones** can pick up a task and finish it. Read `CLAUDE.md` first (the
 three project rules are hard requirements), then the task you're doing.
 
-Last updated **2026-07-15**.
+Last updated **2026-07-16**.
 
 ### THE THREE THINGS TO DO NEXT (start here)
 
@@ -15,14 +15,14 @@ Last updated **2026-07-15**.
    starting wallet in `startTour` ($3,500 Adventurer / $2,500 Expert), and `legSlack`
    (the extra day budget per stop). Leftover-money bonus = 1 pt per $500, in the
    `photographCity` tour-win branch.
-2. **Wire the rest of the badge art as it lands** — **31 of 73 are done** (2026-07-16):
-   the 14 category badges, 4 difficulty emblems, 6 mode icons, 7 theme crests are
-   installed and live. The wiring is now a one-file job: drop the PNGs in
+2. **Wire the rest of the badge art as it lands** — **59 of 73 are done** (2026-07-16):
+   everything except the §12 transport icons is installed and live, and the passport
+   renders zero emoji. The wiring is now a one-file job: drop the PNGs in
    `public/assets/shutterbug-ui/<folder>/`, run `node scripts/optimize-ui-art.mjs`, add
    the keys to **`src/data/art.js`**, `npm test`. Every render site already prefers art
    and falls back to emoji, and `<ArtBadge dim>` generates the greyed/locked state from
-   the colour file. Full spec + what's left (42: ranks, mega-badges, medals, roundels,
-   rosettes, seal, mastery marker, transport) in `docs/art-assets-needed.md`.
+   the colour file. Full spec + what's left (14: the transport icons + 2 flourishes for
+   the Grand Tour travel layer) in `docs/art-assets-needed.md`.
 3. **The roguelike layer** (§3) — the biggest remaining build, nothing started. Begin
    with the **route-choice map** slice: it reuses the per-leg chooser pattern the
    travel-modes feature just proved.
@@ -55,8 +55,8 @@ Journeys, and the Grandpa Nigel story frame.
 - **Live** at `joshuadanielspencer-boop.github.io/shutterbug/`. `git push` to `main`
   triggers `.github/workflows/deploy.yml`, which tests, builds and publishes. There
   is no separate deploy step.
-- `npm test` → **65 tests, 3 files** (`test/data.test.js`, `test/daily.test.js`,
-  `test/routes.test.js`). They must stay green; several of them guard *facts*, not
+- `npm test` → **75 tests, 4 files** (`test/data.test.js`, `test/daily.test.js`,
+  `test/routes.test.js`, `test/art.test.js`). They must stay green; several of them guard *facts*, not
   just shapes, and exist because a plausible-looking wrong map shipped once already.
 - **Every random choice must go through `src/rng.js`** (`rnd()`, `shuffled()`), never
   `Math.random()` — that's what makes the Daily Expedition identical for everyone, and

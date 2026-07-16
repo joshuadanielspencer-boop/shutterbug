@@ -6,25 +6,31 @@ values, so once the files land they wire straight in.
 
 ## Progress (2026-07-16)
 
-**31 of 73 delivered, installed, and wired in.** §1 difficulty emblems (4), §2 game-mode
-icons (6), §3 theme crests (7), §5 category badges (14). All on-spec: 512×512, genuinely
-transparent, no baked-in text, and they map 1:1 onto the game's real keys.
+**59 of 73 delivered, installed, and wired in** — everything except the transport icons.
+§1 difficulty (4), §2 modes (6), §3 themes (7), §4 ranks (6), §5 category badges (14),
+§6 mega-badges (3), §7 medals (7), §8 roundels (7), §9 rosettes (3), §10 seal (1),
+§11 mastery marker (1). All on-spec: 512×512, genuinely transparent, no baked-in text,
+each mapping 1:1 onto a real game key.
 
-They live in `public/assets/shutterbug-ui/{difficulty,modes,themes,badges}/`, are listed
-in **`src/data/art.js`** (the one registry — add a batch by editing that file), and
-`test/art.test.js` fails if a key has no file behind it or a file no key.
+They live in `public/assets/shutterbug-ui/{difficulty,modes,themes,badges,ranks,medals,roundels}/`,
+are listed in **`src/data/art.js`** (the one registry — add a batch by editing that file),
+and `test/art.test.js` fails if a key has no file behind it, a file no key, or an
+achievement/rank/continent no art.
 
-**Still needed — 42:** §4 ranks (6), §6 mega-badges (3), §7 medals (7), §8 roundels (7),
-§9 rosettes (3), §10 unlock seal (1), §11 mastery marker (1), §12 transport (12 + 2).
-Until those land, their badges keep rendering the greyscale emoji they use today — the
-passport is deliberately mixed rather than blocked.
+**The passport now renders zero emoji** — all 24 keepsakes, all 14 collection cards, the
+3 kind chips, the 7 continent chips and the career rank are illustrated.
+
+**Still needed — 14:** §12 transport modes (12 icons + 2 flourishes), for the Grand Tour
+travel layer. That layer still uses plain emoji (🛺 🐪 🚠).
 
 ### Notes for the next batch
 
-- **Keep the `category-<badge-name>-badge.png` naming convention** — it's what `art.js`
-  already maps from, and it's consistent across all 31.
-- **Ship one copy, not two.** The 1-5 drop had `batch-01`/`batch-02` folders that were
-  byte-identical duplicates of the `-transparent-png` folders.
+- **Keep the family-prefix naming convention** (`category-…-badge.png`, `rank-N-…-insignia.png`,
+  `medal-….png`) — it's what `art.js` maps from, and it's consistent across all 59.
+- **Ship one copy, not two.** Both drops shipped the same art several times over: the 1-5
+  drop had `batch-01`/`batch-02` duplicating the `-transparent-png` folders, and Part 2
+  had every batch folder duplicated inside `shutterbug-core-45-assets-complete`. Harmless
+  (they were byte-identical, so nothing was ambiguous) but it makes the drop hard to read.
 - **512×512 is right; don't go bigger.** The art arrives ~400 KB each and gets quantized
   to a 256-colour palette (~28% of the bytes, visually identical) by
   `node scripts/optimize-ui-art.mjs`. Run it after dropping a batch in — the PWA
@@ -189,11 +195,19 @@ Milestones and superlatives. **Medal / medallion** style (ribbon + disc).
 | **Seasoned Traveler** | 50 places mastered | `medal-seasoned-50.png` |
 | **Around the World** | 100 places mastered | `medal-around-the-world-100.png` |
 
-## 8. Continent roundels — 7
+## 8. Continent roundels — 7 ✅ DELIVERED (with one deviation)
 
-Small round emblems, one per continent (fills in as you visit). Coordinate the
-colours with the game's continent palette (NA blue, SA green, Europe purple, Africa
-gold, Asia red, Oceania yellow, Antarctica white).
+Small round emblems, one per continent (fills in as you visit).
+
+**Delivered uniform, not colour-coded.** The spec asked for the game's continent palette
+(NA blue, SA green, Europe purple, Africa gold, Asia red, Oceania yellow, Antarctica
+white); what arrived is seven identical teal-and-gold roundels distinguished only by the
+landmass shape. They're used as-is on the passport's continent chips, where each sits
+beside its spelled-out name, so nothing depends on the colour.
+
+They are **not** interchangeable with the map's colour-coded regions. If a roundel is ever
+placed next to a coloured continent on the world map, a child would see Africa as gold in
+one place and teal in the other — recolour them first, or don't pair them.
 
 `roundel-north-america.png`, `roundel-south-america.png`, `roundel-europe.png`,
 `roundel-africa.png`, `roundel-asia.png`, `roundel-oceania.png`,
@@ -269,16 +283,28 @@ These exist in `public/assets/shutterbug-ui/` and are fine:
 
 ## What's placeholder today
 
-Still emoji, waiting on art:
+Only one thing: **transport modes** (§12) still use plain emoji (🛺 🐪 🚠) in the Grand
+Tour travel layer — the "getting there" chooser and the header wallet.
 
-- **Ranks, mega-badges, medals, roundels, rosettes** (§4, §6–§9) render as **greyscale
-  emoji** in the passport. The keepsakes page is deliberately mixed right now: the 14
-  category badges show real art, the other 10 show emoji.
-- **Career ranks** show as **text only**; §4 adds insignia.
-- **Transport modes** (§12) use plain emoji (🛺 🐪 🚠) in the Grand Tour travel layer.
+Everything else is illustrated. For reference, what changed: mode cards used to show a
+location photo, difficulty tiers had no art, career ranks were text-only, and the whole
+passport (keepsakes, collections, continent chips) was greyscale emoji.
 
-Already done, for reference: **game-mode cards** used to show a location photo and now
-wear their §2 icon; **difficulty tiers** had no art and now wear their §1 emblem.
+### Where each family ended up
+
+| Family | Rendered at |
+|---|---|
+| §1 difficulty | the difficulty selector on the start screen |
+| §2 modes | the mode cards (replacing the landmark photo) |
+| §3 themes | the Grand Tour itinerary chips |
+| §4 ranks | passport ID header + the album's profile page |
+| §5 categories | passport Keepsakes + the Collections cards |
+| §6 mega-badges | passport Keepsakes + the Collections kind chips |
+| §7 medals | passport Keepsakes |
+| §8 roundels | passport ID continent chips |
+| §9 rosettes | the "New best score / time / quiz score!" moments + the album records |
+| §10 seal | Grandpa's "Newly unlocked!" panel |
+| §11 mastery marker | a mastered country in the sticker book + a completed collection |
 
 ---
 
@@ -289,7 +315,7 @@ wear their §2 icon; **difficulty tiers** had no art and now wear their §1 embl
 transport icons + 2 travel flourishes (+ optional country-stamp overlays). All square
 transparent PNGs, no baked-in text, colour version only.
 
-**Done: 31/73** — 14 category badges, 4 difficulty emblems, 6 mode icons, 7 theme crests.
+**Done: 59/73.** Only §12 transport (12 icons + 2 flourishes) is left.
 
 ### How to land the next batch
 

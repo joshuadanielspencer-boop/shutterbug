@@ -27,7 +27,8 @@ import { listProfiles, lastProfileName, getProfile, createProfile, setLastProfil
   weightedOrder, freshFirst, passportData, achievements, topScores, storageAvailable,
   careerRank, unlocks, UNLOCK_REQ, markCuriositySeen, curiositiesSeen } from "./profiles.js";
 import { CURIOSITY_DECK_BY_ID, CURIOSITY_TOTAL } from "./data/curiosities.js";
-import { DIFFICULTY_ART, MODE_ART, THEME_ART } from "./data/art.js";
+import { DIFFICULTY_ART, MODE_ART, THEME_ART, CATEGORY_ART, ACHIEVEMENT_ART,
+  RANK_ART, RECORD_ART, ROUNDEL_ART, SEAL_UNLOCKED, MARKER_MASTERED } from "./data/art.js";
 import { MR_O, MR_O_FACTS, MR_O_RIDDLES } from "./data/mr-o.js";
 import { SFX, MUSIC, speakEn, speakGreeting, speechAvailable } from "./audio.js";
 import { BASE, OCEAN, OCEAN_DEEP, SEA, SEA_DEEP, SEA_LINE, LAND, LAND_EDGE, INK, GOLD, CORAL, GREEN, PAPER, PAPER_LINE } from "./theme.js";
@@ -2484,15 +2485,18 @@ export default function ShutterbugWorld() {
             </div>
           </div>
 
-          {/* Newly unlocked! — Grandpa's announcements */}
+          {/* Newly unlocked! — Grandpa's announcements, under the wax seal. */}
           {news.length > 0 && (
-            <div style={{ marginTop: 12, background: "#EAF6EF", border: `2px solid ${GREEN}`, borderRadius: 12, padding: "12px 16px" }}>
-              <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.16em", color: GREEN, fontWeight: 700, marginBottom: 6 }}>🔓 NEWLY UNLOCKED!</div>
-              {news.map((n, i) => (
-                <p key={i} style={{ margin: i ? "6px 0 0" : 0, color: INK, fontSize: 14.5, lineHeight: 1.45 }}>
-                  <span aria-hidden="true">{GRANDPA.emoji} </span>{n}
-                </p>
-              ))}
+            <div style={{ marginTop: 12, background: "#EAF6EF", border: `2px solid ${GREEN}`, borderRadius: 12, padding: "12px 16px", display: "flex", gap: 12, alignItems: "flex-start", textAlign: "left" }}>
+              <ArtBadge art={SEAL_UNLOCKED} emoji="🔓" size={54} style={{ marginTop: 2 }} />
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.16em", color: GREEN, fontWeight: 700, marginBottom: 6 }}>NEWLY UNLOCKED!</div>
+                {news.map((n, i) => (
+                  <p key={i} style={{ margin: i ? "6px 0 0" : 0, color: INK, fontSize: 14.5, lineHeight: 1.45 }}>
+                    <span aria-hidden="true">{GRANDPA.emoji} </span>{n}
+                  </p>
+                ))}
+              </div>
             </div>
           )}
 
@@ -2816,7 +2820,7 @@ export default function ShutterbugWorld() {
             <h2 style={{ fontFamily: "ui-sans-serif, system-ui", fontWeight: 900, fontSize: 30, color: INK, margin: "0 0 4px" }}>{quiz.correctCount} / {quiz.questions.length} correct</h2>
             <p style={{ fontFamily: "ui-monospace, monospace", fontSize: 22, color: CORAL, fontWeight: 700, margin: "6px 0" }}>{quiz.score} pts</p>
             <p style={{ color: INK, fontWeight: 700, marginTop: 6 }}>{r.title}</p>
-            {quiz.best?.isBest && <div style={{ marginTop: 10 }}><span style={{ background: GOLD, color: INK, fontWeight: 800, fontSize: 14, padding: "6px 14px", borderRadius: 20 }}>★ New best quiz score!</span></div>}
+            {quiz.best?.isBest && <div style={{ marginTop: 10 }}><span style={{ display: "inline-flex", alignItems: "center", gap: 7, background: GOLD, color: INK, fontWeight: 800, fontSize: 14, padding: "5px 14px 5px 6px", borderRadius: 22 }}><ArtBadge art={RECORD_ART.quiz} emoji="★" size={30} /> New best quiz score!</span></div>}
             <div style={{ display: "flex", gap: 10, justifyContent: "center", marginTop: 22, flexWrap: "wrap" }}>
               <button onClick={startQuiz} style={primaryBtn}>Play again 🧠</button>
               <button onClick={() => { setQuiz(null); setGameMode("assignments"); setScreen("start"); }} style={{ ...primaryBtn, background: "transparent", color: INK, border: `2px solid ${INK}`, boxShadow: "none" }}>Back to start</button>
@@ -3233,10 +3237,14 @@ export default function ShutterbugWorld() {
           {profileName && (lastResult?.isBest || lastResult?.isBestTime) && (
             <div style={{ marginTop: 10, display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap" }}>
               {lastResult.isBest && (
-                <span style={{ background: GOLD, color: INK, fontWeight: 800, fontSize: 14, padding: "6px 14px", borderRadius: 20 }}>★ New best score!</span>
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 7, background: GOLD, color: INK, fontWeight: 800, fontSize: 14, padding: "5px 14px 5px 6px", borderRadius: 22 }}>
+                  <ArtBadge art={RECORD_ART.bestScore} emoji="★" size={30} /> New best score!
+                </span>
               )}
               {lastResult.isBestTime && (
-                <span style={{ background: GREEN, color: "#fff", fontWeight: 800, fontSize: 14, padding: "6px 14px", borderRadius: 20 }}>⏱ New best time!</span>
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 7, background: GREEN, color: "#fff", fontWeight: 800, fontSize: 14, padding: "5px 14px 5px 6px", borderRadius: 22 }}>
+                  <ArtBadge art={RECORD_ART.bestTime} emoji="⏱" size={30} /> New best time!
+                </span>
               )}
             </div>
           )}
@@ -3327,7 +3335,9 @@ export default function ShutterbugWorld() {
               <div style={{ textAlign: "left", minWidth: 0 }}>
                 <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 9, letterSpacing: "0.16em", opacity: 0.65 }}>TRAVELER</div>
                 <div style={{ fontWeight: 900, fontSize: 22, color: "#fff", lineHeight: 1.1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{profile.name}</div>
-                <div style={{ fontWeight: 800, fontSize: 13, color: GOLD, marginTop: 2 }}>★ {rank.title}</div>
+                <div style={{ display: "flex", alignItems: "center", gap: 5, fontWeight: 800, fontSize: 13, color: GOLD, marginTop: 2 }}>
+                  <ArtBadge art={RANK_ART[rank.tier]} emoji="★" size={26} /> {rank.title}
+                </div>
                 <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, opacity: 0.8, marginTop: 3 }}>Stamps {pp.masteredCount}/{pp.totalCountries} · Trips {profile.games || 0} · {rank.have} places shot</div>
               </div>
               {earnedBadges > 0 && <div style={{ marginLeft: "auto", textAlign: "center", flex: "none" }}><div style={{ fontSize: 24 }}>🏅</div><div style={{ fontFamily: "ui-monospace, monospace", fontSize: 10, opacity: 0.85 }}>{earnedBadges}</div></div>}
@@ -3367,7 +3377,9 @@ export default function ShutterbugWorld() {
           </div>
 
           <div style={{ marginTop: 12, display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-            <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.12em", color: INK, opacity: 0.6 }}>⏱ BEST TIMES</span>
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.12em", color: INK, opacity: 0.6 }}>
+              <ArtBadge art={RECORD_ART.bestTime} emoji="⏱" size={24} /> BEST TIMES
+            </span>
             {MODE_ORDER.map((k) => (
               <span key={k} style={{ fontFamily: "ui-monospace, monospace", fontSize: 12, color: INK, background: PAPER, border: `1px solid ${PAPER_LINE}`, borderRadius: 14, padding: "4px 10px" }}>
                 {MODES[k].label}: {bt[k] ? fmtTime(bt[k]) : "—"}
@@ -3375,9 +3387,13 @@ export default function ShutterbugWorld() {
             ))}
           </div>
 
+          {/* Continent progress. The roundel carries the continent's SHAPE, and the
+              name is spelled out beside it — the art is uniform teal, so it never
+              stands in for the map's continent colours. */}
           <div style={{ marginTop: 14, display: "flex", gap: 8, flexWrap: "wrap" }}>
             {Object.entries(pp.continents).sort().map(([k, v]) => (
-              <span key={k} style={{ fontFamily: "ui-monospace, monospace", fontSize: 12, color: INK, background: PAPER, border: `1px solid ${PAPER_LINE}`, borderRadius: 14, padding: "4px 10px" }}>
+              <span key={k} style={{ display: "inline-flex", alignItems: "center", gap: 6, fontFamily: "ui-monospace, monospace", fontSize: 12, color: INK, background: PAPER, border: `1px solid ${PAPER_LINE}`, borderRadius: 16, padding: "3px 10px 3px 4px" }}>
+                <ArtBadge art={ROUNDEL_ART[k]} emoji="🌐" size={26} dim={v.mastered === 0} />
                 {k}: {v.mastered}/{v.total}
               </span>
             ))}
@@ -3392,8 +3408,8 @@ export default function ShutterbugWorld() {
             {Object.entries(KIND_META).map(([k, meta]) => {
               const kk = pp.kinds[k] || { mastered: 0, total: 0 };
               return (
-                <span key={k} style={{ fontFamily: "ui-monospace, monospace", fontSize: 12, fontWeight: 700, color: INK, background: PAPER, border: `1px solid ${PAPER_LINE}`, borderRadius: 14, padding: "5px 12px" }}>
-                  <span aria-hidden="true" style={{ fontSize: 17 }}>{meta.emoji}</span> {meta.name}: {kk.mastered}/{kk.total}
+                <span key={k} style={{ display: "inline-flex", alignItems: "center", gap: 6, fontFamily: "ui-monospace, monospace", fontSize: 12, fontWeight: 700, color: INK, background: PAPER, border: `1px solid ${PAPER_LINE}`, borderRadius: 16, padding: "3px 12px 3px 4px" }}>
+                  <ArtBadge art={ACHIEVEMENT_ART["kind_" + k]} emoji={meta.emoji} size={28} dim={kk.mastered === 0} /> {meta.name}: {kk.mastered}/{kk.total}
                 </span>
               );
             })}
@@ -3407,8 +3423,16 @@ export default function ShutterbugWorld() {
               return (
                 <div key={cat} style={{ background: "#fff", border: `2px solid ${done ? c.color : PAPER_LINE}`, borderRadius: 8, padding: "10px 12px", opacity: col.mastered ? 1 : 0.7 }}>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 4 }}>
-                    <span style={{ fontWeight: 800, color: INK, fontSize: 13, lineHeight: 1.2 }}><span aria-hidden="true" style={{ fontSize: 18 }}>{c.emoji}</span> {c.name}</span>
-                    {done && <span title="Collection complete!" aria-label="complete" style={{ fontSize: 13 }}>⭐</span>}
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontWeight: 800, color: INK, fontSize: 13, lineHeight: 1.2 }}>
+                      <ArtBadge art={CATEGORY_ART[cat]} emoji={c.emoji} size={30} dim={!col.mastered} /> {c.name}
+                    </span>
+                    {/* role+label on the wrapper: the marker itself is aria-hidden art,
+                        but "complete" must still reach a screen reader. */}
+                    {done && (
+                      <span role="img" aria-label="Collection complete!" title="Collection complete!" style={{ display: "inline-flex", flex: "0 0 auto" }}>
+                        <ArtBadge art={MARKER_MASTERED} emoji="⭐" size={22} />
+                      </span>
+                    )}
                   </div>
                   <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 12, color: INK, opacity: 0.7, marginTop: 5 }}>{col.mastered} / {col.total}{done ? "" : ""}</div>
                   <div style={{ height: 6, background: PAPER, borderRadius: 4, marginTop: 6, overflow: "hidden" }}>
@@ -3483,10 +3507,11 @@ export default function ShutterbugWorld() {
                           <span aria-hidden="true" style={{ fontSize: 40, filter: state === "locked" ? "grayscale(1)" : "none" }}>{slot.flag}</span>
                           <span style={{ fontWeight: 800, color: INK, fontSize: 12.5, lineHeight: 1.15 }}>{slot.country}</span>
                         </div>
-                        <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 10, letterSpacing: "0.06em", marginTop: 4,
+                        <div style={{ display: "flex", alignItems: "center", gap: 4, fontFamily: "ui-monospace, monospace", fontSize: 10, letterSpacing: "0.06em", marginTop: 4,
                           color: state === "mastered" ? CORAL : INK, opacity: state === "mastered" ? 1 : 0.55 }}>
-                          {state === "mastered" ? `★ ${st.locsMastered}/${total} place${total === 1 ? "" : "s"} shot`
-                            : state === "visited" ? "✓ visited — no shot yet"
+                          {state === "mastered" ? (
+                            <><ArtBadge art={MARKER_MASTERED} emoji="★" size={18} />{`${st.locsMastered}/${total} place${total === 1 ? "" : "s"} shot`}</>
+                          ) : state === "visited" ? "✓ visited — no shot yet"
                             : `${total} place${total === 1 ? "" : "s"} to find`}
                         </div>
                       </div>
@@ -4670,7 +4695,9 @@ function PassportModal({ profile, onClose }) {
             <div style={{ position: "absolute", left: "53%", top: "17%", width: "37%", color: INK, textAlign: "left" }}>
               <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 10, letterSpacing: "0.16em", color: OCEAN, opacity: 0.8 }}>TRAVELER</div>
               <div style={{ fontWeight: 900, fontSize: 24, lineHeight: 1.1, color: INK, overflow: "hidden", textOverflow: "ellipsis" }}>{profile.name}</div>
-              <div style={{ fontWeight: 800, fontSize: 14, color: CORAL, marginTop: 3 }}>★ {rank.title}</div>
+              <div style={{ display: "flex", alignItems: "center", gap: 6, fontWeight: 800, fontSize: 14, color: CORAL, marginTop: 3 }}>
+                <ArtBadge art={RANK_ART[rank.tier]} emoji="★" size={30} /> {rank.title}
+              </div>
               <div style={{ marginTop: 12, display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px 12px", fontSize: 12.5 }}>
                 <div><b style={{ fontSize: 18 }}>{pp.masteredCount}</b><span style={{ opacity: 0.7 }}>/{pp.totalCountries}</span><div style={{ opacity: 0.7, fontSize: 11 }}>stamps</div></div>
                 <div><b style={{ fontSize: 18 }}>{rank.have}</b><div style={{ opacity: 0.7, fontSize: 11 }}>places shot</div></div>
@@ -4678,9 +4705,12 @@ function PassportModal({ profile, onClose }) {
                 <div><b style={{ fontSize: 18 }}>{earned.length}</b><div style={{ opacity: 0.7, fontSize: 11 }}>keepsakes</div></div>
               </div>
               {bestPairs.length > 0 && (
-                <div style={{ marginTop: 10, fontSize: 11.5, opacity: 0.85 }}>
-                  <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 9.5, letterSpacing: "0.14em", color: OCEAN, marginBottom: 3 }}>BEST SCORES</div>
-                  {bestPairs.slice(0, 4).map(([k, v]) => <div key={k} style={{ textTransform: "capitalize" }}>{k}: <b>{v}</b></div>)}
+                <div style={{ marginTop: 10, fontSize: 11.5, opacity: 0.85, display: "flex", gap: 8, alignItems: "flex-start" }}>
+                  <ArtBadge art={RECORD_ART.bestScore} emoji="🏆" size={34} style={{ marginTop: 1 }} />
+                  <div>
+                    <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 9.5, letterSpacing: "0.14em", color: OCEAN, marginBottom: 3 }}>BEST SCORES</div>
+                    {bestPairs.slice(0, 4).map(([k, v]) => <div key={k} style={{ textTransform: "capitalize" }}>{k}: <b>{v}</b></div>)}
+                  </div>
                 </div>
               )}
             </div>
