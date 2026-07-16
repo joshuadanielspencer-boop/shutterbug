@@ -293,7 +293,11 @@ transparent PNGs, no baked-in text, colour version only.
 
 ### How to land the next batch
 
-1. Drop the PNGs in `public/assets/shutterbug-ui/<folder>/` (`ranks/`, `medals/`… — one
+0. Put the raw drop anywhere — `art-drops/` and `Shutterbug new image assets*/` are both
+   gitignored, so the ~400 KB originals never reach the repo. Only the quantized copies
+   under `public/` get tracked. (Worth being deliberate about: a `git add -A` in 89bcd9f
+   put 30 MB of raw drop into history permanently.)
+1. Copy the PNGs into `public/assets/shutterbug-ui/<folder>/` (`ranks/`, `medals/`… — one
    folder per family).
 2. `node scripts/optimize-ui-art.mjs <folder>` to quantize them (add the folder to
    `ART_DIRS` in that script).
