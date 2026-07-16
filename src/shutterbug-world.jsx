@@ -3501,6 +3501,41 @@ export default function ShutterbugWorld() {
   // size at every zoom. On-screen rx = rx_user·(W/box.w) and ry = ry_user·(H/box.h);
   // setting ry_user = k·box.h·(W/H) makes both equal k·W. W/H is the frame aspect.
   const pinR = (k) => ({ rx: k * box.w, ry: k * box.h * aspect });
+  // ---- De-overlapped landmark pins --------------------------------------------
+  // Two landmarks close together (Singapore's, the small Gulf states, Vatican vs
+  // Rome…) render as overlapping discs a child can't tell apart or tap. So the pins
+  // are nudged off their exact spot just enough that their borders only slightly
+  // overlap — approximately in the right place, but always distinguishable. A pin
+  // that had to move draws a hairline leader back to its TRUE location. On-screen a
+  // pin is a circle of radius ≈ PIN_K × frame-width; convert that to plate units via
+  // the map's uniform fit scale (width- or height-limited by the box aspect).
+  const PIN_K = 0.085;
+  const WoverS = (box.w / box.h) > FRAME_AR ? (1 + 2 * VB_PAD) * box.w : FRAME_AR * (1 + 2 * VB_PAD) * box.h;
+  const pinOverlapDist = 2 * PIN_K * WoverS;   // closer than this on screen = overlapping
+  const pinTargetDist = 1.8 * PIN_K * WoverS;  // push apart to here: borders just kissing
+  const cityPinLayout = (() => {
+    if (!inCity) return { pos: {}, moved: {} };
+    const pts = cityOptions.map((id) => { const p = pinXY(loc(id)); return { id, x: p.x, y: p.y, tx: p.x, ty: p.y }; });
+    for (let iter = 0; iter < 24; iter++) {
+      let any = false;
+      for (let i = 0; i < pts.length; i++) for (let j = i + 1; j < pts.length; j++) {
+        let dx = pts[j].x - pts[i].x, dy = pts[j].y - pts[i].y, d = Math.hypot(dx, dy);
+        if (d >= pinOverlapDist) continue;
+        if (d < 1e-6) { const a = i * 2.399963 + j; dx = Math.cos(a); dy = Math.sin(a); d = 1; } // coincident → deterministic split
+        const push = (pinTargetDist - d) / 2, ux = dx / d, uy = dy / d;
+        pts[i].x -= ux * push; pts[i].y -= uy * push;
+        pts[j].x += ux * push; pts[j].y += uy * push;
+        any = true;
+      }
+      if (!any) break;
+    }
+    const pos = {}, moved = {};
+    for (const p of pts) {
+      pos[p.id] = { x: p.x, y: p.y };
+      if (Math.hypot(p.x - p.tx, p.y - p.ty) > 0.25 * PIN_K * WoverS) moved[p.id] = { x: p.tx, y: p.ty };
+    }
+    return { pos, moved };
+  })();
   const busy = !!flying || !!pending || !!riddle || !!mrO || (!isExplore && days <= 0);
   // Journey-tracker step, derived from phase (continent → country → destination → shot).
   const stepIdx = phase === "continent" ? 0 : phase === "country" ? 1 : (revealed ? 3 : 2);
@@ -3962,13 +3997,23 @@ export default function ShutterbugWorld() {
                   carries its subject's CATEGORY EMOJI on a light disc — a color-blind-
                   safe, at-a-glance clue to what kind of place it is (mountain, temple…),
                   so the player can match it against the editor's clue. */}
+              {/* Hairline leaders from any nudged pin back to its TRUE spot, drawn
+                  UNDER the pins so the disc always sits on top of its own line. */}
+              {inCity && cityOptions.map((id) => {
+                const t = cityPinLayout.moved[id]; if (!t) return null;
+                const p = cityPinLayout.pos[id];
+                return <g key={"lead" + id} style={{ pointerEvents: "none" }}>
+                  <line x1={p.x} y1={p.y} x2={t.x} y2={t.y} stroke={INK} strokeWidth="1.1" strokeOpacity="0.5" strokeDasharray="2 2" vectorEffect="non-scaling-stroke" />
+                  <ellipse cx={t.x} cy={t.y} {...pinR(0.013)} fill={INK} fillOpacity="0.55" />
+                </g>;
+              })}
               {/* Draw the hovered/focused pin LAST so its icon (and revealed name) ride
                   on top of every neighbor. */}
               {inCity && (hoverPin && cityOptions.includes(hoverPin)
                 ? [...cityOptions.filter((x) => x !== hoverPin), hoverPin]
                 : cityOptions).map((id) => {
                 const l = loc(id);
-                const { x: px, y: py } = pinXY(l);
+                const { x: px, y: py } = cityPinLayout.pos[id] || pinXY(l);
                 const isCurrent = id === current;
                 const emoji = (CATEGORIES[l.category] || {}).emoji || "📍";
                 return (
