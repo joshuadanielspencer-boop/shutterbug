@@ -4,6 +4,21 @@ A hand-off list for generating game art (e.g. with ChatGPT), pulled from what th
 game actually tracks and renders. Names and counts below are the *exact* in-game
 values, so once the files land they wire straight in.
 
+## Progress / reconciliation with the ChatGPT batch list (2026-07-15)
+
+- **Category badges (§5): all 14 GENERATED** across batch 01 (6) + batch 02 (8).
+  ChatGPT named them `category-<badge-name>-badge.png` (e.g.
+  `category-peak-bagger-badge.png`). That's fine — I'll map those names to the game's
+  category keys when wiring; **keep that convention** for consistency.
+- **Missing from the ChatGPT list, still needed:** the **difficulty emblems (§1, 4)**,
+  **game-mode icons (§2, 6)**, and **themed-expedition crests (§3, 7)** — 17 assets.
+  These are exactly the "difficulty settings & game modes" you asked for, so add them.
+- **Per-place mastery** was on the ChatGPT list as its own item. ⚠ The game needs **ONE
+  generic "mastered place" marker**, NOT one per location — there are 437 places. See §11.
+- **Country-stamp overlays** (mastered/visited) are worth doing — see §8.
+- Everything else on the ChatGPT list (ranks, mega-badges, medals, roundels, records,
+  quiz, unlock) matches §4–§10 below.
+
 ---
 
 ## Universal spec (applies to EVERY asset below)
@@ -174,6 +189,14 @@ Prize-ribbon style, for the local records board.
 A single reusable **wax-seal / "UNLOCKED" stamp** shown when a mode or difficulty is
 newly unlocked. `seal-unlocked.png`
 
+## 11. Per-place mastery marker — 1 (⚠ ONE generic, not per-place)
+
+A single **"mastered" ornament** — a small star / rosette / gold ring — overlaid on a
+place once it's fully mastered (photographed enough times). **Do NOT generate one per
+location:** there are 437 places; the game reuses one marker for all of them, with the
+place name rendered live. (A plain "completed" marker already exists; this is the
+grander *mastered* version.) `marker-mastered.png`
+
 ---
 
 ## Already in the game (do NOT regenerate)
@@ -201,9 +224,10 @@ These exist in `public/assets/shutterbug-ui/` and are fine:
 
 ## Totals
 
-≈ **58 new assets**: 4 difficulty + 6 modes + 7 themes + 6 ranks + 14 category badges
-+ 3 mega-badges + 7 medals + 7 roundels + 3 rosettes + 1 seal. All square transparent
-PNGs, no baked-in text, colour version only.
+≈ **59 new assets**: 4 difficulty + 6 modes + 7 themes + 6 ranks + 14 category badges
++ 3 mega-badges + 7 medals + 7 roundels + 3 rosettes + 1 seal + 1 mastery marker (+
+optional country-stamp overlays). All square transparent PNGs, no baked-in text,
+colour version only. **Done so far: 14/14 category badges (batches 01–02).**
 
 Drop them in `public/assets/shutterbug-ui/` (I can sort them into subfolders like
 `badges/`, `modes/`, `ranks/` when wiring). Once any subset lands, I wire it in and
