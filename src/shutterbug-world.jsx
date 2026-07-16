@@ -2583,27 +2583,37 @@ export default function ShutterbugWorld() {
                 const returning = !!prof && (prof.metNigel || (prof.games || 0) > 0);
                 const label = returning ? "Continue your adventure ✈" : "Begin your adventure ✈";
                 return (
-                  <button onClick={goToMeet}
+                  <button onClick={() => { startMusicMaybe(); setPromptTraveler(false); setScreen("travelers"); }}
                     style={{ ...primaryBtn, marginTop: 0, fontSize: 19, padding: "15px 32px", boxShadow: "0 5px 0 #A93A28, 0 6px 22px rgba(0,0,0,0.45)" }}>
                     {label}
                   </button>
                 );
               })()}
-              {promptTraveler && (
-                <p role="alert" style={{ color: CORAL, fontWeight: 800, fontSize: 14, margin: 0, background: "rgba(255,255,255,0.94)", border: `1.5px solid ${CORAL}`, borderRadius: 10, padding: "6px 12px" }}>
-                  ☝️ Pick a traveler below (or tap <b>Guest</b>) to begin!
-                </p>
-              )}
             </div>
           </div>
+        </div>
+        {createOpen && (
+          <CreateTravelerModal onSubmit={createAndBegin} onClose={() => setCreateOpen(false)} />
+        )}
+      </Frame>
+    );
+  }
 
-          {/* One centerd column: traveler, then a picture-first grid of mode cards
-              (each wearing a landmark photo from the game's own collection), then
-              difficulty stamps and one big launch button. Long explanations live
-              behind each card's ⓘ. */}
-          <div style={{ maxWidth: 640, margin: "0 auto" }}>
-
-          <div style={{ marginTop: 22 }}>
+  // ---------- CHOOSE TRAVELER — its own screen between the splash and Grandpa.
+  // The main jig keeps playing here (only fades at the world map). ----------
+  if (screen === "travelers") {
+    return (
+      <Frame>
+        <div style={{ maxWidth: 640, margin: "0 auto", textAlign: "center", padding: "24px 4px" }}>
+          <button onClick={() => setScreen("start")} style={{ float: "left", padding: "8px 14px", borderRadius: 8, border: `1.5px solid ${INK}`, background: "transparent", color: INK, fontWeight: 700, fontSize: 13, cursor: "pointer" }}>← Back</button>
+          <h2 style={{ fontFamily: "ui-monospace, monospace", letterSpacing: "0.18em", fontSize: 15, color: OCEAN, fontWeight: 800, margin: "6px 0 4px", textTransform: "uppercase" }}>Who's traveling?</h2>
+          <p style={{ color: INK, opacity: 0.75, fontSize: 14, margin: "0 0 4px" }}>Pick a traveler, play as a guest, or start a new one.</p>
+          {promptTraveler && (
+            <p role="alert" style={{ color: CORAL, fontWeight: 800, fontSize: 14, margin: "8px auto 0", maxWidth: 360, background: "rgba(255,255,255,0.94)", border: `1.5px solid ${CORAL}`, borderRadius: 10, padding: "6px 12px" }}>
+              ☝️ Pick a traveler (or tap <b>Guest</b>) to continue!
+            </p>
+          )}
+          <div style={{ marginTop: 18 }}>
             <Field label="Select Traveler">
               <div style={{ display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap", maxWidth: 480, margin: "0 auto" }}>
                 {profiles.map((p) => {
@@ -2684,8 +2694,11 @@ export default function ShutterbugWorld() {
               })()}
             </div>
           )}
+          {/* On to meet Grandpa. goToMeet nudges to pick a traveler first if none is chosen. */}
+          <button onClick={goToMeet} style={{ ...primaryBtn, marginTop: 24, fontSize: 17, padding: "13px 32px" }}>
+            Continue ✈
+          </button>
           </div>
-        </div>
         {avatarEdit && profileName && (
           <AvatarEditor name={profileName} initial={getProfile(profileName)?.avatar}
             onSave={(spec) => { setAvatar(profileName, spec); setAvatarEdit(false); refreshProfiles(); sfx("stamp"); }}
