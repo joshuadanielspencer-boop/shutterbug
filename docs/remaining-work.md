@@ -15,13 +15,14 @@ Last updated **2026-07-15**.
    starting wallet in `startTour` ($3,500 Adventurer / $2,500 Expert), and `legSlack`
    (the extra day budget per stop). Leftover-money bonus = 1 pt per $500, in the
    `photographCity` tour-win branch.
-2. **Wire the badge / mode / difficulty art as it lands.** Full spec + exact filenames
-   in `docs/art-assets-needed.md` (~73 assets). ChatGPT has already generated **14/14
-   category badges** (`category-<badge-name>-badge.png`) — but the **files are not in
-   the repo yet**. When any batch drops into `public/assets/shutterbug-ui/`, wire each
-   to its tracked value and generate the greyed/locked state in code. Badges currently
-   render as greyscale emoji in the passport; mode cards use a location photo;
-   difficulty tiers and career ranks have no art.
+2. **Wire the rest of the badge art as it lands** — **31 of 73 are done** (2026-07-16):
+   the 14 category badges, 4 difficulty emblems, 6 mode icons, 7 theme crests are
+   installed and live. The wiring is now a one-file job: drop the PNGs in
+   `public/assets/shutterbug-ui/<folder>/`, run `node scripts/optimize-ui-art.mjs`, add
+   the keys to **`src/data/art.js`**, `npm test`. Every render site already prefers art
+   and falls back to emoji, and `<ArtBadge dim>` generates the greyed/locked state from
+   the colour file. Full spec + what's left (42: ranks, mega-badges, medals, roundels,
+   rosettes, seal, mastery marker, transport) in `docs/art-assets-needed.md`.
 3. **The roguelike layer** (§3) — the biggest remaining build, nothing started. Begin
    with the **route-choice map** slice: it reuses the per-leg chooser pattern the
    travel-modes feature just proved.

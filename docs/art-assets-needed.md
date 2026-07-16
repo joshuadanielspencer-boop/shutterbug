@@ -4,20 +4,45 @@ A hand-off list for generating game art (e.g. with ChatGPT), pulled from what th
 game actually tracks and renders. Names and counts below are the *exact* in-game
 values, so once the files land they wire straight in.
 
-## Progress / reconciliation with the ChatGPT batch list (2026-07-15)
+## Progress (2026-07-16)
 
-- **Category badges (§5): all 14 GENERATED** across batch 01 (6) + batch 02 (8).
-  ChatGPT named them `category-<badge-name>-badge.png` (e.g.
-  `category-peak-bagger-badge.png`). That's fine — I'll map those names to the game's
-  category keys when wiring; **keep that convention** for consistency.
-- **Missing from the ChatGPT list, still needed:** the **difficulty emblems (§1, 4)**,
-  **game-mode icons (§2, 6)**, and **themed-expedition crests (§3, 7)** — 17 assets.
-  These are exactly the "difficulty settings & game modes" you asked for, so add them.
-- **Per-place mastery** was on the ChatGPT list as its own item. ⚠ The game needs **ONE
-  generic "mastered place" marker**, NOT one per location — there are 437 places. See §11.
-- **Country-stamp overlays** (mastered/visited) are worth doing — see §8.
-- Everything else on the ChatGPT list (ranks, mega-badges, medals, roundels, records,
-  quiz, unlock) matches §4–§10 below.
+**31 of 73 delivered, installed, and wired in.** §1 difficulty emblems (4), §2 game-mode
+icons (6), §3 theme crests (7), §5 category badges (14). All on-spec: 512×512, genuinely
+transparent, no baked-in text, and they map 1:1 onto the game's real keys.
+
+They live in `public/assets/shutterbug-ui/{difficulty,modes,themes,badges}/`, are listed
+in **`src/data/art.js`** (the one registry — add a batch by editing that file), and
+`test/art.test.js` fails if a key has no file behind it or a file no key.
+
+**Still needed — 42:** §4 ranks (6), §6 mega-badges (3), §7 medals (7), §8 roundels (7),
+§9 rosettes (3), §10 unlock seal (1), §11 mastery marker (1), §12 transport (12 + 2).
+Until those land, their badges keep rendering the greyscale emoji they use today — the
+passport is deliberately mixed rather than blocked.
+
+### Notes for the next batch
+
+- **Keep the `category-<badge-name>-badge.png` naming convention** — it's what `art.js`
+  already maps from, and it's consistent across all 31.
+- **Ship one copy, not two.** The 1-5 drop had `batch-01`/`batch-02` folders that were
+  byte-identical duplicates of the `-transparent-png` folders.
+- **512×512 is right; don't go bigger.** The art arrives ~400 KB each and gets quantized
+  to a 256-colour palette (~28% of the bytes, visually identical) by
+  `node scripts/optimize-ui-art.mjs`. Run it after dropping a batch in — the PWA
+  precaches every PNG, so each megabyte lands on the iPad at install time.
+- **Per-place mastery: ONE generic marker**, NOT one per location — there are 437. See §11.
+- **Country-stamp overlays** (mastered/visited) are still worth doing — see §8.
+
+### The landscape "mode cards" — a good idea, incomplete
+
+The drop also included `named-mode-difficulty-icons/`: a **second, different art style**
+(flatter, softer, no gold rim) at off-spec sizes — circular difficulty badges at 1254²,
+and landscape 3:2 mode "cards" at 1536×1024. Set aside for now, and the 512 sets used
+instead, because that folder covers **only 4 of the 6 modes** (no Journeys, no Daily
+Expedition) and mixing two styles on one screen looks like a mistake.
+
+The landscape cards are genuinely promising — they'd fill the whole mode card rather than
+sit as an icon on paper. **To use them: draw Journeys + Daily Expedition to match, at
+1536×1024.** Then it's a straight swap in `MODE_ART`.
 
 ---
 
@@ -242,13 +267,18 @@ These exist in `public/assets/shutterbug-ui/` and are fine:
 - The **avatar** sprite parts live under `avatar/` and are a *separate* task (the avatar
   redesign) — not part of this badge/mode/difficulty batch.
 
-## What's placeholder today (these are what this batch replaces)
+## What's placeholder today
 
-- **Badges & medals** currently render as **greyscale emoji** in the passport — every
-  item in §4–§10 above replaces an emoji.
-- **Game-mode cards** currently show a **location photo**; §2 gives them real icons.
-- **Difficulty tiers** have **no art** today; §1 adds it.
+Still emoji, waiting on art:
+
+- **Ranks, mega-badges, medals, roundels, rosettes** (§4, §6–§9) render as **greyscale
+  emoji** in the passport. The keepsakes page is deliberately mixed right now: the 14
+  category badges show real art, the other 10 show emoji.
 - **Career ranks** show as **text only**; §4 adds insignia.
+- **Transport modes** (§12) use plain emoji (🛺 🐪 🚠) in the Grand Tour travel layer.
+
+Already done, for reference: **game-mode cards** used to show a location photo and now
+wear their §2 icon; **difficulty tiers** had no art and now wear their §1 emblem.
 
 ---
 
@@ -257,9 +287,21 @@ These exist in `public/assets/shutterbug-ui/` and are fine:
 ≈ **73 new assets**: 4 difficulty + 6 modes + 7 themes + 6 ranks + 14 category badges
 + 3 mega-badges + 7 medals + 7 roundels + 3 rosettes + 1 seal + 1 mastery marker + 12
 transport icons + 2 travel flourishes (+ optional country-stamp overlays). All square
-transparent PNGs, no baked-in text, colour version only. **Done so far: 14/14 category
-badges (batches 01–02).**
+transparent PNGs, no baked-in text, colour version only.
 
-Drop them in `public/assets/shutterbug-ui/` (I can sort them into subfolders like
-`badges/`, `modes/`, `ranks/` when wiring). Once any subset lands, I wire it in and
-auto-generate the locked/greyed states.
+**Done: 31/73** — 14 category badges, 4 difficulty emblems, 6 mode icons, 7 theme crests.
+
+### How to land the next batch
+
+1. Drop the PNGs in `public/assets/shutterbug-ui/<folder>/` (`ranks/`, `medals/`… — one
+   folder per family).
+2. `node scripts/optimize-ui-art.mjs <folder>` to quantize them (add the folder to
+   `ART_DIRS` in that script).
+3. Add the keys to `src/data/art.js` — for §4/§6/§7 that means filling in
+   `ACHIEVEMENT_ART`, keyed by achievement id (`kind_built`, `summits`, `m25`…; see
+   `achievements()` in `src/profiles.js`). The render sites already prefer art over
+   emoji, so nothing else needs touching.
+4. `npm test` — `test/art.test.js` catches a typo'd path or an unclaimed file.
+
+The locked/greyed states are generated in code from the colour art (`<ArtBadge dim>`),
+so only the earned/full-colour version is ever needed.

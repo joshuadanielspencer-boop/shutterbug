@@ -17,5 +17,10 @@ Nigel's World Photo Game attempt/
 # Local ChatGPT source art — not needed for the built site
 Images/
 
+# Delivered art drops (the pristine ~400 KB originals). The build only needs the
+# palette-quantized copies under public/assets/shutterbug-ui/, which ARE tracked;
+# keeping the raw drop out saves ~30 MB per batch in the repo and every clone.
+Shutterbug new image assets/
+
 # Natural Earth source data cached by scripts/gen-geography.mjs (hundreds of MB)
 scripts/.cache/

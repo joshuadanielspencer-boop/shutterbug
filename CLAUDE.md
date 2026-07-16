@@ -15,6 +15,7 @@ npm run preview  # serve the production build locally → http://localhost:4173/
 node scripts/gen-icons.mjs   # re-rasterize app/PWA icons from assets-src/icon.svg
 node scripts/gen-geography.mjs           # rebuild src/data/geography.js from Natural Earth
 node scripts/make-relief.mjs <NE1.tif> --width 8192 --out public/relief-world.jpg
+node scripts/optimize-ui-art.mjs         # palette-quantize new badge art (run after a batch lands)
 ```
 
 ```bash
@@ -70,6 +71,8 @@ public/                    # static assets copied as-is + precached by the PWA
   relief-world.jpg         #   equirectangular shaded-relief plate (8192x4096, continent zooms)
   relief-antarctica.jpg    #   polar relief plate for the Antarctica map
   *.png / icon.svg         #   generated PWA + favicon + apple-touch icons
+  assets/shutterbug-ui/    #   the illustrated UI art (map furniture, passport, Mr O…)
+    badges|modes|themes|difficulty/  #     badge art, mapped to game keys by src/data/art.js
 src/
   main.jsx                 # React entry; renders <ShutterbugWorld /> into #root
   index.css                # global reset / base styles
@@ -81,6 +84,7 @@ src/
   data/
     locations.js           # game content: 144 places — clues, facts, photos, greetings, category
     categories.js          # the 14 subject categories + kinds + display metadata
+    art.js                 # UI art registry — game key → badge/icon/crest file
     worldmap.js            # country outline paths + COUNTRY_CONTINENT colour map
     geography.js           # GENERATED — rivers, lakes, seas, oceans, bays, gulfs
 .claude/                   # Claude Code project config (launch.json is shared)
@@ -90,9 +94,13 @@ claude-code-game-build-guide.md   # design/build notes
 ## What's left to build
 
 `docs/remaining-work.md` is the handoff list — every outstanding task, written so a
-fresh session can pick one up cold. Read it before starting anything new. Two items
-in it are **paused pending Joshua's artwork** (the avatar wiring, the award badges)
-and two **need his decision** (the Supabase backend, the Tauri desktop wrapper).
+fresh session can pick one up cold. Read it before starting anything new. One item
+is **paused pending Joshua's artwork** (the avatar wiring) and two **need his
+decision** (the Supabase backend, the Tauri desktop wrapper).
+
+The award badges are **partly done**: 31 of 73 assets are in and wired
+(`docs/art-assets-needed.md` tracks which). New art wires in by editing
+`src/data/art.js` alone — see that doc's "How to land the next batch".
 
 ## Rules
 
@@ -109,6 +117,10 @@ reviewable, correctable, and expandable without touching UI code.
 > greeting, and subject `category`/`tags`) lives in `src/data/locations.js`; the
 > category registry is `src/data/categories.js` and the map/continent data is
 > `src/data/worldmap.js`. Add or correct content there, never inline in a component.
+>
+> This extends to **which art represents what**: `src/data/art.js` maps every game key
+> (category, mode, theme, difficulty, achievement) to its badge file, so a new art batch
+> lands without touching UI code. Components hold only the `<ArtBadge>` presentation.
 >
 > `src/data/geography.js` (rivers, lakes, seas, oceans, bays, gulfs) is **generated**
 > — don't hand-edit it. Curate *which* features appear, and their display names, in
