@@ -3387,9 +3387,9 @@ export default function ShutterbugWorld() {
             ))}
           </div>
 
-          {/* Continent progress. The roundel carries the continent's SHAPE, and the
-              name is spelled out beside it — the art is uniform teal, so it never
-              stands in for the map's continent colours. */}
+          {/* Continent progress. Each roundel wears its landmass in the same colour
+              the world map paints that continent, so the two reinforce each other —
+              the name is still spelled out, since colour alone can't carry it. */}
           <div style={{ marginTop: 14, display: "flex", gap: 8, flexWrap: "wrap" }}>
             {Object.entries(pp.continents).sort().map(([k, v]) => (
               <span key={k} style={{ display: "inline-flex", alignItems: "center", gap: 6, fontFamily: "ui-monospace, monospace", fontSize: 12, color: INK, background: PAPER, border: `1px solid ${PAPER_LINE}`, borderRadius: 16, padding: "3px 10px 3px 4px" }}>

@@ -195,19 +195,30 @@ Milestones and superlatives. **Medal / medallion** style (ribbon + disc).
 | **Seasoned Traveler** | 50 places mastered | `medal-seasoned-50.png` |
 | **Around the World** | 100 places mastered | `medal-around-the-world-100.png` |
 
-## 8. Continent roundels — 7 ✅ DELIVERED (with one deviation)
+## 8. Continent roundels — 7 ✅ DELIVERED (recoloured in-repo)
 
 Small round emblems, one per continent (fills in as you visit).
 
-**Delivered uniform, not colour-coded.** The spec asked for the game's continent palette
-(NA blue, SA green, Europe purple, Africa gold, Asia red, Oceania yellow, Antarctica
-white); what arrived is seven identical teal-and-gold roundels distinguished only by the
-landmass shape. They're used as-is on the passport's continent chips, where each sits
-beside its spelled-out name, so nothing depends on the colour.
+They arrived as seven identical teal-and-gold discs, distinguished only by the landmass
+shape — not colour-coded as specced. Rather than re-request them, they're recoloured by
+**`node scripts/recolor-roundels.mjs --src "<drop folder>"`**, which paints each landmass
+in its `CONTINENT_COLOR` and leaves the field and frame alone. Re-run it (never hand-edit
+the PNGs) if the continent palette changes.
 
-They are **not** interchangeable with the map's colour-coded regions. If a roundel is ever
-placed next to a coloured continent on the world map, a child would see Africa as gold in
-one place and teal in the other — recolour them first, or don't pair them.
+Two things that script had to get right, worth knowing if you regenerate this family:
+
+- **The colour goes on the LAND, not the field.** The map paints the continent and leaves
+  the ocean dark, so a roundel matches only if the land carries the hue. It also keeps
+  them legible: land sits at value ~0.85 and sea at ~0.19, so the land/sea read is carried
+  by *value*, and no hue — not Africa's orange, not Oceania's yellow — can muddy it.
+- **The frame is gold too.** A naive "recolour every gold pixel" eats the rim and the seven
+  stop reading as one set. The cut is radial at 0.86: land reaches r≈0.84 (Europe), the rim
+  ring starts at r≈0.88. Cutting at 0.76 leaves Greenland gold on a blue North America.
+
+**If a future batch is drawn colour-coded from the start, delete the script.** The palette
+is in `CONTINENT_COLOR` in `src/shutterbug-world.jsx`: NA `#3B76C9` blue, SA `#4CA362`
+green, Africa `#E39A3E` orange, Europe `#8E6BB0` purple, Asia `#D2564B` red, Oceania
+`#E9C33F` yellow, Antarctica `#EDEDE6` white.
 
 `roundel-north-america.png`, `roundel-south-america.png`, `roundel-europe.png`,
 `roundel-africa.png`, `roundel-asia.png`, `roundel-oceania.png`,

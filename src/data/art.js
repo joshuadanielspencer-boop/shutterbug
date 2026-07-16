@@ -98,11 +98,12 @@ export const RANK_ART = [
   "ranks/rank-6-photographer-laureate-insignia.png",
 ];
 
-// One roundel per continent, keyed by the continent names LOCATIONS uses.
-// NOTE: these are deliberately uniform teal-and-gold — the continent is read from
-// the landmass shape, NOT from a colour. They do not match the game's continent
-// palette on the world map (North America blue, Africa gold…). See
-// docs/art-assets-needed.md §8 before pairing one with a coloured map region.
+// One roundel per continent, keyed by the continent names LOCATIONS uses. Each
+// landmass wears its own colour from CONTINENT_COLOR (shutterbug-world.jsx), so a
+// roundel matches the map region it stands for; the dark field is the ocean, and
+// the gold frame is shared. They were delivered uniform teal-and-gold and recoloured
+// by scripts/recolor-roundels.mjs — re-run that (never edit these by hand) if the
+// continent palette ever changes.
 export const ROUNDEL_ART = {
   "North America": "roundels/roundel-north-america.png",
   "South America": "roundels/roundel-south-america.png",
