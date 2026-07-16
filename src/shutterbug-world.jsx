@@ -2308,12 +2308,16 @@ export default function ShutterbugWorld() {
           // Expert a banked day is worth twice a photograph. There's no cap — beating
           // par by three days should feel like beating par by three days.
           const banked = Math.max(0, Math.floor(d));
-          const bonus = banked * TOUR_MODES[difficulty].dayPoints;
+          const dayBonus = banked * TOUR_MODES[difficulty].dayPoints;
+          // Travel modes: unspent travel money pays too — a point per $500 left in the
+          // wallet — so thrifty routing (cheaper hubs + slower transport) is rewarded.
+          const cashBonus = (difficulty === "medium" || difficulty === "hard") ? Math.floor(money / 500) : 0;
+          const bonus = dayBonus + cashBonus;
           setScore((s) => s + gain + bonus);
           setElapsedMs(Date.now() - startRef.current);
           sfx("win");
           setPending({ kind: "tour-win", tone: "good", emoji: "🏆", title: "Grand Tour complete!",
-            subtitle: `${found} Every target filed! +${gain}${bonus ? `, plus ${bonus} for the ${banked} day${banked === 1 ? "" : "s"} you brought home` : ""}.`,
+            subtitle: `${found} Every target filed! +${gain}${dayBonus ? `, +${dayBonus} for ${banked} day${banked === 1 ? "" : "s"} home` : ""}${cashBonus ? `, +${cashBonus} for $${money.toLocaleString("en-US")} unspent` : ""}.`,
             fact: clicked.fact, photo: clicked.photo, category: clicked.category, buttonLabel: "See my results 📸" });
         } else if (d <= 0) {
           setScore((s) => s + gain);

@@ -197,6 +197,36 @@ location:** there are 437 places; the game reuses one marker for all of them, wi
 place name rendered live. (A plain "completed" marker already exists; this is the
 grander *mastered* version.) `marker-mastered.png`
 
+## 12. Transport-mode icons — 12 (+2 flourishes)
+
+For the **Grand Tour travel-modes layer** (higher difficulties): the "getting there"
+chooser and the header wallet currently use plain emoji (🛺 🐪 🚠 …). Real icons in
+the house style would lift it a lot. **Little illustrated transport tokens** — clean,
+friendly, one vehicle each, readable at ~28 px. These map 1:1 to the game's transport
+modes (`src/data/travel.js`).
+
+| Mode (in game) | Motif | Filename |
+|---|---|---|
+| Domestic flight | a small prop/regional plane | `transport-flight.png` |
+| Train | a train engine | `transport-train.png` |
+| Bus | a coach / bus | `transport-bus.png` |
+| Taxi | a taxi cab | `transport-taxi.png` |
+| Ferry | a passenger ferry | `transport-ferry.png` |
+| Riverboat | a small motor riverboat | `transport-riverboat.png` |
+| Dugout canoe | a paddled canoe | `transport-canoe.png` |
+| Gondola (Venice) | a Venetian gondola | `transport-gondola.png` |
+| Cable car | a mountain cable car | `transport-cablecar.png` |
+| Cog railway | a cog/rack mountain train | `transport-cograil.png` |
+| Tuk-tuk | a three-wheeled auto-rickshaw | `transport-tuktuk.png` |
+| Camel | a saddled camel | `transport-camel.png` |
+
+Two small **flourishes** for the same layer (optional but nice):
+
+| Asset | For | Filename |
+|---|---|---|
+| **Wallet / coins** | the header money counter | `travel-wallet.png` |
+| **Hub airport tag** | the hub-picker rows (a control-tower / luggage-tag look) | `travel-hub.png` |
+
 ---
 
 ## Already in the game (do NOT regenerate)
@@ -224,10 +254,11 @@ These exist in `public/assets/shutterbug-ui/` and are fine:
 
 ## Totals
 
-≈ **59 new assets**: 4 difficulty + 6 modes + 7 themes + 6 ranks + 14 category badges
-+ 3 mega-badges + 7 medals + 7 roundels + 3 rosettes + 1 seal + 1 mastery marker (+
-optional country-stamp overlays). All square transparent PNGs, no baked-in text,
-colour version only. **Done so far: 14/14 category badges (batches 01–02).**
+≈ **73 new assets**: 4 difficulty + 6 modes + 7 themes + 6 ranks + 14 category badges
++ 3 mega-badges + 7 medals + 7 roundels + 3 rosettes + 1 seal + 1 mastery marker + 12
+transport icons + 2 travel flourishes (+ optional country-stamp overlays). All square
+transparent PNGs, no baked-in text, colour version only. **Done so far: 14/14 category
+badges (batches 01–02).**
 
 Drop them in `public/assets/shutterbug-ui/` (I can sort them into subfolders like
 `badges/`, `modes/`, `ranks/` when wiring). Once any subset lands, I wire it in and
