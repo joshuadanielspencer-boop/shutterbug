@@ -575,3 +575,64 @@ describe("curiosity layer", () => {
     }
   });
 });
+
+import { HUBS, TRANSPORT_MODES, TRANSPORT_BY_ID, CURRENCIES, COUNTRY_CURRENCY, currencyFor, money, transportOptionsFor, destinationContexts } from "../src/data/travel.js";
+
+describe("travel modes", () => {
+  it("every hub is a real airport with coordinates in range and derived map coords", () => {
+    for (const [cont, hubs] of Object.entries(HUBS)) {
+      for (const h of hubs) {
+        expect(h.code && h.name && h.country, `${cont}/${h.name}: incomplete hub`).toBeTruthy();
+        expect(h.lat).toBeGreaterThanOrEqual(-90); expect(h.lat).toBeLessThanOrEqual(90);
+        expect(h.lon).toBeGreaterThanOrEqual(-180); expect(h.lon).toBeLessThanOrEqual(180);
+        expect(h.x).toBeCloseTo(h.lon + 180, 6);
+        expect(h.y).toBeCloseTo(90 - h.lat, 6);
+      }
+    }
+  });
+
+  it("every travel-layer continent offers at least three spread-out hubs", () => {
+    for (const [cont, hubs] of Object.entries(HUBS)) {
+      expect(hubs.length, `${cont}: too few hubs`).toBeGreaterThanOrEqual(3);
+    }
+  });
+
+  it("transport modes are well-formed and span a real time/money tradeoff", () => {
+    for (const m of TRANSPORT_MODES) {
+      expect(m.id && m.name && m.emoji && m.blurb, `${m.id}: incomplete mode`).toBeTruthy();
+      for (const k of ["speed", "cost"]) { expect(m[k]).toBeGreaterThanOrEqual(1); expect(m[k]).toBeLessThanOrEqual(3); }
+      expect(m.core || (m.contexts && m.contexts.length), `${m.id}: neither core nor context-fitted`).toBeTruthy();
+    }
+  });
+
+  it("every landmark can be reached: 2–3 options with a genuine cheap↔fast spread", () => {
+    for (const l of LOCATIONS) {
+      if (l.continent === "Antarctica") continue;
+      const opts = transportOptionsFor(l, 12);
+      expect(opts.length, `${l.id}: no transport options`).toBeGreaterThanOrEqual(2);
+      expect(opts.length).toBeLessThanOrEqual(3);
+      const costs = opts.map((o) => o.usd), times = opts.map((o) => o.days);
+      // at least one axis must actually differ, or there's no decision to make
+      expect(Math.max(...costs) > Math.min(...costs) || Math.max(...times) > Math.min(...times),
+        `${l.id}: all options cost the same`).toBe(true);
+      for (const o of opts) { expect(o.usd).toBeGreaterThan(0); expect(o.days).toBeGreaterThan(0); }
+    }
+  });
+
+  it("currencies are well-formed and the country map points at real ones", () => {
+    for (const [code, c] of Object.entries(CURRENCIES)) {
+      expect(c.name && c.symbol, `${code}: incomplete currency`).toBeTruthy();
+      expect(c.perUsd, `${code}: bad rate`).toBeGreaterThan(0);
+    }
+    for (const [country, code] of Object.entries(COUNTRY_CURRENCY)) {
+      expect(CURRENCIES[code], `${country} → ${code}: unknown currency`).toBeTruthy();
+    }
+  });
+
+  it("money() reads dollars first, local currency in parentheses (rule 3)", () => {
+    expect(money(100, "United States")).toBe("$100");
+    const jp = money(100, "Japan");
+    expect(jp.startsWith("$100"), `dollars must lead: ${jp}`).toBe(true);
+    expect(jp).toMatch(/¥/);
+  });
+});
