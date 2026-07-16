@@ -8,6 +8,7 @@ import { WORLD_COUNTRIES, COUNTRY_CONTINENT } from "./data/worldmap.js";
 import { COUNTRY_INFO, COUNTRY_LAYER_CONTINENTS, COUNTRY_NATIVE } from "./data/countries.js";
 import { RIVERS, LAKES, MARINE } from "./data/geography.js";
 import { JOURNEYS, JOURNEY_BY_ID, journeyBox, unrolledX, closestStops } from "./data/journeys.js";
+import { HUBS, transportOptionsFor, money as fmtMoney, currencyFor } from "./data/travel.js";
 import { COUNTRY_PEOPLE, peopleCards, greetingMeaning } from "./data/culture.js";
 import { categoryCountries, categoryMissionOK as missionOK } from "./missions.js";
 import { robinson, eqToRobinson, ROBINSON_W, ROBINSON_H } from "./robinson.js";
@@ -1249,6 +1250,10 @@ export default function ShutterbugWorld() {
   // Grand Tour route plan: the stops, the order you committed to, PAR (the cheapest
   // possible circuit), the budget derived from it, and how often you left the plan.
   const [tourPlan, setTourPlan] = useState(null);
+  // Travel-modes layer (Grand Tour, Adventurer/Expert): a money budget alongside the
+  // day budget, and a pending "getting there" chooser (pick a hub + last-leg transport).
+  const [money, setMoney] = useState(0);
+  const [travelChoice, setTravelChoice] = useState(null); // { cont, from, to, penalty, target, hubs } | null
   const [journeyId, setJourneyId] = useState(JOURNEYS[0].id);   // which route is picked on the meet screen
   const [journey, setJourney] = useState(null);                 // live run: { id, at, wrong, done, reveal }
   const journeyMapRef = useRef(null);
@@ -1655,7 +1660,10 @@ export default function ShutterbugWorld() {
     // could visit the continents in any order at all and still coast home. Now the
     // only spare days you get are the slack, so the order is the game.
     const par = tourPar(contsUsed);
-    const budget = Math.round((par.cost + SHOT_COST * reqs.length + tm.slack) * 10) / 10;
+    // Travel-modes runs also pay TIME on each last leg, so add ~1 day of budget per
+    // stop to cover it (the money budget is the tighter of the two resources there).
+    const legSlack = (difficulty === "medium" || difficulty === "hard") ? reqs.length : 0;
+    const budget = Math.round((par.cost + SHOT_COST * reqs.length + tm.slack + legSlack) * 10) / 10;
 
     setGameMode("tour"); setExpedition(null);
     setTourReqs(reqs);
@@ -1665,6 +1673,9 @@ export default function ShutterbugWorld() {
     setPhase("continent"); setPickedContinent(null); setPickedCountry(null); setCityPlan(null); setCurrent(null);
     poppedCountryRef.current = null;
     setDays(budget); setScore(0); setAlbum([]); setVisitedIds([]);
+    // Travel money — only the higher tiers budget cash for hubs + local transport.
+    setMoney((difficulty === "medium" || difficulty === "hard") ? (difficulty === "hard" ? 2500 : 3500) : 0);
+    setTravelChoice(null);
     setRevealed(false); setLastResult(null); setNewBadges([]); setPending(null);
     setElapsedMs(0); startRef.current = Date.now(); recorded.current = false;
     setMsg({ type: "info", text: "Fly your route. Straying from it costs a day." });
@@ -2029,6 +2040,15 @@ export default function ShutterbugWorld() {
       const penalty = offPlan ? DEVIATION_COST : 0;
       const cost = sameHere ? 0 : flightDays(from, to) + penalty; // distance-based: group nearby continents to save days
       const useCountry = COUNTRY_LAYER_CONTINENTS.has(cont); // every mode visits the country map
+      // Travel modes (Adventurer/Expert): a real flight opens the "getting there"
+      // chooser — pick a hub airport + a last-leg transport — instead of flying free.
+      // confirmTravel() then runs the actual flight with the chosen money/day cost.
+      if ((difficulty === "medium" || difficulty === "hard") && !sameHere && (HUBS[cont] || []).length) {
+        const nextReq = tourReqs.find((r) => !r.done && r.continent === cont);
+        const target = nextReq ? (BY_ID[nextReq.targetId] || BY_ID[nextReq.anchorId] || null) : null;
+        setTravelChoice({ cont, from, to, penalty, baseDays: cost, useCountry, target, hubs: HUBS[cont] });
+        return;
+      }
       if (!sameHere) sfx("plane");
       const finalize = () => {
         const nd = Math.round((days - cost) * 10) / 10;
@@ -2098,6 +2118,39 @@ export default function ShutterbugWorld() {
         hint: MODES[difficulty].hints ? `Try looking ${compass(CONTINENT_PIN[cont], CONTINENT_PIN[target.continent])} of ${cont}.` : null,
         buttonLabel: "Try again" });
     }
+  }
+
+  // Grand Tour travel modes: the chooser confirmed a hub + last-leg transport. Deduct
+  // the money, then run the real flight with the combined day cost.
+  function confirmTravel(hub, transport, flightMoney) {
+    const tc = travelChoice; if (!tc) return;
+    const cont = tc.cont;
+    const totalMoney = Math.round(flightMoney + (transport ? transport.usd : 0));
+    const totalDays = Math.round((tc.baseDays + (transport ? transport.days : 0)) * 10) / 10;
+    setMoney((m) => Math.max(0, Math.round(m - totalMoney)));
+    setTravelChoice(null);
+    const finalize = () => {
+      const nd = Math.round((days - totalDays) * 10) / 10;
+      setDays(nd);
+      setFlying(null); setPickedContinent(cont); setPickedCountry(null); setCityPlan(null);
+      setPhase(tc.useCountry ? "country" : "city"); setCurrent(null); setRevealed(false);
+      poppedCountryRef.current = null;
+      if (tc.penalty) setTourPlan((p) => ({ ...p, deviations: p.deviations + 1 }));
+      if (nd <= 0) return outOfDays(`You reached ${cont}, but the trip's day budget is spent.`);
+      const here = tourReqs.filter((r) => !r.done && r.continent === cont).length;
+      const where = tc.useCountry ? "Pick the country your next target is in." : "Photograph a target on your list.";
+      const legTxt = transport ? `${hub.code} + ${transport.name.toLowerCase()}` : hub.code;
+      setMsg(here
+        ? { type: "info", text: `Touched down in ${cont} via ${legTxt} (−${totalDays} day${totalDays === 1 ? "" : "s"}, −$${totalMoney}). ${here} target${here === 1 ? "" : "s"} here. ${where}` }
+        : { type: "warn", text: `Touched down in ${cont} via ${legTxt} — nothing on your list is here. Fly on when ready.` });
+      say(cont);
+      maybeMrO(cont);
+    };
+    if (prefersReduced) { finalize(); return; }
+    sfx("plane"); music("travelJig");
+    flightFinalizeRef.current = finalize;
+    setFlying({ fromX: tc.from.x, fromY: tc.from.y, toX: tc.to.x, toY: tc.to.y });
+    timer.current = setTimeout(() => { flightFinalizeRef.current = null; finalize(); }, 4000);
   }
 
   // ---- Country phase (Medium/Hard): pick the target's country on the continent ----
@@ -2362,6 +2415,9 @@ export default function ShutterbugWorld() {
   // ---------- SCREENS ----------
   const isTour = gameMode === "tour";
   const isExplore = gameMode === "explore";
+  // Travel modes (hubs + last-leg transport + a money budget) run on the two higher
+  // Grand Tour tiers only.
+  const travelModes = isTour && (difficulty === "medium" || difficulty === "hard");
 
   // ---------- STORY / INTRO SCREEN (Grandpa Nigel's send-off) ----------
   if (screen === "intro") {
@@ -3599,7 +3655,15 @@ export default function ShutterbugWorld() {
               color: days <= 1 ? CORAL : days <= 2.5 ? "#B8860B" : INK }}>{days}</span>
             <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: "0.1em", color: INK }}>DAYS LEFT</span>
           </button>
-        ) : (
+        ) : null}
+        {travelModes && (
+          <div title="Travel money — spend it on flights and local transport" style={{ position: "absolute", left: "50%", top: "54%", transform: "translate(104px, -50%)", zIndex: 3,
+            display: "flex", flexDirection: "column", alignItems: "center", background: "rgba(244,236,216,0.96)", border: `2px solid ${GOLD}`, borderRadius: 10, padding: "4px 12px", boxShadow: "0 3px 0 rgba(16,38,46,0.22)" }}>
+            <span style={{ fontFamily: "ui-monospace, monospace", fontWeight: 900, fontSize: 22, lineHeight: 1, color: money <= 200 ? CORAL : "#2E7A55" }}>${money.toLocaleString("en-US")}</span>
+            <span style={{ fontSize: 8, fontWeight: 800, letterSpacing: "0.12em", color: INK }}>WALLET</span>
+          </div>
+        )}
+        {isExplore && (
           <span style={{ position: "absolute", left: "50%", top: "50%", transform: "translate(-50%,-50%)",
             fontFamily: "ui-monospace, monospace", fontSize: 16, fontWeight: 800 }} title="Places discovered">📸 {album.length} discovered</span>
         )}
@@ -4132,6 +4196,7 @@ export default function ShutterbugWorld() {
           (not to the map behind it). */}
       {albumView && <LandmarkModal p={albumView} onClose={() => { setAlbumView(null); setAlbumOpen(true); }} reduced={prefersReduced} />}
       {countryPopup && <CountryPopup country={countryPopup} onClose={() => setCountryPopup(null)} reduced={prefersReduced} />}
+      {travelChoice && <TravelChooser choice={travelChoice} money={money} onConfirm={confirmTravel} onCancel={() => setTravelChoice(null)} />}
       {/* Customize Traveler, reachable mid-trip by tapping the header avatar. No
           remove option here (deleting the traveler you're playing as would end the
           run); that lives on the start screen. */}
@@ -4613,6 +4678,72 @@ function PassportModal({ profile, onClose }) {
         </span>
         <button onClick={() => setPage((p) => Math.min(lastPage, p + 1))} disabled={page >= lastPage} aria-label="Next page"
           style={{ background: "rgba(255,255,255,0.14)", border: "1.5px solid rgba(244,236,216,0.5)", color: "#F4ECD8", borderRadius: 8, width: 40, height: 34, fontSize: 18, cursor: page >= lastPage ? "default" : "pointer", opacity: page >= lastPage ? 0.4 : 1 }}>›</button>
+      </div>
+    </div>
+  );
+}
+// Grand Tour "getting there" chooser (Adventurer/Expert travel modes): pick a hub
+// airport to fly into, then a last-leg transport, trading time against money — with
+// each cost shown in dollars and the local currency. Real budgeting practice.
+function TravelChooser({ choice, money, onConfirm, onCancel }) {
+  const { cont, from, target, hubs, baseDays } = choice;
+  const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+  const hubList = hubs
+    .map((h) => ({ ...h, d: dist(from, h), flightUsd: Math.max(20, Math.round(dist(from, h) * 3 / 10) * 10) }))
+    .sort((a, b) => a.d - b.d);
+  const [hub, setHub] = useState(hubList[0]);
+  const [tid, setTid] = useState(null);
+  const destCountry = target ? target.country : hub.country;
+  const legDeg = target ? dist(hub, target) : 8;
+  const options = transportOptionsFor(target || { category: "cityscape", country: hub.country, tags: [] }, legDeg);
+  const transport = options.find((o) => o.id === tid) || options[0];
+  const totalUsd = hub.flightUsd + (transport ? transport.usd : 0);
+  const totalDays = Math.round((baseDays + (transport ? transport.days : 0)) * 10) / 10;
+  const broke = totalUsd > money;
+  const pill = (on) => ({ textAlign: "left", padding: "9px 12px", borderRadius: 10, border: `2px solid ${on ? CORAL : PAPER_LINE}`, background: on ? "#FBE7DF" : "#fff", color: INK, cursor: "pointer", width: "100%", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, fontSize: 13.5 });
+  return (
+    <div role="dialog" aria-modal="true" aria-label={`Getting to ${cont}`}
+      style={{ position: "fixed", inset: 0, background: "rgba(16,38,46,0.62)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16, zIndex: 55 }}>
+      <div style={{ background: PAPER, borderRadius: 16, border: `3px solid ${OCEAN}`, boxShadow: "0 14px 44px rgba(0,0,0,0.35)", maxWidth: 560, width: "100%", maxHeight: "92vh", overflowY: "auto", padding: "20px 22px" }}>
+        <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.16em", color: OCEAN, fontWeight: 700 }}>✈ GETTING TO {cont.toUpperCase()}</div>
+        {target && <p style={{ margin: "4px 0 2px", color: INK, fontWeight: 700 }}>Next on your list: {target.subject} <span style={{ opacity: 0.7, fontWeight: 400 }}>· {target.country}</span></p>}
+        <p style={{ margin: "0 0 10px", fontSize: 13, color: INK, opacity: 0.8 }}>Wallet: <b>${money.toLocaleString("en-US")}</b> · pick a hub and a way to reach it. Faster costs more.</p>
+
+        <div style={{ fontWeight: 800, fontSize: 13, color: OCEAN, margin: "6px 0 6px" }}>1 · Fly into which hub?</div>
+        <div style={{ display: "grid", gap: 7 }}>
+          {hubList.map((h) => {
+            const on = h.code === hub.code;
+            return (
+              <button key={h.code} onClick={() => { setHub(h); setTid(null); }} aria-pressed={on} style={pill(on)}>
+                <span><b>{h.name}</b> <span style={{ fontFamily: "ui-monospace, monospace", opacity: 0.7 }}>({h.code})</span> · {h.country}</span>
+                <span style={{ fontWeight: 800, color: CORAL, whiteSpace: "nowrap" }}>{fmtMoney(h.flightUsd, h.country)}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        <div style={{ fontWeight: 800, fontSize: 13, color: OCEAN, margin: "14px 0 6px" }}>2 · Last leg from {hub.name}</div>
+        <div style={{ display: "grid", gap: 7 }}>
+          {options.map((o) => {
+            const on = o.id === (transport ? transport.id : null);
+            return (
+              <button key={o.id} onClick={() => setTid(o.id)} aria-pressed={on} style={pill(on)}>
+                <span><span aria-hidden="true" style={{ fontSize: 16 }}>{o.emoji}</span> <b>{o.name}</b> <span style={{ opacity: 0.65, fontSize: 12 }}>— {o.blurb}</span></span>
+                <span style={{ fontWeight: 800, color: CORAL, whiteSpace: "nowrap" }}>{o.days}d · {fmtMoney(o.usd, destCountry)}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        <div style={{ marginTop: 14, padding: "10px 12px", borderRadius: 10, background: broke ? "#FBEAE6" : "#EAF6EF", border: `1px solid ${broke ? CORAL : GREEN}`, fontSize: 13.5, color: INK }}>
+          <b>Total:</b> {totalDays} day{totalDays === 1 ? "" : "s"} · <b>{fmtMoney(totalUsd, destCountry)}</b>
+          {broke && <span style={{ color: CORAL, fontWeight: 700 }}> — more than you have! You'll spend your last dollar. A cheaper way saves cash for later.</span>}
+        </div>
+        <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 14 }}>
+          <button onClick={onCancel} style={{ padding: "10px 16px", borderRadius: 8, border: `1.5px solid ${INK}`, background: "transparent", color: INK, fontWeight: 700, cursor: "pointer" }}>Back</button>
+          <button onClick={() => onConfirm(hub, transport, hub.flightUsd)}
+            style={{ ...primaryBtn, marginTop: 0 }}>Go ✈</button>
+        </div>
       </div>
     </div>
   );

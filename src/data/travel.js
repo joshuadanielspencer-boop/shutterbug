@@ -188,8 +188,8 @@ export function transportOptionsFor(loc, legDeg) {
   const base = Math.max(1, Math.round(legDeg));
   return chosen.map((m) => ({
     ...m,
-    usd: Math.max(10, Math.round((base * (8 + m.cost * 14)) / 10) * 10),
-    days: Math.max(0.5, Math.round((base / (6 + m.speed * 6)) * 2) / 2),
+    usd: Math.max(10, Math.round((base * (2 + m.cost * 3)) / 10) * 10),
+    days: Math.max(0.5, Math.min(2, Math.round((base / (12 + m.speed * 10)) * 2) / 2)),
   }));
 }
 // Format a dollar amount with the local currency in parentheses (rule 3 order).
