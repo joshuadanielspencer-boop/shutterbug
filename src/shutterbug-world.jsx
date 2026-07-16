@@ -27,6 +27,7 @@ import { listProfiles, lastProfileName, getProfile, createProfile, setLastProfil
   weightedOrder, freshFirst, passportData, achievements, topScores, storageAvailable,
   careerRank, unlocks, UNLOCK_REQ, markCuriositySeen, curiositiesSeen } from "./profiles.js";
 import { CURIOSITY_DECK_BY_ID, CURIOSITY_TOTAL } from "./data/curiosities.js";
+import { DIFFICULTY_ART, MODE_ART, THEME_ART } from "./data/art.js";
 import { MR_O, MR_O_FACTS, MR_O_RIDDLES } from "./data/mr-o.js";
 import { SFX, MUSIC, speakEn, speakGreeting, speechAvailable } from "./audio.js";
 import { BASE, OCEAN, OCEAN_DEEP, SEA, SEA_DEEP, SEA_LINE, LAND, LAND_EDGE, INK, GOLD, CORAL, GREEN, PAPER, PAPER_LINE } from "./theme.js";
@@ -37,6 +38,30 @@ import { Confetti, Stamp, GradualText, TypeLine } from "./components/text.jsx";
 // every dynamic label, map region, and control stays code-rendered (see the
 // asset guide). `UI + "name.png"` builds a URL for an <img> or CSS background.
 const UI = `${BASE}assets/shutterbug-ui/`;
+
+// An illustrated badge/icon/crest from the art registry (data/art.js), with the
+// emoji it replaced as the fallback. Two states come from the one colour file:
+// `dim` greys it (locked / not yet earned), which is why no locked art exists.
+//
+// Greying is never the ONLY signal — every caller pairs it with a 🔒, a count, or
+// text, because colour alone can't carry meaning (project rule 4). Always
+// aria-hidden: the art repeats a name the caller has already put in real text.
+function ArtBadge({ art, emoji, size, dim = false, style }) {
+  const [failed, setFailed] = useState(false);
+  if (!art || failed) {
+    return (
+      <span aria-hidden="true" style={{ fontSize: Math.round(size * 0.86), lineHeight: 1, filter: dim ? "grayscale(1)" : "none", opacity: dim ? 0.55 : 1, ...style }}>
+        {emoji}
+      </span>
+    );
+  }
+  return (
+    <img src={`${UI}${art}`} alt="" aria-hidden="true" loading="lazy" onError={() => setFailed(true)}
+      style={{ width: size, height: size, objectFit: "contain", flex: "0 0 auto",
+        filter: dim ? "grayscale(1) opacity(0.5)" : "drop-shadow(0 1px 2px rgba(16,38,46,0.28))", ...style }} />
+  );
+}
+
 // Handwriting stack for Grandpa's note — a bundled webfont would make this
 // identical everywhere, but this degrades gracefully across Mac/Win/Linux.
 const HAND = '"Caveat", "Patrick Hand", "Bradley Hand", "Segoe Print", "Comic Sans MS", cursive';
@@ -916,21 +941,21 @@ const fmtTime = (ms) => {
 // ---- license, and no network. The context is created lazily on first use     ----
 // ---- (always inside a click), satisfying browser autoplay rules.             ----
 
-// The start screen's mode cards. Each card wears a real landmark photo from
-// the game's own (verified, freely-licensed) collection; blurbs appear only
-// when a card's ⓘ is tapped, keeping the screen picture-first.
+// The start screen's mode cards. Each card wears its own illustrated icon (see
+// data/art.js) on atlas paper; blurbs appear only when a card's ⓘ is tapped,
+// keeping the screen picture-first. `emoji` is the fallback if the art 404s.
 const MODE_CARDS = [
-  { id: "assignments", name: "Assignments", emoji: "📸", photoId: "paris",
+  { id: "assignments", name: "Assignments", emoji: "📸",
     blurb: "One of Grandpa's dreams at a time — fly to the right place and photograph the right subject before your travel days run out." },
-  { id: "tour", name: "Grand Tour", emoji: "🧳", photoId: "beijing",
+  { id: "tour", name: "Grand Tour", emoji: "🧳",
     blurb: "The route-planning game. You're told every target and exactly where it is — no deduction, no research, no hints. The whole challenge is the ORDER: sequence your stops up front against a par day-count, commit to the route, then fly it. Straying costs a day, and every day you bring home is worth points." },
-  { id: "explore", name: "Explore", emoji: "🧭", photoId: "galapagos",
+  { id: "explore", name: "Explore", emoji: "🧭",
     blurb: "No timer, no score — roam the world, drill into any country, and read every place's story, culture card, and clues. Everywhere you visit is stamped in your passport." },
-  { id: "quiz", name: "Quiz", emoji: "🧠", photoId: "xian",
+  { id: "quiz", name: "Quiz", emoji: "🧠",
     blurb: "Ten fast multiple-choice questions — name the landmark from its photo, place it on the map, or know the capital. Build a streak for bonus points." },
-  { id: "journey", name: "Journeys", emoji: "🛶", photoId: "yellowstone",
+  { id: "journey", name: "Journeys", emoji: "🛶",
     blurb: "Retrace a real expedition, stop by stop, in the order it actually happened. No day budget and no score to chase — the order IS the story, and you can't skip ahead. Start with Lewis and Clark's crossing of North America." },
-  { id: "daily", name: "Daily Expedition", emoji: "📅", photoId: "cairo",
+  { id: "daily", name: "Daily Expedition", emoji: "📅",
     blurb: "Today's expedition — five shots, and it's the SAME five for everyone playing at your level today. Finish it and you get a little result card to share. One official run a day: the first one counts." },
 ];
 // The Grand Tour's itinerary choices: a classic random tour, or one of the themed
@@ -938,7 +963,6 @@ const MODE_CARDS = [
 // when the Grand Tour card is selected — themed tours are a flavor of Grand Tour,
 // not a separate mode.
 const TOUR_THEMES = [{ id: "classic", title: "Classic", emoji: "🎲", lesson: "A round-the-world itinerary drawn fresh from the whole collection — targets across the continents on one shared day budget." }, ...EXPEDITIONS];
-const cardThumb = (id) => { const l = BY_ID[id]; if (!l?.photo?.src) return null; const src = l.photo.src; return src.includes("?") ? src : src + "?width=480"; };
 
 
 // A mystery-country silhouette for the shape quiz. The outline paths are complex,
@@ -2482,25 +2506,22 @@ export default function ShutterbugWorld() {
               {MODE_CARDS.map((c) => {
                 const active = gameMode === c.id;
                 const locked = !u[c.id];
-                const src = cardThumb(c.photoId);
                 return (
                   <div key={c.id} style={{ position: "relative" }}>
                     <button onClick={() => { if (locked) { setModeInfo(c.id); return; } setGameMode(c.id); setModeInfo(null); }} aria-pressed={active}
                       aria-label={locked ? `${c.name} — locked. ${UNLOCK_REQ[c.id] || ""}` : c.name}
-                      style={{ position: "relative", display: "block", width: "100%", height: 108, borderRadius: 12, overflow: "hidden", cursor: "pointer",
-                        border: active ? `3px solid ${CORAL}` : `1.5px solid ${PAPER_LINE}`, padding: 0, background: "#20343B", textAlign: "left",
+                      style={{ position: "relative", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 2,
+                        width: "100%", height: 108, borderRadius: 12, overflow: "hidden", cursor: "pointer",
+                        border: active ? `3px solid ${CORAL}` : `1.5px solid ${PAPER_LINE}`, padding: 0, textAlign: "center",
+                        background: `url("${UI}atlas-paper-texture.png") center / cover, ${PAPER}`,
                         boxShadow: active ? "0 4px 14px rgba(233,106,76,0.35)" : "0 2px 8px rgba(74,50,20,0.18)" }}>
-                      {src && <img src={src} alt="" aria-hidden="true" loading="lazy"
-                        style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", opacity: locked ? 0.3 : (active ? 1 : 0.88), filter: locked ? "grayscale(1)" : "none" }} />}
-                      <span aria-hidden="true" style={{ position: "absolute", inset: 0, background: "linear-gradient(180deg, rgba(16,38,46,0) 35%, rgba(16,38,46,0.82) 100%)" }} />
-                      <span style={{ position: "absolute", left: 9, bottom: 7, color: "#fff", fontWeight: 800, fontSize: 14, textShadow: "0 1px 3px rgba(0,0,0,0.6)" }}>
-                        <span aria-hidden="true" style={{ fontSize: "1.25em", marginRight: 5, verticalAlign: "-0.1em" }}>{c.emoji}</span>{c.name}
-                      </span>
+                      <ArtBadge art={MODE_ART[c.id]} emoji={c.emoji} size={58} dim={locked} style={{ marginTop: locked ? 0 : 2 }} />
+                      {!locked && <span style={{ color: INK, fontWeight: 800, fontSize: 13.5, lineHeight: 1.1, padding: "0 6px" }}>{c.name}</span>}
                       {active && !locked && <span aria-hidden="true" style={{ position: "absolute", top: 6, left: 8, background: CORAL, color: "#fff", fontWeight: 900, fontSize: 12, width: 20, height: 20, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center" }}>✓</span>}
                       {locked && (
-                        <span style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", color: "#fff", textAlign: "center", padding: "0 8px" }}>
-                          <span aria-hidden="true" style={{ fontSize: 26 }}>🔒</span>
-                          <span style={{ fontSize: 10.5, fontWeight: 700, lineHeight: 1.25, marginTop: 3, textShadow: "0 1px 2px rgba(0,0,0,0.8)" }}>{UNLOCK_REQ[c.id]}</span>
+                        <span style={{ display: "flex", flexDirection: "column", alignItems: "center", color: INK, textAlign: "center", padding: "0 8px" }}>
+                          <span style={{ fontWeight: 800, fontSize: 12.5, lineHeight: 1.1 }}><span aria-hidden="true">🔒 </span>{c.name}</span>
+                          <span style={{ fontSize: 10, fontWeight: 700, lineHeight: 1.2, marginTop: 2, opacity: 0.75 }}>{UNLOCK_REQ[c.id]}</span>
                         </span>
                       )}
                     </button>
@@ -2535,9 +2556,11 @@ export default function ShutterbugWorld() {
                   return (
                     <button key={t.id} onClick={() => { if (locked) return; setTourTheme(t.id); }} aria-pressed={on}
                       aria-label={locked ? `${t.title} — locked. ${UNLOCK_REQ.expeditions}` : t.title} title={locked ? `🔒 ${UNLOCK_REQ.expeditions} to unlock` : ""}
-                      style={{ padding: "6px 13px", borderRadius: 16, cursor: locked ? "default" : "pointer", fontWeight: 700, fontSize: 12.5, opacity: locked ? 0.45 : 1,
+                      style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "5px 13px 5px 6px", borderRadius: 18, cursor: locked ? "default" : "pointer",
+                        fontWeight: 700, fontSize: 12.5, opacity: locked ? 0.55 : 1,
                         border: `1.5px solid ${on ? CORAL : INK}`, background: on ? CORAL : "transparent", color: on ? "#fff" : INK }}>
-                      {locked && <span aria-hidden="true">🔒 </span>}<span aria-hidden="true">{t.emoji} </span>{t.title}
+                      <ArtBadge art={THEME_ART[t.id]} emoji={t.emoji} size={26} dim={locked} />
+                      {locked && <span aria-hidden="true">🔒</span>}{t.title}
                     </button>
                   );
                 })}
@@ -2588,9 +2611,10 @@ export default function ShutterbugWorld() {
                   return (
                     <button key={k} onClick={() => { if (locked) { setModeInfo("difficulty"); return; } setDifficulty(k); }}
                       aria-pressed={on} aria-label={locked ? `${MODES[k].label} — locked. ${UNLOCK_REQ[k] || ""}` : MODES[k].label}
-                      style={{ padding: "8px 18px", border: "none", cursor: "pointer", fontWeight: 700, fontSize: 14,
+                      style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2, padding: "7px 16px 6px", border: "none", cursor: "pointer", fontWeight: 700, fontSize: 14,
                         background: on && !locked ? INK : "transparent", color: locked ? "#9A8E77" : (on ? PAPER : INK) }}>
-                      {locked && <span aria-hidden="true">🔒 </span>}{MODES[k].label}
+                      <ArtBadge art={DIFFICULTY_ART[k]} emoji="🎖️" size={38} dim={locked} />
+                      <span>{locked && <span aria-hidden="true">🔒 </span>}{MODES[k].label}</span>
                     </button>
                   );
                 })}
@@ -3223,8 +3247,8 @@ export default function ShutterbugWorld() {
               <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.18em", color: CORAL, marginBottom: 6 }}>🏅 ACHIEVEMENT{newBadges.length > 1 ? "S" : ""} UNLOCKED!</div>
               <div style={{ display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap" }}>
                 {newBadges.map((b) => (
-                  <span key={b.id} style={{ background: INK, color: PAPER, fontWeight: 800, fontSize: 14, padding: "7px 14px", borderRadius: 20 }}>
-                    <span aria-hidden="true" style={{ fontSize: 19 }}>{b.emoji}</span> {b.name}
+                  <span key={b.id} style={{ display: "inline-flex", alignItems: "center", gap: 7, background: INK, color: PAPER, fontWeight: 800, fontSize: 14, padding: "6px 14px 6px 7px", borderRadius: 22 }}>
+                    <ArtBadge art={b.art} emoji={b.emoji} size={32} /> {b.name}
                   </span>
                 ))}
               </div>
@@ -3403,10 +3427,10 @@ export default function ShutterbugWorld() {
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             {badges.slice().sort((a, b) => (b.earned - a.earned) || (b.have / b.need - a.have / a.need)).map((b) => (
               <div key={b.id} title={b.earned ? "Earned!" : `${b.have} / ${b.need}`}
-                style={{ display: "flex", alignItems: "center", gap: 7, padding: "7px 12px", borderRadius: 20,
+                style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 12px 6px 7px", borderRadius: 22,
                   background: b.earned ? GOLD : PAPER, border: `1.5px solid ${b.earned ? GOLD : PAPER_LINE}`,
-                  color: INK, opacity: b.earned ? 1 : 0.75 }}>
-                <span aria-hidden="true" style={{ fontSize: 22, filter: b.earned ? "none" : "grayscale(1)" }}>{b.emoji}</span>
+                  color: INK, opacity: b.earned ? 1 : 0.8 }}>
+                <ArtBadge art={b.art} emoji={b.emoji} size={34} dim={!b.earned} />
                 <span style={{ fontWeight: 800, fontSize: 13 }}>{b.name}</span>
                 <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, opacity: 0.7 }}>{b.earned ? "★" : `${b.have}/${b.need}`}</span>
               </div>
@@ -4598,7 +4622,7 @@ function PassportModal({ profile, onClose }) {
   const stamps = pp ? pp.countries.filter((c) => c.mastered) : [];
   const items = [
     ...stamps.map((c) => ({ kind: "stamp", icon: COUNTRY_FLAG[c.country] || "🏳️", label: c.country })),
-    ...earned.map((b) => ({ kind: "keepsake", icon: b.emoji, label: b.name })),
+    ...earned.map((b) => ({ kind: "keepsake", icon: b.emoji, art: b.art, label: b.name })),
   ];
   const PER = 12; // items per two-page spread (6 a page)
   const spreads = Math.max(1, Math.ceil(items.length / PER));
@@ -4608,9 +4632,11 @@ function PassportModal({ profile, onClose }) {
   const spreadItems = isProfile ? [] : items.slice((page - 1) * PER, page * PER);
   const leftItems = spreadItems.slice(0, PER / 2), rightItems = spreadItems.slice(PER / 2);
   const bestPairs = profile ? Object.entries(profile.best || {}).filter(([, v]) => typeof v === "number") : [];
+  // A country stamp shows its flag emoji; an earned keepsake shows its badge art
+  // where that badge has been drawn (ArtBadge falls back to `icon` if not).
   const Cell = ({ it }) => (
     <div style={{ display: "flex", alignItems: "center", gap: 7, minWidth: 0 }}>
-      <span aria-hidden="true" style={{ fontSize: 22, lineHeight: 1, flex: "none" }}>{it.icon}</span>
+      <ArtBadge art={it.art} emoji={it.icon} size={26} />
       <span style={{ fontSize: 12.5, fontWeight: 700, color: INK, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{it.label}</span>
     </div>
   );

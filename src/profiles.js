@@ -14,6 +14,7 @@
 import { LOCATIONS } from "./data/locations.js";
 import { rnd } from "./rng.js";
 import { kindOf } from "./data/categories.js";
+import { CATEGORY_ART, ACHIEVEMENT_ART } from "./data/art.js";
 
 const KEY = "shutterbug.v1";
 const MAX_NAME = 20;
@@ -373,9 +374,14 @@ export function passportData(profile) {
 }
 
 // ---- Achievements ---------------------------------------------------------
-// Badges the player works toward across games. Each is { id, name, emoji, have,
-// need, earned }. Completion badges use category/kind totals; special ones use
-// tags. Long-term goals like these are the main replay driver.
+// Badges the player works toward across games. Each is { id, name, emoji, art,
+// have, need, earned }. Completion badges use category/kind totals; special ones
+// use tags. Long-term goals like these are the main replay driver.
+//
+// `art` is the illustrated badge (see data/art.js), or null where it hasn't been
+// drawn yet — the 14 category badges have art; the ranks, mega-badges and medals
+// still render `emoji`. Both fields stay populated so a render site can prefer
+// the art and fall back without knowing which batch has landed.
 const ACH_CATNAME = {
   mountain: ["Peak Bagger", "🏔️"], volcano: ["Volcano Hunter", "🌋"], waterfall: ["Waterfall Chaser", "💦"],
   waterway: ["River Runner", "🏞️"], desert: ["Desert Wanderer", "🏜️"], ice: ["Polar Explorer", "🧊"],
@@ -405,8 +411,9 @@ export function achievements(profile) {
     }
   }
   const list = [];
-  const add = (id, name, emoji, have, need) => list.push({ id, name, emoji, have, need, earned: have >= need });
-  for (const c of Object.keys(ACH_CATNAME)) add("cat_" + c, ACH_CATNAME[c][0], ACH_CATNAME[c][1], catHave[c] || 0, catTotal[c] || 0);
+  const add = (id, name, emoji, have, need, art = ACHIEVEMENT_ART[id] || null) =>
+    list.push({ id, name, emoji, art, have, need, earned: have >= need });
+  for (const c of Object.keys(ACH_CATNAME)) add("cat_" + c, ACH_CATNAME[c][0], ACH_CATNAME[c][1], catHave[c] || 0, catTotal[c] || 0, CATEGORY_ART[c] || null);
   add("kind_built", "Master Builder", "🏛️", kindHave.built || 0, kindTotal.built || 0);
   add("kind_natural", "Force of Nature", "⛰️", kindHave.natural || 0, kindTotal.natural || 0);
   add("kind_living", "Life Lister", "🦁", kindHave.living || 0, kindTotal.living || 0);

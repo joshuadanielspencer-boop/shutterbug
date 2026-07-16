@@ -4,22 +4,48 @@ A handoff document. Everything here is written so a **new session with no memory
 the previous ones** can pick up a task and finish it. Read `CLAUDE.md` first (the
 three project rules are hard requirements), then the task you're doing.
 
-Last updated **2026-07-15**. That session shipped: a small-fixes UI pass (music
-fade-on-travel, hover-only map labels, Europe/UK vertical stretch, the polaroid
-result layout, US-English spellings), CI action bumps, the Mr O riddle
-catchphrase, France overseas-territory locator insets, the tap-to-learn curiosity
-layer grown to 39 cards, **rotating people cards for the six multi-ethnic
-countries** (was item 2 — now DONE), and **four more Journeys** (Transcontinental
-Railroad, Route 66, the Thirteen Colonies, Paul's first journey — now 8 routes),
-with a journey-map height cap so tall north–south routes fit one screen.
+Last updated **2026-07-15**.
 
-Earlier sessions shipped: the Natural Earth water layer, the sharper relief
-plates, the Seeded Daily Expedition, the imperial-first units pass, the Grand Tour
-rework, and the first Journeys.
+### THE THREE THINGS TO DO NEXT (start here)
 
-**Still open (needs Joshua):** the roguelike layer (§3, not started); the avatar
-redesign + award-badge art (§1, §6 — both blocked on his art); the Supabase
-backend (§7); the desktop executable (§8).
+1. **Travel-modes balance playtest.** The feature is built and live (see §9); its
+   *numbers* want Joshua's feel. He plays a Grand Tour on Adventurer and says "money
+   too tight/loose", "last legs cost too many days", "the bonus is weak". Dial in
+   `src/data/travel.js` (`transportOptionsFor` — the `usd`/`days` formulas), the
+   starting wallet in `startTour` ($3,500 Adventurer / $2,500 Expert), and `legSlack`
+   (the extra day budget per stop). Leftover-money bonus = 1 pt per $500, in the
+   `photographCity` tour-win branch.
+2. **Wire the badge / mode / difficulty art as it lands.** Full spec + exact filenames
+   in `docs/art-assets-needed.md` (~73 assets). ChatGPT has already generated **14/14
+   category badges** (`category-<badge-name>-badge.png`) — but the **files are not in
+   the repo yet**. When any batch drops into `public/assets/shutterbug-ui/`, wire each
+   to its tracked value and generate the greyed/locked state in code. Badges currently
+   render as greyscale emoji in the passport; mode cards use a location photo;
+   difficulty tiers and career ranks have no art.
+3. **The roguelike layer** (§3) — the biggest remaining build, nothing started. Begin
+   with the **route-choice map** slice: it reuses the per-leg chooser pattern the
+   travel-modes feature just proved.
+
+**Then, in Joshua's stated order:** the graphics pass (§1 avatar redesign, §6 badges)
+once his art lands, and the **desktop executable + final single-screen fit** (§8) as
+the capstone. The Supabase backend (§7) sits off to the side whenever he wants it.
+
+### Recently shipped
+
+This session: **travel modes** (§9 — the big one), plus a small-fixes UI pass (flight
+music plays the full 4s then fades over 2s; hover-only country/landmark labels; the
+Aleutian wrap cut off the world map; Europe/UK/Asia map crops + vertical stretch; the
+polaroid result layout; US-English spellings), CI action bumps, the Mr O riddle
+catchphrase, **Mr O now appears only on arriving at a new continent** (no more
+mid-country interruptions), **landmark pins de-overlap with leader lines to their true
+spots**, **traveller selection moved off the splash to its own screen**, France
+overseas-territory locator insets, the curiosity layer grown to **39 cards**,
+**rotating people cards** for the six multi-ethnic countries (§2 — DONE), and **four
+more Journeys** (now 8 routes) with a height cap so tall north–south routes fit.
+
+Earlier sessions: the Natural Earth water layer, the sharper relief plates, the Seeded
+Daily Expedition, the imperial-first units pass, the Grand Tour rework, the first
+Journeys, and the Grandpa Nigel story frame.
 
 ---
 
@@ -28,9 +54,12 @@ backend (§7); the desktop executable (§8).
 - **Live** at `joshuadanielspencer-boop.github.io/shutterbug/`. `git push` to `main`
   triggers `.github/workflows/deploy.yml`, which tests, builds and publishes. There
   is no separate deploy step.
-- `npm test` → **59 tests, 3 files** (`test/data.test.js`, `test/daily.test.js`,
+- `npm test` → **65 tests, 3 files** (`test/data.test.js`, `test/daily.test.js`,
   `test/routes.test.js`). They must stay green; several of them guard *facts*, not
   just shapes, and exist because a plausible-looking wrong map shipped once already.
+- **Every random choice must go through `src/rng.js`** (`rnd()`, `shuffled()`), never
+  `Math.random()` — that's what makes the Daily Expedition identical for everyone, and
+  a stray `Math.random()` breaks it *silently*. `test/daily.test.js` guards it.
 - The deploy workflow uses `actions/upload-pages-artifact@v5` + `deploy-pages@v5`
   (bumped off the deprecated Node 20 in July 2025).
 - **Game modes that exist:** Assignments, Daily Expedition, Grand Tour (route
@@ -287,3 +316,41 @@ Install) with zero work, which may well be enough. For a real double-click
 
 ⚠ Unsigned apps trigger OS security warnings, and code signing costs money (Apple
 $99/yr). Don't start this without him agreeing to that.
+
+⚠ Also tied to this: the **final single-screen pixel fit** (map cap, header, phase
+tracker) should be tuned to the executable's *locked window size* once he picks it —
+doing it before that is guesswork. The desk already fits a normal browser window.
+
+---
+
+## 9. Travel modes — ✅ BUILT (2026-07-15); balance wants a playtest
+
+The higher Grand Tour tiers (**Adventurer/Expert only**) now travel for real. Clicking
+a continent opens a **"Getting there" chooser**: pick which real **regional hub
+airport** to fly into (sorted nearest-first, each with its flight cost), then pick the
+**last-leg transport** to your next target — a genuine **time ↔ money** tradeoff. Every
+price shows **dollars first, local currency in parentheses** (rule 3 style). A money
+**wallet** sits beside the day calendar; both resources are spent as you travel, and
+**leftover money pays 1 point per $500** at the win, alongside banked days.
+
+- **Data:** `src/data/travel.js` — `HUBS` (4–6 real IATA hubs per continent with real
+  coords), `TRANSPORT_MODES` (bus/train/taxi/domestic flight + ferry/riverboat/canoe,
+  cable car/cog railway, tuk-tuk, camel, and Venice's gondola), `transportOptionsFor()`
+  (offers only the 2–3 modes that genuinely fit the place — rule 2 — with concrete
+  day/dollar costs), `CURRENCIES` + `COUNTRY_CURRENCY` + `money()`. Prices are
+  deliberately **abstract** (a tradeoff, not a real fare we'd have to source and keep
+  current); exchange rates carry `CURRENCY_AS_OF`.
+- **Component:** `TravelChooser` in `shutterbug-world.jsx`; `confirmTravel()` deducts
+  money + days then runs the real flight; gate is `travelModes` (tour + medium/hard).
+  Antarctica has no hub, so it flies the old way. Money floors at $0 — **never disable
+  the Go button** or a broke player soft-locks.
+- **6 tests** guard it (hubs in range with derived map coords, ≥3 per continent, every
+  landmark reachable with a real cheap↔fast spread, currencies well-formed, `money()`
+  leads with dollars).
+
+**What's open:** the **balance** (see "the three things to do next"). Optional later:
+expand currency coverage (~29 + the Eurozone today; everything else falls back to USD),
+grow the flavour-transport tags, real transport icons (spec'd in
+`docs/art-assets-needed.md` §12 — emoji for now), and possibly a lighter **hub-only**
+version in Assignments (deferred: choosing transport to a named landmark would spoil
+that mode's deduction game).
