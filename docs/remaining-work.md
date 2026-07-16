@@ -4,9 +4,22 @@ A handoff document. Everything here is written so a **new session with no memory
 the previous ones** can pick up a task and finish it. Read `CLAUDE.md` first (the
 three project rules are hard requirements), then the task you're doing.
 
-Last updated after the session that shipped: the Natural Earth water layer, the
-sharper relief plates, the Seeded Daily Expedition, rotating people cards, the
-imperial-first units pass, the Grand Tour rework, and the Lewis & Clark Journey.
+Last updated **2026-07-15**. That session shipped: a small-fixes UI pass (music
+fade-on-travel, hover-only map labels, Europe/UK vertical stretch, the polaroid
+result layout, US-English spellings), CI action bumps, the Mr O riddle
+catchphrase, France overseas-territory locator insets, the tap-to-learn curiosity
+layer grown to 39 cards, **rotating people cards for the six multi-ethnic
+countries** (was item 2 — now DONE), and **four more Journeys** (Transcontinental
+Railroad, Route 66, the Thirteen Colonies, Paul's first journey — now 8 routes),
+with a journey-map height cap so tall north–south routes fit one screen.
+
+Earlier sessions shipped: the Natural Earth water layer, the sharper relief
+plates, the Seeded Daily Expedition, the imperial-first units pass, the Grand Tour
+rework, and the first Journeys.
+
+**Still open (needs Joshua):** the roguelike layer (§3, not started); the avatar
+redesign + award-badge art (§1, §6 — both blocked on his art); the Supabase
+backend (§7); the desktop executable (§8).
 
 ---
 
@@ -15,9 +28,11 @@ imperial-first units pass, the Grand Tour rework, and the Lewis & Clark Journey.
 - **Live** at `joshuadanielspencer-boop.github.io/shutterbug/`. `git push` to `main`
   triggers `.github/workflows/deploy.yml`, which tests, builds and publishes. There
   is no separate deploy step.
-- `npm test` → **54 tests, 3 files** (`test/data.test.js`, `test/daily.test.js`,
+- `npm test` → **59 tests, 3 files** (`test/data.test.js`, `test/daily.test.js`,
   `test/routes.test.js`). They must stay green; several of them guard *facts*, not
   just shapes, and exist because a plausible-looking wrong map shipped once already.
+- The deploy workflow uses `actions/upload-pages-artifact@v5` + `deploy-pages@v5`
+  (bumped off the deprecated Node 20 in July 2025).
 - **Game modes that exist:** Assignments, Daily Expedition, Grand Tour (route
   optimisation), Journeys, Themed Expeditions, Explore, Quiz.
 - **The one big file:** `src/shutterbug-world.jsx` (~4,900 lines) is the whole game
@@ -75,38 +90,24 @@ When it unpauses, the work is:
 
 ---
 
-## 2. Rotating people cards — the remaining countries
+## 2. Rotating people cards — ✅ DONE (2026-07-15)
 
-**Needs Joshua's review, by his own request** — deciding which peoples represent a
-country is an editorial call he wants to make, and Commons' categories for ethnic
-groups skew heavily toward colonial-era imagery that shouldn't go in front of a
-child unreviewed.
+The six multi-ethnic countries that showed a single community now rotate 2–3
+licence-verified cards on arrival, each user-approved before commit:
+Brazil (+Kayapó), South Africa (+Xhosa +Zulu), Malaysia (+Chinese +Indian),
+Canada (+Inuit), Australia (+Aboriginal), New Zealand (+Samoan). Every existing
+single card gained a `people:` field so the rotation names each one.
 
-The **mechanism is built and working**. `COUNTRY_PEOPLE` in `src/data/culture.js`
-accepts either a single card or a list of up to three; `peopleCards(country)`
-normalises both. The arrival card rotates between visits ("African American · 2 of
-3") with prev/next buttons. The United States ships with three, all licence-verified.
+The mechanism: `COUNTRY_PEOPLE` in `src/data/culture.js` accepts either a single
+card or a list of up to three; `peopleCards(country)` normalises both; the arrival
+card rotates between visits with prev/next buttons. `test/data.test.js` enforces
+≤3 cards, a named `people` on each, no duplicate peoples, and a free licence.
 
-**What's left:** these countries are multi-ethnic but still on one card each —
-Brazil (currently Afro-Brazilian only), South Africa (Ndebele only), Malaysia (Malay
-only — it is explicitly a three-community country), Canada (First Nations only),
-Australia (Torres Strait Islander only — mainland Aboriginal peoples are distinct
-and missing), New Zealand (Māori only — Pasifika communities are large). The US
-itself is a floor, not a full account: Hispanic/Latino and Asian American
-communities each outnumber several whole countries in this game.
-
-**How to do one:**
-1. `node scripts/commons.mjs cat "Category:<something>"` — categories beat free-text
-   search, which returns scanned books. Look for contemporary cultural events, not
-   19th-century ethnography.
-2. `node scripts/commons.mjs verify "File:…"` on the candidate. It must come back
-   `✓` (free licence), and be landscape and reasonably large. Copy the `src` and
-   `source` URLs it prints — do not hand-write them.
-3. Add to the country's array with `people:` (who it shows), `caption:`, `credit:`,
-   `license:`.
-4. `npm test` — the licence test walks **every** card, not just the first, and the
-   rotating-card test requires each card to name its people and forbids duplicates.
-5. **Show Joshua the photos before committing.**
+**Optional future depth** (not required): the US itself is a floor, not a full
+account — Hispanic/Latino and Asian American communities could each be added. To
+add any card: `node scripts/commons.mjs verify "File:…"` (must come back `✓`; copy
+its `src`/`source` verbatim), add to the country's array with `people/caption/
+credit/license`, `npm test`, and **show Joshua the photo first**.
 
 ---
 
@@ -155,11 +156,12 @@ data-driven, so adding cards is now pure content work.
   X / 21"** line shows in the field-journal panel.
 
 **What's left on this item:**
-- **21 cards, not 40.** Three per deck. Adding more is just more objects in the deck's
-  `cards` array — the reshuffle, counter and tracker all scale automatically (the
-  tracker denominator is `CURIOSITY_TOTAL`, derived from the data).
-- **The avatar → "customise traveller" jump is not wired** (the 8th element). It was left
-  out to avoid duplicating the passport/avatar-editor flow; decide where it should land.
+- **39 cards (2026-07-15), up from 21** — grew toward the ~40 target, every new fact
+  source-cited and `asOf`-dated where it can drift. Adding more is just more objects in
+  the deck's `cards` array; the reshuffle, counter and `CURIOSITY_TOTAL` tracker all
+  scale automatically.
+- **The avatar → "customise traveller" jump is now WIRED (2026-07-15):** tapping a saved
+  traveller's header avatar opens the Customize Traveler editor (mid-run too).
 - **The compass tap-target overlaps the corner of the continent-selection map.** It only
   owns its own ~104px footprint (verified: every continent stays selectable elsewhere,
   and it's disabled during a flight), but if you ever want it truly zero-conflict, move
@@ -174,7 +176,7 @@ data-driven, so adding cards is now pure content work.
 ## 5. More Journeys
 
 The engine is **built and proven** (`src/data/journeys.js` + the `journey` mode).
-**Four routes now ship** and a **picker** lets the player choose between them on the
+**Eight routes now ship** and a **picker** lets the player choose between them on the
 meet screen. **Adding a route is now just data.**
 
 - **Lewis & Clark** (6 stops) — the original flagship.
@@ -185,6 +187,20 @@ meet screen. **Adding a route is now just data.**
   that Darwin noted island-by-island (the finch story is a later myth — rule 2).
 - **Magellan & Elcano** (8 stops) — the second circumnavigation, ending on the lost day
   at Cape Verde and the Date Line.
+- **The Transcontinental Railroad** (5 stops) — Omaha → Promontory → Sacramento.
+- **Route 66** (7 stops) — Chicago → Santa Monica.
+- **The Thirteen Colonies** (13 stops) — New Hampshire → Georgia down the seaboard. The
+  first **tall (north–south) route**, which needed the height cap below.
+- **Paul's First Journey** (8 stops) — the first **contested** route done right: the
+  intro + the two archaeological stops (Lystra, Derbe) plainly say it's the
+  traditionally/popularly acknowledged path, and each stop carries a `certainty` of
+  `"documented"` or `"traditional"` (the pattern the ⚠ note below asked for).
+
+**A tall route needed a layout fix (2026-07-15, done):** the journey map was
+width-driven, so a north–south route (the 13 Colonies) ran off the bottom of the
+screen. Routes with aspect `< 1.6` are now driven by a **capped height** and centred, so
+the whole map — every stop — fits one screen; wide routes still fill the width and pan
+sideways. See the `JOURNEY_AR < 1.6` branch in `shutterbug-world.jsx`.
 
 **Circumnavigations needed real engine work** (all done, all tested):
 - `unrolledX(journey)` places each stop at whichever copy of its longitude (x, x±360…)
@@ -199,8 +215,11 @@ meet screen. **Adding a route is now just data.**
   chain labels alternate above/below, and on a phone the map **pans inside its frame and
   auto-scrolls to the active stop** (a whole-world map squeezed to 375px gives a 6px pin).
 
-**Still on the wish list:** Marco Polo (⚠ see below), the Exodus route, the 13 Colonies,
-National Parks, Paul's first missionary journey.
+**Still on the wish list:** the Exodus route (⚠ contested — see below), National Parks,
+the Pony Express, Amundsen's/Shackleton's polar routes. Marco Polo stays **excluded**
+(serious historians dispute whether he reached China; it's a claim about a book, not a
+documented route). **Paul's First Journey (done) is the worked example** for a contested
+route — copy its `certainty` + "traditionally acknowledged" framing.
 
 **How to add one:**
 - Get each stop's coordinates from its Wikipedia article via the MediaWiki API — do
@@ -218,12 +237,14 @@ National Parks, Paul's first missionary journey.
   on a map of the world. (Port St Julian sits 5.7° from the Strait of Magellan and still
   had to be folded into the Strait's card.)
 
-> ⚠ **Lewis & Clark was the safe one, and the four shipped routes all are.** Nobody
-> disputes where Fort Mandan or Tidore was. The Exodus route and the site of Mount Sinai
-> are **genuinely contested**, several of Paul's stops are uncertain, and whether Marco
-> Polo reached China at all is disputed by serious historians. Before adding those, add a
-> `certainty` field (`"documented"` vs `"traditional"`) and make the card **say which**.
-> Do not quietly present a traditional site as a fact. This is a rule-2 issue, not polish.
+> ⚠ **Contested routes need the `certainty` treatment — Paul's First Journey now shows
+> how.** The seven documented routes are safe (nobody disputes where Fort Mandan or
+> Promontory Summit was). Paul's route was the first contested one shipped: its intro
+> says it's the traditionally acknowledged path, and each stop carries a `certainty` of
+> `"documented"` or `"traditional"` (Lystra and Derbe are `"traditional"`, located only
+> by later inscriptions). The Exodus route and the site of Mount Sinai are the next
+> contested candidates — copy Paul's framing. Do not quietly present a traditional site
+> as a fact. This is a rule-2 issue, not polish.
 
 ---
 
