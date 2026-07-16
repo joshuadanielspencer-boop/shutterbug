@@ -368,14 +368,20 @@ const CONTINENT_META = (() => {
     const minX = Math.min(...xs), maxX = Math.max(...xs), minY = Math.min(...ys), maxY = Math.max(...ys);
     const cx = (minX + maxX) / 2, cy = (minY + maxY) / 2;
     if (c === "Asia") {
-      // Asia's landmarks span ~132° of longitude but only ~65° of latitude, so a
-      // square box showed the Arctic, half of Africa and all of Australia just to
-      // fit. Hug the content tightly: the west edge lands ~27°E (Europe/Africa just
-      // at the margin), the north trims into Russia, and the south stops above
-      // Australia while still keeping Indonesia in frame.
-      const w = Math.max(40, (maxX - minX) * 1.03);
-      const h = Math.max(40, (maxY - minY) * 1.05);
-      meta[c] = { mode: "equirect", box: { x: cx - w / 2, y: cy - h / 2, w, h }, cx, cy };
+      // Asia's landmarks span far more longitude than latitude. The old box was
+      // wider than the atlas frame, so it letterboxed top/bottom and the relief
+      // plate spilled into the bands — showing Africa and Australia to the south and
+      // Africa/Europe to the west. Set the height FROM the frame's own aspect (like
+      // North America) so the box fills the frame with no letterbox and no spill; the
+      // vertical stretch (mapStretchY) then un-smushes the high-latitude squish.
+      const w = Math.max(40, (maxX - minX) * 1.0);
+      const h = w / 1.45; // 1.45 = the atlas frame's aspect (FRAME_AR in the component)
+      // The frame-aspect box is taller than Asia's content, so anchor its SOUTH edge
+      // just below the southernmost landmark (Indonesia): the surplus height then
+      // falls into the empty Arctic to the north instead of dragging Australia and the
+      // Horn of Africa into the bottom corners.
+      const yTop = (maxY + 0.05 * (maxY - minY)) - h;
+      meta[c] = { mode: "equirect", box: { x: cx - w / 2, y: yTop, w, h }, cx, cy };
       continue;
     }
     if (c === "Europe") {
@@ -1293,14 +1299,36 @@ export default function ShutterbugWorld() {
   // Mr. O pops up ~30% of the time on touching down at a new continent, with a
   // fresh geography fact ABOUT that continent (plus globally-true facts), so his
   // "did you know" matches the map you just landed on. Non-blocking; auto-dismisses.
-  const maybeMrO = (continent) => {
-    if (Math.random() > 0.3) return;
+  const arrivalRollRef = useRef(0); // counts continent arrivals, for the Daily's seeded riddle cadence
+  // Show a "did you know" fact bubble about the continent just reached.
+  const showMrOFact = (continent) => {
     const relevant = MR_O_FACTS.map((_, i) => i).filter((i) => MR_O_FACTS[i].where === continent || MR_O_FACTS[i].where == null);
     let pool = relevant.filter((i) => !mrOSeen.current.includes(i));
     if (!pool.length) { mrOSeen.current = mrOSeen.current.filter((i) => !relevant.includes(i)); pool = relevant; } // seen them all here — reshuffle just this continent
     const i = pool[Math.floor(Math.random() * pool.length)];
     mrOSeen.current.push(i);
     setMrO(MR_O_FACTS[i].text);
+  };
+  // Open a double-points riddle (seeded on a Daily so every player gets the same chances).
+  const openArrivalRiddle = (ix) => {
+    let pool = MR_O_RIDDLES.map((_, i) => i).filter((i) => !riddleSeen.current.includes(i));
+    if (!pool.length) { riddleSeen.current = []; pool = MR_O_RIDDLES.map((_, i) => i); }
+    const seed = riddleSeedRef.current;
+    const pick = seed ? withSeed(seed + "|rq|" + ix, () => pool[randInt(pool.length)]) : pool[Math.floor(Math.random() * pool.length)];
+    riddleSeen.current.push(pick);
+    const data = MR_O_RIDDLES[pick];
+    const choices = seed ? withSeed(seed + "|rs|" + ix, () => shuffled(data.choices)) : shuffleArr(data.choices);
+    setRiddle({ data, choices, answeredIdx: null });
+  };
+  // Mr O ONLY shows up on arriving at a NEW continent — never while you're choosing
+  // places within a country. On each arrival he randomly does ONE of three things:
+  // a double-points riddle (~20%), a "did you know?" fact bubble (~30%), or nothing.
+  const maybeMrO = (continent) => {
+    const ix = arrivalRollRef.current++;
+    const seed = riddleSeedRef.current;
+    const roll = seed ? withSeed(seed + "|arr|" + ix, () => rnd()) : Math.random();
+    if (roll < 0.20) openArrivalRiddle(ix);
+    else if (roll < 0.50) showMrOFact(continent);
   };
   const poppedCountryRef = useRef(null); // country whose arrival popup already showed this leg
   const [dreamPending, setDreamPending] = useState(false); // Grandpa's dream just fulfilled — show the win scene
@@ -1845,30 +1873,7 @@ export default function ShutterbugWorld() {
     riddleSeedRef.current = seed;
     riddleEveryRef.current = seed ? withSeed(seed, () => 1 + randInt(5)) : 1 + Math.floor(Math.random() * 5);
     riddleDueRef.current = false;
-  }
-  // Count each shot; once we've taken as many as this window's random target
-  // (1–5), queue a riddle to open when the shot's result popup is dismissed —
-  // guaranteeing one lands at least once every five shots.
-  function bumpRiddleCounter() {
-    shotsSinceRiddleRef.current += 1;
-    if (shotsSinceRiddleRef.current >= riddleEveryRef.current) {
-      shotsSinceRiddleRef.current = 0;
-      riddleEveryRef.current = riddleSeedRef.current
-        ? withSeed(riddleSeedRef.current + "|" + riddleCountRef.current++, () => 1 + randInt(5))
-        : 1 + Math.floor(Math.random() * 5);
-      riddleDueRef.current = true;
-    }
-  }
-  // Open a fresh (unseen) riddle if one is queued and the trip is still going.
-  function maybeOpenRiddle() {
-    if (!riddleDueRef.current) return;
-    riddleDueRef.current = false;
-    let pool = MR_O_RIDDLES.map((_, i) => i).filter((i) => !riddleSeen.current.includes(i));
-    if (!pool.length) { riddleSeen.current = []; pool = MR_O_RIDDLES.map((_, i) => i); }
-    const i = pool[Math.floor(Math.random() * pool.length)];
-    riddleSeen.current.push(i);
-    const data = MR_O_RIDDLES[i];
-    setRiddle({ data, choices: shuffleArr(data.choices), answeredIdx: null });
+    arrivalRollRef.current = 0; // riddles/facts are now rolled per continent arrival
   }
   // Answer the riddle: a correct answer is worth DOUBLE a normal shot's points.
   function answerRiddle(idx) {
@@ -1904,8 +1909,7 @@ export default function ShutterbugWorld() {
       setRevealed(false);
     }
     // wrong continent just closes and leaves you on the world map to try again.
-    // If Mr. O has a riddle queued (and the trip continues), pop it now.
-    if (kind !== "win" && kind !== "lose" && kind !== "tour-win" && kind !== "tour-lose") maybeOpenRiddle();
+    // (Riddles now fire on continent arrival, not after a shot — see maybeMrO.)
   }
 
   // When a game ends, record its outcome once against the active profile.
@@ -2231,7 +2235,6 @@ export default function ShutterbugWorld() {
     }
 
 
-    bumpRiddleCounter(); // count this shot toward Mr. O's next double-points riddle
     const d = Math.round((days - SHOT_COST) * 10) / 10; // a shot costs half a day
     setDays(d);
 
@@ -3470,6 +3473,7 @@ export default function ShutterbugWorld() {
   // the whole plate is scaled ~15% taller about the box center. Only Europe (its
   // continent map) and the United Kingdom (its country map) opt in.
   const mapStretchY = (inCountry && pickedContinent === "Europe") ? 1.15
+    : (inCountry && pickedContinent === "Asia") ? 1.10
     : (inCity && pickedCountry === "United Kingdom") ? 1.15
     : 1;
   const mapPivotY = box.y + box.h / 2;

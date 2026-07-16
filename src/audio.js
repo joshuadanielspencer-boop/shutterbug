@@ -378,22 +378,24 @@ export const MUSIC = (() => {
       countryActive = false;
       if (countryTimer) { clearTimeout(countryTimer); countryTimer = null; }
     },
-    // Travel music over a flight: a lively jig that plays for ~2 seconds and fades
-    // to silence over those same 2 seconds, so the music eases out as the plane
-    // cruises rather than cutting off. Routed through its own fade bus (independent
-    // of the looping jig), so the fade never touches other one-shots.
+    // Travel music over a flight: a lively jig that plays at full volume for the
+    // whole 4-second flight, then keeps going for 2 more seconds as it fades to
+    // silence — so the music carries you the whole way and eases out just after you
+    // land, every flight. Routed through its own fade bus (independent of the
+    // looping jig), so the fade never touches other one-shots.
     travelJig() {
       try {
         this.stopCountry(); // you're leaving the country — silence its tune
         const c = ac(); if (!c) return;
         wake(c);
         const t0 = c.currentTime + 0.04;
-        const FADE = 2.0; // seconds: play and fade out together
+        const FLIGHT = 4.0, FADE = 2.0, TOTAL = FLIGHT + FADE; // 4s full, then a 2s fade
         const fade = ctx.createGain();
         fade.gain.setValueAtTime(1, t0);
-        fade.gain.linearRampToValueAtTime(0.0001, t0 + FADE);
+        fade.gain.setValueAtTime(1, t0 + FLIGHT);                    // hold full through the flight
+        fade.gain.linearRampToValueAtTime(0.0001, t0 + TOTAL);       // then fade out over 2s
         fade.connect(master);
-        const n = Math.floor(FADE / EIGHTH);
+        const n = Math.ceil(TOTAL / EIGHTH);
         for (let i = 0; i < n; i++) {
           const f = MELODY[i % MELODY.length];
           if (f) voice(t0 + i * EIGHTH, f, i % 3 === 0 ? 0.12 : 0.085, EIGHTH * 0.95, "reed", fade);
