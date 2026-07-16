@@ -635,4 +635,36 @@ describe("travel modes", () => {
     expect(jp.startsWith("$100"), `dollars must lead: ${jp}`).toBe(true);
     expect(jp).toMatch(/¥/);
   });
+
+  // The pegged rates are DERIVED from their anchor, so these pin the parity rather
+  // than the dollar figure: the anchor's rate is free to be refreshed, but the peg
+  // itself is a published fact that must survive it. A euro edit that silently
+  // broke the CFA franc's 655.957 would otherwise be invisible.
+  it("pegged currencies hold their published parity to their anchor", () => {
+    const parity = (code, anchor) => CURRENCIES[code].perUsd / CURRENCIES[anchor].perUsd;
+    expect(parity("XOF", "EUR")).toBeCloseTo(655.957, 2);   // fixed 1 Jan 1999
+    expect(parity("XAF", "EUR")).toBeCloseTo(655.957, 2);   // same parity, separate currency
+    expect(parity("XPF", "EUR")).toBeCloseTo(119.3317, 3);  // fixed 1 Jan 1999
+    expect(parity("DKK", "EUR")).toBeCloseTo(7.46038, 4);   // ERM II central rate
+    expect(parity("SAR", "USD")).toBeCloseTo(3.75, 3);      // since June 1986
+    expect(parity("JOD", "USD")).toBeCloseTo(0.709, 3);     // since Oct 1995
+    expect(parity("BZD", "USD")).toBeCloseTo(2, 3);         // since 1978
+    expect(parity("NAD", "ZAR")).toBeCloseTo(1, 6);         // Common Monetary Area
+  });
+
+  it("a country using the dollar by policy is not a country we failed to map", () => {
+    // Ecuador and Panama are dollarized, so they render bare "$120" — identical to
+    // the unmapped fallback. The map entry is the only thing recording that we know.
+    for (const c of ["Ecuador", "Panama"]) {
+      expect(COUNTRY_CURRENCY[c], `${c} must be explicitly mapped`).toBe("USD");
+      expect(money(120, c)).toBe("$120");
+    }
+  });
+
+  it("a word-like currency symbol is spaced off its number", () => {
+    // "CFA72,420" reads as one token; "CFA 72,420" reads as money.
+    expect(money(120, "Senegal")).toMatch(/CFA [\d,]+/);
+    expect(money(120, "Denmark")).toMatch(/kr [\d,]+/);
+    expect(money(120, "Belgium")).toMatch(/€\d/);   // a glyph still hugs its number
+  });
 });

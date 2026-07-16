@@ -148,6 +148,38 @@ export const CURRENCIES = {
   VND: { name: "Vietnamese đồng", symbol: "₫", perUsd: 25000 },
   KRW: { name: "South Korean won", symbol: "₩", perUsd: 1350 },
 };
+
+// ---- Pegged currencies -----------------------------------------------------
+// Unlike the rates above, these do not float: each is fixed to an anchor by treaty
+// or central-bank policy, so the PARITY is a durable fact even though the anchor's
+// own dollar rate drifts. They are therefore DERIVED from their anchor rather than
+// frozen as a second approximation — refresh `EUR` above and every euro-pegged
+// currency follows for free, still exactly 655.957 to the euro.
+//
+// Sources (checked 2026-07-16, rule 2). Every parity below has held for decades:
+//   XOF/XAF  655.957 per EUR, fixed since 1 Jan 1999, guaranteed by the French
+//            Treasury — en.wikipedia.org/wiki/CFA_franc
+//   XPF      119.3317 per EUR, fixed since 1 Jan 1999 — en.wikipedia.org/wiki/CFP_franc
+//   DKK      7.46038 per EUR, the ERM II central rate since 1 Jan 1999 (±2.25%
+//            band, so this is a central rate rather than a hard peg)
+//   SAR      3.75 per USD since June 1986
+//   JOD      0.709 per USD since 23 Oct 1995
+//   BZD      2.00 per USD since 1978
+//   NAD      1:1 with the rand (Common Monetary Area); the rand is also legal
+//            tender in Namibia
+const PEGGED = {
+  XOF: { name: "West African CFA franc",   symbol: "CFA",  per: 655.957,  of: "EUR" },
+  XAF: { name: "Central African CFA franc", symbol: "FCFA", per: 655.957,  of: "EUR" },
+  XPF: { name: "CFP franc",                symbol: "F",    per: 119.3317, of: "EUR" },
+  DKK: { name: "Danish krone",             symbol: "kr",   per: 7.46038,  of: "EUR" },
+  SAR: { name: "Saudi riyal",              symbol: "SR",   per: 3.75,     of: "USD" },
+  JOD: { name: "Jordanian dinar",          symbol: "JD",   per: 0.709,    of: "USD" },
+  BZD: { name: "Belize dollar",            symbol: "BZ$",  per: 2,        of: "USD" },
+  NAD: { name: "Namibian dollar",          symbol: "N$",   per: 1,        of: "ZAR" },
+};
+for (const [code, p] of Object.entries(PEGGED)) {
+  CURRENCIES[code] = { name: p.name, symbol: p.symbol, perUsd: p.per * CURRENCIES[p.of].perUsd, pegged: p.of };
+}
 // Country → currency code. Anything not listed falls back to USD for the display.
 export const COUNTRY_CURRENCY = {
   "United States": "USD", "Canada": "CAD", "Mexico": "MXN",
@@ -161,7 +193,17 @@ export const COUNTRY_CURRENCY = {
   // Eurozone
   "France": "EUR", "Germany": "EUR", "Spain": "EUR", "Italy": "EUR",
   "Greece": "EUR", "Portugal": "EUR", "Netherlands": "EUR", "Austria": "EUR",
-  "Ireland": "EUR", "Croatia": "EUR",
+  "Ireland": "EUR", "Croatia": "EUR", "Belgium": "EUR", "Finland": "EUR",
+  // Officially dollarized — the USD *is* the national currency, not a fallback.
+  // Listed so it's clear we know, and so nobody "fixes" it by adding a sucre.
+  "Ecuador": "USD",  // adopted 2000
+  "Panama": "USD",   // adopted 1904; the balboa is pegged 1:1 and coins circulate
+  // Pegged (see PEGGED above)
+  "Denmark": "DKK", "Greenland": "DKK",
+  "Benin": "XOF", "Côte d'Ivoire": "XOF", "Mali": "XOF", "Senegal": "XOF",
+  "Cameroon": "XAF",
+  "French Polynesia": "XPF", "New Caledonia": "XPF",
+  "Saudi Arabia": "SAR", "Jordan": "JOD", "Belize": "BZD", "Namibia": "NAD",
 };
 export function currencyFor(country) {
   return CURRENCIES[COUNTRY_CURRENCY[country]] || CURRENCIES.USD;
@@ -199,5 +241,9 @@ export function money(usd, country) {
   const localTxt = local >= 1000 ? Math.round(local / 10) * 10 : Math.round(local);
   const dollars = `$${usd}`;
   if (c.symbol === "$" && c.perUsd === 1) return dollars; // home currency — no parenthetical
-  return `${dollars} (${c.symbol}${localTxt.toLocaleString("en-US")} ${c.name})`;
+  // A word-like symbol needs air before the number ("CFA 72,420", "kr 824"); a
+  // glyph doesn't ("€110", "฿4,320"). Without this "CFA72420" reads as one token,
+  // which is exactly the wrong first impression of an unfamiliar currency.
+  const gap = /[A-Za-z]$/.test(c.symbol) ? " " : "";
+  return `${dollars} (${c.symbol}${gap}${localTxt.toLocaleString("en-US")} ${c.name})`;
 }

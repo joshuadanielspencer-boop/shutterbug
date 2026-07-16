@@ -55,7 +55,7 @@ Journeys, and the Grandpa Nigel story frame.
 - **Live** at `joshuadanielspencer-boop.github.io/shutterbug/`. `git push` to `main`
   triggers `.github/workflows/deploy.yml`, which tests, builds and publishes. There
   is no separate deploy step.
-- `npm test` → **75 tests, 4 files** (`test/data.test.js`, `test/daily.test.js`,
+- `npm test` → **78 tests, 4 files** (`test/data.test.js`, `test/daily.test.js`,
   `test/routes.test.js`, `test/art.test.js`). They must stay green; several of them guard *facts*, not
   just shapes, and exist because a plausible-looking wrong map shipped once already.
 - **Every random choice must go through `src/rng.js`** (`rnd()`, `shuffled()`), never
@@ -350,8 +350,22 @@ price shows **dollars first, local currency in parentheses** (rule 3 style). A m
   leads with dollars).
 
 **What's open:** the **balance** (see "the three things to do next"). Optional later:
-expand currency coverage (~29 + the Eurozone today; everything else falls back to USD),
-grow the flavour-transport tags, real transport icons (spec'd in
-`docs/art-assets-needed.md` §12 — emoji for now), and possibly a lighter **hub-only**
-version in Assignments (deferred: choosing transport to a named landmark would spoil
-that mode's deduction game).
+
+- **Currency coverage — 55/106 countries (281/437 locations).** 2026-07-16 added every
+  currency whose rate is a *structural fact*: the two CFA francs, the CFP franc, the
+  Danish krone, and the riyal/dinar/Belize/Namibian dollar pegs, plus the Belgium and
+  Finland Eurozone gaps and the two dollarized countries. Those are DERIVED from their
+  anchor in `PEGGED` (travel.js) so refreshing the euro carries them along, and
+  `test/data.test.js` pins each published parity.
+  **The remaining ~50 are floating rates and deliberately not guessed** (rule 2). Several
+  — Venezuela, Zimbabwe, Sudan, Iran, Cuba — have no single honest rate to quote
+  (hyperinflation, or official vs. street rates that differ by multiples), so they want a
+  sourced decision rather than a number from memory. The USD fallback is not wrong, just
+  silent.
+- **Flavour-transport tags** — `destinationContexts` in travel.js decides which modes fit
+  a place. Growing it is rule-2 work (a mode may only appear where it *truly* exists), not
+  a mechanical edit.
+- **Real transport icons** — `docs/art-assets-needed.md` §12; emoji for now. The last 14
+  assets in the project.
+- **A lighter hub-only version in Assignments** — deferred: choosing transport to a named
+  landmark would spoil that mode's deduction game.
