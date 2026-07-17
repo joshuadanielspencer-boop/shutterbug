@@ -42,8 +42,11 @@ export const HELLO_BUBBLES = [
 // scales with the viewport, so pixels would drift. This is the clear patch of sky
 // left of the boy's head, under the two postage stamps and above the toucan;
 // they overlap a little on purpose, like stickers stuck on in a hurry.
+// Widths are 20% smaller than the original 15 / 13 / 12.5 — the bubbles were
+// crowding the boy's head. Centred with translate(-50%,-50%), so shrinking `w`
+// keeps each one pinned to the same spot in the sky.
 export const HELLO_SPOTS = [
-  { x: 10.5, y: 41, w: 15, rot: -7 },
-  { x: 20,   y: 33, w: 13, rot: 5 },
-  { x: 7,    y: 55, w: 12.5, rot: 9 },
+  { x: 10.5, y: 41, w: 12,  rot: -7 },
+  { x: 20,   y: 33, w: 10.4, rot: 5 },
+  { x: 7,    y: 55, w: 10,  rot: 9 },
 ];

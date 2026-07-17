@@ -151,6 +151,32 @@ export const SFX = (() => {
       tone(c, t + 0.012, 1975.53, 0.04, 0.016, "sine"); // B6 shimmer on top
     }); },
 
+    // A quiet wooden "thunk" under every button press — the soft knock of a
+    // shutter button or a stamp on a desk. Deliberately understated: it plays on
+    // EVERY click in the game, so it has to sit under the action, not announce it.
+    // A short pitch-drop thump plus a whisper of felt (the noise burst).
+    click() { safe((c) => { const t = c.currentTime;
+      slide(c, t, 190, 96, 0.07, 0.11, "sine");     // the knock, pitch dropping
+      burst(c, t, 0.03, "lowpass", 520, 0.05);      // a little felt on top
+    }); },
+
+    // Mr O arriving: a bright, comic "bwooop!" — a quick swoop up then a little
+    // hop back down, like a cartoon pop-in. Announces him without being a fanfare.
+    bwooop() { safe((c) => { const t = c.currentTime;
+      slide(c, t, 300, 900, 0.16, 0.16, "triangle");        // the swoop up
+      slide(c, t + 0.15, 900, 680, 0.12, 0.13, "triangle"); // the little hop down
+      tone(c, t + 0.02, 1400, 0.1, 0.03, "sine");           // a touch of sparkle
+    }); },
+
+    // A PERFECT shot (filed first try): the happy `success` chime, but taken one
+    // step further — a brighter, higher four-note run that lands on a sparkle, so a
+    // bullseye sounds unmistakably better than a nice-after-a-miss shot.
+    perfect() { safe((c) => { const t = c.currentTime;
+      notes(c, [659.25, 830.61, 987.77, 1318.51], 0.075, 0.24, 0.28, "triangle"); // E5 G#5 B5 E6
+      tone(c, t + 0.25, 1975.53, 0.35, 0.11, "sine");   // a bright bell on top
+      tone(c, t + 0.25, 2637.02, 0.3, 0.05, "sine");    // and its shimmer
+    }); },
+
     // Takeoff: engines spooling up and pitching away from you as the plane leaves.
     // `secs` is the map animation's scale-up time — the caller passes its own
     // PLANE_SCALE_MS so the sound is exactly as long as the picture it belongs to.
@@ -301,7 +327,7 @@ export const MUSIC = (() => {
   // The rest matters. Back-to-back passes with no gap don't read as "the tune
   // again", they read as a longer, stranger tune — the ear needs the phrase to
   // end before it can hear it start over.
-  const TUNE_PASSES = 3;
+  const TUNE_PASSES = 2;
   const TUNE_REST_BEATS = 2;
   // Peak amplitude of one tune note into `master`. There is no limiter on this
   // context and `master` sits at 0.16, so a note lands at 0.28 * 0.16 ≈ 0.045 at
@@ -428,7 +454,19 @@ export const MUSIC = (() => {
       drone.push({ o, g });
     }
   };
-  const stopDrone = () => { const t = ctx ? ctx.currentTime : 0; for (const d of drone) { try { d.g.gain.setTargetAtTime(0.0001, t, 0.7); d.o.stop(t + 2.6); } catch { /* ignore */ } } drone = []; };
+  // How long the background music takes to fade out — a slow, unhurried 4-second
+  // dissolve as you leave for the map, rather than a quick duck. A true wall-clock
+  // linear ramp, because setTargetAtTime's exponential approach never actually
+  // reaches zero and "4 seconds" would be a guess at its time-constant.
+  const MUSIC_FADE_SECS = 4;
+  const fadeOut = (param, secs = MUSIC_FADE_SECS) => {
+    if (!ctx || !param) return;
+    const t = ctx.currentTime;
+    param.cancelScheduledValues(t);
+    param.setValueAtTime(Math.max(0.0001, param.value), t);
+    param.linearRampToValueAtTime(0.0001, t + secs);
+  };
+  const stopDrone = () => { const t = ctx ? ctx.currentTime : 0; for (const d of drone) { try { fadeOut(d.g.gain); d.o.stop(t + MUSIC_FADE_SECS + 0.2); } catch { /* ignore */ } } drone = []; };
   // Bring master up to the audible level (one-shots need it even when the jig
   // loop is faded out at the map).
   const wake = (c) => { master.gain.cancelScheduledValues(c.currentTime); master.gain.setTargetAtTime(0.16, c.currentTime, 0.3); };
@@ -459,25 +497,25 @@ export const MUSIC = (() => {
       } catch { /* ignore */ }
     },
     // Fade the jig loop out (at the map) but keep the context + master alive so
-    // the travel jig and country tunes can still play. ~2s gentle fade.
+    // the travel jig and country tunes can still play. A slow 4-second fade.
     fadeJig() {
       try {
         running = false;
         if (timer) { clearInterval(timer); timer = null; }
         stopDrone();
-        if (ctx && jigBus) jigBus.gain.setTargetAtTime(0.0001, ctx.currentTime, 0.7);
+        if (jigBus) fadeOut(jigBus.gain);
       } catch { /* ignore */ }
     },
     // Full stop (leaving to the passport / music off): fade everything out over
-    // ~2 seconds rather than cutting abruptly.
+    // 4 seconds rather than cutting abruptly.
     stop() {
       try {
         running = false;
         if (timer) { clearInterval(timer); timer = null; }
         this.stopCountry();
         stopDrone();
-        if (ctx && jigBus) jigBus.gain.setTargetAtTime(0.0001, ctx.currentTime, 0.7);
-        if (ctx && master) master.gain.setTargetAtTime(0.0001, ctx.currentTime, 0.75);
+        if (jigBus) fadeOut(jigBus.gain);
+        if (master) fadeOut(master.gain);
       } catch { /* ignore */ }
     },
     // Silence the country tune (leaving the country / the trip). Fades its bus

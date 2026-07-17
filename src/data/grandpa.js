@@ -20,7 +20,7 @@
 // screen — stay IMPLICIT. Never state them outright; let the story carry them.
 //
 // FACT RULE (rule 2): any anecdote that teaches a real detail about a place
-// must be verified like every other fact. Uncle's humour is in the delivery,
+// must be verified like every other fact. Jonah's humour is in the delivery,
 // never in invented facts. (Per-location anecdotes are added alongside the
 // content research; this file holds only his voice-level, non-factual lines.)
 // ===========================================================================
@@ -63,6 +63,13 @@ export const NIGEL_MOOD = {
   meetRough: "affectionate",       // comforting, never scolding
   meetFirst: "excited",
   meetAsk: "amused",               // "now then — what sort of adventure?"
+  // His face as you dial the difficulty up — more impressed / wide-eyed the harder
+  // the trip you pick, from a warm "aw, a gentle one" to a delighted "you're taking
+  // on THAT?". Keyed by difficulty in the component (DIFFICULTY_MOOD).
+  diffScout: "affectionate",
+  diffEasy: "amused",
+  diffMedium: "pleasantly_surprised",
+  diffHard: "excited",
   homecoming: "excited",           // "look who's home! sit, sit."
   wrongAnswer: "amused",           // rueful, never harsh — he's laughing at himself
   achievement: "pleasantly_surprised",
@@ -105,9 +112,9 @@ export const NOTE_HEADER = "✎ A NOTE FROM UNCLE JONAH";
 // His name for the ½-day hint (was 'the newsroom').
 export const GUIDEBOOK = {
   button: "Research for Clue",
-  tipFree: "Thumb through Uncle's old guidebook for a strong hint (½ travel day)",
-  tipCost: "Thumb through Uncle's old guidebook for a strong hint (½ travel day)",
-  notesLabel: "From Uncle's guidebook:",
+  tipFree: "Thumb through Jonah's old guidebook for a strong hint (½ travel day)",
+  tipCost: "Thumb through Jonah's old guidebook for a strong hint (½ travel day)",
+  notesLabel: "From Jonah's guidebook:",
 };
 
 // The homecoming visit — when you return and he asks about your trip.
@@ -127,7 +134,7 @@ export const WRONG_REACTIONS = [
 // Lead-in when he notices you've earned a keepsake (achievement).
 export const ACHIEVEMENT_INTRO = "Would you look at that —";
 
-// Uncle's word on the results screen. WIN = the trip's shots all came home;
+// Jonah's word on the results screen. WIN = the trip's shots all came home;
 // pick one at random, warm and proud. LOSE/short = the days ran out; pick one at
 // random, always encouraging, never scolding — the door's open, try again.
 export const END_WIN = [
@@ -214,7 +221,7 @@ export const MEET_RUN = {
     "A brand-new traveler! Here — take the camera, and I'll wait right here for every story.",
   ],
 };
-// Uncle's lead-in to choosing a mode + difficulty on the meet screen.
+// Jonah's lead-in to choosing a mode + difficulty on the meet screen.
 export const MEET_ASK = "Now then — what sort of adventure are we after today?";
 
 // When the traveler has newly unlocked something, Uncle announces it on the

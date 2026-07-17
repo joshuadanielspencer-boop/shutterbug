@@ -18,6 +18,12 @@ export const MR_O = {
   // The riddle now opens with the same catchphrase as the fact bubble, so Mr. O
   // has one recognisable "Oh! Did you know…" hook whether he's sharing or quizzing.
   riddleLead: "Oh! Did you know…",
+  // The FIRST time he pops up he introduces himself instead of leading with a fact
+  // (shown as a two-beat bubble: this, then `fieldGuide`). After that he just shares.
+  intro: "Oh — hello there! I'm Mr O, the editor. I hop on the bus between your stops to share a little something about the places you're seeing — sometimes a fun fact, sometimes a tricky riddle for bonus points!",
+  // Second beat of the intro: what the Field Guide does. Self-contained (it does not
+  // follow the "Oh! Did you know…" lead the way MR_O_FIELDGUIDE_TIP does).
+  fieldGuide: "And here's a handy thing — if a clue ever has you stumped, tap the Field Guide on the right and I'll research it for you. It costs half a travel day (and it's free on a Scout trip!).",
 };
 
 // ---- Mr. O's DOUBLE-POINTS RIDDLES ---------------------------------------

@@ -47,17 +47,18 @@ export const TUNES = {
   // samuelstokesmusic.com/banner/Star-Spangled-Banner-Bb.pdf (which credits Smith
   // and Key and matches the fife setting of the same tune in the John Chambers ABC
   // collection at abcnotation.com). Bar lines, for anyone checking it against a score:
-  //   pickup | Bb3 D4 F4 | Bb4 D5 C5 | Bb4 G4 E4 | F4 |
+  //   pickup | Bb3 D4 F4 | Bb4 D5 C5 | Bb4 D4 E4 | F4 |
   //
-  // The E4 on "-ly" is a NATURAL — the raised fourth of Bb major, and the single
-  // most recognizable interval in the anthem. It is spelled "E4" here rather than
-  // needing an accidental because this format has no key signature: every note is
-  // absolute, so E4 already means E natural. Don't "correct" it to Eb.
+  // "dawn's ear-ly light" is Bb4 → D4 → E4 → F4: a drop of a sixth onto "ear",
+  // then the rising mi–fi–sol that is the tune's signature. The E4 on "-ly" is a
+  // NATURAL — the raised fourth of Bb major, the single most recognizable interval
+  // in the anthem. It is spelled "E4" (not Eb) because this format has no key
+  // signature: every note is absolute, so E4 already means E natural.
   starSpangled: { timbre: "brass", spb: 0.5, seq: [
     ["F4",0.75],["D4",0.25],                    // O
     ["Bb3",1],["D4",1],["F4",1],                // say, can you
     ["Bb4",2],["D5",0.75],["C5",0.25],          // see — by the
-    ["Bb4",1],["G4",1],["E4",1],                // dawn's ear-ly
+    ["Bb4",1],["D4",1],["E4",1],                // dawn's ear-ly
     ["F4",3],                                   // light
   ] },
   // United Kingdom — "Rule, Britannia!" (Thomas Arne, 1740; public domain). The
