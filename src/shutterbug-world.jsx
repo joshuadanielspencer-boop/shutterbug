@@ -195,15 +195,22 @@ function PhotoCredit({ photo, style }) {
 // (so saved best scores keep working); `scout` is the new gentlest tier. The
 // player-facing names are Scout / Explorer / Adventurer / Expert.
 const MODES = {
-  scout:  { label: "Scout",    ages: "K–2 · ages 5–7",    assignments: 3, cityDecoys: 1, daysPer: 5, points: 3, slack: 10, labels: "all", clue: "easy",   catShare: 0.22, countryOpts: 4, research: "free", hints: true, readAloud: true, flashOnWrong: true,
+  scout:  { label: "Scout",    ages: "K–2 · ages 5–7",    assignments: 3, cityDecoys: 1, daysPer: 5, points: 3, slack: 10, labels: "all", clue: "easy",   catShare: 0.22, countryOpts: 4, research: "free", hints: true, readAloud: true, flashOnWrong: true, sayOnHover: true,
             blurb: "A gentle 3-shot outing for the youngest travelers. Clues name the country, every pin is labelled, clues are read aloud, wrong guesses gently flash the right answer, and there's no real time pressure." },
-  easy:   { label: "Explorer", ages: "grades 3–5 · ages 8–10", assignments: 5, cityDecoys: 2, daysPer: 3, points: 3, slack: 6, labels: "all",   clue: "easy",   catShare: 0.22, countryOpts: 5, research: "half", hints: true,
+  easy:   { label: "Explorer", ages: "grades 3–5 · ages 8–10", assignments: 5, cityDecoys: 2, daysPer: 3, points: 3, slack: 6, labels: "all",   clue: "easy",   catShare: 0.22, countryOpts: 5, research: "half", hints: true, sayOnHover: true,
             blurb: "A short 5-shot trip. Clues name the country, every pin is labelled, a category badge tells you what kind of place it is, wrong guesses get warm/cold hints, and Research for a Clue costs just ½ a day." },
   medium: { label: "Adventurer", ages: "grades 6–8 · ages 11–13", assignments: 9, cityDecoys: 3, daysPer: 3, points: 2, slack: 6, labels: "smart", clue: "medium", catShare: 0.08, countryOpts: 5, research: "half", hints: true,
             blurb: "A 9-shot expedition. Clues name the country but hide the continent, so you must know where in the world it sits; labels appear on hover; a category badge still helps; Research costs ½ a day." },
   hard:   { label: "Expert",   ages: "high school & up", assignments: 14, cityDecoys: 4, daysPer: 2, points: 1, slack: 5, labels: "smart", clue: "hard",   catShare: 0.04, countryOpts: 7, research: "off",  hints: false,
             blurb: "A long 14-shot grand expedition for experts. Pure-context clues — no place names, no country labels on the map, no category badge, no warm/cold hints, and no Research. You're on your own." },
 };
+// The flight across the world map, in milliseconds, and how long the plane token
+// spends growing out of its origin (and shrinking onto its destination) at each
+// end. Read by the flight timers, the landing sound, and the CSS keyframes — all
+// three have to agree or the plane lands at a different moment than the map says.
+const FLIGHT_MS = 5000;
+const PLANE_SCALE_MS = 1500;
+
 // A small efficiency reward: +1 point per 2 full travel days you bank, capped so
 // it never dominates the shot points. QUIZ_BONUS is the ½-point extra credit each
 // correct homecoming review question adds to the trip score.
@@ -425,9 +432,10 @@ const CONTINENT_META = (() => {
     if (c === "Africa") {
       // Africa is TALLER than it is wide, so the old square box padded wide margins
       // of Atlantic and Indian ocean and let ~12° of Europe/Mediterranean creep in
-      // up north. Hug the content: a near-square box tight to the landmarks.
-      const w = Math.max(40, (maxX - minX) * 1.12);
-      const h = Math.max(40, (maxY - minY) * 1.15);
+      // up north. Hug the content: a near-square box tight to the landmarks — and
+      // tighter still than the first pass, which still left a rim of empty ocean.
+      const w = Math.max(40, (maxX - minX) * 1.04);
+      const h = Math.max(40, (maxY - minY) * 1.06);
       meta[c] = { mode: "equirect", box: { x: cx - w / 2, y: cy - h / 2, w, h }, cx, cy };
       continue;
     }
@@ -1222,14 +1230,23 @@ export default function ShutterbugWorld() {
   const [flashHint, setFlashHint] = useState(null); // Scout: {type, key} of the correct answer to gently flash after a wrong pick
   const [musicOn, setMusicOn] = useState(() => { try { return localStorage.getItem("shutterbug.music") !== "off"; } catch { return true; } });
   useEffect(() => { try { localStorage.setItem("shutterbug.music", musicOn ? "on" : "off"); } catch { /* ignore */ } }, [musicOn]);
-  // Music by screen: the passport is quiet; arriving at the results ends the
-  // jig loop and plays a short celebratory flourish. The start screen keeps the
-  // jig going if it's already playing (and start-screen clicks kick it off).
+  // Music by screen: the passport is quiet; the results end the jig loop and play
+  // a flourish — or the wistful air, if the trip came up short. The start screen
+  // keeps the jig going if it's already playing (start-screen clicks kick it off).
   useEffect(() => {
     if (screen === "passport") MUSIC.stop();
     else if (screen === "play") MUSIC.fadeJig();          // reach the map → the jig fades out
-    else if (screen === "end") { if (musicOn) MUSIC.finale(); else MUSIC.stop(); }
-    else if (screen === "homecoming") { if (musicOn) MUSIC.homecoming(); else MUSIC.stop(); } // a wistful air with Grandpa
+    // The results earn their tune. The homecoming air is a sad one, which is right
+    // for a trip that didn't get finished and wrong for one that did — and the
+    // celebratory flourish was playing over BOTH.
+    else if (screen === "end") {
+      if (!musicOn) MUSIC.stop();
+      else if (endWon()) MUSIC.finale();
+      else MUSIC.homecoming();
+    }
+    // Coming home to Grandpa is a warm moment, not a mournful one — he's about to
+    // ask you about everything you saw. Keep the jig under it.
+    else if (screen === "homecoming") { MUSIC.stopCountry(); if (musicOn) MUSIC.start(); else MUSIC.stop(); }
     // splash / meet / intro / dream / quiz: the happy Scottish jig plays the whole
     // way from the splash through meeting Grandpa (it only fades at the world map),
     // and resumes here on a return trip so every playthrough is scored to it.
@@ -1366,14 +1383,29 @@ export default function ShutterbugWorld() {
   const recorded = useRef(false);
   const startRef = useRef(0); // ms timestamp the current game began
   const timer = useRef(null);
-  const flightFinalizeRef = useRef(null); // the pending "land the plane" fn, so a tap can skip the 4s flight
-  // Tap during a flight to land early (skip the 4-second animation).
+  const flightFinalizeRef = useRef(null); // the pending "land the plane" fn, so a tap can skip the flight
+  const landingSfxRef = useRef(null);     // the queued landing sound, cancelled if the flight is skipped
+  // Tap during a flight to land early (skip the animation).
   const skipFlight = () => {
     if (!flying || !flightFinalizeRef.current) return;
     if (timer.current) { clearTimeout(timer.current); timer.current = null; }
+    if (landingSfxRef.current) { clearTimeout(landingSfxRef.current); landingSfxRef.current = null; }
     const fn = flightFinalizeRef.current; flightFinalizeRef.current = null;
     fn();
   };
+  // Send the plane. Every flight goes through here: the engines spool up as the
+  // token grows out of the airport, and throttle back over the last 1.5s as it
+  // shrinks onto its destination. The sound, the CSS keyframes and this timer all
+  // read FLIGHT_MS — they were three separate 4s literals before, which is the
+  // kind of thing that silently drifts the first time one of them is tuned.
+  const launchFlight = (from, to, finalize) => {
+    sfx("takeoff");
+    landingSfxRef.current = setTimeout(() => { landingSfxRef.current = null; sfx("landing"); }, FLIGHT_MS - PLANE_SCALE_MS);
+    flightFinalizeRef.current = finalize;
+    setFlying({ fromX: from.x, fromY: from.y, toX: to.x, toY: to.y });
+    timer.current = setTimeout(() => { flightFinalizeRef.current = null; finalize(); }, FLIGHT_MS);
+  };
+  useEffect(() => () => { if (landingSfxRef.current) clearTimeout(landingSfxRef.current); }, []);
   const refreshProfiles = () => setProfiles(listProfiles());
 
   // Animations: on/off is a game setting. It defaults to the OS "reduce
@@ -1406,6 +1438,32 @@ export default function ShutterbugWorld() {
   }, [journey?.id, journey?.at, journey?.reveal]);
 
   const sfx = (name, ...args) => { if (soundOn && SFX[name]) SFX[name](...args); };
+  // The typing components call SFX.type() straight from their per-character tick,
+  // so the sound module needs to know about the toggle on its own.
+  useEffect(() => { SFX.setMuted(!soundOn); }, [soundOn]);
+
+  // A soft ping when the pointer finds something clickable. One delegated listener
+  // rather than an onMouseEnter on every button in a 5,000-line component — and it
+  // catches anything added later for free.
+  //
+  // `(hover: hover)` keeps it off touchscreens, where a tap fires a synthetic
+  // mouseover and every press would ping before it clicked. The last-element guard
+  // is what stops a button with an icon and a label inside it from firing three
+  // times as the pointer crosses its children.
+  useEffect(() => {
+    if (!soundOn) return;
+    if (typeof window === "undefined" || !window.matchMedia?.("(hover: hover)")?.matches) return;
+    let last = null;
+    const onOver = (e) => {
+      const el = e.target?.closest?.('button, a[href], [role="button"], summary');
+      if (!el || el === last) { if (!el) last = null; return; }
+      last = el;
+      if (el.disabled || el.getAttribute("aria-disabled") === "true") return;
+      SFX.hover();
+    };
+    document.addEventListener("mouseover", onOver, true);
+    return () => document.removeEventListener("mouseover", onOver, true);
+  }, [soundOn]);
   const music = (name, ...args) => { if (musicOn && MUSIC[name]) MUSIC[name](...args); };
   // Tap-to-learn: open a field-note deck, and record each card a saved traveler reads
   // so poking around counts toward "Curiosities found". Guests just don't persist.
@@ -1415,9 +1473,24 @@ export default function ShutterbugWorld() {
     setCurioTick((t) => t + 1);
   }, [profileName]);
   const curioFound = profileName ? Object.keys(curiositiesSeen(getProfile(profileName))).length : 0;
-  // Spoken map-arrival announcements — held back ~1s so the voice lands a beat
-  // after you touch down, not on top of the arrival.
-  const say = (text) => { if (soundOn) setTimeout(() => { if (soundOn) speakEn(text); }, 1000); };
+  // Spoken map-arrival announcements — held back 1.5s so the voice lands after the
+  // plane has settled and the landing engines have died away, rather than talking
+  // over them.
+  const say = (text) => { if (soundOn) setTimeout(() => { if (soundOn) speakEn(text); }, 1500); };
+  // On the two gentlest tiers, the map reads itself aloud: hover a continent or a
+  // country and hear its name. It's how a five-year-old who can't read "Madagascar"
+  // still learns to find it.
+  //
+  // Debounced, because a pointer dragged across the world crosses a dozen regions
+  // on the way to the one it wants, and speakEn cancels whatever is mid-sentence —
+  // without the wait you'd hear twelve first syllables instead of one name.
+  const hoverSayRef = useRef(null);
+  const sayOnHover = (text) => {
+    if (!soundOn || !text || !MODES[difficulty]?.sayOnHover) return;
+    if (hoverSayRef.current) clearTimeout(hoverSayRef.current);
+    hoverSayRef.current = setTimeout(() => speakEn(text), 260);
+  };
+  useEffect(() => () => { if (hoverSayRef.current) clearTimeout(hoverSayRef.current); }, []);
   // Scout tier only: after a wrong pick, gently flash the CORRECT answer's region
   // or pin so the youngest players can find it. Clears once they pick correctly.
   const flashRight = (type, key) => { if (key && MODES[difficulty] && MODES[difficulty].flashOnWrong) setFlashHint({ type, key }); };
@@ -2012,11 +2085,17 @@ export default function ShutterbugWorld() {
   // Grandpa's send-you-off line on the results screen: proud on a clean sweep,
   // encouraging when the days ran out. Picked ONCE when the screen opens so it
   // doesn't reshuffle on every re-render.
+  // Did the trip bring home everything the editor asked for? Grandpa's closing
+  // line and the results music both hang off this, so it's computed in one place.
+  // A function declaration, not a const: the music effect above calls it, and by
+  // the time any effect runs the state it reads is initialized.
+  function endWon() {
+    const totalTargets = gameMode === "tour" ? tourReqs.length : assignments.length;
+    return totalTargets > 0 && album.length >= totalTargets;
+  }
   useEffect(() => {
     if (screen !== "end") return;
-    const totalTargets = gameMode === "tour" ? tourReqs.length : assignments.length;
-    const won = totalTargets > 0 && album.length >= totalTargets;
-    const pool = won ? END_WIN : END_LOSE;
+    const pool = endWon() ? END_WIN : END_LOSE;
     setEndLine(pool[Math.floor(Math.random() * pool.length)]);
   }, [screen]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -2036,7 +2115,6 @@ export default function ShutterbugWorld() {
       const to = CONTINENT_PIN[cont];
       const useCountry = COUNTRY_LAYER_CONTINENTS.has(cont);
       const sameHere = !!current && loc(current).continent === cont; // already here — no flight
-      if (!sameHere) sfx("plane");
       const finalize = () => {
         setFlying(null); setPickedContinent(cont); setPickedCountry(null); setCityPlan(null);
         setPhase(useCountry ? "country" : "city"); setCurrent(null); setRevealed(false);
@@ -2046,9 +2124,7 @@ export default function ShutterbugWorld() {
       };
       if (prefersReduced || sameHere) { finalize(); return; }
       music("travelJig");
-      flightFinalizeRef.current = finalize;
-      setFlying({ fromX: from.x, fromY: from.y, toX: to.x, toY: to.y });
-      timer.current = setTimeout(() => { flightFinalizeRef.current = null; finalize(); }, 4000);
+      launchFlight(from, to, finalize);
       return;
     }
     if (gameMode === "tour") {
@@ -2074,7 +2150,6 @@ export default function ShutterbugWorld() {
         setTravelChoice({ cont, from, to, penalty, baseDays: cost, useCountry, target, hubs: HUBS[cont] });
         return;
       }
-      if (!sameHere) sfx("plane");
       const finalize = () => {
         const nd = Math.round((days - cost) * 10) / 10;
         setDays(nd);
@@ -2095,9 +2170,7 @@ export default function ShutterbugWorld() {
       };
       if (prefersReduced || sameHere) { finalize(); return; }
       music("travelJig");
-      flightFinalizeRef.current = finalize;
-      setFlying({ fromX: from.x, fromY: from.y, toX: to.x, toY: to.y });
-      timer.current = setTimeout(() => { flightFinalizeRef.current = null; finalize(); }, 4000);
+      launchFlight(from, to, finalize);
       return;
     }
     if (!target) return;
@@ -2112,7 +2185,6 @@ export default function ShutterbugWorld() {
     if (cont === target.continent) {
       setFlashHint(null); // right continent — stop any Scout hint flash
       const useCountry = usesCountryLayer(MODES[difficulty], cont);
-      if (!sameHere) sfx("plane");
       const finalize = () => {
         const nd = Math.round((days - cost) * 10) / 10;
         setDays(nd);
@@ -2127,9 +2199,7 @@ export default function ShutterbugWorld() {
       };
       if (prefersReduced || sameHere) { finalize(); return; }
       music("travelJig");
-      flightFinalizeRef.current = finalize;
-      setFlying({ fromX: from.x, fromY: from.y, toX: to.x, toY: to.y });
-      timer.current = setTimeout(() => { flightFinalizeRef.current = null; finalize(); }, 4000);
+      launchFlight(from, to, finalize);
     } else {
       const nd = Math.round((days - cost) * 10) / 10; // a wrong continent is a wasted flight
       setDays(nd);
@@ -2172,10 +2242,8 @@ export default function ShutterbugWorld() {
       maybeMrO(cont);
     };
     if (prefersReduced) { finalize(); return; }
-    sfx("plane"); music("travelJig");
-    flightFinalizeRef.current = finalize;
-    setFlying({ fromX: tc.from.x, fromY: tc.from.y, toX: tc.to.x, toY: tc.to.y });
-    timer.current = setTimeout(() => { flightFinalizeRef.current = null; finalize(); }, 4000);
+    music("travelJig");
+    launchFlight(tc.from, tc.to, finalize);
   }
 
   // ---- Country phase (Medium/Hard): pick the target's country on the continent ----
@@ -2478,10 +2546,19 @@ export default function ShutterbugWorld() {
             <div style={{ textAlign: "left", flex: "1 1 280px", minWidth: 240 }}>
               <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 24, fontWeight: 800, letterSpacing: "0.14em", color: CORAL, marginBottom: 10 }}>{GRANDPA.name.toUpperCase()}</div>
               {/* One line at a time: the follow-up note waits for the greeting to
-                  finish, and the question waits for both. */}
-              <TypeLine text={meetInfo?.line} reduced={prefersReduced} onDone={() => setMeetTyped((n) => n + 1)} style={{ margin: 0, color: INK, fontSize: 17, lineHeight: 1.5 }} />
-              {showRunNote && meetTyped >= 1 && <TypeLine text={meetInfo.comment} reduced={prefersReduced} onDone={() => setMeetTyped((n) => n + 1)} style={{ margin: "10px 0 0", color: INK, opacity: 0.85, fontSize: 15, lineHeight: 1.5, fontStyle: "italic" }} />}
-              {meetReady && <p style={{ margin: "12px 0 0", color: INK, fontWeight: 800, fontSize: 16 }}>{MEET_ASK}</p>}
+                  finish, and the question waits for both. It is all one man talking,
+                  so it is all one voice on the page — the note used to be smaller,
+                  faded and italic, and the question a different size again, which
+                  read as three different people. Only the closing question is bold,
+                  because it's the one he wants answered. */}
+              {(() => {
+                const said = { color: INK, fontSize: 17, lineHeight: 1.5 };
+                return (<>
+                  <TypeLine text={meetInfo?.line} reduced={prefersReduced} onDone={() => setMeetTyped((n) => n + 1)} style={{ ...said, margin: 0 }} />
+                  {showRunNote && meetTyped >= 1 && <TypeLine text={meetInfo.comment} reduced={prefersReduced} onDone={() => setMeetTyped((n) => n + 1)} style={{ ...said, margin: "10px 0 0" }} />}
+                  {meetReady && <p style={{ ...said, margin: "12px 0 0", fontWeight: 800 }}>{MEET_ASK}</p>}
+                </>);
+              })()}
             </div>
           </div>
 
@@ -2672,7 +2749,8 @@ export default function ShutterbugWorld() {
                 const label = returning ? "Continue your adventure ✈" : "Begin your adventure ✈";
                 return (
                   <button onClick={() => { startMusicMaybe(); setPromptTraveler(false); setScreen("travelers"); }}
-                    style={{ ...primaryBtn, marginTop: 0, fontSize: 19, padding: "15px 32px", boxShadow: "0 5px 0 #A93A28, 0 6px 22px rgba(0,0,0,0.45)" }}>
+                    className="sbw-beckon"
+                    style={{ ...primaryBtn, marginTop: 0, fontSize: 19, padding: "15px 32px" }}>
                     {label}
                   </button>
                 );
@@ -3592,10 +3670,11 @@ export default function ShutterbugWorld() {
   const box = !zoomed ? WORLD_BOX : (countryBox || (contMeta ? contMeta.box : WORLD_BOX));
   // A couple of maps read too "vertically smushed" at true equirect scale (high
   // latitudes stretch horizontally), so those get a gentle vertical exaggeration:
-  // the whole plate is scaled ~15% taller about the box center. Only Europe (its
-  // continent map) and the United Kingdom (its country map) opt in.
+  // the whole plate is scaled taller about the box center. Europe, Asia and Africa
+  // (their continent maps) and the United Kingdom (its country map) opt in.
   const mapStretchY = (inCountry && pickedContinent === "Europe") ? 1.15
     : (inCountry && pickedContinent === "Asia") ? 1.10
+    : (inCountry && pickedContinent === "Africa") ? 1.10
     : (inCity && pickedCountry === "United Kingdom") ? 1.15
     : 1;
   const mapPivotY = box.y + box.h / 2;
@@ -3674,10 +3753,11 @@ export default function ShutterbugWorld() {
   const gearItem = { textAlign: "left", background: "transparent", border: "none", borderRadius: 6, padding: "7px 9px", fontSize: 13, fontWeight: 700, color: INK, cursor: "pointer", whiteSpace: "nowrap" };
   return (
     <Frame desk>
-      {/* The play screen is a full-height column: header up top, the desk grid in
-          the middle, and the instruction ribbon pinned to the bottom of the
-          screen (so it's always visible without scrolling). */}
-      <div style={{ display: "flex", flexDirection: "column", minHeight: "calc(100vh - 40px)", paddingBottom: 78, boxSizing: "border-box" }}>
+      {/* The play screen is a full-height column: header up top, then the desk grid.
+          The instruction ribbon now sits inside the desk grid, under the atlas — so
+          the 78px of bottom padding that used to reserve room for a fixed bar is
+          gone with it. */}
+      <div style={{ display: "flex", flexDirection: "column", minHeight: "calc(100vh - 40px)", boxSizing: "border-box" }}>
       {/* ===== Desk header bar (teal leather chrome) ===== */}
       <header style={{ position: "relative", display: "flex", alignItems: "center", gap: 14, flexWrap: "nowrap",
         background: `linear-gradient(${OCEAN}, ${OCEAN_DEEP})`, border: `2px solid ${INK}`, borderRadius: 12,
@@ -3810,7 +3890,7 @@ export default function ShutterbugWorld() {
               style={{ position: "absolute", top: -15, left: 16, width: 34, height: "auto", filter: "drop-shadow(0 3px 3px rgba(0,0,0,0.35))" }} />
             <div style={{ textAlign: "center", marginBottom: 8, color: CORAL }}>
               <span style={{ display: "block", fontFamily: HAND, fontWeight: 700, fontSize: 33, lineHeight: 1.05 }}>A Note from Nigel</span>
-              <span style={{ display: "block", fontFamily: "ui-monospace, monospace", fontSize: 20, letterSpacing: "0.1em", fontWeight: 800, whiteSpace: "nowrap" }}>ASSIGNMENT {step + 1} / {assignments.length}</span>
+              <span style={{ display: "block", fontFamily: "ui-monospace, monospace", fontSize: 18, letterSpacing: "0.1em", fontWeight: 800, whiteSpace: "nowrap" }}>ASSIGNMENT {step + 1} / {assignments.length}</span>
             </div>
             <div style={{ borderTop: `1px dashed ${INK}`, opacity: 0.35, margin: "0 0 12px" }} />
             {(isCatAsg || namesSubject) ? (
@@ -3999,6 +4079,7 @@ export default function ShutterbugWorld() {
                   <g key={cont} className={`sbw-cont${flashHint && flashHint.type === "continent" && flashHint.key === cont ? " sbw-flash-hint" : ""}`} role="button" tabIndex={busy ? -1 : 0}
                      aria-label={`Choose ${cont}`} onClick={() => pickContinent(cont)}
                      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); pickContinent(cont); } }}
+                     onMouseEnter={() => sayOnHover(cont)}
                      style={{ cursor: busy ? "default" : "pointer" }}>
                     {robinsonCountries.filter((c) => COUNTRY_CONTINENT[c.name] === cont).map((c) => (
                       <path key={c.name} d={cont === "North America" ? trimWrappedSubpaths(c.d) : c.d} fill={CONTINENT_COLOR[cont]} fillRule="evenodd" stroke={INK} strokeWidth="0.3" vectorEffect="non-scaling-stroke" />
@@ -4043,7 +4124,7 @@ export default function ShutterbugWorld() {
                     <g key={country} className={`sbw-country${flashHint && flashHint.type === "country" && flashHint.key === country ? " sbw-flash-hint" : ""}`} role="button" tabIndex={busy ? -1 : 0}
                        aria-label={`Choose ${country}`} onClick={() => pickCountry(country)}
                        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); pickCountry(country); } }}
-                       onMouseEnter={() => setHoverCountry(country)} onMouseLeave={() => setHoverCountry((c) => (c === country ? null : c))}
+                       onMouseEnter={() => { setHoverCountry(country); sayOnHover(country); }} onMouseLeave={() => setHoverCountry((c) => (c === country ? null : c))}
                        onFocus={() => setHoverCountry(country)} onBlur={() => setHoverCountry((c) => (c === country ? null : c))}
                        style={{ cursor: busy ? "default" : "pointer" }}>
                       {/* Selectable countries wear their CONTINENT's color (purple
@@ -4095,12 +4176,18 @@ export default function ShutterbugWorld() {
                 return (
                 <g className="sbw-plane-group">
                   <path d={d} fill="none" stroke="#D8DEE3" strokeWidth="1" strokeDasharray="3 3" opacity="0.85" />
-                  <g style={{ animation: "sbw-fly 4s ease-in-out forwards", offsetPath: `path('${d}')`, offsetRotate: "auto 90deg" }}>
+                  <g style={{ animation: `sbw-fly ${FLIGHT_MS}ms ease-in-out forwards`, offsetPath: `path('${d}')`, offsetRotate: "auto 90deg" }}>
                     {/* The illustrated 777 token. offset-rotate "auto 90deg" turns the
                         nose (which points up in the art) to follow the flight path. The
                         frame now matches the map aspect, so no squish-compensation. */}
-                    <image href={`${UI}passenger-aircraft-777-token.png`} width="26" height="26" x="-13" y="-13"
-                      style={{ filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.45))" }} />
+                    {/* The scale lives on its own nested group: this element's transform
+                        is already spoken for by the motion path, and the image is centred
+                        on the group's origin, so scaling here reads as the plane climbing
+                        away from the airport and settling onto the far one. */}
+                    <g style={{ animation: `sbw-hop ${FLIGHT_MS}ms ease-in-out forwards` }}>
+                      <image href={`${UI}passenger-aircraft-777-token.png`} width="26" height="26" x="-13" y="-13"
+                        style={{ filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.45))" }} />
+                    </g>
                   </g>
                 </g>
                 );
@@ -4215,6 +4302,18 @@ export default function ShutterbugWorld() {
                 style={{ position: "absolute", ...pos, width: "clamp(48px, 8vw, 82px)", transform: rot, pointerEvents: "none" }} />
             ))}
           </div>
+          {/* ===== Instruction ribbon — directly under the atlas and matching its
+                  width, so it reads as part of the map rather than a floating bar.
+                  It used to be position:fixed across the whole screen bottom, which
+                  meant it sat under the step rail and needed the column to reserve
+                  78px of padding for it. ===== */}
+          <div style={{ width: "100%", maxWidth: 940, margin: "14px auto 0", minHeight: 174, display: "flex",
+            alignItems: "center", justifyContent: "center", textAlign: "center", padding: "30px 92px", boxSizing: "border-box",
+            background: `url("${UI}instruction-ribbon.png") center / 100% 100% no-repeat` }}>
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 12, fontFamily: HAND, fontWeight: 700, fontSize: 28, lineHeight: 1.25, color: INK }}>
+              <span aria-hidden="true" style={{ fontSize: 26 }}>🌍</span>{ribbonText}
+            </span>
+          </div>
         </div>
         {/* ===== Right tool rail — evenly spaced over the desk height, no labels ===== */}
         <div style={{ flex: "0 0 210px", alignSelf: "stretch", display: "flex", flexDirection: "column",
@@ -4230,16 +4329,6 @@ export default function ShutterbugWorld() {
       </div>
 
       </div>{/* /full-height column */}
-      {/* ===== Instruction ribbon — fixed to the very bottom of the screen so it's
-              always visible without scrolling, whatever the panel height. ===== */}
-      <div style={{ position: "fixed", left: "50%", bottom: 8, transform: "translateX(-50%)", zIndex: 20,
-        width: "min(940px, calc(100vw - 40px))", minHeight: 116, display: "flex",
-        alignItems: "center", justifyContent: "center", textAlign: "center", padding: "28px 90px",
-        background: `url("${UI}instruction-ribbon.png") center / 100% 100% no-repeat` }}>
-        <span style={{ display: "inline-flex", alignItems: "center", gap: 10, fontFamily: HAND, fontWeight: 700, fontSize: 22, color: INK }}>
-          <span aria-hidden="true" style={{ fontSize: 20 }}>🌍</span>{ribbonText}
-        </span>
-      </div>
 
       {passportOpen && <PassportModal profile={profileName ? getProfile(profileName) : null} onClose={() => setPassportOpen(false)} />}
       {albumOpen && <AlbumModal album={album} onPick={(p) => { setAlbumOpen(false); setAlbumView(p); }} onClose={() => setAlbumOpen(false)} />}
@@ -4329,6 +4418,14 @@ function Frame({ children, desk = false }) {
         .sbw-ping{ transform-box: fill-box; transform-origin: center; animation: sbw-ping 1.6s ease-out infinite; }
         @keyframes sbw-ping{ 0%{ transform: scale(0.6); opacity:.9 } 100%{ transform: scale(1.9); opacity:0 } }
         @keyframes sbw-fly{ 0%{ offset-distance: 0% } 100%{ offset-distance: 100% } }
+        /* Takeoff and landing, sold with scale: the token grows out of the airport
+           over the first 1.5s and shrinks onto the far one over the last 1.5s. The
+           percentages are 1.5s and 3.5s of the 5s flight — keep them in step with
+           FLIGHT_MS / PLANE_SCALE_MS if either changes. */
+        @keyframes sbw-hop{
+          0%{ transform: scale(0.14) } 30%{ transform: scale(1) }
+          70%{ transform: scale(1) } 100%{ transform: scale(0.14) }
+        }
         /* White shutter flash over the photo when you take a shot. */
         .sbw-flash{ position: absolute; inset: 0; background: #fff; border-radius: 4px; pointer-events: none; opacity: 0; animation: sbw-flash 0.42s ease-out; }
         @keyframes sbw-flash{ 0%{ opacity: 0 } 10%{ opacity: 0.95 } 100%{ opacity: 0 } }
@@ -4338,6 +4435,19 @@ function Frame({ children, desk = false }) {
         /* Result popup pop-in. */
         .sbw-pop{ animation: sbw-pop 0.22s cubic-bezier(.2,.8,.3,1.2); }
         @keyframes sbw-pop{ 0%{ transform: scale(0.82); opacity: 0 } 100%{ transform: scale(1); opacity: 1 } }
+        /* The splash's one button, breathing so a first-time player sees where to
+           go. A glow that swells and fades rather than a hard blink — this is the
+           first thing a child meets, and it should beckon, not nag. The button
+           itself never fades below full opacity, so the label stays readable. */
+        .sbw-beckon{ animation: sbw-beckon 2.2s ease-in-out infinite; }
+        @keyframes sbw-beckon{
+          0%,100%{ box-shadow: 0 5px 0 #A93A28, 0 6px 20px rgba(0,0,0,0.35), 0 0 0 0 rgba(240,165,0,0); transform: scale(1) }
+          50%{ box-shadow: 0 5px 0 #A93A28, 0 6px 20px rgba(0,0,0,0.35), 0 0 26px 10px rgba(240,165,0,0.55); transform: scale(1.035) }
+        }
+        /* Someone who set "reduce motion" still gets the cue, without the pulsing. */
+        @media (prefers-reduced-motion: reduce){
+          .sbw-beckon{ animation: none; box-shadow: 0 5px 0 #A93A28, 0 6px 20px rgba(0,0,0,0.35), 0 0 20px 6px rgba(240,165,0,0.5) }
+        }
         /* Photo develops like film: washed-out gray blooming into full color. */
         .sbw-develop{ animation: sbw-develop 1.5s ease-out both; }
         @keyframes sbw-develop{

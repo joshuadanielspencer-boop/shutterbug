@@ -1,10 +1,28 @@
 // ===========================================================================
 // TEXT & EFFECTS — small presentational components: reading-speed typing
 // (GradualText blocks its buttons until done; TypeLine never blocks), the
-// results Confetti, and the Stamp chip. Pure — React + theme only.
+// results Confetti, and the Stamp chip.
+//
+// These reach for SFX so the typing can click as it goes; the sound module
+// self-mutes off the game's Sound toggle, so there is nothing to thread through.
+// Otherwise: React + theme only.
 // ===========================================================================
 import { useState, useRef, useEffect, useMemo } from "react";
 import { OCEAN, CORAL, GOLD, GREEN, PAPER, PAPER_LINE, INK } from "../theme.js";
+import { SFX } from "../audio.js";
+
+// One typebar per letter revealed — but not literally per letter. Text types at
+// ~42 cps, and a click every 24ms is a buzz saw, not a typewriter. So: skip
+// whitespace (a space bar is a different, quieter action anyway) and never fire
+// twice inside MIN_GAP. What a child hears is fast, uneven, mechanical typing.
+const MIN_GAP = 55;
+function typeTick(ref, ch) {
+  if (!ch || /\s/.test(ch)) return;
+  const now = Date.now();
+  if (now - ref.current < MIN_GAP) return;
+  ref.current = now;
+  SFX.type();
+}
 
 // Celebration confetti for a flawless result: paper pieces in the game's
 // palette tumble down once and fade out. Not rendered under reduced motion.
@@ -49,6 +67,7 @@ export function GradualText({ text, reduced, onDone, cps = 42, style }) {
   const [n, setN] = useState(reduced ? text.length : 0);
   const doneRef = useRef(false);
   const idRef = useRef(null);
+  const lastTick = useRef(0);
   const finish = () => {
     if (doneRef.current) return;
     doneRef.current = true;
@@ -64,6 +83,7 @@ export function GradualText({ text, reduced, onDone, cps = 42, style }) {
     idRef.current = setInterval(() => {
       i += 1;
       setN(i);
+      typeTick(lastTick, text[i - 1]);
       if (i >= text.length) { clearInterval(idRef.current); idRef.current = null; if (!doneRef.current) { doneRef.current = true; if (onDone) onDone(); } }
     }, Math.max(8, Math.round(1000 / cps)));
     return () => { if (idRef.current) clearInterval(idRef.current); };
@@ -97,6 +117,7 @@ export function TypeLine({ text, reduced, style, inline = false, cps = 45, onDon
   const str = text == null ? "" : String(text);
   const [n, setN] = useState(reduced ? str.length : 0);
   const idRef = useRef(null);
+  const lastTick = useRef(0);
   useEffect(() => {
     if (idRef.current) { clearInterval(idRef.current); idRef.current = null; }
     if (reduced) { setN(str.length); if (onDone) onDone(); return; }
@@ -104,6 +125,7 @@ export function TypeLine({ text, reduced, style, inline = false, cps = 45, onDon
     let i = 0;
     idRef.current = setInterval(() => {
       i += 1; setN(i);
+      typeTick(lastTick, str[i - 1]);
       if (i >= str.length) { clearInterval(idRef.current); idRef.current = null; if (onDone) onDone(); }
     }, Math.max(8, Math.round(1000 / cps)));
     return () => { if (idRef.current) clearInterval(idRef.current); };

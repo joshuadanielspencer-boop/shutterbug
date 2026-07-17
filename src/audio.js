@@ -76,8 +76,14 @@ export const SFX = (() => {
     o.start(t); o.stop(t + dur + 0.02);
   };
   // Every effect is wrapped so an audio hiccup can never break gameplay.
-  const safe = (fn) => { try { const c = ac(); if (c) fn(c); } catch { /* ignore */ } };
+  // `muted` lives here rather than only in the component because the typing
+  // components call type() straight from their per-character tick — threading a
+  // sound flag through eleven call sites to reach them would be worse. The
+  // component mirrors its Sound: On/Off toggle into setMuted().
+  let muted = false;
+  const safe = (fn) => { try { if (muted) return; const c = ac(); if (c) fn(c); } catch { /* ignore */ } };
   return {
+    setMuted(v) { muted = !!v; },
     // Camera shutter: mirror-slap click, shutter close, then the soft rising
     // whirr of the film advance — the full "kerchunk-zzip" of an old SLR.
     shutter() { safe((c) => { const t = c.currentTime;
@@ -122,6 +128,60 @@ export const SFX = (() => {
     badge() { safe((c) => { const t = c.currentTime;
       notes(c, [587.33, 587.33, 880], 0.09, 0.16, 0.26, "triangle");
       [880, 1108.73, 1318.51].forEach((f) => tone(c, t + 0.3, f, 0.55, 0.1, "sine"));
+    }); },
+
+    // ---- Texture: the small sounds under the whole game --------------------
+
+    // One typebar hitting paper, for a letter appearing in Grandpa's or Mr O's
+    // speech. It has to be TINY: text reveals at ~42 characters a second, so this
+    // fires more often than any other sound in the game and would become a buzz
+    // saw at the volume of a click. A hair of pitch jitter keeps a long sentence
+    // from sounding like one note held down. The caller throttles the rate.
+    type() { safe((c) => { const t = c.currentTime;
+      const b = burst(c, t, 0.016, "bandpass", 2000 + Math.random() * 900, 0.05);
+      b.f.Q.value = 1.6;
+      tone(c, t, 150 + Math.random() * 40, 0.02, 0.022, "square"); // the bar's thunk
+    }); },
+
+    // Mousing over something you can click. Quieter and shorter than the click it
+    // precedes, and a fifth above it, so a hover followed by a click reads as one
+    // gesture resolving rather than two competing noises.
+    hover() { safe((c) => { const t = c.currentTime;
+      tone(c, t, 1318.51, 0.055, 0.035, "sine");   // E6, a soft ping
+      tone(c, t + 0.012, 1975.53, 0.04, 0.016, "sine"); // B6 shimmer on top
+    }); },
+
+    // Takeoff: 1.5s of engines spooling up and pitching away from you as the
+    // plane leaves. Paired with the map animation's 1.5s scale-up.
+    takeoff() { safe((c) => { const t = c.currentTime; const D = 1.5;
+      const lo = burst(c, t, D, "lowpass", 200, 0.14);
+      lo.f.frequency.setValueAtTime(70, t);
+      lo.f.frequency.linearRampToValueAtTime(240, t + D);       // engines winding up
+      // burst() schedules a short attack-and-decay of its own; clear it before
+      // writing the long swell, or the two automations interleave into a stutter.
+      lo.g.gain.cancelScheduledValues(t);
+      lo.g.gain.setValueAtTime(0.0001, t);
+      lo.g.gain.exponentialRampToValueAtTime(0.14, t + D * 0.55); // …and getting louder
+      lo.g.gain.exponentialRampToValueAtTime(0.02, t + D);
+      const { f } = burst(c, t, D, "bandpass", 600, 0.09);
+      f.Q.value = 1.1;
+      f.frequency.setValueAtTime(280, t);
+      f.frequency.linearRampToValueAtTime(1500, t + D);          // the whoosh climbing away
+    }); },
+
+    // Landing: takeoff run backwards — the pitch falls and the engines throttle
+    // back as the plane settles onto the map.
+    landing() { safe((c) => { const t = c.currentTime; const D = 1.5;
+      const lo = burst(c, t, D, "lowpass", 200, 0.14);
+      lo.f.frequency.setValueAtTime(240, t);
+      lo.f.frequency.linearRampToValueAtTime(70, t + D);
+      lo.g.gain.cancelScheduledValues(t);
+      lo.g.gain.setValueAtTime(0.12, t);
+      lo.g.gain.exponentialRampToValueAtTime(0.0001, t + D);
+      const { f } = burst(c, t, D, "bandpass", 600, 0.09);
+      f.Q.value = 1.1;
+      f.frequency.setValueAtTime(1500, t);
+      f.frequency.linearRampToValueAtTime(280, t + D);
     }); },
   };
 })();
@@ -389,11 +449,15 @@ export const MUSIC = (() => {
         const c = ac(); if (!c) return;
         wake(c);
         const t0 = c.currentTime + 0.04;
-        const FLIGHT = 4.0, FADE = 2.0, TOTAL = FLIGHT + FADE; // 4s full, then a 2s fade
+        // The tune outlasts the flight on purpose: the plane is down at 5s, and the
+        // jig plays on over the first few seconds of the new continent before fading
+        // away, so arriving feels like the end of a journey rather than a cut. Full
+        // for 6s, then a 3s fade — 9s in total. Keep in step with FLIGHT_MS.
+        const HOLD = 6.0, FADE = 3.0, TOTAL = HOLD + FADE;
         const fade = ctx.createGain();
         fade.gain.setValueAtTime(1, t0);
-        fade.gain.setValueAtTime(1, t0 + FLIGHT);                    // hold full through the flight
-        fade.gain.linearRampToValueAtTime(0.0001, t0 + TOTAL);       // then fade out over 2s
+        fade.gain.setValueAtTime(1, t0 + HOLD);                      // hold full past touchdown
+        fade.gain.linearRampToValueAtTime(0.0001, t0 + TOTAL);       // then fade out over 3s
         fade.connect(master);
         const n = Math.ceil(TOTAL / EIGHTH);
         for (let i = 0; i < n; i++) {
