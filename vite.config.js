@@ -73,6 +73,12 @@ export default defineConfig({
         maximumFileSizeToCacheInBytes: 6 * 1024 * 1024,
         cleanupOutdatedCaches: true,
         clientsClaim: true,
+        // Activate a new service worker as soon as it's installed instead of
+        // waiting for every tab to close. Without this, a returning player kept
+        // seeing precached OLD art (the recast is what surfaced it) until they
+        // fully quit the app. With clientsClaim above, the fresh SW then takes
+        // over the open page and its updated precache serves the new assets.
+        skipWaiting: true,
         runtimeCaching: [
           {
             // Landmark photos come from Wikimedia (commons → upload.wikimedia.org).

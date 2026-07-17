@@ -32,15 +32,19 @@ export const GRANDPA = {
 };
 
 // ---- His face ------------------------------------------------------------
-// Ten painted expressions live in public/assets/shutterbug-ui/nigel/. Which one
+// Ten painted expressions live in public/assets/shutterbug-ui/jonah/. Which one
 // he wears is CONTENT, not presentation — it's a fact about what he's saying —
 // so the mapping lives here beside the words rather than in the component.
+//
+// (The folder is jonah/, not nigel/, on purpose: when the character was recast
+// the images were given NEW filenames so a returning player's cached old faces
+// couldn't survive — a same-name swap is invisible to the browser cache.)
 //
 // Keyed by POOL rather than by line, because each pool below is already written
 // to a single attitude: END_WIN is ten ways of being proud of you, END_LOSE is
 // eight ways of telling you it's fine. Where a pool is a SEQUENCE and the mood
-// actually moves — the intro, where he goes from welcoming you in, to the regret
-// of never having gone, to handing you the camera — it's an array, one per beat.
+// actually moves — the intro, where he welcomes you in, remembers his own
+// travels, then hands you the camera — it's an array, one per beat.
 export const NIGEL_FACES = [
   "excited", "affectionate", "skeptical", "amused", "pleasantly_surprised",
   "laughing", "thoughtful", "worried", "proud", "sleepy_contented",
@@ -75,7 +79,7 @@ export const NIGEL_MOOD = {
 export function nigelFace(key, beat = 0) {
   const m = NIGEL_MOOD[key];
   const name = Array.isArray(m) ? (m[Math.min(beat, m.length - 1)] || NIGEL_MOOD.idle) : (m || NIGEL_MOOD.idle);
-  return `nigel/${NIGEL_FACES.includes(name) ? name : NIGEL_MOOD.idle}.jpg`;
+  return `jonah/${NIGEL_FACES.includes(name) ? name : NIGEL_MOOD.idle}.jpg`;
 }
 
 // Shown once, the first time a traveler sets out. Each entry is one beat,
