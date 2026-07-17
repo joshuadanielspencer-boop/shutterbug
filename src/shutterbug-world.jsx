@@ -6307,7 +6307,7 @@ function NigelScene({ mood, beat = 0, style }) {
 function NigelPortrait({ size = 108, style }) {
   return (
     <div aria-hidden="true" style={{ width: size, height: size, flex: "none", borderRadius: "50%", overflow: "hidden", border: `3px solid ${GOLD}`, background: "#F3E4C6", boxShadow: "0 4px 14px rgba(74,50,20,0.3)", ...style }}>
-      <img src={`${BASE}jonah.png`} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+      <img src={`${BASE}jonah2.png`} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
     </div>
   );
 }

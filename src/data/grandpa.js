@@ -32,53 +32,53 @@ export const GRANDPA = {
 };
 
 // ---- His face ------------------------------------------------------------
-// Ten painted expressions live in public/assets/shutterbug-ui/jonah/. Which one
-// he wears is CONTENT, not presentation — it's a fact about what he's saying —
+// A set of painted expressions lives in public/assets/shutterbug-ui/jonah/. Which
+// one he wears is CONTENT, not presentation — it's a fact about what he's saying —
 // so the mapping lives here beside the words rather than in the component.
 //
-// (The folder is jonah/, not nigel/, on purpose: when the character was recast
-// the images were given NEW filenames so a returning player's cached old faces
-// couldn't survive — a same-name swap is invisible to the browser cache.)
-//
-// Keyed by POOL rather than by line, because each pool below is already written
-// to a single attitude: END_WIN is ten ways of being proud of you, END_LOSE is
-// eight ways of telling you it's fine. Where a pool is a SEQUENCE and the mood
-// actually moves — the intro, where he welcomes you in, remembers his own
-// travels, then hands you the camera — it's an array, one per beat.
+// The keys are the ARTWORK's own reaction names (hand_over_heart, joyful_wave…),
+// and each is also the jpg filename. New names on purpose: a returning player's
+// service worker had the previous faces cached under the old filenames, and a
+// same-name swap is invisible to that cache — a fresh name always reloads.
 export const NIGEL_FACES = [
-  "excited", "affectionate", "skeptical", "amused", "pleasantly_surprised",
-  "laughing", "thoughtful", "worried", "proud", "sleepy_contented",
+  "hand_over_heart", "joyful_wave", "startled_surprise", "thumbs_up",
+  "worried_shrug", "sleepy_yawn", "thoughtful_glance", "playful_wink",
+  "cheerful_toast", "proud_contentment", "grateful_relief", "wide_eyed_astonishment",
 ];
 
+// Keyed by POOL rather than by line, because each pool below is written to a single
+// attitude. Where a pool is a SEQUENCE and the mood actually moves — the intro, where
+// he welcomes you in, remembers his own travels, then hands you the camera; the dream,
+// where wonder turns to gratitude — it's an array, one face per beat.
 export const NIGEL_MOOD = {
   // Sequences: one face per beat, in order.
-  intro: ["affectionate", "thoughtful", "excited", "affectionate", "excited", "affectionate"],
-  sendoff: ["amused", "thoughtful"],
-  dream: ["pleasantly_surprised", "thoughtful", "affectionate", "amused"],
+  intro: ["hand_over_heart", "thoughtful_glance", "cheerful_toast", "hand_over_heart", "cheerful_toast", "hand_over_heart"],
+  sendoff: ["playful_wink", "thoughtful_glance"],
+  dream: ["wide_eyed_astonishment", "grateful_relief", "hand_over_heart", "cheerful_toast"],
 
   // Pools: one face for the whole pool.
-  meetLine: "thoughtful",          // his little bits of travel wisdom
-  meetGreat: "proud",
-  meetGood: "pleasantly_surprised",
-  meetRough: "affectionate",       // comforting, never scolding
-  meetFirst: "excited",
-  meetAsk: "amused",               // "now then — what sort of adventure?"
+  meetLine: "thoughtful_glance",     // his little bits of travel wisdom
+  meetGreat: "proud_contentment",
+  meetGood: "thumbs_up",             // "most of them came home — good work"
+  meetRough: "hand_over_heart",      // comforting, never scolding
+  meetFirst: "joyful_wave",          // welcoming a first-timer in
+  meetAsk: "playful_wink",           // "now then — what sort of adventure?"
   // His face as you dial the difficulty up — more impressed / wide-eyed the harder
-  // the trip you pick, from a warm "aw, a gentle one" to a delighted "you're taking
+  // the trip you pick, from a warm "aw, a gentle one" to a wide-eyed "you're taking
   // on THAT?". Keyed by difficulty in the component (DIFFICULTY_MOOD).
-  diffScout: "affectionate",
-  diffEasy: "amused",
-  diffMedium: "pleasantly_surprised",
-  diffHard: "excited",
-  homecoming: "excited",           // "look who's home! sit, sit."
-  wrongAnswer: "amused",           // rueful, never harsh — he's laughing at himself
-  achievement: "pleasantly_surprised",
-  endWin: "proud",
-  endLose: "affectionate",
-  unlock: "excited",
-  rankUp: "proud",
-  outOfDays: "worried",
-  idle: "sleepy_contented",        // the fallback, dozing by the fire
+  diffScout: "hand_over_heart",
+  diffEasy: "playful_wink",
+  diffMedium: "startled_surprise",
+  diffHard: "wide_eyed_astonishment",
+  homecoming: "joyful_wave",         // "look who's home! sit, sit."
+  wrongAnswer: "playful_wink",       // rueful, never harsh — he's laughing at himself
+  achievement: "startled_surprise",
+  endWin: "proud_contentment",
+  endLose: "hand_over_heart",
+  unlock: "cheerful_toast",
+  rankUp: "proud_contentment",
+  outOfDays: "worried_shrug",
+  idle: "sleepy_yawn",               // the fallback, dozing by the fire
 };
 
 // The face for a mood key, or for one beat of a sequence. Falls back to his
