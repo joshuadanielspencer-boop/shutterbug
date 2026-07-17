@@ -44,6 +44,7 @@ export const NIGEL_FACES = [
   "hand_over_heart", "joyful_wave", "startled_surprise", "thumbs_up",
   "worried_shrug", "sleepy_yawn", "thoughtful_glance", "playful_wink",
   "cheerful_toast", "proud_contentment", "grateful_relief", "wide_eyed_astonishment",
+  "hearty_laughter", "awkward", "skeptical_side_eye", "mischievous_shush", "encouraging_cheer",
 ];
 
 // Keyed by POOL rather than by line, because each pool below is written to a single
@@ -52,9 +53,13 @@ export const NIGEL_FACES = [
 // where wonder turns to gratitude — it's an array, one face per beat.
 export const NIGEL_MOOD = {
   // Sequences: one face per beat, in order.
-  intro: ["hand_over_heart", "thoughtful_glance", "cheerful_toast", "hand_over_heart", "cheerful_toast", "hand_over_heart"],
+  // Intro: welcomes you in → reminisces → a wistful "the world I never reached" →
+  // leans in with his plan (a conspiratorial shush) → offers the camera → heartfelt.
+  intro: ["hand_over_heart", "thoughtful_glance", "hand_over_heart", "mischievous_shush", "cheerful_toast", "hand_over_heart"],
   sendoff: ["playful_wink", "thoughtful_glance"],
-  dream: ["wide_eyed_astonishment", "grateful_relief", "hand_over_heart", "cheerful_toast"],
+  // Dream fulfilled: astonishment → gratitude → warmth → and a cheer sending you
+  // back out ("don't stop on my account — there's always another horizon").
+  dream: ["wide_eyed_astonishment", "grateful_relief", "hand_over_heart", "encouraging_cheer"],
 
   // Pools: one face for the whole pool.
   meetLine: "thoughtful_glance",     // his little bits of travel wisdom
@@ -62,7 +67,9 @@ export const NIGEL_MOOD = {
   meetGood: "thumbs_up",             // "most of them came home — good work"
   meetRough: "hand_over_heart",      // comforting, never scolding
   meetFirst: "joyful_wave",          // welcoming a first-timer in
-  meetAsk: "playful_wink",           // "now then — what sort of adventure?"
+  meetAsk: "skeptical_side_eye",     // a knowing look — "now then, what'll it be?"
+  quizRight: "hearty_laughter",      // homecoming quiz: you remembered! (delighted)
+  quizWrong: "awkward",              // homecoming quiz: a sheepish "my memory too"
   // His face as you dial the difficulty up — more impressed / wide-eyed the harder
   // the trip you pick, from a warm "aw, a gentle one" to a wide-eyed "you're taking
   // on THAT?". Keyed by difficulty in the component (DIFFICULTY_MOOD).

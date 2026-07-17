@@ -1530,6 +1530,11 @@ export default function ShutterbugWorld() {
     const ix = arrivalRollRef.current++;
     mrOGapRef.current += 1;
     if (mrOGapRef.current < MRO_MIN_GAP) return;      // too soon since he last rode
+    // A player's very first meeting with Mr O shouldn't land ON their very first
+    // arrival — the game board is already a lot to take in the first time. Until
+    // they've met him, hold him back from the opening stop so his introduction
+    // arrives at the SECOND location, not stacked on top of a brand-new screen.
+    if (!hasMetMrO() && ix === 0) return;
     const seed = riddleSeedRef.current;
     const roll = seed ? withSeed(seed + "|arr|" + ix, () => rnd()) : Math.random();
     if (roll < 0.5) {
@@ -3255,7 +3260,7 @@ export default function ShutterbugWorld() {
             {/* Homecoming: Uncle on the LEFT, the quiz on the RIGHT (no scrolling). */}
             {home && (
               <div style={{ flex: "1 1 300px", minWidth: 260, background: PAPER, border: `2px solid ${GOLD}`, borderRadius: 16, padding: "20px 18px", textAlign: "center" }}>
-                <NigelScene mood="homecoming" style={{ margin: "0 auto 12px" }} />
+                <NigelScene mood={!answered ? "homecoming" : (q.options[quiz.answeredIdx].correct ? "quizRight" : "quizWrong")} style={{ margin: "0 auto 12px" }} />
                 <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 22, letterSpacing: "0.06em", color: CORAL, fontWeight: 800, marginBottom: 12 }}>{GRANDPA.name.toUpperCase()}</div>
                 {/* key by quiz.i so the line remounts every question — otherwise, when
                     two questions share the same intro text ("And this one…"), TypeLine's
@@ -4050,6 +4055,10 @@ export default function ShutterbugWorld() {
   // so the exaggeration pushes the surplus DOWNWARD, cropping most of South America
   // off the bottom rather than trimming the Arctic off the top.
   const naContinentView = zoomed && pickedContinent === "North America" && !countryBox;
+  // South America's continent zoom gets a gentle vertical exaggeration too — a 15%
+  // taller plate about its centre, to un-squish it — but NOT the top-anchored crop the
+  // Americas' wide-and-short maps use; there's nothing to push off the bottom here.
+  const saContinentView = zoomed && pickedContinent === "South America" && !countryBox;
   // The USA's own country map is wide-and-short like the NA continent, so it gets the
   // same top-anchored stretch to keep Mexico/Central America and the oceans out of the
   // bottom of the frame.
@@ -4057,6 +4066,7 @@ export default function ShutterbugWorld() {
   const topCrop = naContinentView || usCountryView;
   const mapStretchY = naContinentView ? 1.2
     : usCountryView ? 1.12
+    : saContinentView ? 1.15
     : (inCountry && pickedContinent === "Europe") ? 1.15
     : (inCountry && pickedContinent === "Asia") ? 1.10
     : (inCountry && pickedContinent === "Africa") ? 1.10
