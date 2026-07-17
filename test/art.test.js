@@ -13,8 +13,9 @@ import { existsSync, readdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { join } from "node:path";
 import { DIFFICULTY_ART, MODE_ART, THEME_ART, CATEGORY_ART, ACHIEVEMENT_ART,
-  RANK_ART, ROUNDEL_ART, RECORD_ART, SEAL_UNLOCKED, MARKER_MASTERED } from "../src/data/art.js";
+  RANK_ART, ROUNDEL_ART, RECORD_ART, TRANSPORT_ART, SEAL_UNLOCKED, MARKER_MASTERED } from "../src/data/art.js";
 import { CATEGORIES } from "../src/data/categories.js";
+import { TRANSPORT_MODES } from "../src/data/travel.js";
 import { achievements, careerRank } from "../src/profiles.js";
 import { LOCATIONS } from "../src/data/locations.js";
 
@@ -31,9 +32,10 @@ const REGISTRIES = {
   RANK_ART: { ...RANK_ART },
   ROUNDEL_ART,
   RECORD_ART,
+  TRANSPORT_ART,
   ORNAMENTS: { seal: SEAL_UNLOCKED, marker: MARKER_MASTERED },
 };
-const ART_FOLDERS = ["badges", "modes", "themes", "difficulty", "ranks", "medals", "roundels"];
+const ART_FOLDERS = ["badges", "modes", "themes", "difficulty", "ranks", "medals", "roundels", "transport"];
 
 // The keys each registry must cover, mirrored from the game. Kept literal rather
 // than imported: shutterbug-world.jsx is the whole game component and importing
@@ -93,6 +95,12 @@ describe("art registry", () => {
   it("has one insignia per career rank, in tier order", () => {
     expect(RANK_ART.length).toBe(PRESS_RANK_COUNT);
     RANK_ART.forEach((p, i) => expect(p, `tier ${i}`).toContain(`rank-${i + 1}-`));
+  });
+
+  it("has an icon for every transport mode the game can offer", () => {
+    // Derived from TRANSPORT_MODES, so a new mode fails here until its icon exists
+    // — the chooser would otherwise silently fall back to an emoji among 11 icons.
+    expect(Object.keys(TRANSPORT_ART).sort()).toEqual(TRANSPORT_MODES.map((m) => m.id).sort());
   });
 
   it("has a roundel for every continent the locations use", () => {

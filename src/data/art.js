@@ -114,6 +114,26 @@ export const ROUNDEL_ART = {
   "Antarctica":    "roundels/roundel-antarctica.png",
 };
 
+// The Grand Tour's travel layer, keyed by TRANSPORT_MODES id in data/travel.js.
+// Drawn top-down, like the map itself and the aircraft token already flown across
+// it — so they read as pieces on the board rather than logos. That orientation is
+// the reason they render at 34px and not the 16px the emoji used: from above, a
+// bus and a train are both small rectangles until you give them room.
+export const TRANSPORT_ART = {
+  flight:    "transport/transport-flight-topdown.png",
+  train:     "transport/transport-train-topdown.png",
+  bus:       "transport/transport-bus-topdown.png",
+  taxi:      "transport/transport-taxi-topdown.png",
+  ferry:     "transport/transport-ferry-topdown.png",
+  riverboat: "transport/transport-riverboat-topdown.png",
+  canoe:     "transport/transport-canoe-topdown.png",
+  gondola:   "transport/transport-gondola-topdown.png",
+  cablecar:  "transport/transport-cablecar-topdown.png",
+  cograil:   "transport/transport-cograil-topdown.png",
+  tuktuk:    "transport/transport-tuktuk-topdown.png",
+  camel:     "transport/transport-camel-topdown.png",
+};
+
 // One-off ornaments. `bestScore`/`bestTime`/`quiz` mark the records board;
 // `unlocked` is the wax seal for a newly opened mode or difficulty; `mastered`
 // is the single generic marker reused for every fully-mastered place (there are

@@ -6,13 +6,13 @@ values, so once the files land they wire straight in.
 
 ## Progress (2026-07-16)
 
-**59 of 73 delivered, installed, and wired in** — everything except the transport icons.
-§1 difficulty (4), §2 modes (6), §3 themes (7), §4 ranks (6), §5 category badges (14),
-§6 mega-badges (3), §7 medals (7), §8 roundels (7), §9 rosettes (3), §10 seal (1),
-§11 mastery marker (1). All on-spec: 512×512, genuinely transparent, no baked-in text,
-each mapping 1:1 onto a real game key.
+**71 of 73 delivered, installed, and wired in.** §1 difficulty (4), §2 modes (6),
+§3 themes (7), §4 ranks (6), §5 category badges (14), §6 mega-badges (3), §7 medals (7),
+§8 roundels (7), §9 rosettes (3), §10 seal (1), §11 mastery marker (1), §12 transport (12).
+All on-spec: 512×512, genuinely transparent, no baked-in text, each mapping 1:1 onto a
+real game key. **The game renders no placeholder emoji anywhere.**
 
-They live in `public/assets/shutterbug-ui/{difficulty,modes,themes,badges,ranks,medals,roundels}/`,
+They live in `public/assets/shutterbug-ui/{difficulty,modes,themes,badges,ranks,medals,roundels,transport}/`,
 are listed in **`src/data/art.js`** (the one registry — add a batch by editing that file),
 and `test/art.test.js` fails if a key has no file behind it, a file no key, or an
 achievement/rank/continent no art.
@@ -20,13 +20,13 @@ achievement/rank/continent no art.
 **The passport now renders zero emoji** — all 24 keepsakes, all 14 collection cards, the
 3 kind chips, the 7 continent chips and the career rank are illustrated.
 
-**Still needed — 14:** §12 transport modes (12 icons + 2 flourishes), for the Grand Tour
-travel layer. That layer still uses plain emoji (🛺 🐪 🚠).
+**Still needed — 2, both optional:** `travel-wallet.png` (the header money counter) and
+`travel-hub.png` (the hub-picker rows). Neither blocks anything; both are flourishes.
 
 ### Notes for the next batch
 
 - **Keep the family-prefix naming convention** (`category-…-badge.png`, `rank-N-…-insignia.png`,
-  `medal-….png`) — it's what `art.js` maps from, and it's consistent across all 59.
+  `medal-….png`) — it's what `art.js` maps from, and it's consistent across all 71.
 - **Ship one copy, not two.** Both drops shipped the same art several times over: the 1-5
   drop had `batch-01`/`batch-02` duplicating the `-transparent-png` folders, and Part 2
   had every batch folder duplicated inside `shutterbug-core-45-assets-complete`. Harmless
@@ -247,7 +247,19 @@ location:** there are 437 places; the game reuses one marker for all of them, wi
 place name rendered live. (A plain "completed" marker already exists; this is the
 grander *mastered* version.) `marker-mastered.png`
 
-## 12. Transport-mode icons — 12 (+2 flourishes)
+## 12. Transport-mode icons — 12 ✅ DELIVERED (+2 flourishes still open)
+
+Delivered **top-down** (plan view), which was the better call than the side-on
+silhouettes originally suggested: the map is top-down and already has an aircraft token
+flying across it, so these read as pieces on the board.
+
+Two things that follow from that orientation, worth knowing before drawing more:
+
+- **They render at 46px, not the 16px the emoji used.** Every subject is normalised to
+  the same *length* (444px tall), so widths run 6:1 — the train is 77px wide against the
+  plane's 444px. In a small square slot the train renders as a thread. 46px gives it room.
+- **Canoe and gondola are now unmistakable** (open dugout vs. black hull with the curved
+  iron prow), which they weren't as emoji — both were 🛶.
 
 For the **Grand Tour travel-modes layer** (higher difficulties): the "getting there"
 chooser and the header wallet currently use plain emoji (🛺 🐪 🚠 …). Real icons in
@@ -294,11 +306,10 @@ These exist in `public/assets/shutterbug-ui/` and are fine:
 
 ## What's placeholder today
 
-Only one thing: **transport modes** (§12) still use plain emoji (🛺 🐪 🚠) in the Grand
-Tour travel layer — the "getting there" chooser and the header wallet.
+Nothing. Every tracked value in the game now renders its own art.
 
-Everything else is illustrated. For reference, what changed: mode cards used to show a
-location photo, difficulty tiers had no art, career ranks were text-only, and the whole
+For reference, what changed: mode cards used to show a location photo, difficulty tiers
+had no art, career ranks were text-only, the transport chooser used emoji, and the whole
 passport (keepsakes, collections, continent chips) was greyscale emoji.
 
 ### Where each family ended up
@@ -326,7 +337,7 @@ passport (keepsakes, collections, continent chips) was greyscale emoji.
 transport icons + 2 travel flourishes (+ optional country-stamp overlays). All square
 transparent PNGs, no baked-in text, colour version only.
 
-**Done: 59/73.** Only §12 transport (12 icons + 2 flourishes) is left.
+**Done: 71/73.** Only the two optional travel flourishes are left.
 
 ### How to land the next batch
 

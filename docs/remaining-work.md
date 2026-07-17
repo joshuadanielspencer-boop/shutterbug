@@ -15,20 +15,20 @@ Last updated **2026-07-16**.
    starting wallet in `startTour` ($3,500 Adventurer / $2,500 Expert), and `legSlack`
    (the extra day budget per stop). Leftover-money bonus = 1 pt per $500, in the
    `photographCity` tour-win branch.
-2. **Wire the rest of the badge art as it lands** — **59 of 73 are done** (2026-07-16):
-   everything except the §12 transport icons is installed and live, and the passport
-   renders zero emoji. The wiring is now a one-file job: drop the PNGs in
+2. **Badge art — ✅ essentially DONE (71/73, 2026-07-16).** Every tracked value in the
+   game renders its own art; no placeholder emoji remain anywhere. Only two optional
+   flourishes are left (`travel-wallet.png`, `travel-hub.png`) and neither blocks
+   anything. If more art ever lands it's a one-file job: drop the PNGs in
    `public/assets/shutterbug-ui/<folder>/`, run `node scripts/optimize-ui-art.mjs`, add
-   the keys to **`src/data/art.js`**, `npm test`. Every render site already prefers art
-   and falls back to emoji, and `<ArtBadge dim>` generates the greyed/locked state from
-   the colour file. Full spec + what's left (14: the transport icons + 2 flourishes for
-   the Grand Tour travel layer) in `docs/art-assets-needed.md`.
+   the keys to **`src/data/art.js`**, `npm test`. Every render site prefers art and falls
+   back to emoji, and `<ArtBadge dim>` generates the greyed/locked state from the colour
+   file. See `docs/art-assets-needed.md`.
 3. **The roguelike layer** (§3) — the biggest remaining build, nothing started. Begin
    with the **route-choice map** slice: it reuses the per-leg chooser pattern the
    travel-modes feature just proved.
 
-**Then, in Joshua's stated order:** the graphics pass (§1 avatar redesign, §6 badges)
-once his art lands, and the **desktop executable + final single-screen fit** (§8) as
+**Then, in Joshua's stated order:** the graphics pass (§1 avatar redesign — §6 badges
+are done) once his art lands, and the **desktop executable + final single-screen fit** (§8) as
 the capstone. The Supabase backend (§7) sits off to the side whenever he wants it.
 
 ### Recently shipped
@@ -55,7 +55,7 @@ Journeys, and the Grandpa Nigel story frame.
 - **Live** at `joshuadanielspencer-boop.github.io/shutterbug/`. `git push` to `main`
   triggers `.github/workflows/deploy.yml`, which tests, builds and publishes. There
   is no separate deploy step.
-- `npm test` → **78 tests, 4 files** (`test/data.test.js`, `test/daily.test.js`,
+- `npm test` → **79 tests, 4 files** (`test/data.test.js`, `test/daily.test.js`,
   `test/routes.test.js`, `test/art.test.js`). They must stay green; several of them guard *facts*, not
   just shapes, and exist because a plausible-looking wrong map shipped once already.
 - **Every random choice must go through `src/rng.js`** (`rnd()`, `shuffled()`), never
@@ -365,7 +365,6 @@ price shows **dollars first, local currency in parentheses** (rule 3 style). A m
 - **Flavour-transport tags** — `destinationContexts` in travel.js decides which modes fit
   a place. Growing it is rule-2 work (a mode may only appear where it *truly* exists), not
   a mechanical edit.
-- **Real transport icons** — `docs/art-assets-needed.md` §12; emoji for now. The last 14
-  assets in the project.
+- ~~Real transport icons~~ — ✅ done 2026-07-16; 12 top-down icons at 46px in the chooser.
 - **A lighter hub-only version in Assignments** — deferred: choosing transport to a named
   landmark would spoil that mode's deduction game.

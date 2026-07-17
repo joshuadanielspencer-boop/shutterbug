@@ -28,7 +28,7 @@ import { listProfiles, lastProfileName, getProfile, createProfile, setLastProfil
   careerRank, unlocks, UNLOCK_REQ, markCuriositySeen, curiositiesSeen } from "./profiles.js";
 import { CURIOSITY_DECK_BY_ID, CURIOSITY_TOTAL } from "./data/curiosities.js";
 import { DIFFICULTY_ART, MODE_ART, THEME_ART, CATEGORY_ART, ACHIEVEMENT_ART,
-  RANK_ART, RECORD_ART, ROUNDEL_ART, SEAL_UNLOCKED, MARKER_MASTERED } from "./data/art.js";
+  RANK_ART, RECORD_ART, ROUNDEL_ART, TRANSPORT_ART, SEAL_UNLOCKED, MARKER_MASTERED } from "./data/art.js";
 import { MR_O, MR_O_FACTS, MR_O_RIDDLES } from "./data/mr-o.js";
 import { SFX, MUSIC, speakEn, speakGreeting, speechAvailable } from "./audio.js";
 import { BASE, OCEAN, OCEAN_DEEP, SEA, SEA_DEEP, SEA_LINE, LAND, LAND_EDGE, INK, GOLD, CORAL, GREEN, PAPER, PAPER_LINE } from "./theme.js";
@@ -4788,7 +4788,14 @@ function TravelChooser({ choice, money, onConfirm, onCancel }) {
             const on = o.id === (transport ? transport.id : null);
             return (
               <button key={o.id} onClick={() => setTid(o.id)} aria-pressed={on} style={pill(on)}>
-                <span><span aria-hidden="true" style={{ fontSize: 16 }}>{o.emoji}</span> <b>{o.name}</b> <span style={{ opacity: 0.65, fontSize: 12 }}>— {o.blurb}</span></span>
+                {/* 46px, not the 16 the emoji used: these are drawn top-down at a
+                    common length, so a train is ~6× narrower than the plane's
+                    wingspan and needs the room to be anything but a thread. The
+                    name carries the meaning either way. */}
+                <span style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+                  <ArtBadge art={TRANSPORT_ART[o.id]} emoji={o.emoji} size={46} />
+                  <span><b>{o.name}</b> <span style={{ opacity: 0.65, fontSize: 12 }}>— {o.blurb}</span></span>
+                </span>
                 <span style={{ fontWeight: 800, color: CORAL, whiteSpace: "nowrap" }}>{o.days}d · {fmtMoney(o.usd, destCountry)}</span>
               </button>
             );
