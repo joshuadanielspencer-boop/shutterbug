@@ -40,7 +40,7 @@ polaroid result layout; US-English spellings), CI action bumps, the Mr O riddle
 catchphrase, **Mr O now appears only on arriving at a new continent** (no more
 mid-country interruptions), **landmark pins de-overlap with leader lines to their true
 spots**, **traveller selection moved off the splash to its own screen**, France
-overseas-territory locator insets, the curiosity layer grown to **39 cards**,
+overseas-territory locator insets, the curiosity layer grown to **42 cards**,
 **rotating people cards** for the six multi-ethnic countries (§2 — DONE), and **four
 more Journeys** (now 8 routes) with a height cap so tall north–south routes fit.
 
@@ -186,10 +186,12 @@ data-driven, so adding cards is now pure content work.
   X / 21"** line shows in the field-journal panel.
 
 **What's left on this item:**
-- **39 cards (2026-07-15), up from 21** — grew toward the ~40 target, every new fact
-  source-cited and `asOf`-dated where it can drift. Adding more is just more objects in
-  the deck's `cards` array; the reshuffle, counter and `CURIOSITY_TOTAL` tracker all
-  scale automatically.
+- **42 cards (2026-07-16), up from 21** — the ~40 target is met, and every deck now holds
+  exactly 6, which is the number that actually matters: the deck reshuffles on each visit,
+  so a short deck repeats sooner than its neighbours. `logo` was on 4 and `calendar` on 5.
+  Every fact is source-cited and `asOf`-dated where it can drift. Adding more is just more
+  objects in the deck's `cards` array; the reshuffle, counter and `CURIOSITY_TOTAL` tracker
+  all scale automatically — **keep the decks equal** if you grow it again.
 - **The avatar → "customise traveller" jump is now WIRED (2026-07-15):** tapping a saved
   traveller's header avatar opens the Customize Traveler editor (mid-run too).
 - **The compass tap-target overlaps the corner of the continent-selection map.** It only

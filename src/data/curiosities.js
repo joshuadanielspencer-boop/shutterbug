@@ -56,6 +56,24 @@ export const CURIOSITY_DECKS = [
           + "count: no deleting, no trying again.",
         source: "https://en.wikipedia.org/wiki/135_film",
       },
+      {
+        id: "logo-shutterbug",
+        title: "What a shutterbug is",
+        body: "It's what they call someone who can't stop taking photographs. The shutter is the little "
+          + "door inside the camera that snaps open to let the light in — and calling somebody a 'bug' "
+          + "used to mean they were mad keen on a thing. Americans put the two together in 1938, the same "
+          + "years they were calling dancers jitterbugs. That's you now.",
+        source: "https://www.etymonline.com/word/shutterbug",
+      },
+      {
+        id: "logo-safari",
+        title: "Why it's a safari",
+        body: "Safari is simply the Swahili word for a journey, and Swahili took it from the Arabic "
+          + "safar, to travel. English borrowed it from East Africa in the 1800s, back when a safari "
+          + "meant going out to hunt animals. Yours is a photo safari — the only thing you shoot with "
+          + "is a camera, and everything you shoot stays alive.",
+        source: "https://en.wikipedia.org/wiki/Safari",
+      },
     ],
   },
 
@@ -103,6 +121,15 @@ export const CURIOSITY_DECKS = [
           + "years we tuck in one extra day — February 29 — to keep the calendar lined up with the seasons. "
           + "Those are leap years.",
         source: "https://en.wikipedia.org/wiki/Leap_year",
+      },
+      {
+        id: "cal-jetstream",
+        title: "The wind at your back",
+        body: "Miles above the ocean there are rivers of wind called jet streams, blowing west to east, "
+          + "sometimes faster than 250 miles per hour (400 km/h). Fly east and one shoves you along; fly "
+          + "west and you fight it the whole way. That is why New York to London takes about seven hours "
+          + "but the flight home takes about eight — same ocean, same plane, opposite wind.",
+        source: "https://en.wikipedia.org/wiki/Jet_stream",
       },
     ],
   },
