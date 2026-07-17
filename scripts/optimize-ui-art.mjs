@@ -21,7 +21,7 @@ import { readdir, stat, rename, open } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { join } from "node:path";
 
-const ART_DIRS = ["badges", "modes", "themes", "difficulty", "ranks", "medals", "roundels", "transport"];
+const ART_DIRS = ["badges", "modes", "themes", "difficulty", "ranks", "medals", "roundels", "transport", "hello", "dog"];
 const COLORS = 256;
 
 // True if the PNG is already stored as a palette. Read from the file header

@@ -29,6 +29,7 @@ import { listProfiles, lastProfileName, getProfile, createProfile, setLastProfil
 import { CURIOSITY_DECK_BY_ID, CURIOSITY_TOTAL } from "./data/curiosities.js";
 import { DIFFICULTY_ART, MODE_ART, THEME_ART, CATEGORY_ART, ACHIEVEMENT_ART,
   RANK_ART, RECORD_ART, ROUNDEL_ART, TRANSPORT_ART, SEAL_UNLOCKED, MARKER_MASTERED } from "./data/art.js";
+import { HELLO_BUBBLES, HELLO_SPOTS } from "./data/hello.js";
 import { MR_O, MR_O_FACTS, MR_O_RIDDLES } from "./data/mr-o.js";
 import { SFX, MUSIC, speakEn, speakGreeting, speechAvailable } from "./audio.js";
 import { BASE, OCEAN, OCEAN_DEEP, SEA, SEA_DEEP, SEA_LINE, LAND, LAND_EDGE, INK, GOLD, CORAL, GREEN, PAPER, PAPER_LINE } from "./theme.js";
@@ -62,6 +63,16 @@ function ArtBadge({ art, emoji, size, dim = false, style }) {
         filter: dim ? "grayscale(1) opacity(0.5)" : "drop-shadow(0 1px 2px rgba(16,38,46,0.28))", ...style }} />
   );
 }
+
+// The surface every pop-up and card sits on: the atlas ink-wash multiplied over
+// the paper tan, so a panel reads as a page torn from the atlas rather than a flat
+// swatch. Leather was the other candidate and it's the wrong one — it's dark and
+// busy, and these cards are read, not decorated; the ink the text is set in has to
+// win. Spread this instead of `background: PAPER` on anything panel-shaped.
+const CARD_SURFACE = {
+  background: `url("${UI}map-ink-distress.png") center / cover, ${PAPER}`,
+  backgroundBlendMode: "multiply, normal",
+};
 
 // Handwriting stack for Grandpa's note — a bundled webfont would make this
 // identical everywhere, but this degrades gracefully across Mac/Win/Linux.
@@ -1228,6 +1239,14 @@ export default function ShutterbugWorld() {
   const [flashKey, setFlashKey] = useState(0); // bump to replay the shutter flash
   const [soundOn, setSoundOn] = useState(true);
   const [flashHint, setFlashHint] = useState(null); // Scout: {type, key} of the correct answer to gently flash after a wrong pick
+  const [howToPlay, setHowToPlay] = useState(false); // the splash's how-to-play card
+  // Three greetings for the splash sky, redrawn every time the splash is entered.
+  // shuffled() (not Math.random) because that's the rule, and it's safe here: the
+  // Daily Expedition scopes its own generator with withSeed(), which restores the
+  // previous one afterwards, so a reshuffle out here can't shift a daily's stream.
+  const [helloPicks, setHelloPicks] = useState(() => shuffled(HELLO_BUBBLES).slice(0, 3));
+  useEffect(() => { if (screen === "start") setHelloPicks(shuffled(HELLO_BUBBLES).slice(0, 3)); }, [screen]);
+  const sayHello = (b) => { if (soundOn) speakGreeting(b); };
   const [musicOn, setMusicOn] = useState(() => { try { return localStorage.getItem("shutterbug.music") !== "off"; } catch { return true; } });
   useEffect(() => { try { localStorage.setItem("shutterbug.music", musicOn ? "on" : "off"); } catch { /* ignore */ } }, [musicOn]);
   // Music by screen: the passport is quiet; the results end the jig loop and play
@@ -2735,14 +2754,46 @@ export default function ShutterbugWorld() {
   if (screen === "start") {
     return (
       <Frame>
-        <div style={{ maxWidth: 960, margin: "0 auto", textAlign: "center", padding: "8px 4px" }}>
-          {/* Hand-illustrated splash covering most of the screen, with the launch
-              button overlaid near the bottom-center of the artwork. The title and
-              tagline live in the image, so no text heading is needed. */}
-          <div style={{ position: "relative", width: "100%", maxWidth: 940, margin: "0 auto" }}>
-            <img src={`${BASE}splash.jpg`} alt="Shutterbug — A World Photo Safari"
+        <div style={{ maxWidth: 1720, margin: "0 auto", textAlign: "center", padding: "8px 4px" }}>
+          {/* The splash runs nearly the full width of the screen. Everything on it is
+              positioned in PERCENTAGES of the artwork, never pixels — the art scales
+              with the viewport, and a pixel offset that looked right on a desktop puts
+              the title through the globe on an iPad. */}
+          <div style={{ position: "relative", width: "100%", margin: "0 auto" }}>
+            <img src={`${BASE}splash-wide.jpg`} alt="Shutterbug — A World Photo Safari"
               style={{ width: "100%", height: "auto", display: "block", borderRadius: 14, boxShadow: "0 4px 16px rgba(74,50,20,0.28)" }} />
-            <div style={{ position: "absolute", left: 0, right: 0, bottom: "5%", display: "flex", flexDirection: "column", alignItems: "center", gap: 8, padding: "0 12px" }}>
+
+            {/* Title + subtitle, centred on the sky a quarter of the way down — above
+                the globe, which starts around 38%. One button: hovering wiggles the
+                pair, clicking opens the how-to-play card. */}
+            <button onClick={() => setHowToPlay(true)} className="sbw-wiggle" aria-label="How to play Shutterbug"
+              style={{ position: "absolute", left: "50%", top: "25%", transform: "translate(-50%, -50%)",
+                width: "44%", display: "flex", flexDirection: "column", alignItems: "center", gap: "0.6vw",
+                background: "none", border: "none", padding: 0, cursor: "pointer" }}>
+              {/* The TIGHT logo, not the shared one: that copy is half transparent
+                  padding (700x350 around 657x153 of art), which the game header wants
+                  and this doesn't — here it inflated the pair until the subtitle sat
+                  on the globe instead of in the sky above it. */}
+              <img src={`${UI}shutterbug-logo-tight.png`} alt="" aria-hidden="true"
+                style={{ width: "100%", height: "auto", display: "block", filter: "drop-shadow(0 4px 10px rgba(0,0,0,0.45))" }} />
+              <img src={`${UI}shutterbug-subtitle.png`} alt="" aria-hidden="true"
+                style={{ width: "78%", height: "auto", display: "block", filter: "drop-shadow(0 3px 7px rgba(0,0,0,0.4))" }} />
+            </button>
+
+            {/* Three greetings in the clear sky left of the boy's head, reshuffled on
+                every visit to the splash. */}
+            {helloPicks.map((b, i) => (
+              <button key={b.file} onMouseEnter={() => sayHello(b)} onFocus={() => sayHello(b)} onClick={() => sayHello(b)}
+                aria-label={`Hear "${b.word}" — hello in ${b.language}`}
+                style={{ position: "absolute", left: `${HELLO_SPOTS[i].x}%`, top: `${HELLO_SPOTS[i].y}%`,
+                  width: `${HELLO_SPOTS[i].w}%`, transform: `translate(-50%, -50%) rotate(${HELLO_SPOTS[i].rot}deg)`,
+                  background: "none", border: "none", padding: 0, cursor: "pointer" }}>
+                <img src={`${UI}hello/${b.file}`} alt="" aria-hidden="true"
+                  style={{ width: "100%", height: "auto", display: "block", filter: "drop-shadow(0 3px 6px rgba(0,0,0,0.3))" }} />
+              </button>
+            ))}
+
+            <div style={{ position: "absolute", left: 0, right: 0, bottom: "4%", display: "flex", flexDirection: "column", alignItems: "center", gap: 8, padding: "0 12px" }}>
               {(() => {
                 const prof = profileName ? getProfile(profileName) : null;
                 const returning = !!prof && (prof.metNigel || (prof.games || 0) > 0);
@@ -2758,6 +2809,7 @@ export default function ShutterbugWorld() {
             </div>
           </div>
         </div>
+        {howToPlay && <HowToPlayModal onClose={() => setHowToPlay(false)} />}
         {createOpen && (
           <CreateTravelerModal onSubmit={createAndBegin} onClose={() => setCreateOpen(false)} />
         )}
@@ -4448,6 +4500,18 @@ function Frame({ children, desk = false }) {
         @media (prefers-reduced-motion: reduce){
           .sbw-beckon{ animation: none; box-shadow: 0 5px 0 #A93A28, 0 6px 20px rgba(0,0,0,0.35), 0 0 20px 6px rgba(240,165,0,0.5) }
         }
+        /* The splash title, wiggling when you point at it — the only hint that it's
+           worth clicking. The centring translate is repeated in every frame because
+           the element is centred with it; a bare rotate would fling it off-centre. */
+        .sbw-wiggle:hover, .sbw-wiggle:focus-visible{ animation: sbw-wiggle 0.5s ease-in-out infinite }
+        @keyframes sbw-wiggle{
+          0%,100%{ transform: translate(-50%,-50%) rotate(-1.1deg) }
+          50%{ transform: translate(-50%,-50%) rotate(1.1deg) }
+        }
+        /* The camera bag Grandpa hands you: bobbing so a child knows to take it. */
+        .sbw-bob{ animation: sbw-bob 1.5s ease-in-out infinite }
+        @keyframes sbw-bob{ 0%,100%{ transform: translateY(0) } 50%{ transform: translateY(-9px) } }
+        @media (prefers-reduced-motion: reduce){ .sbw-wiggle:hover, .sbw-bob{ animation: none } }
         /* Photo develops like film: washed-out gray blooming into full color. */
         .sbw-develop{ animation: sbw-develop 1.5s ease-out both; }
         @keyframes sbw-develop{
@@ -4728,6 +4792,49 @@ function AlbumModal({ album, onPick, onClose }) {
 }
 // Field Guide — spends the research half-day (once per assignment) and reveals
 // Grandpa's clue tip; re-opening later just re-reads it, no extra time lost.
+// The splash's how-to-play card, opened by clicking the title. Deliberately short:
+// a child who wants to play should not have to read a manual, and everything here
+// is re-taught in context by Grandpa, Mr O and the step rail. It exists so a parent
+// (or a kid who clicked the shiny title) can see the shape of the game in ten
+// seconds and get out.
+function HowToPlayModal({ onClose }) {
+  const STEPS = [
+    ["itinerary-continent.png", "Read the editor's clue", "Grandpa's note tells you about a place — but not its name. Work out where in the world it is."],
+    ["itinerary-country.png", "Fly there", "Pick the continent, then the country. Every flight costs travel days, so guessing wildly is expensive."],
+    ["itinerary-photograph.png", "Take the photograph", "Find the right subject and shoot it. Every correct shot teaches you something true about a real place."],
+    ["passport.png", "Fill your passport", "Stamps, badges and keepsakes pile up across every trip. The more you travel, the more of the world you keep."],
+  ];
+  return (
+    <div role="dialog" aria-modal="true" aria-label="How to play" onClick={onClose}
+      style={{ position: "fixed", inset: 0, background: "rgba(16,38,46,0.62)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16, zIndex: 70 }}>
+      <div onClick={(e) => e.stopPropagation()}
+        style={{ ...CARD_SURFACE, borderRadius: 16, border: `3px solid ${OCEAN}`, boxShadow: "0 14px 44px rgba(0,0,0,0.35)",
+          maxWidth: 560, width: "100%", maxHeight: "92vh", overflowY: "auto", padding: "22px 24px" }}>
+        <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.18em", color: OCEAN, fontWeight: 700 }}>HOW TO PLAY</div>
+        <h2 style={{ margin: "4px 0 14px", color: INK, fontSize: 24, fontWeight: 900 }}>You're a travelling photographer.</h2>
+        <div style={{ display: "grid", gap: 12 }}>
+          {STEPS.map(([img, title, body], i) => (
+            <div key={title} style={{ display: "flex", gap: 12, alignItems: "flex-start", textAlign: "left" }}>
+              <img src={`${UI}${img}`} alt="" aria-hidden="true" style={{ width: 42, height: 42, objectFit: "contain", flex: "0 0 auto", marginTop: 2 }} />
+              <div>
+                <div style={{ fontWeight: 800, color: INK, fontSize: 15 }}>{i + 1}. {title}</div>
+                <div style={{ color: INK, opacity: 0.85, fontSize: 13.5, lineHeight: 1.45 }}>{body}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+        <p style={{ margin: "14px 0 0", fontSize: 13, color: INK, opacity: 0.8, lineHeight: 1.5, textAlign: "left" }}>
+          Pick a difficulty to match the traveller: <b>Scout</b> reads the clues aloud and names the country;
+          <b> Expert</b> tells you nothing but the place itself.
+        </p>
+        <div style={{ display: "flex", justifyContent: "center", marginTop: 16 }}>
+          <button onClick={onClose} style={{ ...primaryBtn, margin: 0 }}>Got it ✈</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function FieldGuideModal({ note, spent, onClose }) {
   const line = spent ? "You spend half a travel day poring over the field guide." : "You open the field guide again — no travel time lost.";
   return (

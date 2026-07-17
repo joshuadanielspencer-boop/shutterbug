@@ -541,7 +541,8 @@ export const MUSIC = (() => {
 // ---- language to a BCP-47 code so the browser picks a matching voice; languages  ----
 // ---- without a code fall back to the default voice (still reads the Latin form).  ----
 const SPEECH_LANG = {
-  "Afrikaans": "af", "Amharic": "am", "Arabic": "ar", "Burmese": "my", "Cantonese": "zh-HK",
+  "Afrikaans": "af", "Amharic": "am", "Arabic": "ar", "Bengali": "bn", "Burmese": "my",
+  "Cantonese": "zh-HK", "Hausa": "ha",
   "Croatian": "hr", "Czech": "cs", "Dutch": "nl", "English": "en", "English (Australian)": "en-AU",
   "Filipino": "fil", "French": "fr", "French (Québec)": "fr-CA", "German": "de",
   "German (Austrian)": "de-AT", "Greek": "el", "Hindi": "hi", "Icelandic": "is",
