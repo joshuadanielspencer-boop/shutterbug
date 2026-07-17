@@ -725,12 +725,25 @@ export const COUNTRY_PEOPLE = {
     credit: "Justin Makangara", license: "CC BY-SA 4.0",
     caption: "Performers in cowrie-shell ceremonial costumes and feather headdresses in Kinshasa, DR Congo",
   },
-  "Nigeria": {
-    src: "https://commons.wikimedia.org/wiki/Special:FilePath/Mounted%20female%20member%20of%20Sallah%20procession%2C%20Durbar%2C%20Bida%2C%20Nigeria.png?width=800",
-    source: "https://commons.wikimedia.org/wiki/File:Mounted_female_member_of_Sallah_procession,_Durbar,_Bida,_Nigeria.png",
-    credit: "Jean Borgatti (Smithsonian NMAfA)", license: "Public domain",
-    caption: "A woman in traditional dress rides in the Sallah Durbar procession in Bida, Nigeria",
-  },
+  // Nigeria is not one people. The Sallah Durbar card is a northern, largely
+  // Hausa-Fulani scene; showing only that left the Yoruba of the southwest — one
+  // of the country's three largest peoples — out of a country of 200 million.
+  "Nigeria": [
+    {
+      people: "Nupe & Hausa-Fulani",
+      src: "https://commons.wikimedia.org/wiki/Special:FilePath/Mounted%20female%20member%20of%20Sallah%20procession%2C%20Durbar%2C%20Bida%2C%20Nigeria.png?width=800",
+      source: "https://commons.wikimedia.org/wiki/File:Mounted_female_member_of_Sallah_procession,_Durbar,_Bida,_Nigeria.png",
+      credit: "Jean Borgatti (Smithsonian NMAfA)", license: "Public domain",
+      caption: "A woman in traditional dress rides in the Sallah Durbar procession in Bida, Nigeria",
+    },
+    {
+      people: "Yoruba",
+      src: "https://commons.wikimedia.org/wiki/Special:FilePath/Dancing_in_a_Yoruba_attire%2C_Nigeria.jpg?width=800",
+      source: "https://commons.wikimedia.org/wiki/File:Dancing_in_a_Yoruba_attire,_Nigeria.jpg",
+      credit: "Petrafy", license: "CC BY 4.0",
+      caption: "Dancing in Yoruba attire at a traditional wedding celebration, Nigeria",
+    },
+  ],
   "Senegal": {
     src: "https://commons.wikimedia.org/wiki/Special:FilePath/%22Ndawrabine%22%20%28S%C3%A9n%C3%A9gal%29%20Wiki%20Loves%20Africa%202026%20au%20S%C3%A9n%C3%A9gal.jpg?width=800",
     source: "https://commons.wikimedia.org/wiki/File:%22Ndawrabine%22_(S%C3%A9n%C3%A9gal)_Wiki_Loves_Africa_2026_au_S%C3%A9n%C3%A9gal.jpg",
