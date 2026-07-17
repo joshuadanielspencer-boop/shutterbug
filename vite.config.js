@@ -64,9 +64,13 @@ export default defineConfig({
         ],
       },
       workbox: {
-        // Precache the app shell + local assets (includes the ~1.8 MB relief JPGs).
+        // Precache the app shell + local assets. The world relief plate is the
+        // biggest single file — ~4.4 MB at 12288px wide (regenerated from Natural
+        // Earth so small countries like Jordan aren't a pixel mush at high zoom).
+        // The per-file cap must stay above it or it silently drops from the offline
+        // precache and those maps go blank on an installed iPad with no network.
         globPatterns: ["**/*.{js,css,html,svg,png,jpg,ico,woff2}"],
-        maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
+        maximumFileSizeToCacheInBytes: 6 * 1024 * 1024,
         cleanupOutdatedCaches: true,
         clientsClaim: true,
         runtimeCaching: [

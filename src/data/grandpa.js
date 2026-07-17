@@ -1,7 +1,7 @@
 // ===========================================================================
-// GRANDPA NIGEL — the story voice
+// UNCLE JONAH — the story voice
 //
-// Every word Grandpa Nigel says lives here (CLAUDE.md rule 1): the opening
+// Every word Uncle Jonah says lives here (CLAUDE.md rule 1): the opening
 // story, his framing labels, and his reactions. Components render these
 // strings; they hold no dialogue of their own, so his voice can be tuned in
 // one place.
@@ -13,15 +13,15 @@
 // screen — stay IMPLICIT. Never state them outright; let the story carry them.
 //
 // FACT RULE (rule 2): any anecdote that teaches a real detail about a place
-// must be verified like every other fact. Grandpa's humour is in the delivery,
+// must be verified like every other fact. Uncle's humour is in the delivery,
 // never in invented facts. (Per-location anecdotes are added alongside the
 // content research; this file holds only his voice-level, non-factual lines.)
 // ===========================================================================
 
 export const GRANDPA = {
-  name: "Grandpa Nigel",
-  short: "Grandpa",
-  emoji: "👴",
+  name: "Uncle Jonah",
+  short: "Uncle",
+  emoji: "👨",
 };
 
 // ---- His face ------------------------------------------------------------
@@ -89,14 +89,14 @@ export const SENDOFF_BEATS = [
 ];
 
 // Replaces the old newspaper 'telegram from the editor' header.
-export const NOTE_HEADER = "✎ A NOTE FROM GRANDPA NIGEL";
+export const NOTE_HEADER = "✎ A NOTE FROM UNCLE JONAH";
 
 // His name for the ½-day hint (was 'the newsroom').
 export const GUIDEBOOK = {
   button: "Research for Clue",
-  tipFree: "Thumb through Grandpa's old guidebook for a strong hint (½ travel day)",
-  tipCost: "Thumb through Grandpa's old guidebook for a strong hint (½ travel day)",
-  notesLabel: "From Grandpa's guidebook:",
+  tipFree: "Thumb through Uncle's old guidebook for a strong hint (½ travel day)",
+  tipCost: "Thumb through Uncle's old guidebook for a strong hint (½ travel day)",
+  notesLabel: "From Uncle's guidebook:",
 };
 
 // The homecoming visit — when you return and he asks about your trip.
@@ -116,7 +116,7 @@ export const WRONG_REACTIONS = [
 // Lead-in when he notices you've earned a keepsake (achievement).
 export const ACHIEVEMENT_INTRO = "Would you look at that —";
 
-// Grandpa's word on the results screen. WIN = the trip's shots all came home;
+// Uncle's word on the results screen. WIN = the trip's shots all came home;
 // pick one at random, warm and proud. LOSE/short = the days ran out; pick one at
 // random, always encouraging, never scolding — the door's open, try again.
 export const END_WIN = [
@@ -142,8 +142,8 @@ export const END_LOSE = [
   "Don't you dare be discouraged. I couldn't have got even THIS far. Take a breath and let's have another crack.",
 ];
 
-// ---- The pre-game "meet Grandpa" screen ----------------------------------
-// Before every expedition, Grandpa says one of these at random — a warm, funny,
+// ---- The pre-game "meet Uncle" screen ----------------------------------
+// Before every expedition, Uncle says one of these at random — a warm, funny,
 // or gently wise one-liner. Rule 2: these carry NO factual claims about places
 // (they're voice/wisdom, not geography), so they need no source-checking. Keep
 // each to a breath or two.
@@ -179,7 +179,7 @@ export const MEET_LINES = [
   "Not all who wander are lost. But do glance at your travel days now and again, eh?",
   "Once a year, go somewhere you've never been before. And since you're already up — why not now?",
 ];
-// After a saved traveler's first trip, Grandpa nods to how it went. The
+// After a saved traveler's first trip, Uncle nods to how it went. The
 // component picks a pool from the last result; each entry is a whole line.
 export const MEET_RUN = {
   great: [
@@ -203,10 +203,10 @@ export const MEET_RUN = {
     "A brand-new traveler! Here — take the camera, and I'll wait right here for every story.",
   ],
 };
-// Grandpa's lead-in to choosing a mode + difficulty on the meet screen.
+// Uncle's lead-in to choosing a mode + difficulty on the meet screen.
 export const MEET_ASK = "Now then — what sort of adventure are we after today?";
 
-// When the traveler has newly unlocked something, Grandpa announces it on the
+// When the traveler has newly unlocked something, Uncle announces it on the
 // meet screen. Keyed by the unlock id (see profiles.js → unlocks()).
 export const UNLOCK_LINES = {
   medium: "You've got a trip under your belt now — I reckon you're ready for a tougher clue. Medium's open to you!",
@@ -215,14 +215,14 @@ export const UNLOCK_LINES = {
   hard: "Stamps on three continents — you know your way around the globe now. If you're brave, Hard mode is unlocked. No hints, mind!",
   expeditions: "Twenty-five places! Extraordinary. I've unlocked the Themed Expeditions — curated grand tours, each with a little lesson.",
 };
-// When the traveler's press rank goes up, Grandpa tips his hat. Filled with the
+// When the traveler's press rank goes up, Uncle tips his hat. Filled with the
 // new rank title.
 export const RANKUP_LINE = (title) => `And would you look — the paper's promoted you to ${title}! Wear it proudly.`;
 
-// ---- What Grandpa wants next ---------------------------------------------
+// ---- What Uncle wants next ---------------------------------------------
 // The results screen used to end on a number. A number is a verdict on the trip
 // you just did; it gives a child nothing to want. This is the other half of the
-// fix (see nextGoal in profiles.js): Grandpa asking for something.
+// fix (see nextGoal in profiles.js): Uncle asking for something.
 //
 // It matters that he WANTS it rather than the game AWARDING it. A badge at 14/15
 // is a task. An old man saying he's never seen a desert is a reason — the child

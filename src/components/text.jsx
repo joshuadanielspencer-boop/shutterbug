@@ -11,15 +11,23 @@ import { useState, useRef, useEffect, useMemo } from "react";
 import { OCEAN, CORAL, GOLD, GREEN, PAPER, PAPER_LINE, INK } from "../theme.js";
 import { SFX } from "../audio.js";
 
-// One typebar per letter revealed — but not literally per letter. Text types at
-// ~42 cps, and a click every 24ms is a buzz saw, not a typewriter. So: skip
-// whitespace (a space bar is a different, quieter action anyway) and never fire
-// twice inside MIN_GAP. What a child hears is fast, uneven, mechanical typing.
+// One typebar per letter revealed — but not literally per letter. A click every
+// 24ms is a buzz saw, not a typewriter. So: skip whitespace (a space bar is a
+// different, quieter action anyway) and never fire twice inside a minimum gap.
+// What a child hears is fast, uneven, mechanical typing.
+//
+// The gap TRACKS the typing speed rather than being a fixed number of ms, so
+// that character survives a change of speed. It's the ratio that makes the sound
+// uneven: at ~2.4 reveals per click, roughly one letter in three sounds, and
+// which one drifts. Pin the gap at a constant instead and a slower speed walks it
+// toward one click per letter — that's a metronome, which is the one thing the
+// effect is meant not to be. The floor keeps the fastest speeds from buzzing.
 const MIN_GAP = 55;
-function typeTick(ref, ch) {
+const gapFor = (tick) => Math.max(MIN_GAP, Math.round(tick * 2.4));
+function typeTick(ref, ch, minGap) {
   if (!ch || /\s/.test(ch)) return;
   const now = Date.now();
-  if (now - ref.current < MIN_GAP) return;
+  if (now - ref.current < minGap) return;
   ref.current = now;
   SFX.type();
 }
@@ -68,6 +76,8 @@ export function GradualText({ text, reduced, onDone, cps = 42, style }) {
   const doneRef = useRef(false);
   const idRef = useRef(null);
   const lastTick = useRef(0);
+  const tick = Math.max(8, Math.round(1000 / cps));
+  const gap = gapFor(tick);
   const finish = () => {
     if (doneRef.current) return;
     doneRef.current = true;
@@ -83,9 +93,9 @@ export function GradualText({ text, reduced, onDone, cps = 42, style }) {
     idRef.current = setInterval(() => {
       i += 1;
       setN(i);
-      typeTick(lastTick, text[i - 1]);
+      typeTick(lastTick, text[i - 1], gap);
       if (i >= text.length) { clearInterval(idRef.current); idRef.current = null; if (!doneRef.current) { doneRef.current = true; if (onDone) onDone(); } }
-    }, Math.max(8, Math.round(1000 / cps)));
+    }, tick);
     return () => { if (idRef.current) clearInterval(idRef.current); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [text, reduced]);
@@ -108,16 +118,32 @@ export function GradualText({ text, reduced, onDone, cps = 42, style }) {
   );
 }
 
+// Conversation speed — the pace Uncle talks at, and the pace this component
+// used to run everything at. It reads as speech, which is right for a person
+// talking to you and too brisk for a fact you're meant to take in, so it's now
+// the opt-IN exception rather than the default (see TALKING_CPS's callers).
+export const TALKING_CPS = 45;
+
 // A lighter typing effect for in-game prose (clues, facts, dialogue, Mr. O…):
 // reveals the text at reading speed, but — unlike GradualText — it never blocks
 // or disables anything around it, so the player can read and act at once. Click
 // (or reduced-motion) completes it instantly; the full text is exposed to screen
 // readers via aria-label while typing. Generic display text isn't wrapped in this.
-export function TypeLine({ text, reduced, style, inline = false, cps = 45, onDone }) {
+//
+// The default is half conversation speed, because most of what types through here
+// is INFORMATION — a clue, a fact, a place's story — and a child is meant to read
+// it, not watch it arrive. Dialogue should pass cps={TALKING_CPS} to opt back out.
+// The default is deliberately the slow one: a new call site that forgets to choose
+// is far likelier to be a fact than a line of speech, so forgetting reads too slow
+// rather than too fast, and too slow is the recoverable mistake (you can click to
+// finish a line; you cannot click to un-miss one).
+export function TypeLine({ text, reduced, style, inline = false, cps = Math.round(TALKING_CPS / 2), onDone }) {
   const str = text == null ? "" : String(text);
   const [n, setN] = useState(reduced ? str.length : 0);
   const idRef = useRef(null);
   const lastTick = useRef(0);
+  const tick = Math.max(8, Math.round(1000 / cps));
+  const gap = gapFor(tick);
   useEffect(() => {
     if (idRef.current) { clearInterval(idRef.current); idRef.current = null; }
     if (reduced) { setN(str.length); if (onDone) onDone(); return; }
@@ -125,9 +151,9 @@ export function TypeLine({ text, reduced, style, inline = false, cps = 45, onDon
     let i = 0;
     idRef.current = setInterval(() => {
       i += 1; setN(i);
-      typeTick(lastTick, str[i - 1]);
+      typeTick(lastTick, str[i - 1], gap);
       if (i >= str.length) { clearInterval(idRef.current); idRef.current = null; if (onDone) onDone(); }
-    }, Math.max(8, Math.round(1000 / cps)));
+    }, tick);
     return () => { if (idRef.current) clearInterval(idRef.current); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [str, reduced]);

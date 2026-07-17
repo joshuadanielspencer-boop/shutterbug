@@ -1,6 +1,6 @@
 // ===========================================================================
 // MR. O — the young geography enthusiast who pops up now and then with an
-// "Oh! Did you know…?" fact. He's the eager-kid foil to Grandpa Nigel's old-sage
+// "Oh! Did you know…?" fact. He's the eager-kid foil to Uncle Jonah's old-sage
 // voice: he appears briefly (a non-blocking bubble) when you touch down on a new
 // continent and shares one surprising, TRUE geography fact.
 //

@@ -12,9 +12,16 @@
 //      fitting.
 //
 // Each tune is { timbre, spb (seconds-per-beat), seq: [[note, beats], …] } where
-// `note` is a scientific-pitch name ("C4", "F#5", "Eb4") or "r" for a rest. The
-// synth engine (src/shutterbug-world.jsx → MUSIC.countryTune) converts names to
-// frequencies and renders them with the named timbre. Keep each tune ~5–9 s.
+// `note` is a scientific-pitch name ("C4", "F#5", "Eb4") or "r" for a rest. A beat
+// is a quarter note, so an eighth is 0.5 and a dotted quarter is 1.5. There is no
+// key signature: every note is absolute, so write "E4" for E natural and "Eb4" for
+// E flat regardless of what key the melody is in. The synth engine (src/audio.js →
+// MUSIC.countryTune) converts names to frequencies and renders them with the timbre.
+//
+// One entry is ONE PASS of the melody — a single phrase, ~5–9 s. The engine plays
+// each arrival's tune through several times with a rest between (see TUNE_PASSES in
+// src/audio.js), so don't pad a tune out by typing the phrase twice here; that's the
+// engine's job, and this file stays a list of melodies you can check against a score.
 //
 // This is DATA (CLAUDE.md rule 1): melodies + the country→tune mapping live here,
 // never inline in the component. Grow the recognizable-tune list over time.
@@ -32,10 +39,26 @@ export const TUNES = {
     ["C4",1],["D4",1],["E4",1],["C4",1],["C4",1],["D4",1],["E4",1],["C4",1],
     ["E4",1],["F4",1],["G4",2],["E4",1],["F4",1],["G4",2],
   ] },
-  // United States — "When the Saints Go Marching In" (traditional; public domain).
-  saints: { timbre: "brass", spb: 0.3, seq: [
-    ["C4",1],["E4",1],["F4",1],["G4",2.5],["r",0.5],["C4",1],["E4",1],["F4",1],["G4",2.5],["r",0.5],
-    ["C4",1],["E4",1],["F4",1],["G4",1],["E4",1],["C4",1],["E4",1],["D4",2],
+  // United States — "The Star-Spangled Banner" (melody: John Stafford Smith, c.1780,
+  // "To Anacreon in Heaven"; words: Francis Scott Key, 1814 — both long public
+  // domain). The opening line only: "O say can you see, by the dawn's early light".
+  //
+  // In Bb major, 3/4, Maestoso, transcribed note-for-note from the lead sheet at
+  // samuelstokesmusic.com/banner/Star-Spangled-Banner-Bb.pdf (which credits Smith
+  // and Key and matches the fife setting of the same tune in the John Chambers ABC
+  // collection at abcnotation.com). Bar lines, for anyone checking it against a score:
+  //   pickup | Bb3 D4 F4 | Bb4 D5 C5 | Bb4 G4 E4 | F4 |
+  //
+  // The E4 on "-ly" is a NATURAL — the raised fourth of Bb major, and the single
+  // most recognizable interval in the anthem. It is spelled "E4" here rather than
+  // needing an accidental because this format has no key signature: every note is
+  // absolute, so E4 already means E natural. Don't "correct" it to Eb.
+  starSpangled: { timbre: "brass", spb: 0.5, seq: [
+    ["F4",0.75],["D4",0.25],                    // O
+    ["Bb3",1],["D4",1],["F4",1],                // say, can you
+    ["Bb4",2],["D5",0.75],["C5",0.25],          // see — by the
+    ["Bb4",1],["G4",1],["E4",1],                // dawn's ear-ly
+    ["F4",3],                                   // light
   ] },
   // United Kingdom — "Rule, Britannia!" (Thomas Arne, 1740; public domain). The
   // opening phrase of the melody, in D major, played on a regal brass timbre.
@@ -110,7 +133,7 @@ export const TUNES = {
 export const COUNTRY_TUNE = {
   "Germany": "odeToJoy",
   "France": "frereJacques",
-  "United States": "saints",
+  "United States": "starSpangled",
   "United Kingdom": "ruleBritannia",
   "Mexico": "cucaracha",
   "Australia": "matilda",

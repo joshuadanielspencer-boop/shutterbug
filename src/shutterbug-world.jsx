@@ -34,7 +34,7 @@ import { HELLO_BUBBLES, HELLO_SPOTS } from "./data/hello.js";
 import { MR_O, MR_O_FACTS, MR_O_RIDDLES } from "./data/mr-o.js";
 import { SFX, MUSIC, speakEn, speakGreeting, speechAvailable } from "./audio.js";
 import { BASE, OCEAN, OCEAN_DEEP, SEA, SEA_DEEP, SEA_LINE, LAND, LAND_EDGE, INK, GOLD, CORAL, GREEN, PAPER, PAPER_LINE } from "./theme.js";
-import { Confetti, Stamp, GradualText, TypeLine } from "./components/text.jsx";
+import { Confetti, Stamp, GradualText, TypeLine, TALKING_CPS } from "./components/text.jsx";
 
 // Travel-journal UI art (ChatGPT-generated PNGs) lives here; base-path aware so
 // it resolves at a domain root or under a GitHub Pages subpath. Decorative only —
@@ -75,12 +75,22 @@ const CARD_SURFACE = {
   backgroundBlendMode: "multiply, normal",
 };
 
-// Handwriting stack for Grandpa's note — a bundled webfont would make this
+// Handwriting stack for Uncle's note — a bundled webfont would make this
 // identical everywhere, but this degrades gracefully across Mac/Win/Linux.
 const HAND = '"Caveat", "Patrick Hand", "Bradley Hand", "Segoe Print", "Comic Sans MS", cursive';
+// The slab/typewriter face of the splash's "A World Photo Safari" sign, for UI that
+// should feel like it belongs to the same artwork. All system fonts, no webfont:
+// the game is an offline-capable PWA, and a font that arrives over the network is a
+// font that isn't there on the iPad on a plane. American Typewriter leads because
+// it ships on macOS and iPadOS, which is where this is actually played; Rockwell
+// covers Windows; the Courier/monospace tail is the honest fallback everywhere else.
+const TYPEWRITER = '"American Typewriter", "Rockwell", "Courier New", ui-monospace, monospace';
 // Mr. O has five looks; hand them out in a reshuffled cycle so he never repeats
 // until all five have appeared, and looks different each time he pops up.
 const MR_O_IMAGES = ["mr-o-1.png", "mr-o-2.png", "mr-o-3.png", "mr-o-4.png", "mr-o-5.png"];
+// The fewest arrivals between two Mr O appearances — his "no more than once every
+// five stops" speed limit. See maybeMrO.
+const MRO_MIN_GAP = 5;
 // Shown on the first run and every 5th after: how to research a clue.
 // Worded so it reads naturally after Mr O's "Oh! Did you know…" lead.
 const MR_O_FIELDGUIDE_TIP = "if a clue's got you stumped, you can tap the Field Guide on the right and I'll research it for you? It costs half a travel day (free on a Scout trip!).";
@@ -96,7 +106,7 @@ function nextMrOImage() {
 
 /*
   SHUTTERBUG — A World Photo Safari  (working vertical slice)
-  A spiritual successor to "Nigel's World: Adventures in Geography" (1991).
+  A spiritual successor to "Jonah's World: Adventures in Geography" (1991).
   Loop: read your editor's clue -> fly to the right city -> photograph the right
   subject before your days run out. Every correct shot teaches a geography fact.
 
@@ -221,7 +231,14 @@ const MODES = {
 // end. Read by the flight timers, the landing sound, and the CSS keyframes — all
 // three have to agree or the plane lands at a different moment than the map says.
 const FLIGHT_MS = 5000;
-const PLANE_SCALE_MS = 1500;
+const PLANE_SCALE_MS = 2000;
+// The same number in the units each consumer wants. The takeoff/landing sounds
+// take their length from PLANE_SCALE_SEC and the sbw-hop keyframes take their
+// percentages from PLANE_SCALE_PCT, so "how long does the plane take to grow"
+// is answered in exactly one place. Everything below is derived — don't hand-
+// write a percentage into the keyframes again.
+const PLANE_SCALE_SEC = PLANE_SCALE_MS / 1000;
+const PLANE_SCALE_PCT = (100 * PLANE_SCALE_MS) / FLIGHT_MS;
 
 // A small efficiency reward: +1 point per 2 full travel days you bank, capped so
 // it never dominates the shot points. QUIZ_BONUS is the ½-point extra credit each
@@ -688,6 +705,24 @@ const quoteGloss = (mean) => {
   if (selfQuoted) return mean.replace(/\.$/, "");
   return `\u201C${mean.replace(/\.$/, "")}.\u201D`;
 };
+// How to print a greeting: the native words, and ONE guide to saying them.
+//
+// A greeting carries up to two romanizations. `text` may hold a scholarly
+// transliteration in parentheses \u2014 "\u0627\u0644\u0633\u0644\u0627\u0645 \u0639\u0644\u064A\u0643\u0645 (As-salamu alaykum)" \u2014 and
+// `pronunciation` holds a sounded-out respelling \u2014 "as-sa-LAAM a-LAY-kum".
+// Printing both gave a seven-year-old two spellings of a word they cannot read,
+// one after the other, and neither was helped by the other's company.
+//
+// The respelling wins wherever there is one. It's the only one that says where
+// the stress lands, and saying it out loud is the whole point of the line \u2014 the
+// transliteration is a librarian's tool for writing the word down. Where there's
+// no respelling, `text` is kept whole, parentheses and all, so a greeting in an
+// unfamiliar script is never left with no way in at all.
+const greetingSaid = (g) => {
+  const full = String(g.text).trim();
+  const native = full.split(" (")[0].trim();
+  return g.pronunciation ? { words: native, say: g.pronunciation } : { words: full, say: null };
+};
 // Thin wrapper over the shared rule in src/missions.js (which `npm test` exercises):
 // a category mission is fair only if this continent has 2+ members of the category,
 // and — when the country step is in play — 2+ countries that actually hold one.
@@ -750,7 +785,7 @@ const hashStr = (str) => { let h = 2166136261 >>> 0; for (let i = 0; i < str.len
 // `freshFirst` orders places by how long ago the player last saw them (never-seen
 // first); once everything's been seen, the oldest visits resurface, so review
 // continues forever.
-function pickAnchors(profile, order, n) {
+function pickAnchors(profile, order, n, wish = null) {
   const needFresh = Math.ceil(0.4 * n);
   const anchorIds = [];
   const used = new Set();
@@ -778,6 +813,22 @@ function pickAnchors(profile, order, n) {
       const victimCont = Object.keys(counts).sort((a, b) => counts[b] - counts[a])[0];
       const victimIdx = ids.findIndex((id) => BY_ID[id].continent === victimCont);
       if (victimIdx >= 0) { ids[victimIdx] = cand.id; have.add(cont); }
+    }
+  }
+
+  // Uncle's wish: if he asked for a kind of place, quietly make sure ONE is on the
+  // itinerary so bringing it home answers him. Just one, and only if the run doesn't
+  // already include the category — a nudge, not a theme. Done AFTER the continent
+  // spread and made to preserve it: the anchor it replaces is chosen from a continent
+  // that still has another anchor, so the three-continent guarantee holds.
+  if (wish && !ids.some((id) => BY_ID[id].category === wish)) {
+    const cand = order.find((l) => l.category === wish && !ids.includes(l.id));
+    if (cand) {
+      const counts = {};
+      ids.forEach((id) => { const c = BY_ID[id].continent; counts[c] = (counts[c] || 0) + 1; });
+      let victimIdx = ids.findIndex((id) => counts[BY_ID[id].continent] > 1);
+      if (victimIdx < 0) victimIdx = ids.length - 1; // a run too small to spare one; take the last
+      if (victimIdx >= 0) ids[victimIdx] = cand.id;
     }
   }
   return shuffled(ids.map((id) => BY_ID[id]));
@@ -832,7 +883,7 @@ const rankFor = (pct) => {
   if (pct >= 0.7) return { title: "Senior Photojournalist", note: "Sharp eye, sharp instincts." };
   if (pct >= 0.5) return { title: "Staff Photographer", note: "Solid, dependable coverage." };
   if (pct >= 0.25) return { title: "Field Intern", note: "You got the shots that counted." };
-  return { title: "Trainee", note: "Read Grandpa's notes more closely next time." };
+  return { title: "Trainee", note: "Read Uncle's notes more closely next time." };
 };
 
 // ===========================================================================
@@ -946,7 +997,7 @@ function quizQuestionFor(l) {
 }
 // A quiz = n questions from n distinct locations (freshest first for variety).
 // Each question carries its location id so the homecoming visit can look up
-// Grandpa's anecdote for that place.
+// Uncle's anecdote for that place.
 function buildQuiz(order, n = 10) {
   const chosen = order.slice(0, Math.min(n, order.length)).map((id) => BY_ID[id]).filter(Boolean);
   return chosen.map((l) => ({ ...quizQuestionFor(l), id: l.id }));
@@ -967,18 +1018,21 @@ const fmtTime = (ms) => {
 // keeping the screen picture-first. `emoji` is the fallback if the art 404s.
 const MODE_CARDS = [
   { id: "assignments", name: "Assignments", emoji: "📸",
-    blurb: "One of Grandpa's dreams at a time — fly to the right place and photograph the right subject before your travel days run out." },
+    blurb: "One of Uncle's dreams at a time — fly to the right place and photograph the right subject before your travel days run out." },
   { id: "tour", name: "Grand Tour", emoji: "🧳",
     blurb: "The route-planning game. You're told every target and exactly where it is — no deduction, no research, no hints. The whole challenge is the ORDER: sequence your stops up front against a par day-count, commit to the route, then fly it. Straying costs a day, and every day you bring home is worth points." },
   { id: "explore", name: "Explore", emoji: "🧭",
     blurb: "No timer, no score — roam the world, drill into any country, and read every place's story, culture card, and clues. Everywhere you visit is stamped in your passport." },
-  { id: "quiz", name: "Quiz", emoji: "🧠",
-    blurb: "Ten fast multiple-choice questions — name the landmark from its photo, place it on the map, or know the capital. Build a streak for bonus points." },
   { id: "journey", name: "Journeys", emoji: "🛶",
     blurb: "Retrace a real expedition, stop by stop, in the order it actually happened. No day budget and no score to chase — the order IS the story, and you can't skip ahead. Start with Lewis and Clark's crossing of North America." },
-  { id: "daily", name: "Daily Expedition", emoji: "📅",
-    blurb: "Today's expedition — five shots, and it's the SAME five for everyone playing at your level today. Finish it and you get a little result card to share. One official run a day: the first one counts." },
 ];
+// Quiz and the Daily Expedition are no longer modes you pick. The review quiz now
+// happens on its own at the END of every scored run (the homecoming — see
+// startHomecoming), so it needs no menu slot; and the daily's job — a short shared
+// outing that pulled kids back each day — was turning geography practice into a
+// login streak. Every run is just a run now. The quiz/daily art keys stay in
+// data/art.js (and their test) so nothing else has to change; they're simply not
+// offered here.
 // The Grand Tour's itinerary choices: a classic random tour, or one of the themed
 // expeditions (each a curated tour with a lesson). Shown as chips under the cards
 // when the Grand Tour card is selected — themed tours are a flavor of Grand Tour,
@@ -1242,7 +1296,7 @@ export default function ShutterbugWorld() {
   const [flashHint, setFlashHint] = useState(null); // Scout: {type, key} of the correct answer to gently flash after a wrong pick
   const [howToPlay, setHowToPlay] = useState(false); // the splash's how-to-play card
   // The results screen's reasons to go again — the nearest unfinished collection,
-  // something Grandpa wants, and the rank within reach. Fixed when the screen opens.
+  // something Uncle wants, and the rank within reach. Fixed when the screen opens.
   const [nextUp, setNextUp] = useState(null);
   const [grandpaWant, setGrandpaWant] = useState(null);
   const [rankNear, setRankNear] = useState(null);
@@ -1269,11 +1323,11 @@ export default function ShutterbugWorld() {
       else if (endWon()) MUSIC.finale();
       else MUSIC.homecoming();
     }
-    // Coming home to Grandpa is a warm moment, not a mournful one — he's about to
+    // Coming home to Uncle is a warm moment, not a mournful one — he's about to
     // ask you about everything you saw. Keep the jig under it.
     else if (screen === "homecoming") { MUSIC.stopCountry(); if (musicOn) MUSIC.start(); else MUSIC.stop(); }
     // splash / meet / intro / dream / quiz: the happy Scottish jig plays the whole
-    // way from the splash through meeting Grandpa (it only fades at the world map),
+    // way from the splash through meeting Uncle (it only fades at the world map),
     // and resumes here on a return trip so every playthrough is scored to it.
     else { MUSIC.stopCountry(); if (musicOn) MUSIC.start(); }
   }, [screen]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -1305,11 +1359,16 @@ export default function ShutterbugWorld() {
   // shots were taken on each one before it was filed. index -> misses.
   const missesRef = useRef({});
   const riddleCountRef = useRef(0);
+  // The kind of place Uncle asked for on the last results screen. The NEXT run
+  // quietly works one of them onto the itinerary, so bringing it home actually
+  // answers him. Consumed once (cleared when a run starts), and never on a Daily —
+  // that run must stay identical for everyone, wish or no wish.
+  const grandpaWishRef = useRef(null);
   const riddleDueRef = useRef(false);       // a riddle is queued to open once the shot result is dismissed
   const [elapsedMs, setElapsedMs] = useState(0); // final game time, shown on the results screen
   const [liveNow, setLiveNow] = useState(0); // ticks while playing so the on-screen timer updates
   const [albumView, setAlbumView] = useState(null); // album photo opened into a big popup
-  const [gameMode, setGameMode] = useState("assignments"); // "assignments" | "daily" | "tour" | "explore" | "quiz"
+  const [gameMode, setGameMode] = useState("assignments"); // "assignments" | "tour" | "explore" | "journey"
   const [dailyDay, setDailyDay] = useState(null);          // the day number, when this run IS the Daily
   const [dailyBanked, setDailyBanked] = useState(null);    // {result, wasFirst} once a Daily is filed
   const [tourReqs, setTourReqs] = useState([]); // Grand Tour itinerary: [{key,kind,continent,category?,targetId?,anchorId,label,done,filedId?}]
@@ -1347,20 +1406,21 @@ export default function ShutterbugWorld() {
   const [guideOpen, setGuideOpen] = useState(false);          // Field Guide tool: clue-research popup
   const [guideFresh, setGuideFresh] = useState(false);        // did this Field Guide open just spend the research day?
   const [passportOpen, setPassportOpen] = useState(false);    // Passport tool: multi-page booklet popup
+  const [toolNote, setToolNote] = useState(null);             // why a greyed-out tool isn't usable this mode
   const [passportFrom, setPassportFrom] = useState("start");  // where "back" returns from the passport (so opening it mid-game resumes play)
   const [createOpen, setCreateOpen] = useState(false);        // "Create New Traveler" modal open
-  const [meetInfo, setMeetInfo] = useState(null);             // { line, comment } shown on the meet-Grandpa screen
-  const [meetTyped, setMeetTyped] = useState(0);              // how many of Grandpa's meet lines have finished typing (gates the controls)
+  const [meetInfo, setMeetInfo] = useState(null);             // { line, comment } shown on the meet-Uncle screen
+  const [meetTyped, setMeetTyped] = useState(0);              // how many of Uncle's meet lines have finished typing (gates the controls)
   const [modeInfo, setModeInfo] = useState(null);             // which mode-select ⓘ is open
   const [showScores, setShowScores] = useState(false);        // high-scores reveal
   const [researched, setResearched] = useState({}); // assignment step -> revealed research note (Research button)
   const [cityPlan, setCityPlan] = useState(null); // country-layer city step: { ids, wide } (wide = continent view for thin countries)
   const [quiz, setQuiz] = useState(null); // Quiz mode: { questions, i, answeredIdx, score, correctCount, streak, done, best }
   const [quizBonus, setQuizBonus] = useState(0); // ½-pt-per-correct homecoming review extra credit folded into the trip score
-  const [homeTypedI, setHomeTypedI] = useState(-1); // homecoming: index of the question whose Grandpa intro has finished typing (gates the answers)
-  const [endLine, setEndLine] = useState(""); // Grandpa's one random line on the results screen (picked once per results view)
+  const [homeTypedI, setHomeTypedI] = useState(-1); // homecoming: index of the question whose Uncle intro has finished typing (gates the answers)
+  const [endLine, setEndLine] = useState(""); // Uncle's one random line on the results screen (picked once per results view)
   const [expedition, setExpedition] = useState(null); // active themed expedition {id,title,emoji,lesson} (a curated Grand Tour)
-  const [guestMet, setGuestMet] = useState(false); // has a guest (no profile) met Grandpa Nigel this session?
+  const [guestMet, setGuestMet] = useState(false); // has a guest (no profile) met Uncle Jonah this session?
   const [countryPopup, setCountryPopup] = useState(null); // culture card popup shown on arrival in a country
   // Which map pin / country the mouse (or keyboard focus) is over. Names hide until
   // hovered, and a hovered pin is repainted last so its icon rides on top.
@@ -1372,8 +1432,19 @@ export default function ShutterbugWorld() {
   // fresh geography fact ABOUT that continent (plus globally-true facts), so his
   // "did you know" matches the map you just landed on. Non-blocking; auto-dismisses.
   const arrivalRollRef = useRef(0); // counts continent arrivals, for the Daily's seeded riddle cadence
-  // Show a "did you know" fact bubble about the continent just reached.
+  const mrOGapRef = useRef(MRO_MIN_GAP); // arrivals since Mr O last appeared (starts eligible)
+  // Show a "did you know?" bubble. He leads with somewhere you've actually BEEN this
+  // trip — a country you photographed, told in the very words that used to sit on its
+  // arrival card (the blurb was moved OFF that card to here, so a child meets the fact
+  // when it can land rather than while trying to get past the arrival). When there's
+  // nowhere seen yet to draw on, he falls back to a fact about the continent underfoot.
   const showMrOFact = (continent) => {
+    const seenCountries = [...new Set(album.map((p) => p.country))].filter((c) => COUNTRY_INFO[c]?.blurb);
+    if (seenCountries.length && Math.random() < 0.6) {
+      const c = seenCountries[Math.floor(Math.random() * seenCountries.length)];
+      setMrO(`Remember ${c}? ${COUNTRY_INFO[c].blurb}`);
+      return;
+    }
     const relevant = MR_O_FACTS.map((_, i) => i).filter((i) => MR_O_FACTS[i].where === continent || MR_O_FACTS[i].where == null);
     let pool = relevant.filter((i) => !mrOSeen.current.includes(i));
     if (!pool.length) { mrOSeen.current = mrOSeen.current.filter((i) => !relevant.includes(i)); pool = relevant; } // seen them all here — reshuffle just this continent
@@ -1392,18 +1463,26 @@ export default function ShutterbugWorld() {
     const choices = seed ? withSeed(seed + "|rs|" + ix, () => shuffled(data.choices)) : shuffleArr(data.choices);
     setRiddle({ data, choices, answeredIdx: null });
   };
-  // Mr O ONLY shows up on arriving at a NEW continent — never while you're choosing
-  // places within a country. On each arrival he randomly does ONE of three things:
-  // a double-points riddle (~20%), a "did you know?" fact bubble (~30%), or nothing.
+  // Mr O ONLY shows up on arriving at a NEW place — never while you're choosing within
+  // a country. He rides no more than once every MRO_MIN_GAP arrivals: a bus that
+  // stops too often stops being a treat and starts being an interruption a child taps
+  // through. The gap is a hard floor; WHEN he appears inside an eligible window is a
+  // coin-flip, so the timing stays random rather than clockwork on every fifth stop.
+  // When he does appear it's a double-points riddle (~40% of the time) or a "did you
+  // know?" about somewhere you've been (~60%).
   const maybeMrO = (continent) => {
     const ix = arrivalRollRef.current++;
+    mrOGapRef.current += 1;
+    if (mrOGapRef.current < MRO_MIN_GAP) return;      // too soon since he last rode
     const seed = riddleSeedRef.current;
     const roll = seed ? withSeed(seed + "|arr|" + ix, () => rnd()) : Math.random();
-    if (roll < 0.20) openArrivalRiddle(ix);
-    else if (roll < 0.50) showMrOFact(continent);
+    if (roll < 0.5) {
+      mrOGapRef.current = 0;
+      if (roll < 0.2) openArrivalRiddle(ix); else showMrOFact(continent);
+    }
   };
   const poppedCountryRef = useRef(null); // country whose arrival popup already showed this leg
-  const [dreamPending, setDreamPending] = useState(false); // Grandpa's dream just fulfilled — show the win scene
+  const [dreamPending, setDreamPending] = useState(false); // Uncle's dream just fulfilled — show the win scene
   const pendingRunRef = useRef(null); // start action to run after the intro story
   const recorded = useRef(false);
   const startRef = useRef(0); // ms timestamp the current game began
@@ -1424,8 +1503,8 @@ export default function ShutterbugWorld() {
   // read FLIGHT_MS — they were three separate 4s literals before, which is the
   // kind of thing that silently drifts the first time one of them is tuned.
   const launchFlight = (from, to, finalize) => {
-    sfx("takeoff");
-    landingSfxRef.current = setTimeout(() => { landingSfxRef.current = null; sfx("landing"); }, FLIGHT_MS - PLANE_SCALE_MS);
+    sfx("takeoff", PLANE_SCALE_SEC);
+    landingSfxRef.current = setTimeout(() => { landingSfxRef.current = null; sfx("landing", PLANE_SCALE_SEC); }, FLIGHT_MS - PLANE_SCALE_MS);
     flightFinalizeRef.current = finalize;
     setFlying({ fromX: from.x, fromY: from.y, toX: to.x, toY: to.y });
     timer.current = setTimeout(() => { flightFinalizeRef.current = null; finalize(); }, FLIGHT_MS);
@@ -1557,10 +1636,10 @@ export default function ShutterbugWorld() {
     : (optionsByStep[step] || []);
 
   // --- Story frame: the very first expedition a traveler sets out on opens
-  // with Grandpa Nigel's story (once per profile / once per guest session).
+  // with Uncle Jonah's story (once per profile / once per guest session).
   // Afterward the chosen expedition launches straight away. ----
   const hasMetNigel = () => (profileName ? !!getProfile(profileName)?.metNigel : guestMet);
-  // Grandpa's dream is "fulfilled" once you've brought him the world: a stamp on
+  // Uncle's dream is "fulfilled" once you've brought him the world: a stamp on
   // at least 6 of the 7 continents and 30+ countries mastered. A one-time
   // triumphant scene plays; everything stays playable afterward.
   function dreamFulfilled(profile) {
@@ -1580,11 +1659,11 @@ export default function ShutterbugWorld() {
     pendingRunRef.current = null;
     if (run) run(); else setScreen("start");
   }
-  // From the splash "Continue/Begin your adventure" button: go to the meet-Grandpa
+  // From the splash "Continue/Begin your adventure" button: go to the meet-Uncle
   // screen (where the mode + difficulty are chosen). A brand-new traveler sees
-  // Grandpa's one-time intro story first, then lands on the meet screen.
+  // Uncle's one-time intro story first, then lands on the meet screen.
   function enterMeetScreen() {
-    // Pick Grandpa's line + his nod to the last trip once, so they don't reshuffle
+    // Pick Uncle's line + his nod to the last trip once, so they don't reshuffle
     // as the player fiddles with mode/difficulty.
     const line = MEET_LINES[Math.floor(Math.random() * MEET_LINES.length)];
     const profile = profileName ? getProfile(profileName) : null;
@@ -1600,12 +1679,14 @@ export default function ShutterbugWorld() {
     const comment = pool[Math.floor(Math.random() * pool.length)];
 
     // Rank-up + newly-unlocked news (saved travelers only). On the very first
-    // meet we baseline silently; after that, Grandpa announces what's new.
+    // meet we baseline silently; after that, Uncle announces what's new.
     const news = [];
     if (profile) {
       const u = unlocks(profile);
       const rank = careerRank(profile);
-      const ANN = ["medium", "quiz", "tour", "hard", "expeditions"];
+      // "quiz" is intentionally not here: it's no longer a mode to announce as
+      // unlocked (the review quiz just happens at the end of every run now).
+      const ANN = ["medium", "tour", "hard", "expeditions"];
       const nowUnlocked = ANN.filter((k) => u[k]);
       const seen = profile.seenUnlocks;
       const seenRank = typeof profile.seenRank === "number" ? profile.seenRank : rank.tier;
@@ -1620,7 +1701,7 @@ export default function ShutterbugWorld() {
       if (!u[difficulty]) setDifficulty("easy");
     }
     setMeetInfo({ line, comment, news, mood });
-    setMeetTyped(0); // Grandpa starts talking; controls stay grayed until he's done
+    setMeetTyped(0); // Uncle starts talking; controls stay grayed until he's done
     setScreen("meet");
   }
   function goToMeet() {
@@ -1632,7 +1713,7 @@ export default function ShutterbugWorld() {
   }
   // Create a brand-new traveler and set off in one go (from the Create modal).
   // Uses the created name directly so it doesn't depend on not-yet-flushed state.
-  // A new profile can't have met Grandpa, so the intro story always plays first,
+  // A new profile can't have met Uncle, so the intro story always plays first,
   // then the meet screen. Returns false if the name is blank or already taken.
   function createAndBegin(name, spec) {
     const p = createProfile(name);
@@ -1650,8 +1731,6 @@ export default function ShutterbugWorld() {
   // the run directly.
   function setOff() {
     const u = unlocks(profileName ? getProfile(profileName) : null);
-    if (gameMode === "quiz" && u.quiz) return startQuiz();
-    if (gameMode === "daily") return startGame(dayNumber());
     if (gameMode === "journey") return startJourney(journeyId);
     if (gameMode === "explore") return startExplore();
     if (gameMode === "tour" && u.tour) {
@@ -1673,12 +1752,17 @@ export default function ShutterbugWorld() {
     // Weighted order surfaces the active player's missed/unmastered places more
     // often (a plain shuffle for guests). Used to fill the non-fresh anchor slots
     // and to pick same-continent city decoys.
+    // Uncle's wish biases only a NORMAL run — never the Daily, which must be the
+    // same for everyone. Read once here; the ref is cleared just below so it colours
+    // exactly one trip.
+    const wish = daily ? null : grandpaWishRef.current;
     const plan = () => {
       const order = weightedOrder(daily ? null : profile).map((id) => BY_ID[id]);
-      const anchors = pickAnchors(daily ? null : profile, order, mode.assignments);
+      const anchors = pickAnchors(daily ? null : profile, order, mode.assignments, wish);
       return makeAssignmentPlan(mode, anchors, order);
     };
     const { assignmentObjs, options } = daily ? withSeed(dailySeed(daily, difficulty), plan) : plan();
+    grandpaWishRef.current = null; // spent — it colours only the one trip that follows
     setAssignments(assignmentObjs);
     setOptionsByStep(options);
     setStep(0);
@@ -1708,7 +1792,7 @@ export default function ShutterbugWorld() {
     recorded.current = false;
     setMsg({ type: "info", text: daily
       ? `Day ${daily} — the same expedition everyone else is flying today. Good luck!`
-      : "Read Grandpa's note, then pick the right continent on the map." });
+      : "Read Uncle's note, then pick the right continent on the map." });
     setFlying(null);
     // Riddles carry a small score bonus, so on a daily the cadence is seeded too —
     // otherwise two players on the "identical" run would be offered a different
@@ -1979,7 +2063,7 @@ export default function ShutterbugWorld() {
     }
   }
 
-  // The homecoming: back from an expedition, Grandpa asks about the places you
+  // The homecoming: back from an expedition, Uncle asks about the places you
   // photographed this trip (seeded from the album), then it hands off to the
   // results screen. Anecdote on a right answer; a gentle line on a wrong one.
   function startHomecoming() {
@@ -2012,6 +2096,7 @@ export default function ShutterbugWorld() {
     riddleEveryRef.current = seed ? withSeed(seed, () => 1 + randInt(5)) : 1 + Math.floor(Math.random() * 5);
     riddleDueRef.current = false;
     arrivalRollRef.current = 0; // riddles/facts are now rolled per continent arrival
+    mrOGapRef.current = MRO_MIN_GAP; // eligible from the first arrival (the coin-flip still gates)
   }
   // Answer the riddle: a correct answer is worth DOUBLE a normal shot's points.
   function answerRiddle(idx) {
@@ -2038,7 +2123,7 @@ export default function ShutterbugWorld() {
       poppedCountryRef.current = null; // let the next leg's country pop its card
       setMsg({ type: "info", text: "New assignment! Read the clue and pick the continent." });
     } else if (kind === "win" || kind === "lose" || kind === "tour-win" || kind === "tour-lose") {
-      startHomecoming();   // visit Grandpa first; the homecoming hands off to the results
+      startHomecoming();   // visit Uncle first; the homecoming hands off to the results
     } else if (kind === "wrong" && phase === "city") {
       setCurrent(null);    // clear the wrong shot; back to "pick a city"
       setRevealed(false);
@@ -2084,7 +2169,7 @@ export default function ShutterbugWorld() {
         setNewBadges(earnedNow);
         if (earnedNow.length) sfx("badge"); else if (res.isBest || res.isBestTime) sfx("stamp");
         refreshProfiles();
-        // First time the dream is complete, queue Grandpa's triumphant scene.
+        // First time the dream is complete, queue Uncle's triumphant scene.
         const updated = getProfile(profileName);
         if (updated && !updated.dreamDone && dreamFulfilled(updated)) setDreamPending(true);
       }
@@ -2111,10 +2196,10 @@ export default function ShutterbugWorld() {
     if (screen === "start") recorded.current = false;
   }, [screen]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Grandpa's send-you-off line on the results screen: proud on a clean sweep,
+  // Uncle's send-you-off line on the results screen: proud on a clean sweep,
   // encouraging when the days ran out. Picked ONCE when the screen opens so it
   // doesn't reshuffle on every re-render.
-  // Did the trip bring home everything the editor asked for? Grandpa's closing
+  // Did the trip bring home everything the editor asked for? Uncle's closing
   // line and the results music both hang off this, so it's computed in one place.
   // A function declaration, not a const: the music effect above calls it, and by
   // the time any effect runs the state it reads is initialized.
@@ -2135,17 +2220,21 @@ export default function ShutterbugWorld() {
     // Only worth saying when the next rank is genuinely in reach — "94 more places
     // to Globe Editor" is not encouragement, it's a wall.
     setRankNear(rank && rank.next && rank.nextNeed - rank.have <= 12 ? rank : null);
-    // Grandpa asks for a KIND of place he hasn't got yet. If he has one of
+    // Uncle asks for a KIND of place he hasn't got yet. If he has one of
     // everything, he asks for nothing rather than for something he already has.
     const pp = prof ? passportData(prof) : null;
     const missing = pp ? GRANDPA_WANTS.filter((w) => {
       const col = pp.collections.find((c) => c.category === w.category);
       return col && col.mastered === 0;
     }) : [];
-    setGrandpaWant(missing.length
-      ? WANT_LINES[Math.floor(Math.random() * WANT_LINES.length)]
-        .replace("%", missing[Math.floor(Math.random() * missing.length)].want)
-      : null);
+    if (missing.length) {
+      const pick = missing[Math.floor(Math.random() * missing.length)];
+      setGrandpaWant(WANT_LINES[Math.floor(Math.random() * WANT_LINES.length)].replace("%", pick.want));
+      grandpaWishRef.current = pick.category; // the next run leans toward this
+    } else {
+      setGrandpaWant(null);
+      grandpaWishRef.current = null;
+    }
   }, [screen]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const outOfDays = (subtitle) => {
@@ -2257,8 +2346,8 @@ export default function ShutterbugWorld() {
       if (nd <= 0) outOfDays(`${cont} wasn't right, and that was your last day.`);
       else setPending({ kind: "wrong", tone: "bad", emoji: "❌", title: sameHere ? "Still the wrong continent" : "Not that continent",
         subtitle: sameHere
-          ? `You're already in ${cont}, but Grandpa's subject isn't here. Read his note and pick the continent it points to.`
-          : `Grandpa's subject isn't in ${cont}. A wasted flight there and back cost you ${cost} day${cost === 1 ? "" : "s"} — read his note and try again.`,
+          ? `You're already in ${cont}, but Uncle's subject isn't here. Read his note and pick the continent it points to.`
+          : `Uncle's subject isn't in ${cont}. A wasted flight there and back cost you ${cost} day${cost === 1 ? "" : "s"} — read his note and try again.`,
         hint: MODES[difficulty].hints ? `Try looking ${compass(CONTINENT_PIN[cont], CONTINENT_PIN[target.continent])} of ${cont}.` : null,
         buttonLabel: "Try again" });
     }
@@ -2365,14 +2454,14 @@ export default function ShutterbugWorld() {
       if (COUNTRY_INFO[country] && poppedCountryRef.current !== country) { poppedCountryRef.current = country; setCountryPopup(country); }
       music("countryTune", country, pickedContinent); // a few seconds of local music on arrival
       say(country); // spoken arrival: just the country's name
-      setMsg({ type: "info", text: `Arrived in ${country}. Now photograph Grandpa's subject.` });
+      setMsg({ type: "info", text: `Arrived in ${country}. Now photograph Uncle's subject.` });
     } else {
       const nd = Math.round((days - 0.5) * 10) / 10; // a wrong country costs half a day
       setDays(nd);
       sfx("fail");
       const why = a && a.type === "category"
         ? `We don't have a ${CATEGORIES[a.category].noun} on file to photograph in ${country} — try another country.`
-        : `Grandpa's subject isn't in ${country}.`;
+        : `Uncle's subject isn't in ${country}.`;
       if (nd <= 0) outOfDays(`${country} wasn't right, and that was your last day.`);
       else {
         // Gentle nudge: the first letter of a country that IS right.
@@ -2400,15 +2489,15 @@ export default function ShutterbugWorld() {
     const t = a.type === "category" ? loc(a.anchorId) : loc(a.targetId);
     const catNoun = CATEGORIES[t.category].noun;
     const text = a.type === "category"
-      ? `Grandpa's guidebook suggests ${t.city}, ${t.country} ${t.flag} in ${t.continent} — its ${catNoun}, ${t.subject}, would be a perfect shot.`
-      : `Grandpa's after ${t.subject} — in ${t.city}, ${t.country} ${t.flag} (${t.continent}).`;
+      ? `Uncle's guidebook suggests ${t.city}, ${t.country} ${t.flag} in ${t.continent} — its ${catNoun}, ${t.subject}, would be a perfect shot.`
+      : `Uncle's after ${t.subject} — in ${t.city}, ${t.country} ${t.flag} (${t.continent}).`;
     setResearched((r) => ({ ...r, [step]: text }));
     if (researchCost > 0) setDays((d) => Math.round((d - researchCost) * 10) / 10);
     sfx("success");
     // The note pins itself under the telegram (and persists across the flight);
     // don't ALSO echo it into the message banner — that read as the hint
     // appearing twice. Just nudge the player toward the map.
-    setMsg({ type: "info", text: "Grandpa's guidebook has the answer — pinned above. Now pick the continent on the map." });
+    setMsg({ type: "info", text: "Uncle's guidebook has the answer — pinned above. Now pick the continent on the map." });
   }
 
   // ---- City phase: click a city on the zoomed continent to photograph it ----
@@ -2565,7 +2654,7 @@ export default function ShutterbugWorld() {
   // Grand Tour tiers only.
   const travelModes = isTour && (difficulty === "medium" || difficulty === "hard");
 
-  // ---------- STORY / INTRO SCREEN (Grandpa Nigel's send-off) ----------
+  // ---------- STORY / INTRO SCREEN (Uncle Jonah's send-off) ----------
   if (screen === "intro") {
     return <StoryScreen beats={INTRO_BEATS} reduced={prefersReduced} mood="intro" cta="bag"
       ctaLabel="Take the camera" onDone={finishStory} />;
@@ -2582,24 +2671,37 @@ export default function ShutterbugWorld() {
   if (screen === "meet") {
     const prof = profileName ? getProfile(profileName) : null;
     const showRunNote = !!(prof && prof.games > 0 && meetInfo?.comment);
-    // Grandpa's greeting types out first; his choices stay grayed and non-clickable
+    // Uncle's greeting types out first; his choices stay grayed and non-clickable
     // until every line of his has finished (tap the text to hurry it along).
     const meetReady = meetTyped >= (1 + (showRunNote ? 1 : 0));
     const u = unlocks(prof);
     const news = meetInfo?.news || [];
+    // Difficulty applies to the two SCORED modes. Explore and Journeys don't race,
+    // so difficulty stays on screen but greyed — tapping it says why, rather than
+    // vanishing and leaving a child wondering where the setting went (rule 4).
+    const needsDifficulty = gameMode === "assignments" || gameMode === "tour";
+    const DIFF_NA_WHY = {
+      explore: "Explore has no timer and no score — you just roam and read, so there's no difficulty to set.",
+      journey: "A Journey retraces a real expedition stop by stop, in the order it happened — there's no day budget to make harder or easier.",
+    };
     return (
       <Frame>
         <div style={{ maxWidth: 1180, margin: "0 auto", padding: "4px 4px 8px" }}>
-          {/* Grandpa greets you. He gets the bigger half of the screen and sits on
+          {/* Uncle greets you. He gets the bigger half of the screen and sits on
               the RIGHT; what you read and click stays left, in one column, so the
               eye isn't crossing him to get from his question to the answer. The
               order flips on a narrow screen (he stacks under the words) because a
               scene that wide leaves nothing for the text beside it. */}
-          {/* flex-start, not center: centring re-positions Grandpa every time the
+          {/* flex-start, not center: centring re-positions Uncle every time the
               left column changes height, so he drifted as the card filled. Pinned to
               the top he stays exactly where a child last looked at him. */}
           <div style={{ display: "flex", alignItems: "flex-start", gap: 20, flexWrap: "wrap" }}>
-            <div style={{ ...CARD_SURFACE, textAlign: "left", flex: "1 1 340px", minWidth: 280,
+            {/* LEFT COLUMN — Uncle's words, then everything you choose. Bringing the
+                choices up here fills the space beside his portrait instead of stranding
+                them in a long scroll below it, so difficulty is on screen without
+                hunting for it. */}
+            <div style={{ flex: "1 1 420px", minWidth: 300 }}>
+            <div style={{ ...CARD_SURFACE, textAlign: "left",
               border: `2px solid ${GOLD}`, borderRadius: 16, padding: "18px 20px" }}>
               <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 24, fontWeight: 800, letterSpacing: "0.14em", color: CORAL, marginBottom: 10 }}>{GRANDPA.name.toUpperCase()}</div>
               {/* One line at a time: the follow-up note waits for the greeting to
@@ -2613,12 +2715,15 @@ export default function ShutterbugWorld() {
                 // Each line he hasn't reached yet is laid out INVISIBLY rather than
                 // left unmounted, so the card is its final size from the first paint.
                 // Mounting them as he got to them grew the card line by line, which
-                // pushed the mode cards down the page mid-read and slid Grandpa about.
+                // pushed the mode cards down the page mid-read and slid Uncle about.
                 const ghost = (text, style) => <p aria-hidden="true" style={{ ...style, visibility: "hidden" }}>{text}</p>;
+                // Uncle keeps TALKING_CPS while the game's information text types at
+                // half that. He isn't information — he's a person talking, and a person
+                // who speaks at reading speed sounds like he's struggling to get it out.
                 return (<>
-                  <TypeLine text={meetInfo?.line} reduced={prefersReduced} onDone={() => setMeetTyped((n) => n + 1)} style={{ ...said, margin: 0 }} />
+                  <TypeLine text={meetInfo?.line} cps={TALKING_CPS} reduced={prefersReduced} onDone={() => setMeetTyped((n) => n + 1)} style={{ ...said, margin: 0 }} />
                   {showRunNote && (meetTyped >= 1
-                    ? <TypeLine text={meetInfo.comment} reduced={prefersReduced} onDone={() => setMeetTyped((n) => n + 1)} style={{ ...said, margin: "10px 0 0" }} />
+                    ? <TypeLine text={meetInfo.comment} cps={TALKING_CPS} reduced={prefersReduced} onDone={() => setMeetTyped((n) => n + 1)} style={{ ...said, margin: "10px 0 0" }} />
                     : ghost(meetInfo.comment, { ...said, margin: "10px 0 0" }))}
                   {meetReady
                     ? <p style={{ ...said, margin: "12px 0 0", fontWeight: 800 }}>{MEET_ASK}</p>
@@ -2626,13 +2731,8 @@ export default function ShutterbugWorld() {
                 </>);
               })()}
             </div>
-            {/* His face follows the conversation: the mood of the run he's nodding to
-                while he's nodding to it, then amused once he gets to the question. */}
-            <NigelScene mood={meetReady ? "meetAsk" : (meetInfo?.mood || "meetLine")}
-              style={{ flex: "1.35 1 420px", minWidth: 300 }} />
-          </div>
 
-          {/* Newly unlocked! — Grandpa's announcements, under the wax seal. */}
+          {/* Newly unlocked! — Uncle's announcements, under the wax seal. */}
           {news.length > 0 && (
             <div style={{ marginTop: 12, background: "#EAF6EF", border: `2px solid ${GREEN}`, borderRadius: 12, padding: "12px 16px", display: "flex", gap: 12, alignItems: "flex-start", textAlign: "left" }}>
               <ArtBadge art={SEAL_UNLOCKED} emoji="🔓" size={54} style={{ marginTop: 2 }} />
@@ -2647,13 +2747,13 @@ export default function ShutterbugWorld() {
             </div>
           )}
 
-          {/* Grandpa's choices — grayed out and non-interactive until he's finished
+          {/* Uncle's choices — grayed out and non-interactive until he's finished
               talking, so nobody clicks past his greeting before it's on screen. */}
           <div style={{ opacity: meetReady ? 1 : 0.5, pointerEvents: meetReady ? "auto" : "none", transition: "opacity .25s" }}>
           {/* Pick a way to play */}
           <div style={{ marginTop: 18 }}>
-            <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.22em", color: INK, opacity: 0.65, marginBottom: 10 }}>PICK A WAY TO PLAY</div>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(146px, 1fr))", gap: 10 }}>
+            <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 15, fontWeight: 700, letterSpacing: "0.16em", color: INK, opacity: 0.75, marginBottom: 10 }}>PICK A WAY TO PLAY</div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 10 }}>
               {MODE_CARDS.map((c) => {
                 const active = gameMode === c.id;
                 const locked = !u[c.id];
@@ -2662,11 +2762,11 @@ export default function ShutterbugWorld() {
                     <button onClick={() => { if (locked) { setModeInfo(c.id); return; } setGameMode(c.id); setModeInfo(null); }} aria-pressed={active}
                       aria-label={locked ? `${c.name} — locked. ${UNLOCK_REQ[c.id] || ""}` : c.name}
                       style={{ position: "relative", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 2,
-                        width: "100%", height: 108, borderRadius: 12, overflow: "hidden", cursor: "pointer",
+                        width: "100%", height: 132, borderRadius: 12, overflow: "hidden", cursor: "pointer",
                         border: active ? `3px solid ${CORAL}` : `1.5px solid ${PAPER_LINE}`, padding: 0, textAlign: "center",
                         background: `url("${UI}atlas-paper-texture.png") center / cover, ${PAPER}`,
                         boxShadow: active ? "0 4px 14px rgba(233,106,76,0.35)" : "0 2px 8px rgba(74,50,20,0.18)" }}>
-                      <ArtBadge art={MODE_ART[c.id]} emoji={c.emoji} size={58} dim={locked} style={{ marginTop: locked ? 0 : 2 }} />
+                      <ArtBadge art={MODE_ART[c.id]} emoji={c.emoji} size={80} dim={locked} style={{ marginTop: locked ? 0 : 2 }} />
                       {!locked && <span style={{ color: INK, fontWeight: 800, fontSize: 13.5, lineHeight: 1.1, padding: "0 6px" }}>{c.name}</span>}
                       {active && !locked && <span aria-hidden="true" style={{ position: "absolute", top: 6, left: 8, background: CORAL, color: "#fff", fontWeight: 900, fontSize: 12, width: 20, height: 20, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center" }}>✓</span>}
                       {locked && (
@@ -2747,52 +2847,69 @@ export default function ShutterbugWorld() {
             </div>
           )}
 
-          {/* Difficulty */}
-          {(gameMode === "assignments" || gameMode === "tour") && (
-            <div style={{ marginTop: 18 }}>
-              <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.22em", color: INK, opacity: 0.65, marginBottom: 8 }}>
-                DIFFICULTY
-                <button onClick={() => setModeInfo((m) => (m === "difficulty" ? null : "difficulty"))} aria-expanded={modeInfo === "difficulty"} aria-label="About the difficulty levels"
-                  style={{ marginLeft: 7, width: 18, height: 18, borderRadius: "50%", border: `1px solid ${INK}`, background: "transparent", color: INK, fontWeight: 900, fontSize: 10, lineHeight: 1, cursor: "pointer", verticalAlign: "-3px" }}>?</button>
-              </div>
-              <div style={{ display: "inline-flex", border: `1.5px solid ${INK}`, borderRadius: 8, overflow: "hidden" }}>
-                {MODE_ORDER.map((k) => {
-                  const locked = !u[k];
-                  const on = difficulty === k;
-                  return (
-                    <button key={k} onClick={() => { if (locked) { setModeInfo("difficulty"); return; } setDifficulty(k); }}
-                      aria-pressed={on} aria-label={locked ? `${MODES[k].label} — locked. ${UNLOCK_REQ[k] || ""}` : MODES[k].label}
-                      style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2, padding: "7px 16px 6px", border: "none", cursor: "pointer", fontWeight: 700, fontSize: 14,
-                        background: on && !locked ? INK : "transparent", color: locked ? "#9A8E77" : (on ? PAPER : INK) }}>
-                      <ArtBadge art={DIFFICULTY_ART[k]} emoji="🎖️" size={38} dim={locked} />
-                      <span>{locked && <span aria-hidden="true">🔒 </span>}{MODES[k].label}</span>
-                    </button>
-                  );
-                })}
-              </div>
-              {modeInfo === "difficulty" && (
-                <p role="status" style={{ fontSize: 13, color: INK, background: PAPER, border: `1px solid ${PAPER_LINE}`, borderRadius: 8, padding: "9px 12px", margin: "10px auto 0", maxWidth: 560, lineHeight: 1.5, textAlign: "left" }}>
-                  {MODE_ORDER.filter((k) => !u[k]).length > 0 && (
-                    <span style={{ display: "block", color: CORAL, fontWeight: 700, marginBottom: 6 }}>
-                      🔒 {MODE_ORDER.filter((k) => !u[k]).map((k) => `${MODES[k].label}: ${UNLOCK_REQ[k]}`).join(" · ")}
-                    </span>
-                  )}
-                  <b>{MODES[difficulty].label}:</b> {MODES[difficulty].blurb}
-                </p>
-              )}
+          {/* Difficulty — always shown, but greyed and inert for the modes that don't
+              use it. The box runs the full width of this column so its four emblems are
+              big and legible. A tap anywhere on it while it's greyed explains why. */}
+          <div style={{ marginTop: 18, opacity: needsDifficulty ? 1 : 0.5 }}>
+            <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 15, fontWeight: 700, letterSpacing: "0.16em", color: INK, opacity: 0.75, marginBottom: 8 }}>
+              DIFFICULTY
+              <button onClick={() => setModeInfo((m) => (m === "difficulty" ? null : "difficulty"))} aria-expanded={modeInfo === "difficulty"} aria-label="About the difficulty levels"
+                style={{ marginLeft: 7, width: 20, height: 20, borderRadius: "50%", border: `1px solid ${INK}`, background: "transparent", color: INK, fontWeight: 900, fontSize: 11, lineHeight: 1, cursor: "pointer", verticalAlign: "-4px" }}>?</button>
             </div>
-          )}
+            <div style={{ display: "flex", width: "100%", border: `1.5px solid ${INK}`, borderRadius: 8, overflow: "hidden" }}>
+              {MODE_ORDER.map((k) => {
+                const locked = !u[k];
+                const on = difficulty === k;
+                return (
+                  <button key={k}
+                    onClick={() => {
+                      if (!needsDifficulty) { setModeInfo("difficulty-na"); return; }
+                      if (locked) { setModeInfo("difficulty"); return; }
+                      setDifficulty(k);
+                    }}
+                    aria-pressed={needsDifficulty && on} aria-label={!needsDifficulty ? `${MODES[k].label} — difficulty isn't used in this mode` : locked ? `${MODES[k].label} — locked. ${UNLOCK_REQ[k] || ""}` : MODES[k].label}
+                    style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 3, padding: "10px 6px 8px", border: "none", cursor: "pointer", fontWeight: 700, fontSize: 14,
+                      background: needsDifficulty && on && !locked ? INK : "transparent", color: locked ? "#9A8E77" : (needsDifficulty && on ? PAPER : INK) }}>
+                    <ArtBadge art={DIFFICULTY_ART[k]} emoji="🎖️" size={52} dim={locked || !needsDifficulty} />
+                    <span>{locked && <span aria-hidden="true">🔒 </span>}{MODES[k].label}</span>
+                  </button>
+                );
+              })}
+            </div>
+            {modeInfo === "difficulty-na" && (
+              <p role="status" style={{ fontSize: 13, color: INK, background: PAPER, border: `1px solid ${CORAL}`, borderRadius: 8, padding: "9px 12px", marginTop: 10, lineHeight: 1.5, textAlign: "left" }}>
+                <b>No difficulty for this trip.</b> {DIFF_NA_WHY[gameMode] || "This mode doesn't use difficulty."}
+              </p>
+            )}
+            {modeInfo === "difficulty" && (
+              <p role="status" style={{ fontSize: 13, color: INK, background: PAPER, border: `1px solid ${PAPER_LINE}`, borderRadius: 8, padding: "9px 12px", marginTop: 10, lineHeight: 1.5, textAlign: "left" }}>
+                {MODE_ORDER.filter((k) => !u[k]).length > 0 && (
+                  <span style={{ display: "block", color: CORAL, fontWeight: 700, marginBottom: 6 }}>
+                    🔒 {MODE_ORDER.filter((k) => !u[k]).map((k) => `${MODES[k].label}: ${UNLOCK_REQ[k]}`).join(" · ")}
+                  </span>
+                )}
+                <b>{MODES[difficulty].label}:</b> {MODES[difficulty].blurb}
+              </p>
+            )}
+          </div>
 
           {/* Set off / back */}
           <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap", marginTop: 8 }}>
             <button onClick={setOff} disabled={!meetReady} aria-disabled={!meetReady}
               style={{ ...primaryBtn, opacity: meetReady ? 1 : 0.5, cursor: meetReady ? "pointer" : "default" }}>
-              {gameMode === "quiz" ? "Start the quiz 🧠" : gameMode === "daily" ? `Fly today's expedition 📅` : gameMode === "journey" ? `Set out: ${JOURNEY_BY_ID[journeyId].title} 🛶` : gameMode === "explore" ? "Start exploring 🧭"
+              {gameMode === "journey" ? `Set out: ${JOURNEY_BY_ID[journeyId].title} 🛶` : gameMode === "explore" ? "Start exploring 🧭"
                 : gameMode === "tour" ? (tourTheme === "classic" ? "Set off on the Grand Tour ✈" : `Set off: ${TOUR_THEMES.find((t) => t.id === tourTheme)?.title} 🗺️`)
                 : "Set off with the camera 📷"}
             </button>
           </div>
           </div>
+          </div>{/* end LEFT COLUMN */}
+          {/* His face follows the conversation: the mood of the run he's nodding to
+              while he's nodding to it, then amused once he gets to the question. It
+              sticks in view as the choices scroll past on a short screen. */}
+          <NigelScene mood={meetReady ? "meetAsk" : (meetInfo?.mood || "meetLine")}
+            style={{ flex: "1.35 1 420px", minWidth: 300, position: "sticky", top: 12 }} />
+          </div>{/* end flex row */}
           <button onClick={() => setScreen("start")}
             style={{ marginTop: 14, background: "none", border: "none", color: INK, opacity: 0.6, fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
             ← Back to travelers
@@ -2852,7 +2969,11 @@ export default function ShutterbugWorld() {
                 return (
                   <button onClick={() => { startMusicMaybe(); setPromptTraveler(false); setScreen("travelers"); }}
                     className="sbw-beckon"
-                    style={{ ...primaryBtn, marginTop: 0, fontSize: 19, padding: "15px 32px" }}>
+                    // Sized and lettered to read as a sibling of the sign above it, not
+                    // as generic chrome: the splash's one job is to be clicked.
+                    style={{ ...primaryBtn, marginTop: 0, fontFamily: TYPEWRITER,
+                      fontSize: "clamp(20px, 2.3vw, 31px)", padding: "clamp(14px, 1.5vw, 22px) clamp(30px, 4vw, 60px)",
+                      fontWeight: 700, letterSpacing: "0.06em", borderRadius: 12 }}>
                     {label}
                   </button>
                 );
@@ -2868,7 +2989,7 @@ export default function ShutterbugWorld() {
     );
   }
 
-  // ---------- CHOOSE TRAVELER — its own screen between the splash and Grandpa.
+  // ---------- CHOOSE TRAVELER — its own screen between the splash and Uncle.
   // The main jig keeps playing here (only fades at the world map). ----------
   if (screen === "travelers") {
     return (
@@ -2963,7 +3084,7 @@ export default function ShutterbugWorld() {
               })()}
             </div>
           )}
-          {/* On to meet Grandpa. goToMeet nudges to pick a traveler first if none is chosen. */}
+          {/* On to meet Uncle. goToMeet nudges to pick a traveler first if none is chosen. */}
           <button onClick={goToMeet} style={{ ...primaryBtn, marginTop: 24, fontSize: 17, padding: "13px 32px" }}>
             Continue ✈
           </button>
@@ -3013,14 +3134,14 @@ export default function ShutterbugWorld() {
     const q = quiz.questions[quiz.i];
     const answered = quiz.answeredIdx !== null;
     const loc = home ? BY_ID[q.id] : null;
-    // Homecoming: keep the answer buttons grayed until Grandpa's line has finished
+    // Homecoming: keep the answer buttons grayed until Uncle's line has finished
     // typing, so the child reads his question before picking (only gates homecoming).
     const homeReady = !home || homeTypedI === quiz.i;
     return (
       <Frame>
         <div style={{ maxWidth: home ? 960 : 560, margin: "0 auto" }}>
           <div style={{ display: "flex", gap: 18, alignItems: "flex-start", flexWrap: "wrap" }}>
-            {/* Homecoming: Grandpa on the LEFT, the quiz on the RIGHT (no scrolling). */}
+            {/* Homecoming: Uncle on the LEFT, the quiz on the RIGHT (no scrolling). */}
             {home && (
               <div style={{ flex: "1 1 300px", minWidth: 260, background: PAPER, border: `2px solid ${GOLD}`, borderRadius: 16, padding: "20px 18px", textAlign: "center" }}>
                 <NigelScene mood="homecoming" style={{ margin: "0 auto 12px" }} />
@@ -3401,7 +3522,7 @@ export default function ShutterbugWorld() {
           <p style={{ color: INK, fontWeight: 700, marginTop: 6 }}>{r.title}</p>
           <p style={{ color: INK, opacity: 0.7, marginTop: 2 }}>{r.note}</p>
 
-          {/* Grandpa's word on the trip — proud on a clean sweep, encouraging when
+          {/* Uncle's word on the trip — proud on a clean sweep, encouraging when
               the days ran out. He is the emotional bookend to every expedition, so
               he gets the room to be one: the whole scene, in the face that matches
               what he's saying. Under it, the reason to go again. */}
@@ -3484,8 +3605,8 @@ export default function ShutterbugWorld() {
             <div style={{ marginTop: 24, textAlign: "center" }}>
               <div style={{ background: "linear-gradient(160deg, #1C3A5E, #16324E)", color: "#F4E3B8", borderRadius: 12, padding: "14px 18px", maxWidth: 460, margin: "0 auto" }}>
                 <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.18em", marginBottom: 6 }}>🌍 YOU'VE BROUGHT HIM THE WORLD</div>
-                <p style={{ margin: 0, fontSize: 14, lineHeight: 1.5, color: "#fff" }}>Grandpa Nigel has something to say to you…</p>
-                <button onClick={() => setScreen("dream")} style={{ ...primaryBtn, marginTop: 14, background: GOLD, color: INK, boxShadow: "0 4px 0 #A9861E" }}>Go and see Grandpa →</button>
+                <p style={{ margin: 0, fontSize: 14, lineHeight: 1.5, color: "#fff" }}>Uncle Jonah has something to say to you…</p>
+                <button onClick={() => setScreen("dream")} style={{ ...primaryBtn, marginTop: 14, background: GOLD, color: INK, boxShadow: "0 4px 0 #A9861E" }}>Go and see Uncle →</button>
               </div>
             </div>
           )}
@@ -3783,7 +3904,7 @@ export default function ShutterbugWorld() {
   const clue = isTour ? "" : (isCatAsg
     ? (catCount
         ? `In ${asg.continent.toUpperCase()}, ${NUMWORD[catCount] || catCount} countries on your map have a ${catMeta.noun}. Fly to any of them and photograph it — you pick which one!`
-        : `In ${asg.continent.toUpperCase()}, find any ${catMeta.noun} on Grandpa's list and photograph it — you pick which one!`)
+        : `In ${asg.continent.toUpperCase()}, find any ${catMeta.noun} on Uncle's list and photograph it — you pick which one!`)
     : (target ? (target[tier] || target.hard) : ""));
   const inCountry = phase === "country";
   const inCity = phase === "city";
@@ -3878,10 +3999,10 @@ export default function ShutterbugWorld() {
   const MAP_CAP = "min(calc(100vh - 262px), 560px)";
   // A short live instruction for the bottom ribbon, matched to the current phase.
   const ribbonText = inCity
-    ? (isExplore ? "Click any pin to read a place's story." : "Click the right city on the map to take Grandpa's photo.")
+    ? (isExplore ? "Click any pin to read a place's story." : "Click the right city on the map to take Uncle's photo.")
     : inCountry ? "Which country does the clue point to? Click it on the map."
     : (isTour ? "Fly your route — straying from the order you committed to costs a day."
-              : "Choose the continent that matches Grandpa's clue.");
+              : "Choose the continent that matches Uncle's clue.");
   const gearItem = { textAlign: "left", background: "transparent", border: "none", borderRadius: 6, padding: "7px 9px", fontSize: 13, fontWeight: 700, color: INK, cursor: "pointer", whiteSpace: "nowrap" };
   return (
     <Frame desk>
@@ -4021,7 +4142,7 @@ export default function ShutterbugWorld() {
             <img src={`${UI}paperclip.png`} alt="" aria-hidden="true"
               style={{ position: "absolute", top: -15, left: 16, width: 34, height: "auto", filter: "drop-shadow(0 3px 3px rgba(0,0,0,0.35))" }} />
             <div style={{ textAlign: "center", marginBottom: 8, color: CORAL }}>
-              <span style={{ display: "block", fontFamily: HAND, fontWeight: 700, fontSize: 33, lineHeight: 1.05 }}>A Note from Nigel</span>
+              <span style={{ display: "block", fontFamily: HAND, fontWeight: 700, fontSize: 33, lineHeight: 1.05 }}>A Note from Jonah</span>
               <span style={{ display: "block", fontFamily: "ui-monospace, monospace", fontSize: 18, letterSpacing: "0.1em", fontWeight: 800, whiteSpace: "nowrap" }}>ASSIGNMENT {step + 1} / {assignments.length}</span>
             </div>
             <div style={{ borderTop: `1px dashed ${INK}`, opacity: 0.35, margin: "0 0 12px" }} />
@@ -4033,7 +4154,7 @@ export default function ShutterbugWorld() {
             ) : (
               <TypeLine text={clue} reduced={prefersReduced} style={{ margin: 0, color: INK, fontFamily: HAND, lineHeight: 1.35, fontSize: 18 }} />
             )}
-            {/* The landmark-type marker rides at the very END of Nigel's note (just
+            {/* The landmark-type marker rides at the very END of Jonah's note (just
                 above his signature), not mid-note. */}
             {showTypeBadge && badgeCat && <div style={{ marginTop: 10 }}><CategoryBadge category={badgeCat} size="sm" style={{ verticalAlign: "middle" }} /></div>}
             <img src={`${UI}grandpa-signature.png`} alt={`— ${GRANDPA.name}`}
@@ -4091,7 +4212,7 @@ export default function ShutterbugWorld() {
               <div style={{ fontSize: 13, color: INK, opacity: 0.7, marginTop: 2 }}>{currentLoc.subject}</div>
               {/* Country-layer arrivals already saw the culture card as a popup;
                   easy mode (no country step) and Explore show it here with the shot. */}
-              {(!pickedCountry || isExplore) && <CountryCard country={currentLoc.country} reduced={prefersReduced} />}
+              {(!pickedCountry || isExplore) && <CountryCard country={currentLoc.country} />}
               {isExplore && (
                 <div style={{ marginTop: 10, textAlign: "left" }}>
                   <div style={{ textAlign: "center", marginBottom: 8 }}><CategoryBadge category={currentLoc.category} size="sm" /></div>
@@ -4138,7 +4259,7 @@ export default function ShutterbugWorld() {
         </div>
 
         {/* Map */}
-        <div style={{ flex: "3 1 640px", minWidth: 440 }}>
+        <div style={{ flex: "3 1 640px", minWidth: 440, display: "flex", flexDirection: "column" }}>
           {/* Atlas plate: the code-rendered map, framed as an adventure-atlas page
               with brass corners, a compass rose, and a faint ink-distress wash.
               All the decoration is pointer-events:none so the map stays clickable.
@@ -4347,13 +4468,24 @@ export default function ShutterbugWorld() {
                   safe, at-a-glance clue to what kind of place it is (mountain, temple…),
                   so the player can match it against the editor's clue. */}
               {/* Hairline leaders from any nudged pin back to its TRUE spot, drawn
-                  UNDER the pins so the disc always sits on top of its own line. */}
+                  UNDER the pins so the disc always sits on top of its own line.
+
+                  White, and CASED: a dark line is drawn under a white one, slightly
+                  wider, so the leader shows up as white-with-an-outline. A leader has
+                  to cross whatever terrain is under it — snow, desert, forest, ocean —
+                  and any single colour disappears against something. Plain dark ink
+                  was invisible on relief and is what this replaces; plain white would
+                  just move the problem onto the pale half of the map. The casing is
+                  the standard cartographic answer, and it's the only version that
+                  holds contrast everywhere (rule 4). Same for the dot at the true
+                  spot: white centre, dark rim. */}
               {inCity && cityOptions.map((id) => {
                 const t = cityPinLayout.moved[id]; if (!t) return null;
                 const p = cityPinLayout.pos[id];
                 return <g key={"lead" + id} style={{ pointerEvents: "none" }}>
-                  <line x1={p.x} y1={p.y} x2={t.x} y2={t.y} stroke={INK} strokeWidth="1.1" strokeOpacity="0.5" strokeDasharray="2 2" vectorEffect="non-scaling-stroke" />
-                  <ellipse cx={t.x} cy={t.y} {...pinR(0.013)} fill={INK} fillOpacity="0.55" />
+                  <line x1={p.x} y1={p.y} x2={t.x} y2={t.y} stroke={INK} strokeWidth="3" strokeOpacity="0.45" strokeDasharray="2 2" vectorEffect="non-scaling-stroke" />
+                  <line x1={p.x} y1={p.y} x2={t.x} y2={t.y} stroke="#FFFFFF" strokeWidth="1.4" strokeOpacity="0.95" strokeDasharray="2 2" vectorEffect="non-scaling-stroke" />
+                  <ellipse cx={t.x} cy={t.y} {...pinR(0.013)} fill="#FFFFFF" fillOpacity="0.95" stroke={INK} strokeOpacity="0.5" strokeWidth="1" vectorEffect="non-scaling-stroke" />
                 </g>;
               })}
               {/* Draw the hovered/focused pin LAST so its icon (and revealed name) ride
@@ -4423,7 +4555,7 @@ export default function ShutterbugWorld() {
                 so it never steals a continent tap. */}
             <button onClick={() => openCurio("compass")} title="About the compass" aria-label="About the compass"
               disabled={flying}
-              style={{ position: "absolute", left: 60, bottom: 54, width: "clamp(58px, 9vw, 104px)", height: "clamp(58px, 9vw, 104px)",
+              style={{ position: "absolute", left: 44, bottom: 38, width: "clamp(58px, 9vw, 104px)", height: "clamp(58px, 9vw, 104px)",
                 padding: 0, border: "none", background: "transparent", cursor: flying ? "default" : "help", zIndex: 4 }}>
               <img src={`${UI}compass-rose.png`} alt="" aria-hidden="true"
                 style={{ width: "100%", height: "100%", objectFit: "contain", opacity: 0.92, filter: "drop-shadow(0 2px 3px rgba(0,0,0,0.35))" }} />
@@ -4439,22 +4571,42 @@ export default function ShutterbugWorld() {
                   It used to be position:fixed across the whole screen bottom, which
                   meant it sat under the step rail and needed the column to reserve
                   78px of padding for it. ===== */}
-          <div style={{ width: "100%", maxWidth: 940, margin: "14px auto 0", minHeight: 174, display: "flex",
-            alignItems: "center", justifyContent: "center", textAlign: "center", padding: "30px 92px", boxSizing: "border-box",
+          {/* The ribbon rides up close under the atlas (small top margin) and is kept
+              short, so its BOTTOM edge lands about level with the last itinerary step
+              on the left and the passport on the right. Its text is sized down and
+              held to a single line — a wrapped clue broke the hand-drawn ribbon art. */}
+          <div style={{ width: "100%", maxWidth: 940, margin: "8px auto 0", minHeight: 132, display: "flex",
+            alignItems: "center", justifyContent: "center", textAlign: "center", padding: "22px 78px", boxSizing: "border-box",
             background: `url("${UI}instruction-ribbon.png") center / 100% 100% no-repeat` }}>
-            <span style={{ display: "inline-flex", alignItems: "center", gap: 12, fontFamily: HAND, fontWeight: 700, fontSize: 28, lineHeight: 1.25, color: INK }}>
-              <span aria-hidden="true" style={{ fontSize: 26 }}>🌍</span>{ribbonText}
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 10, fontFamily: HAND, fontWeight: 700, fontSize: "clamp(15px, 1.9vw, 21px)", lineHeight: 1.2, color: INK, whiteSpace: "nowrap" }}>
+              <span aria-hidden="true" style={{ fontSize: "1.1em" }}>🌍</span>{ribbonText}
             </span>
           </div>
         </div>
         {/* ===== Right tool rail — evenly spaced over the desk height, no labels ===== */}
+        {/* space-between: first tool at the top, passport at the very bottom (flush
+            with the ribbon and the last itinerary step), the album evenly between. */}
         <div style={{ flex: "0 0 210px", alignSelf: "stretch", display: "flex", flexDirection: "column",
-          justifyContent: "space-evenly", alignItems: "center", padding: "8px 0" }}>
-          {!isTour && !isExplore && (
-            <ToolButton img="field-guide.png" label="Field Guide — research the clue"
-              onClick={() => { setGearOpen(false); const fresh = !researched[step] && mode.research !== "off"; if (fresh) doResearch(); setGuideFresh(fresh); setGuideOpen(true); }}
-              disabled={busy || (mode.research === "off")} />
-          )}
+          justifyContent: "space-between", alignItems: "center", padding: "4px 0" }}>
+          {/* All three tools show in every mode. The Field Guide researches a CLUE, so
+              it only works where there is one to solve — greyed (not gone) on the Grand
+              Tour, on Explore, and on Expert, with a tap explaining why. Keeping the
+              rail identical across modes means a child always knows where each tool is. */}
+          {(() => {
+            const guideReason = isTour ? "The Grand Tour shows you every place up front — there's no clue to research, so the Field Guide sits this trip out."
+              : isExplore ? "You're free to roam — there's no clue to solve here, so the Field Guide isn't needed."
+              : mode.research === "off" ? "On Expert you're on your own: no research. Try an easier tier to use the Field Guide."
+              : null;
+            const guideUsable = !guideReason;
+            return (
+              <ToolButton img="field-guide.png" dim={!guideUsable}
+                label={guideUsable ? "Field Guide — research the clue" : "Field Guide — not used in this mode"}
+                onClick={guideUsable
+                  ? () => { setGearOpen(false); const fresh = !researched[step] && mode.research !== "off"; if (fresh) doResearch(); setGuideFresh(fresh); setGuideOpen(true); }
+                  : () => setToolNote({ tool: "Field Guide", why: guideReason })}
+                disabled={guideUsable && busy} />
+            );
+          })()}
           <ToolButton img="photo-album.png" label="Photo Album" onClick={() => setAlbumOpen(true)} />
           <ToolButton img="passport.png" label="Passport" onClick={() => { setGearOpen(false); setPassportOpen(true); }} />
         </div>
@@ -4462,6 +4614,17 @@ export default function ShutterbugWorld() {
 
       </div>{/* /full-height column */}
 
+      {toolNote && (
+        <div role="dialog" aria-modal="true" aria-label={`${toolNote.tool} — not used in this mode`} onClick={() => setToolNote(null)}
+          style={{ position: "fixed", inset: 0, background: "rgba(16,38,46,0.55)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16, zIndex: 60 }}>
+          <div onClick={(e) => e.stopPropagation()}
+            style={{ background: PAPER, borderRadius: 16, border: `3px solid ${GOLD}`, boxShadow: "0 14px 44px rgba(0,0,0,0.35)", maxWidth: 380, width: "100%", padding: "20px 22px", textAlign: "center" }}>
+            <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.18em", color: CORAL, marginBottom: 8 }}>{toolNote.tool.toUpperCase()}</div>
+            <p style={{ color: INK, fontSize: 14.5, lineHeight: 1.5, margin: "0 0 16px" }}>{toolNote.why}</p>
+            <button autoFocus onClick={() => setToolNote(null)} style={{ ...primaryBtn, margin: 0, background: GOLD, color: INK, boxShadow: "0 4px 0 #B87C00" }}>Got it ✈</button>
+          </div>
+        </div>
+      )}
       {passportOpen && <PassportModal profile={profileName ? getProfile(profileName) : null} onClose={() => setPassportOpen(false)} />}
       {albumOpen && <AlbumModal album={album} onPick={(p) => { setAlbumOpen(false); setAlbumView(p); }} onClose={() => setAlbumOpen(false)} />}
       {guideOpen && <FieldGuideModal note={researched[step]} spent={guideFresh && researchCost > 0} onClose={() => setGuideOpen(false)} />}
@@ -4551,12 +4714,13 @@ function Frame({ children, desk = false }) {
         @keyframes sbw-ping{ 0%{ transform: scale(0.6); opacity:.9 } 100%{ transform: scale(1.9); opacity:0 } }
         @keyframes sbw-fly{ 0%{ offset-distance: 0% } 100%{ offset-distance: 100% } }
         /* Takeoff and landing, sold with scale: the token grows out of the airport
-           over the first 1.5s and shrinks onto the far one over the last 1.5s. The
-           percentages are 1.5s and 3.5s of the 5s flight — keep them in step with
-           FLIGHT_MS / PLANE_SCALE_MS if either changes. */
+           over the first PLANE_SCALE_MS and shrinks onto the far one over the last.
+           These percentages are COMPUTED from FLIGHT_MS / PLANE_SCALE_MS rather
+           than typed — they were literals with a comment asking the next person to
+           keep them in step by hand, which is a request that gets forgotten once. */
         @keyframes sbw-hop{
-          0%{ transform: scale(0.14) } 30%{ transform: scale(1) }
-          70%{ transform: scale(1) } 100%{ transform: scale(0.14) }
+          0%{ transform: scale(0.14) } ${PLANE_SCALE_PCT}%{ transform: scale(1) }
+          ${100 - PLANE_SCALE_PCT}%{ transform: scale(1) } 100%{ transform: scale(0.14) }
         }
         /* White shutter flash over the photo when you take a shot. */
         .sbw-flash{ position: absolute; inset: 0; background: #fff; border-radius: 4px; pointer-events: none; opacity: 0; animation: sbw-flash 0.42s ease-out; }
@@ -4571,14 +4735,17 @@ function Frame({ children, desk = false }) {
            go. A glow that swells and fades rather than a hard blink — this is the
            first thing a child meets, and it should beckon, not nag. The button
            itself never fades below full opacity, so the label stays readable. */
+        /* The glow never fully goes out — it breathes between a warm resting halo and
+           a bright one. Pulsing from zero made the button look like it was switching
+           on and off; a floor keeps it lit and lets the pulse read as invitation. */
         .sbw-beckon{ animation: sbw-beckon 2.2s ease-in-out infinite; }
         @keyframes sbw-beckon{
-          0%,100%{ box-shadow: 0 5px 0 #A93A28, 0 6px 20px rgba(0,0,0,0.35), 0 0 0 0 rgba(240,165,0,0); transform: scale(1) }
-          50%{ box-shadow: 0 5px 0 #A93A28, 0 6px 20px rgba(0,0,0,0.35), 0 0 26px 10px rgba(240,165,0,0.55); transform: scale(1.035) }
+          0%,100%{ box-shadow: 0 6px 0 #A93A28, 0 8px 22px rgba(0,0,0,0.4), 0 0 22px 8px rgba(240,165,0,0.45); transform: scale(1) }
+          50%{ box-shadow: 0 6px 0 #A93A28, 0 8px 22px rgba(0,0,0,0.4), 0 0 46px 20px rgba(240,165,0,0.95); transform: scale(1.05) }
         }
         /* Someone who set "reduce motion" still gets the cue, without the pulsing. */
         @media (prefers-reduced-motion: reduce){
-          .sbw-beckon{ animation: none; box-shadow: 0 5px 0 #A93A28, 0 6px 20px rgba(0,0,0,0.35), 0 0 20px 6px rgba(240,165,0,0.5) }
+          .sbw-beckon{ animation: none; box-shadow: 0 6px 0 #A93A28, 0 8px 22px rgba(0,0,0,0.4), 0 0 34px 14px rgba(240,165,0,0.8) }
         }
         /* The splash title, wiggling when you point at it — the only hint that it's
            worth clicking. The centring translate is repeated in every frame because
@@ -4588,10 +4755,10 @@ function Frame({ children, desk = false }) {
           0%,100%{ transform: translate(-50%,-50%) rotate(-1.1deg) }
           50%{ transform: translate(-50%,-50%) rotate(1.1deg) }
         }
-        /* The camera bag Grandpa hands you: bobbing so a child knows to take it. */
+        /* The camera bag Uncle hands you: bobbing so a child knows to take it. */
         .sbw-bob{ animation: sbw-bob 1.5s ease-in-out infinite }
         @keyframes sbw-bob{ 0%,100%{ transform: translateY(0) } 50%{ transform: translateY(-9px) } }
-        /* Grandpa changing expression — a cross-fade, not a cut. */
+        /* Uncle changing expression — a cross-fade, not a cut. */
         .sbw-fade{ animation: sbw-fade 0.45s ease-out }
         @keyframes sbw-fade{ 0%{ opacity: 0.25 } 100%{ opacity: 1 } }
         @media (prefers-reduced-motion: reduce){ .sbw-wiggle:hover, .sbw-bob, .sbw-fade{ animation: none } }
@@ -4729,13 +4896,18 @@ function Itinerary({ reqs, here }) {
 // Right-rail tool prop (passport / photo album / field guide). The PNG is the
 // tactile object; the label under it is live text. Functional button, so it
 // carries a real aria-label and a visible focus/hover lift.
-function ToolButton({ img, label, onClick, disabled }) {
+// `disabled` truly blocks the button (busy). `dim` greys it but keeps it clickable —
+// used for a tool that doesn't apply to this mode, whose tap opens an explanation
+// rather than the tool. A dimmed image plus its "not used in this mode" label carry
+// the state without relying on colour alone (rule 4).
+function ToolButton({ img, label, onClick, disabled, dim }) {
+  const faded = disabled || dim;
   return (
     <button onClick={onClick} disabled={disabled} aria-label={label} title={label} className="sbw-tool"
       style={{ display: "flex", alignItems: "center", justifyContent: "center", background: "transparent",
-        border: "none", padding: 0, cursor: disabled ? "default" : "pointer", opacity: disabled ? 0.4 : 1, width: "100%" }}>
+        border: "none", padding: 0, cursor: disabled ? "default" : "pointer", opacity: faded ? 0.4 : 1, width: "100%" }}>
       <img src={`${UI}${img}`} alt="" style={{ width: "100%", maxWidth: 200, display: "block",
-        filter: "drop-shadow(0 5px 7px rgba(0,0,0,0.45))" }} />
+        filter: dim ? "grayscale(1) drop-shadow(0 5px 7px rgba(0,0,0,0.45))" : "drop-shadow(0 5px 7px rgba(0,0,0,0.45))" }} />
     </button>
   );
 }
@@ -4874,15 +5046,15 @@ function AlbumModal({ album, onPick, onClose }) {
   );
 }
 // Field Guide — spends the research half-day (once per assignment) and reveals
-// Grandpa's clue tip; re-opening later just re-reads it, no extra time lost.
+// Uncle's clue tip; re-opening later just re-reads it, no extra time lost.
 // The splash's how-to-play card, opened by clicking the title. Deliberately short:
 // a child who wants to play should not have to read a manual, and everything here
-// is re-taught in context by Grandpa, Mr O and the step rail. It exists so a parent
+// is re-taught in context by Uncle, Mr O and the step rail. It exists so a parent
 // (or a kid who clicked the shiny title) can see the shape of the game in ten
 // seconds and get out.
 function HowToPlayModal({ onClose }) {
   const STEPS = [
-    ["itinerary-continent.png", "Read the editor's clue", "Grandpa's note tells you about a place — but not its name. Work out where in the world it is."],
+    ["itinerary-continent.png", "Read the editor's clue", "Uncle's note tells you about a place — but not its name. Work out where in the world it is."],
     ["itinerary-country.png", "Fly there", "Pick the continent, then the country. Every flight costs travel days, so guessing wildly is expensive."],
     ["itinerary-photograph.png", "Take the photograph", "Find the right subject and shoot it. Every correct shot teaches you something true about a real place."],
     ["passport.png", "Fill your passport", "Stamps, badges and keepsakes pile up across every trip. The more you travel, the more of the world you keep."],
@@ -4927,7 +5099,7 @@ function FieldGuideModal({ note, spent, onClose }) {
         <p style={{ margin: "0 0 10px", color: INK, opacity: 0.9, fontFamily: HAND, fontSize: 18, lineHeight: 1.35 }}>{line} It yields:</p>
       </>}
       right={<div style={{ display: "flex", flexDirection: "column", justifyContent: "center", height: "100%" }}>
-        <div style={{ color: INK, fontFamily: HAND, fontSize: 19, lineHeight: 1.4 }}>{note || "Nothing new this time — read Grandpa's note and trust your map sense!"}</div>
+        <div style={{ color: INK, fontFamily: HAND, fontSize: 19, lineHeight: 1.4 }}>{note || "Nothing new this time — read Uncle's note and trust your map sense!"}</div>
       </div>} />
   );
 }
@@ -5119,6 +5291,14 @@ function ResultModal({ data, onContinue, reduced }) {
   const good = data.tone === "good";
   const accent = good ? GREEN : CORAL;
   const hasPhoto = !!data.photo?.src;
+  // The way forward stays greyed until the place-fact has finished typing (or there
+  // was none, or it was clicked to complete), so a child reads the thing they just
+  // earned instead of clicking straight past it. Reset per result — the same modal
+  // instance is reused for the next one. Under reduced motion the fact appears whole
+  // and onDone fires at once, so the button is live immediately.
+  const [factDone, setFactDone] = useState(false);
+  useEffect(() => { setFactDone(false); }, [data]);
+  const ready = !data.fact || factDone;
   // With both a photo and a fact, they sit side by side (the fact reads as a
   // caption next to the shot); they stack on narrow screens via flex-wrap.
   const sideBySide = hasPhoto && !!data.fact;
@@ -5143,7 +5323,7 @@ function ResultModal({ data, onContinue, reduced }) {
   const factEl = data.fact && (
     <div style={{ background: "#fff", border: `1px dashed ${OCEAN}`, borderRadius: 10, padding: "12px 14px", textAlign: "left" }}>
       <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 10.5, letterSpacing: "0.14em", color: OCEAN, fontWeight: 700, marginBottom: 4 }}>📌 ABOUT THIS PLACE</div>
-      <TypeLine text={data.fact} reduced={reduced} style={{ color: INK, fontSize: 13.5, lineHeight: 1.5 }} />
+      <TypeLine text={data.fact} reduced={reduced} onDone={() => setFactDone(true)} style={{ color: INK, fontSize: 13.5, lineHeight: 1.5 }} />
     </div>
   );
   return (
@@ -5170,8 +5350,9 @@ function ResultModal({ data, onContinue, reduced }) {
                   <span aria-hidden="true">💡 </span>{data.hint}
                 </p>
               )}
-              <button autoFocus onClick={onContinue}
-                style={{ ...primaryBtn, alignSelf: "flex-start", background: accent, boxShadow: `0 4px 0 ${good ? "#2E7A55" : "#A93A28"}` }}>
+              <button autoFocus={ready} onClick={onContinue} disabled={!ready} aria-disabled={!ready}
+                style={{ ...primaryBtn, alignSelf: "flex-start", background: accent, boxShadow: `0 4px 0 ${good ? "#2E7A55" : "#A93A28"}`,
+                  opacity: ready ? 1 : 0.45, cursor: ready ? "pointer" : "default", transition: "opacity .3s" }}>
                 {data.buttonLabel}
               </button>
             </div>
@@ -5187,8 +5368,9 @@ function ResultModal({ data, onContinue, reduced }) {
             )}
             {/* Fact with no photo (e.g. the out-of-days screen) still shows below. */}
             {factEl && <div style={{ marginTop: 14 }}>{factEl}</div>}
-            <button autoFocus onClick={onContinue}
-              style={{ ...primaryBtn, marginTop: 20, background: accent, boxShadow: `0 4px 0 ${good ? "#2E7A55" : "#A93A28"}` }}>
+            <button autoFocus={ready} onClick={onContinue} disabled={!ready} aria-disabled={!ready}
+              style={{ ...primaryBtn, marginTop: 20, background: accent, boxShadow: `0 4px 0 ${good ? "#2E7A55" : "#A93A28"}`,
+                opacity: ready ? 1 : 0.45, cursor: ready ? "pointer" : "default", transition: "opacity .3s" }}>
               {data.buttonLabel}
             </button>
           </>
@@ -5208,37 +5390,49 @@ function LandmarkModal({ p, onClose, reduced }) {
   return (
     <div role="dialog" aria-modal="true" aria-label={p.subject} onClick={onClose}
       style={{ position: "fixed", inset: 0, background: "rgba(16,38,46,0.62)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16, zIndex: 60 }}>
+      {/* Photo on the LEFT, everything learned about the place stacked to its RIGHT,
+          so the whole card fits without a vertical scroll — the details used to run
+          off the bottom of the box in one tall column. The two halves wrap to a
+          stack only on a genuinely narrow (phone) screen. */}
       <div className={reduced ? "" : "sbw-pop"} onClick={(e) => e.stopPropagation()}
-        style={{ background: PAPER, borderRadius: 16, border: `3px solid ${GOLD}`, boxShadow: "0 14px 44px rgba(0,0,0,0.35)", maxWidth: 460, width: "100%", maxHeight: "90vh", overflowY: "auto", padding: "22px", textAlign: "center", position: "relative" }}>
+        style={{ background: PAPER, borderRadius: 16, border: `3px solid ${GOLD}`, boxShadow: "0 14px 44px rgba(0,0,0,0.35)", maxWidth: 820, width: "100%", maxHeight: "92vh", overflowY: "auto", padding: "22px 24px", position: "relative" }}>
         <button onClick={onClose} aria-label="Close" autoFocus
-          style={{ position: "absolute", top: 10, right: 12, background: "none", border: "none", fontSize: 22, lineHeight: 1, cursor: "pointer", color: INK, opacity: 0.6 }}>×</button>
-        <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.2em", color: CORAL, marginBottom: 8 }}>FROM YOUR ALBUM</div>
-        <div style={{ margin: "0 auto 10px", maxWidth: 380, borderRadius: 8, overflow: "hidden", border: `2px solid ${GOLD}` }}>
-          <Photo photo={p.photo} icon={p.icon} alt={p.subject} size={240} full />
-        </div>
-        <PhotoCredit photo={p.photo} style={{ textAlign: "center", marginTop: 0, marginBottom: 8 }} />
-        <h2 style={{ fontFamily: "ui-sans-serif, system-ui", fontWeight: 900, fontSize: 24, color: INK, margin: "4px 0 2px" }}>{p.subject}</h2>
-        <div style={{ fontWeight: 700, color: INK }}><span style={{ fontSize: "3em", verticalAlign: "-0.24em" }}>{p.flag}</span> {p.city}, {p.country}</div>
-        <div style={{ marginTop: 8, display: "flex", gap: 6, justifyContent: "center", alignItems: "center", flexWrap: "wrap" }}>
-          {p.category && <CategoryBadge category={p.category} />}
-          {p.continent && <span style={{ fontSize: 12, color: INK, opacity: 0.6 }}>{p.continent}</span>}
-        </div>
-        {p.greeting?.text && (
-          <div style={{ fontSize: 14, color: OCEAN, marginTop: 10 }}>
-            <span aria-hidden="true">💬 </span>Local greeting: “{p.greeting.text}”
-            {p.greeting.language ? ` — ${p.greeting.language}` : ""}
-            {p.greeting.pronunciation ? ` (${p.greeting.pronunciation})` : ""}
-            {greetingMeaning(p.greeting) ? `, ${quoteGloss(p.greeting && greetingMeaning(p.greeting))}` : ""}
-            <SpeakButton greeting={p.greeting} />
+          style={{ position: "absolute", top: 10, right: 12, background: "none", border: "none", fontSize: 22, lineHeight: 1, cursor: "pointer", color: INK, opacity: 0.6, zIndex: 1 }}>×</button>
+        <div style={{ display: "flex", gap: 20, alignItems: "flex-start", flexWrap: "wrap" }}>
+          {/* Left: the shot + its credit */}
+          <div style={{ flex: "1 1 300px", minWidth: 240 }}>
+            <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.2em", color: CORAL, marginBottom: 8 }}>FROM YOUR ALBUM</div>
+            <div style={{ borderRadius: 8, overflow: "hidden", border: `2px solid ${GOLD}` }}>
+              <Photo photo={p.photo} icon={p.icon} alt={p.subject} size={240} full />
+            </div>
+            <PhotoCredit photo={p.photo} style={{ textAlign: "left", marginTop: 6 }} />
           </div>
-        )}
-        {p.fact && (
-          <div style={{ marginTop: 14, background: "#fff", border: `1px dashed ${GOLD}`, borderRadius: 10, padding: "10px 12px", textAlign: "left" }}>
-            <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 10, letterSpacing: "0.18em", color: CORAL, marginBottom: 4 }}>📖 DID YOU KNOW?</div>
-            <div style={{ color: INK, fontSize: 13, lineHeight: 1.45 }}>{p.fact}</div>
+          {/* Right: title, place, badges, greeting, fact */}
+          <div style={{ flex: "1 1 280px", minWidth: 240, textAlign: "left" }}>
+            <h2 style={{ fontFamily: "ui-sans-serif, system-ui", fontWeight: 900, fontSize: 24, color: INK, margin: "22px 0 2px" }}>{p.subject}</h2>
+            <div style={{ fontWeight: 700, color: INK }}><span style={{ fontSize: "2.4em", verticalAlign: "-0.22em" }}>{p.flag}</span> {p.city}, {p.country}</div>
+            <div style={{ marginTop: 8, display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+              {p.category && <CategoryBadge category={p.category} />}
+              {p.continent && <span style={{ fontSize: 12, color: INK, opacity: 0.6 }}>{p.continent}</span>}
+            </div>
+            {p.greeting?.text && (
+              <div style={{ fontSize: 14, color: OCEAN, marginTop: 10 }}>
+                <span aria-hidden="true">💬 </span>Local greeting: “{p.greeting.text}”
+                {p.greeting.language ? ` — ${p.greeting.language}` : ""}
+                {p.greeting.pronunciation ? ` (${p.greeting.pronunciation})` : ""}
+                {greetingMeaning(p.greeting) ? `, ${quoteGloss(p.greeting && greetingMeaning(p.greeting))}` : ""}
+                <SpeakButton greeting={p.greeting} />
+              </div>
+            )}
+            {p.fact && (
+              <div style={{ marginTop: 14, background: "#fff", border: `1px dashed ${GOLD}`, borderRadius: 10, padding: "10px 12px" }}>
+                <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 10, letterSpacing: "0.18em", color: CORAL, marginBottom: 4 }}>📖 DID YOU KNOW?</div>
+                <div style={{ color: INK, fontSize: 13, lineHeight: 1.45 }}>{p.fact}</div>
+              </div>
+            )}
+            <button onClick={onClose} style={{ ...primaryBtn, marginTop: 18, background: GOLD, color: INK, boxShadow: "0 4px 0 #B87C00" }}>Close</button>
           </div>
-        )}
-        <button onClick={onClose} style={{ ...primaryBtn, marginTop: 18, background: GOLD, color: INK, boxShadow: "0 4px 0 #B87C00" }}>Close</button>
+        </div>
       </div>
     </div>
   );
@@ -5580,6 +5774,9 @@ function PeoplePhoto({ country }) {
     peopleCursor[country] = (start + 1) % Math.max(1, cards.length);
     return start % Math.max(1, cards.length);
   });
+  // Is the caption/credit panel showing? Hover reveals it; the ⓘ button latches it
+  // open for anyone who can't hover. See the note on the frame below.
+  const [creditOpen, setCreditOpen] = useState(false);
   if (!cards.length) return null;
   const people = cards[i];
   const many = cards.length > 1;
@@ -5596,12 +5793,47 @@ function PeoplePhoto({ country }) {
           NOT loading="lazy": the image sits inside this overflow:hidden frame, and a
           lazy image clipped by its container never intersects the viewport, so it
           never loads — the card showed an empty gray box. It's one image, and the
-          player has already flown here, so eager is right anyway. */}
-      <div style={{ width: "100%", aspectRatio: "16 / 9", borderRadius: 4, overflow: "hidden", background: "#DCE9EC" }}>
+          player has already flown here, so eager is right anyway.
+
+          The caption and credit used to sit under the photo as a permanent line of
+          small print; they now live ON the photo and appear when you point at it, which
+          is what a caption is for and keeps the card down to the things a child is
+          meant to read.
+
+          They are NOT hover-only, though, and that isn't fussiness: nearly every one
+          of these photos is CC BY or CC BY-SA, where naming the photographer is a
+          condition of the licence, not a courtesy — and this game's main device is an
+          iPad, which has no hover at all. Hover alone would quietly drop attribution
+          on the platform it's mostly played on. So the ⓘ is a real button: it shows
+          on every device, opens the same panel on tap or keyboard focus, and the
+          panel credits the photographer with a link to the source. */}
+      <div style={{ position: "relative", width: "100%", aspectRatio: "16 / 9", borderRadius: 4, overflow: "hidden", background: "#DCE9EC" }}
+        onMouseEnter={() => setCreditOpen(true)} onMouseLeave={() => setCreditOpen(false)}>
         <img src={people.src} alt={people.caption} decoding="async"
           style={{ width: "100%", height: "100%", display: "block",
             objectFit: people.portrait ? "contain" : "cover",
             objectPosition: people.portrait ? "50% 50%" : "50% 30%" }} />
+        <button onClick={() => setCreditOpen((v) => !v)} onFocus={() => setCreditOpen(true)} onBlur={() => setCreditOpen(false)}
+          aria-expanded={creditOpen} aria-label={creditOpen ? "Hide photo details" : "Show photo details and credit"}
+          style={{ position: "absolute", top: 6, right: 6, width: 22, height: 22, borderRadius: "50%",
+            border: "none", cursor: "pointer", background: "rgba(16,38,46,0.62)", color: "#fff",
+            fontWeight: 900, fontSize: 12, lineHeight: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>ⓘ</button>
+        {/* The panel is always in the DOM (only its opacity moves) so screen readers
+            and Find-in-page reach the credit whether or not it's on screen. */}
+        <figcaption aria-hidden={creditOpen ? undefined : "true"}
+          style={{ position: "absolute", left: 0, right: 0, bottom: 0, padding: "6px 8px",
+            background: "linear-gradient(to top, rgba(16,38,46,0.92), rgba(16,38,46,0.72))",
+            color: "#F4ECD8", fontSize: 10.5, lineHeight: 1.35,
+            opacity: creditOpen ? 1 : 0, transition: "opacity .18s", pointerEvents: creditOpen ? "auto" : "none" }}>
+          {people.caption}
+          <span style={{ opacity: 0.85 }}>
+            {" · "}
+            {people.source
+              ? <a href={people.source} target="_blank" rel="noreferrer" style={{ color: "#9AD1E8" }}>{people.credit}</a>
+              : people.credit}
+            {` (${people.license})`}
+          </span>
+        </figcaption>
       </div>
       {/* Which of this country's peoples you're looking at, and how to see the
           others. The count is spelled out ("1 of 3") rather than shown as dots —
@@ -5619,9 +5851,6 @@ function PeoplePhoto({ country }) {
             style={{ ...peopleArrow, marginLeft: "auto" }}>▶</button>
         </div>
       )}
-      <figcaption style={{ fontSize: 11, color: INK, opacity: 0.7, marginTop: 4, lineHeight: 1.4 }}>
-        {people.caption} · {people.credit} ({people.license})
-      </figcaption>
     </figure>
   );
 }
@@ -5635,7 +5864,7 @@ const peopleArrow = { background: "transparent", border: `1.5px solid ${OCEAN}`,
 // The country card — the game's cultural centerpiece, shown the moment you're
 // in a country in ANY mode: the country and its flag, a photo of its people in
 // traditional dress, how they say hello, then the capital and a short story.
-function CountryCard({ country, reduced }) {
+function CountryCard({ country }) {
   if (!country || country === "Antarctica") return null;
   const info = COUNTRY_INFO[country], g = COUNTRY_GREETING[country];
   const people = peopleCards(country);
@@ -5660,20 +5889,29 @@ function CountryCard({ country, reduced }) {
         {info && <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, color: INK, opacity: 0.55, marginLeft: "auto" }}>{info.region}</span>}
       </div>
       <PeoplePhoto key={country} country={country} />
-      {g && (
-        <div style={{ fontSize: 13.5, color: OCEAN, lineHeight: 1.55, marginTop: 8 }}>
-          <span aria-hidden="true">💬 </span>Here they say <b>“{g.text}”</b>
-          {g.pronunciation ? ` (${g.pronunciation})` : ""} in {g.language}
-          {mean ? ` — it means ${quoteGloss(mean)}` : "."}
-          <SpeakButton greeting={g} />
-        </div>
-      )}
+      {g && (() => {
+        const { words, say } = greetingSaid(g);
+        return (
+          <div style={{ fontSize: 13.5, color: OCEAN, lineHeight: 1.55, marginTop: 8 }}>
+            <span aria-hidden="true">💬 </span>Here they say <b>“{words}”</b>
+            {say ? ` (${say})` : ""} in {g.language}
+            {mean ? ` — it means ${quoteGloss(mean)}` : "."}
+            <SpeakButton greeting={g} />
+          </div>
+        );
+      })()}
+      {/* The capital stays. The country's blurb deliberately does NOT appear here.
+          It hasn't been deleted — it's been moved to where a child will actually take
+          it in: Mr O brings it up about a place you've already been, and it comes back
+          as a bonus question at the homecoming. On this card it was a paragraph of
+          prose stapled to the bottom of an arrival a child is trying to get past, and
+          the way you read a paragraph like that is: you don't. See COUNTRY_INFO.blurb
+          in src/data/countries.js for the text itself. */}
       {info && (
         <div style={{ marginTop: 8, fontSize: 12, color: INK, lineHeight: 1.5 }}>
-          <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.06em", color: GREEN, fontWeight: 700, marginBottom: 3 }}>
+          <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.06em", color: GREEN, fontWeight: 700 }}>
             <span aria-hidden="true">★ </span>Capital: {info.capital}
           </div>
-          <span aria-hidden="true">📖 </span><TypeLine text={info.blurb} reduced={reduced} inline style={{ display: "inline" }} />
         </div>
       )}
     </div>
@@ -5681,18 +5919,44 @@ function CountryCard({ country, reduced }) {
 }
 
 // Shown the moment you arrive in a country: the culture card (people, flag,
-// greeting, capital, blurb) pops up, then dismisses — on the button, a tap
-// outside, or automatically after a few seconds.
+// greeting, capital) pops up, and dismisses on the button or a tap outside — both
+// of which wait out COUNTRY_CARD_DWELL_MS first. Nothing auto-dismisses it; the
+// player decides when they've finished looking.
+// How long the arrival card holds the player before the way out is clickable. The
+// card is the one moment the game stops and shows a child a country's people, and a
+// button that is live on arrival gets hit reflexively on the way to the next thing,
+// often before the photo has even painted. Three seconds is enough to look up.
+const COUNTRY_CARD_DWELL_MS = 3000;
+
 function CountryPopup({ country, onClose, reduced }) {
+  // Deliberately NOT keyed off `country`: the timer belongs to this popup opening,
+  // and the popup is mounted fresh per arrival.
+  const [canGo, setCanGo] = useState(false);
+  useEffect(() => {
+    setCanGo(false);
+    const id = setTimeout(() => setCanGo(true), COUNTRY_CARD_DWELL_MS);
+    return () => clearTimeout(id);
+  }, [country]);
   if (!country) return null;
   return (
-    <div role="dialog" aria-modal="true" aria-label={`You've arrived in ${country}`} onClick={onClose}
+    <div role="dialog" aria-modal="true" aria-label={`You've arrived in ${country}`}
+      // The backdrop only dismisses once the button does. Leaving it live would hand
+      // back the very skip the dwell exists to prevent, to anyone who taps the edge.
+      onClick={canGo ? onClose : undefined}
       style={{ position: "fixed", inset: 0, background: "rgba(16,38,46,0.55)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16, zIndex: 60 }}>
       <div className={reduced ? "" : "sbw-pop"} onClick={(e) => e.stopPropagation()}
         style={{ background: PAPER, borderRadius: 16, border: `3px solid ${CORAL}`, boxShadow: "0 14px 44px rgba(0,0,0,0.35)", maxWidth: 420, width: "100%", padding: "16px 18px", maxHeight: "88vh", overflowY: "auto" }}>
         <div style={{ textAlign: "center", fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.18em", color: CORAL }}>✈ YOU'VE ARRIVED IN…</div>
-        <CountryCard country={country} reduced={reduced} />
-        <button onClick={onClose} style={{ ...primaryBtn, marginTop: 14, width: "100%", padding: "11px 0" }}>Got it — let's find the shot →</button>
+        <CountryCard country={country} />
+        {/* Greyed rather than absent, and it keeps its size and its words the whole
+            time: a button that appears late moves the layout under a thumb already on
+            its way down, and a child who can see where it will be waits for it. */}
+        <button onClick={onClose} disabled={!canGo} aria-disabled={!canGo}
+          style={{ ...primaryBtn, marginTop: 14, width: "100%", padding: "11px 0",
+            opacity: canGo ? 1 : 0.45, cursor: canGo ? "pointer" : "default",
+            transition: "opacity .3s" }}>
+          Fantastic! On to the photo →
+        </button>
       </div>
     </div>
   );
@@ -5766,7 +6030,7 @@ function CuriosityCard({ deck, seen, onSeen, onClose, reduced }) {
         <span aria-hidden="true" style={{ fontSize: 26 }}>{deck.emoji}</span>
         <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 12, letterSpacing: "0.14em",
           color: accent, fontWeight: 800 }}>
-          {narratorTrivia ? "MR O · THE EDITOR" : "GRANDPA NIGEL"}
+          {narratorTrivia ? "MR O · THE EDITOR" : "UNCLE JONAH"}
         </span>
         {wasNew && (
           <span style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: "0.1em", color: "#fff",
@@ -5860,7 +6124,7 @@ function RiddleModal({ riddle, onAnswer, onClose, gain, reduced }) {
 }
 
 
-// Grandpa, wearing whichever of his ten painted expressions fits what he is
+// Uncle, wearing whichever of his ten painted expressions fits what he is
 // saying (the mapping is content, and lives in data/grandpa.js).
 //
 // These are whole SCENES of his study — the fire, the thistle, the Scotland books,
@@ -5897,7 +6161,7 @@ function NigelPortrait({ size = 108, style }) {
   );
 }
 
-// The story screen: Grandpa Nigel speaks his beats one at a time at reading speed
+// The story screen: Uncle Jonah speaks his beats one at a time at reading speed
 // and his face moves with them, beat by beat (see NIGEL_MOOD.intro) — he welcomes
 // you in, remembers never having gone, then brightens as he hands you the camera.
 // The bag stays un-takeable until he has finished talking.
@@ -5910,7 +6174,7 @@ function StoryScreen({ beats, reduced, ctaLabel, onDone, onSkip, mood = "intro",
     <Frame>
       <div style={{ maxWidth: 1180, margin: "0 auto", padding: "6px 4px" }}>
         <div style={{ display: "flex", alignItems: "flex-start", gap: 20, flexWrap: "wrap" }}>
-          {/* Words and the way out on the left; Grandpa, large, on the right. He is
+          {/* Words and the way out on the left; Uncle, large, on the right. He is
               pinned to the top of the row rather than centred in it — centring means
               he slides every time anything on the left resizes. */}
           <div style={{ flex: "1 1 340px", minWidth: 280, textAlign: "left" }}>

@@ -132,7 +132,7 @@ export const SFX = (() => {
 
     // ---- Texture: the small sounds under the whole game --------------------
 
-    // One typebar hitting paper, for a letter appearing in Grandpa's or Mr O's
+    // One typebar hitting paper, for a letter appearing in Uncle's or Mr O's
     // speech. It has to be TINY: text reveals at ~42 characters a second, so this
     // fires more often than any other sound in the game and would become a buzz
     // saw at the volume of a click. A hair of pitch jitter keeps a long sentence
@@ -151,9 +151,12 @@ export const SFX = (() => {
       tone(c, t + 0.012, 1975.53, 0.04, 0.016, "sine"); // B6 shimmer on top
     }); },
 
-    // Takeoff: 1.5s of engines spooling up and pitching away from you as the
-    // plane leaves. Paired with the map animation's 1.5s scale-up.
-    takeoff() { safe((c) => { const t = c.currentTime; const D = 1.5;
+    // Takeoff: engines spooling up and pitching away from you as the plane leaves.
+    // `secs` is the map animation's scale-up time — the caller passes its own
+    // PLANE_SCALE_MS so the sound is exactly as long as the picture it belongs to.
+    // It used to be a 1.5 literal here and another one in the component, which is
+    // two numbers that must agree and no way to notice when they stop agreeing.
+    takeoff(secs = 2) { safe((c) => { const t = c.currentTime; const D = secs;
       const lo = burst(c, t, D, "lowpass", 200, 0.14);
       lo.f.frequency.setValueAtTime(70, t);
       lo.f.frequency.linearRampToValueAtTime(240, t + D);       // engines winding up
@@ -170,8 +173,11 @@ export const SFX = (() => {
     }); },
 
     // Landing: takeoff run backwards — the pitch falls and the engines throttle
-    // back as the plane settles onto the map.
-    landing() { safe((c) => { const t = c.currentTime; const D = 1.5;
+    // back as the plane settles onto the map. "Backwards" is built from swapped
+    // ramp endpoints rather than a reversed buffer: the source is white noise,
+    // which is time-symmetric, so every bit of the direction you hear lives in the
+    // filter and gain automation. Takes the same `secs` as takeoff().
+    landing(secs = 2) { safe((c) => { const t = c.currentTime; const D = secs;
       const lo = burst(c, t, D, "lowpass", 200, 0.14);
       lo.f.frequency.setValueAtTime(240, t);
       lo.f.frequency.linearRampToValueAtTime(70, t + D);
@@ -195,14 +201,27 @@ export const SFX = (() => {
 // (a click handler) to satisfy autoplay rules, especially on iPad Safari.
 // finale() ends the loop and plays a short, jaunty flourish for the results.
 export const MUSIC = (() => {
-  // Two buses share one context: `master` is the overall level for everything;
-  // `jigBus` carries ONLY the looping Scottish jig (drone + melody) so it can
-  // fade out on its own when the player reaches the map, while one-shots (the
-  // 4-second travel jig, the country-arrival tunes, the results flourish) keep
-  // playing through `master`.
-  let ctx = null, master = null, jigBus = null, timer = null, nextBeat = 0, running = false;
+  // Three buses share one context: `master` is the overall level for everything;
+  // `jigBus` carries ONLY the looping Scottish jig (drone + melody) so it can fade
+  // out on its own when the player reaches the map; `countryBus` carries ONLY the
+  // country-arrival tune, for the same reason — so leaving a country can silence
+  // its music without touching anything else. Other one-shots (the travel jig, the
+  // results flourish) play straight through `master`.
+  //
+  // countryBus exists because a Web Audio note, once scheduled, plays at its
+  // appointed time no matter what: the notes are handed to the audio clock up
+  // front, so there is no timer to cancel and nothing to call stop() on. The only
+  // way to take back a sound you've already scheduled is to turn down a knob it is
+  // routed through. That is this knob.
+  //
+  // It is built FRESH per arrival, and that's the whole trick — one long-lived
+  // country bus cannot work. Silencing the old tune means ramping the bus to zero,
+  // but the new tune needs that same bus open, and a bus can't be both. Give each
+  // arrival its own knob and the two stop fighting: the outgoing tune fades out on
+  // a bus nothing else is routed through, and is discarded.
+  let ctx = null, master = null, jigBus = null, countryBus = null, timer = null, nextBeat = 0, running = false;
   let drone = []; // sustained bagpipe drone oscillators, torn down on stop()
-  let countryTimer = null, countryActive = false; // the looping country-arrival tune
+  let countryActive = false; // is a country-arrival tune currently sounding?
   const ac = () => {
     try {
       if (typeof window === "undefined") return null;
@@ -273,19 +292,47 @@ export const MUSIC = (() => {
       o2.connect(g2); g2.connect(dest); o2.start(t); o2.stop(t + dur * 0.7 + 0.05);
     }
   };
-  // Play a country/region tune (from src/data/tunes.js) once, onto `master`.
+  // How many times a country tune plays through on one arrival, and the breath
+  // between passes. Each tune in data is ONE phrase of a folk melody, which is
+  // the honest unit to store — repeating a phrase is what folk music does, and it
+  // keeps src/data/tunes.js a list of real melodies rather than a list of real
+  // melodies typed three times (rule 1: the data file stays reviewable).
+  //
+  // The rest matters. Back-to-back passes with no gap don't read as "the tune
+  // again", they read as a longer, stranger tune — the ear needs the phrase to
+  // end before it can hear it start over.
+  const TUNE_PASSES = 3;
+  const TUNE_REST_BEATS = 2;
+  // Peak amplitude of one tune note into `master`. There is no limiter on this
+  // context and `master` sits at 0.16, so a note lands at 0.28 * 0.16 ≈ 0.045 at
+  // the destination — decades of headroom even with the decay tails overlapping.
+  const TUNE_PEAK = 0.28;
+  const DRONE_PEAK = 0.1;
+
+  // Play a country/region tune (from src/data/tunes.js) onto the current
+  // countryBus (see countryTune, which opens one). Falls back to `master` so a
+  // stray caller still makes a sound — it just won't be silenceable.
   const playTune = (key) => {
     const t = TUNES[key] || TUNES.generic;
+    const dest = countryBus || master;
     const start = ctx.currentTime + 0.06;
     let at = start;
+    // The whole performance, so anything that has to span it can be told how long
+    // it is. The drone below used to be a hardcoded 6.5s — fine when a tune was
+    // one pass of roughly that length, silently wrong the moment it wasn't.
+    const passSecs = t.seq.reduce((s, [, beats]) => s + beats * t.spb, 0);
+    const totalSecs = TUNE_PASSES * passSecs + (TUNE_PASSES - 1) * TUNE_REST_BEATS * t.spb;
     if (key === "southasia") { // a low tonic drone under the sitar line
-      for (const f of [146.83, 220.0]) voice(start, f, 0.05, 6.5, "reed", master);
+      for (const f of [146.83, 220.0]) voice(start, f, DRONE_PEAK, totalSecs, "reed", dest);
     }
-    for (const [name, beats] of t.seq) {
-      const dur = beats * t.spb;
-      const f = noteFreq(name);
-      if (f) voice(at, f, 0.14, Math.max(0.12, dur * 0.95), t.timbre, master);
-      at += dur;
+    for (let pass = 0; pass < TUNE_PASSES; pass++) {
+      if (pass) at += TUNE_REST_BEATS * t.spb;
+      for (const [name, beats] of t.seq) {
+        const dur = beats * t.spb;
+        const f = noteFreq(name);
+        if (f) voice(at, f, TUNE_PEAK, Math.max(0.12, dur * 0.95), t.timbre, dest);
+        at += dur;
+      }
     }
     return at - start;
   };
@@ -433,10 +480,26 @@ export const MUSIC = (() => {
         if (ctx && master) master.gain.setTargetAtTime(0.0001, ctx.currentTime, 0.75);
       } catch { /* ignore */ }
     },
-    // Stop the looping country tune (leaving the country / the trip).
+    // Silence the country tune (leaving the country / the trip). Fades its bus
+    // rather than cancelling anything, because by now every note is already on the
+    // audio clock and will sound on schedule regardless — see the countryBus note
+    // above. The fade is quick but not instant: snapping a sounding oscillator to
+    // zero is a click. The bus is then let go of, and disconnected once the fade
+    // has actually finished, so the notes still ringing through it have somewhere
+    // to go until they're done.
     stopCountry() {
       countryActive = false;
-      if (countryTimer) { clearTimeout(countryTimer); countryTimer = null; }
+      const bus = countryBus;
+      countryBus = null;
+      if (!ctx || !bus) return;
+      try {
+        const t = ctx.currentTime;
+        const FADE = 0.18;
+        bus.gain.cancelScheduledValues(t);
+        bus.gain.setValueAtTime(bus.gain.value, t);
+        bus.gain.linearRampToValueAtTime(0.0001, t + FADE);
+        setTimeout(() => { try { bus.disconnect(); } catch { /* ignore */ } }, (FADE + 0.1) * 1000);
+      } catch { /* ignore */ }
     },
     // Travel music over a flight: a lively jig that plays at full volume for the
     // whole 4-second flight, then keeps going for 2 more seconds as it fades to
@@ -468,16 +531,17 @@ export const MUSIC = (() => {
         for (let i = 0; i < n; i += 6) voice(t0 + i * EIGHTH, 146.83, 0.06, EIGHTH * 3, "reed", fade);
       } catch { /* ignore */ }
     },
-    // The country's tune, LOOPED while the player is in that country (a gap
-    // between repeats so it doesn't fatigue). Replaces any previous country loop.
+    // The country's tune on arrival: TUNE_PASSES times through the melody, then
+    // silence. Not a loop — it ends on its own and doesn't follow you around the
+    // country map. Replaces any tune still sounding from a previous arrival.
     countryTune(country, continent) {
       try {
-        this.stopCountry();
-        const c = ac(); if (!c) return;
+        const c = ac(); if (!c) return;   // before stopCountry: it needs ctx to fade
+        this.stopCountry();               // fade out anything still sounding, and let its bus go
         wake(c);
-        // Play the country's tune ONCE and let it end — no looping while the player
-        // lingers on the country map. (stopCountry still exists to cancel it if a
-        // future caller re-loops; here there's just the single play-through.)
+        countryBus = c.createGain();      // a clean knob of our own for this arrival
+        countryBus.gain.value = 1;
+        countryBus.connect(master);
         countryActive = true;
         playTune(tuneKeyFor(country, continent));
       } catch { /* ignore */ }
@@ -502,7 +566,7 @@ export const MUSIC = (() => {
       } catch { /* ignore */ }
     },
     // A short, slow, wistful Scottish air — played once when the traveler comes
-    // home to Grandpa's homecoming quiz. Gentle flute-like voice over a soft D
+    // home to Uncle's homecoming quiz. Gentle flute-like voice over a soft D
     // drone; nostalgic, not the lively jig. Ends by letting the last note ring.
     homecoming() {
       try {

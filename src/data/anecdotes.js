@@ -1,7 +1,7 @@
 // ===========================================================================
 // GRANDPA'S ANECDOTES — one verified "did you know" per famous landmark.
 //
-// Spoken by Grandpa Nigel when a child answers a homecoming-quiz question
+// Spoken by Uncle Jonah when a child answers a homecoming-quiz question
 // correctly. Each is a REAL, verified extra detail (rule 2) that the location's
 // `fact` field does not already state — the humour is in his delivery, never in
 // invented facts. Keyed by location id; the game falls back to the location's

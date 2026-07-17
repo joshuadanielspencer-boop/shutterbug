@@ -108,7 +108,7 @@ export function curiositiesSeen(profile) {
 }
 
 // Persist a small arbitrary flag on a profile (e.g. story progress like
-// whether the traveler has met Grandpa Nigel yet). Unknown keys are fine.
+// whether the traveler has met Uncle Jonah yet). Unknown keys are fine.
 export function setProfileFlag(name, key, value) {
   const s = read();
   const p = s.profiles[name];
@@ -160,7 +160,7 @@ export function recordGame(name, { difficulty, score, timeMs = 0, won = false, r
 
   p.games = (p.games || 0) + 1;
   p.lastPlayed = Date.now();
-  // Remember the most recent trip's outcome so Grandpa can comment on it at the
+  // Remember the most recent trip's outcome so Uncle can comment on it at the
   // start of the next expedition (see the meet screen).
   p.lastRun = { won: !!won, difficulty, score, mode, at: Date.now() };
   p.best = p.best || {};
@@ -479,7 +479,7 @@ export function careerRank(profile) {
 
 // Which modes / difficulties / itineraries this profile has unlocked. New
 // travelers start simple; more opens up as they collect the world, so the game
-// reveals itself gradually (Grandpa narrates each unlock on the meet screen).
+// reveals itself gradually (Uncle narrates each unlock on the meet screen).
 // Guests (no profile) get everything — they can't progress, so nothing to gate.
 export const UNLOCK_REQ = {
   medium: "Finish your first expedition",
