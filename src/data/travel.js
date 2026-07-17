@@ -84,12 +84,12 @@ export const TRANSPORT_MODES = [
   { id: "taxi",     name: "Taxi",            emoji: "🚕", speed: 3, cost: 3, contexts: ["near"], blurb: "Door to door and fast, for a short, pricey hop." },
   { id: "ferry",    name: "Ferry",           emoji: "⛴️", speed: 2, cost: 2, contexts: ["water", "island"], blurb: "Across the water by boat." },
   { id: "riverboat",name: "Riverboat",       emoji: "🛥️", speed: 1, cost: 2, contexts: ["river"], blurb: "Up the river — sometimes the only road there is." },
-  { id: "canoe",    name: "Dugout canoe",    emoji: "🛶", speed: 1, cost: 1, contexts: ["river"], blurb: "Paddled the last stretch, the old way." },
+  { id: "canoe",    name: "Dugout canoe",    emoji: "🛶", speed: 1, cost: 1, contexts: ["dugout"], blurb: "Paddled the last stretch, the old way." },
   { id: "gondola",  name: "Gondola",         emoji: "🛶", speed: 1, cost: 3, contexts: ["venice"], blurb: "Poled through the canals — only in Venice." },
-  { id: "cablecar", name: "Cable car",       emoji: "🚠", speed: 2, cost: 2, contexts: ["mountain"], blurb: "Swung up the mountainside by cable." },
-  { id: "cograil",  name: "Cog railway",     emoji: "🚞", speed: 1, cost: 2, contexts: ["mountain"], blurb: "A toothed rail that grips the steep track." },
+  { id: "cablecar", name: "Cable car",       emoji: "🚠", speed: 2, cost: 2, contexts: ["cablecar"], blurb: "Swung up the mountainside by cable." },
+  { id: "cograil",  name: "Cog railway",     emoji: "🚞", speed: 1, cost: 2, contexts: ["cograil"], blurb: "A toothed rail that grips the steep track." },
   { id: "tuktuk",   name: "Tuk-tuk",         emoji: "🛺", speed: 2, cost: 1, contexts: ["southasia", "seasia"], blurb: "A little three-wheeler — cheap and everywhere." },
-  { id: "camel",    name: "Camel",           emoji: "🐪", speed: 1, cost: 1, contexts: ["desert"], blurb: "The desert's own ship, one slow swaying step at a time." },
+  { id: "camel",    name: "Camel",           emoji: "🐪", speed: 1, cost: 1, contexts: ["camelriding"], blurb: "The desert's own ship, one slow swaying step at a time." },
 ];
 export const TRANSPORT_BY_ID = Object.fromEntries(TRANSPORT_MODES.map((m) => [m.id, m]));
 
@@ -98,14 +98,84 @@ export const TRANSPORT_BY_ID = Object.fromEntries(TRANSPORT_MODES.map((m) => [m.
 // truly fits (rule 2). `far`/`near` are added by the caller from the leg distance.
 const SEASIA = new Set(["Thailand", "Vietnam", "Cambodia", "Myanmar", "Malaysia", "Singapore", "Indonesia", "Philippines", "Laos"]);
 const SOUTHASIA = new Set(["India", "Nepal", "Pakistan", "Sri Lanka", "Bangladesh"]);
+
+// Where a camel is a real way to cross a desert. Dromedaries run across North
+// Africa, the Middle East and East Africa; Bactrians across Mongolia and northern
+// China; Australia has feral dromedaries, brought over in the 1800s and now the
+// world's largest herd.
+//
+// Emphatically NOT the Americas: the Atacama and Uyuni have llamas, alpacas,
+// vicuñas and guanacos, which are camelids but are not camels and are not ridden
+// across deserts. And not Europe. The rule here used to be `category === "desert"`,
+// which is how the game came to offer a camel at the Dune du Pilat outside
+// Bordeaux, at White Sands in New Mexico, on the Uyuni salt flats — and, because
+// they are honestly tagged as the driest desert on Earth, in the McMurdo Dry
+// Valleys of Antarctica.
+// Sources: en.wikipedia.org/wiki/Dromedary, /Bactrian_camel, /Australian_feral_camel,
+// /Vicu%C3%B1a (checked 2026-07-16).
+const CAMEL_COUNTRIES = new Set([
+  // North Africa (dromedary)
+  "Morocco", "Algeria", "Tunisia", "Libya", "Egypt", "Sudan", "Mauritania", "Mali", "Niger", "Chad",
+  // East Africa (dromedary — the largest populations on Earth)
+  "Somalia", "Ethiopia", "Kenya", "Djibouti", "Eritrea",
+  // Middle East (dromedary)
+  "Saudi Arabia", "United Arab Emirates", "Oman", "Yemen", "Jordan", "Israel", "Iraq", "Iran", "Syria",
+  // South & Central Asia (dromedary, then Bactrian further north)
+  "India", "Pakistan", "Afghanistan", "Turkmenistan", "Uzbekistan", "Kazakhstan",
+  // Bactrian country
+  "Mongolia", "China",
+  // Introduced, and thriving
+  "Australia",
+]);
+
+// Mountains that genuinely have one, listed explicitly rather than derived from the
+// mountain category — because most mountains have neither. The old rule offered a
+// cable car up Denali, Aconcagua, Everest, K2, Mount Vinson and Kilimanjaro, none of
+// which has one. (Kilimanjaro's was announced in 2019, met heavy opposition from the
+// guiding industry, and was never built. Fuji's ropeway climbs Mount Tenjo, which
+// faces Fuji — it does not go up Fuji.)
+//
+// An id missing here means the mode simply isn't offered, which is the safe default:
+// add one only once you have checked it, and note what you checked (rule 2).
+const CABLECAR_PLACES = new Set([
+  "capetown",   // Table Mountain Aerial Cableway, running since 1929
+  "matterhorn", // Matterhorn Glacier Paradise, Zermatt — Europe's highest mountain station
+  "montblanc",  // Aiguille du Midi from Chamonix — the world's highest vertical ascent
+  "zugspitze",  // Seilbahn Zugspitze, opened 2017
+  "huangshan",  // the Yellow Mountains carry four separate cableways
+]);
+const COGRAIL_PLACES = new Set([
+  "matterhorn", // Gornergrat Railway — Europe's highest open-air cog railway
+  "zugspitze",  // Bayerische Zugspitzbahn, running since 1930
+  "rio",        // the Corcovado Rack Railway up to Christ the Redeemer, running since 1884
+]);
+
+// Where a DUGOUT is the boat you'd actually be in — a hollowed log, paddled or
+// poled. Not simply "a river": the Douro has rabelo boats and cruise decks, and the
+// Verdon has kayaks, so keying this off the river tag put a dugout in Portugal and
+// France. It is a tropical-basin craft, so it gets its own short list.
+// Sources: en.wikipedia.org/wiki/Mokoro (checked 2026-07-16).
+const DUGOUT_PLACES = new Set([
+  "okavango",      // the mokoro — a dugout poled from the stern, the delta's own boat
+  "amazon",        // dugouts are daily working transport on the river and its tributaries
+  "canocristales", // reached through the Macarena by river, in the Orinoco basin
+]);
+
 export function destinationContexts(loc) {
   const c = new Set();
   const cat = loc.category, tags = loc.tags || [];
   if (["coast", "waterway"].includes(cat) || tags.includes("island")) c.add("water");
   if (tags.includes("island")) c.add("island");
-  if (cat === "waterway") c.add("river");
-  if (cat === "desert") c.add("desert");
-  if (["mountain", "volcano"].includes(cat)) c.add("mountain");
+  // A riverboat needs a destination that IS a river — both halves matter. The
+  // category alone ("waterway" is Rivers *and Lakes*) put a riverboat on the Dead
+  // Sea; the tag alone put one at Taroko Gorge and at Dunn's River Falls, where the
+  // `river` tag only means a river runs through it and you arrive on foot. Every
+  // waterway now carries `river`, `lake` or `canal`, so the pair is exact.
+  if (cat === "waterway" && tags.includes("river")) c.add("river");
+  if (DUGOUT_PLACES.has(loc.id)) c.add("dugout");
+  if (cat === "desert" && CAMEL_COUNTRIES.has(loc.country)) c.add("camelriding");
+  if (CABLECAR_PLACES.has(loc.id)) c.add("cablecar");
+  if (COGRAIL_PLACES.has(loc.id)) c.add("cograil");
   if (loc.city === "Venice" || loc.subject === "Venice's Grand Canal") c.add("venice");
   if (SEASIA.has(loc.country)) c.add("seasia");
   if (SOUTHASIA.has(loc.country)) c.add("southasia");
@@ -215,6 +285,17 @@ export function currencyFor(country) {
 // tradeoff (at least one cheap-and-slow and one fast-and-pricey). Only modes that
 // genuinely fit the place are offered (rule 2). `legDeg` is the hub→landmark
 // distance in degrees; costs scale with it.
+// A tiny stable string hash (FNV-1a). Deliberately not rng.js: this must give the
+// same answer for the same place on every device and every run, forever.
+function idHash(id) {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < String(id).length; i++) {
+    h ^= String(id).charCodeAt(i);
+    h = Math.imul(h, 0x01000193) >>> 0;
+  }
+  return h;
+}
+
 export function transportOptionsFor(loc, legDeg) {
   const ctx = destinationContexts(loc);
   if (legDeg > 22) ctx.add("far"); else if (legDeg < 6) ctx.add("near");
@@ -223,7 +304,14 @@ export function transportOptionsFor(loc, legDeg) {
   // Guarantee a real span: keep a cheapest and a fastest, then add one flavour mode.
   const cheap = pool.slice().sort((a, b) => a.cost - b.cost || a.speed - b.speed)[0];
   const fast = pool.slice().sort((a, b) => b.speed - a.speed || b.cost - a.cost)[0];
-  const flavour = pool.find((m) => !m.core && m !== cheap && m !== fast);
+  // Which flavour depends on the PLACE, not on the order of TRANSPORT_MODES. Taking
+  // the first match meant a river destination always drew the ferry — it fits both
+  // `water` and `river` and is listed first — so the riverboat and the dugout canoe
+  // could never be offered anywhere in the game. Hashing the id keeps each place's
+  // choice fixed (the Amazon always offers its riverboat) without any randomness,
+  // which matters: a `rnd()` here would make the Daily Expedition differ per player.
+  const flavours = pool.filter((m) => !m.core && m !== cheap && m !== fast);
+  const flavour = flavours.length ? flavours[idHash(loc.id) % flavours.length] : null;
   const chosen = [cheap, fast, flavour].filter((m, i, a) => m && a.indexOf(m) === i).slice(0, 3);
   // Concrete costs: money scales with distance × the mode's cost tier; time (in
   // half-days) shrinks with the mode's speed. Rounded to friendly numbers.

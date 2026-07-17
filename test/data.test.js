@@ -619,6 +619,80 @@ describe("travel modes", () => {
     }
   });
 
+  // These pin the "a mode is only offered where it truly fits" promise in travel.js.
+  // They exist because the category-derived rules read as completely plausible and
+  // were wrong: a camel at the Dune du Pilat outside Bordeaux, a cable car up
+  // Kilimanjaro (proposed 2019, never built), a dugout canoe on the Douro.
+  const CAMEL_OK = new Set(["Morocco", "Egypt", "Jordan", "Mongolia", "China", "Australia"]);
+  const offers = (l, id, deg = 14) => transportOptionsFor(l, deg).some((o) => o.id === id);
+
+  it("offers a camel only where camels actually are", () => {
+    for (const l of LOCATIONS) {
+      if (!offers(l, "camel")) continue;
+      expect(CAMEL_OK.has(l.country), `camel offered in ${l.country} (${l.subject})`).toBe(true);
+    }
+    // The Americas have llamas, alpacas, vicuñas and guanacos — camelids, but not
+    // camels, and not ridden. Antarctica is honestly tagged as a desert, which is
+    // exactly how a camel got there.
+    for (const l of LOCATIONS.filter((x) => ["South America", "North America", "Antarctica", "Europe"].includes(x.continent))) {
+      expect(offers(l, "camel"), `camel offered at ${l.subject} in ${l.continent}`).toBe(false);
+    }
+  });
+
+  it("offers a cable car or cog railway only where one has been built", () => {
+    // Subset, not equality: a place with both (the Matterhorn has the Glacier
+    // Paradise cable car AND the Gornergrat cog railway) shows whichever its hash
+    // picks, so asserting an exact list would pin the hash rather than the fact.
+    const CABLE_OK = new Set(["capetown", "matterhorn", "montblanc", "zugspitze", "huangshan"]);
+    const COG_OK = new Set(["matterhorn", "zugspitze", "rio"]);
+    for (const l of LOCATIONS) {
+      if (offers(l, "cablecar")) expect(CABLE_OK, `cable car at ${l.subject}`).toContain(l.id);
+      if (offers(l, "cograil")) expect(COG_OK, `cog railway at ${l.subject}`).toContain(l.id);
+    }
+    // The great expedition peaks have neither, and must never be offered one.
+    for (const id of ["everest", "denali", "aconcagua", "kilimanjaro", "vinson", "k2"]) {
+      const l = LOCATIONS.find((x) => x.id === id);
+      if (!l) continue;
+      expect(offers(l, "cablecar"), `cable car up ${l.subject}`).toBe(false);
+      expect(offers(l, "cograil"), `cog railway up ${l.subject}`).toBe(false);
+    }
+  });
+
+  it("offers a dugout canoe only in dugout country", () => {
+    for (const l of LOCATIONS) {
+      if (!offers(l, "canoe")) continue;
+      expect(["Botswana", "Brazil", "Colombia"], `dugout offered in ${l.country}`).toContain(l.country);
+    }
+  });
+
+  it("every waterway says whether it is a river, a lake or a canal", () => {
+    // The river tag is what gates the riverboat, so an untagged waterway silently
+    // loses its boat — and a lake that claimed `river` would gain one it can't have.
+    for (const l of LOCATIONS.filter((x) => x.category === "waterway")) {
+      const t = l.tags || [];
+      const kinds = ["river", "lake", "canal"].filter((k) => t.includes(k));
+      expect(kinds.length, `${l.subject}: tagged ${kinds.join("+") || "neither"}`).toBe(1);
+    }
+  });
+
+  it("every transport mode can actually be offered somewhere", () => {
+    // A mode nobody can reach is a drawn icon nobody will ever see. The ferry used
+    // to win every river's single flavour slot, hiding the riverboat and the canoe.
+    const seen = new Set();
+    for (const l of LOCATIONS) for (const deg of [3, 10, 25]) {
+      for (const o of transportOptionsFor(l, deg)) seen.add(o.id);
+    }
+    for (const m of TRANSPORT_MODES) expect(seen, `${m.name} is never offered anywhere`).toContain(m.id);
+  });
+
+  it("gives a place the same options every time (no rng in the chooser)", () => {
+    // The flavour pick is hashed off the location id, not rnd(): a random draw here
+    // would make the Daily Expedition differ between two players on the same day.
+    const once = LOCATIONS.map((l) => transportOptionsFor(l, 14).map((o) => o.id).join("|"));
+    const twice = LOCATIONS.map((l) => transportOptionsFor(l, 14).map((o) => o.id).join("|"));
+    expect(once).toEqual(twice);
+  });
+
   it("currencies are well-formed and the country map points at real ones", () => {
     for (const [code, c] of Object.entries(CURRENCIES)) {
       expect(c.name && c.symbol, `${code}: incomplete currency`).toBeTruthy();

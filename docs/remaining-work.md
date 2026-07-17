@@ -55,7 +55,7 @@ Journeys, and the Grandpa Nigel story frame.
 - **Live** at `joshuadanielspencer-boop.github.io/shutterbug/`. `git push` to `main`
   triggers `.github/workflows/deploy.yml`, which tests, builds and publishes. There
   is no separate deploy step.
-- `npm test` → **79 tests, 4 files** (`test/data.test.js`, `test/daily.test.js`,
+- `npm test` → **85 tests, 4 files** (`test/data.test.js`, `test/daily.test.js`,
   `test/routes.test.js`, `test/art.test.js`). They must stay green; several of them guard *facts*, not
   just shapes, and exist because a plausible-looking wrong map shipped once already.
 - **Every random choice must go through `src/rng.js`** (`rnd()`, `shuffled()`), never
@@ -364,9 +364,17 @@ price shows **dollars first, local currency in parentheses** (rule 3 style). A m
   (hyperinflation, or official vs. street rates that differ by multiples), so they want a
   sourced decision rather than a number from memory. The USD fallback is not wrong, just
   silent.
-- **Flavour-transport tags** — `destinationContexts` in travel.js decides which modes fit
-  a place. Growing it is rule-2 work (a mode may only appear where it *truly* exists), not
-  a mechanical edit.
+- **Flavour-transport tags — ✅ done 2026-07-16, and it was a correctness pass, not flavour.**
+  The category-derived rules were quietly false: `category === "desert"` offered a camel at
+  the Dune du Pilat near Bordeaux, at White Sands, on the Uyuni salt flats and in the McMurdo
+  Dry Valleys; `category === "mountain"` offered a cable car up Everest, Denali, Aconcagua and
+  Kilimanjaro (whose cable car was announced in 2019 and never built). Camels are now gated on
+  a verified country list, and cable cars / cog railways on explicit per-place lists — absence
+  means not offered, which is the safe default. Riverboat needs `waterway` + the `river` tag
+  (both halves: the category alone put a boat on the Dead Sea, the tag alone put one at Taroko
+  Gorge); the dugout is limited to the Okavango's mokoro, the Amazon and Caño Cristales.
+  Every waterway now carries `river`/`lake`/`canal`. `test/data.test.js` pins all of it.
+  **To add a mode somewhere new, verify it and add the id to the set in travel.js.**
 - ~~Real transport icons~~ — ✅ done 2026-07-16; 12 top-down icons at 46px in the chooser.
 - **A lighter hub-only version in Assignments** — deferred: choosing transport to a named
   landmark would spoil that mode's deduction game.
