@@ -6,8 +6,15 @@
 // strings; they hold no dialogue of their own, so his voice can be tuned in
 // one place.
 //
-// TONE: warm, old-school, gently funny — never morbid. He is frail but
-// delighted, never fading or sad. The lessons woven through his story —
+// BACKSTORY: Uncle Jonah travelled the world when he was young, with this same
+// camera — but no one reaches everywhere in one life, and he's too old to travel
+// now. So he passes the camera on: you go to the places he missed (and the ones
+// he loved), and bring them home to him. He is a seasoned traveler handing over
+// the adventure, NOT a man who never went. Keep his lines on that side of the
+// line — "the one I never got to", not "I never went anywhere".
+//
+// TONE: warm, old-school, gently funny — never morbid. Older and homebound now,
+// but delighted, never fading or sad. The lessons woven through his story —
 // respect for your elders, making the most of your time while you have it,
 // the pull of family, and doing things the real way instead of through a
 // screen — stay IMPLICIT. Never state them outright; let the story carry them.
@@ -75,11 +82,11 @@ export function nigelFace(key, beat = 0) {
 // revealed at reading speed; keep each short enough to read in one breath.
 export const INTRO_BEATS = [
   "Come in, come in — pull up a chair beside me a moment.",
-  "All my life I dreamed of seeing the world. I saved every spare coin for it… and somehow the years slipped by, and I never did go. These old legs won't carry me far now.",
-  "But you — you've got young legs and a sharp pair of eyes. So here's my plan, if you'll hear an old man out.",
-  "Take my camera. It's older than your mother and it uses real film, so you'll want to make every shot count. No telephones, no glowing screens — just you, the wide world, and this.",
-  "Go and photograph the great places I only ever read about. Then hurry home and show me every single picture, and tell me all about it.",
-  "Off you go, then. Bring me back the world.",
+  "When I was young I took this camera everywhere — buses to the edge of the map, strange skies overhead, my pockets full of pictures every time I came home.",
+  "But no one sees all of it in one life, and these days I do my travelling from this chair. There's a whole wide world still out there I never reached.",
+  "You, though — young legs and a sharp pair of eyes. So here's my plan, if you'll hear an old traveler out.",
+  "Take my camera. It's older than your mother and it still uses real film, so make every shot count. No telephones, no glowing screens — just you and the wide world.",
+  "Go and find the places I loved, and the ones I never got to. Then hurry home, show me every picture, and tell me all about it. Bring the world back to me.",
 ];
 
 // A shorter send-off shown before later expeditions (once he already knows you).
@@ -125,7 +132,7 @@ export const END_WIN = [
   "Now THAT is a photographer's eye. I always knew you had it in you.",
   "My dear, you've outdone yourself. I'll be showing these off to everyone who visits.",
   "Perfect, just perfect. You've made an old man's whole week.",
-  "Every shot landed. I couldn't have done better myself in my dreams — and I dreamed plenty.",
+  "Every shot landed. I couldn't have framed them better myself — and I've taken a few in my day.",
   "Splendid work out there! These pictures will hang on my wall for years.",
   "You did it, and you did it beautifully. That's my traveler.",
   "Oh, wonderful! It's like I went there myself, sitting right here in this chair.",
@@ -139,7 +146,7 @@ export const END_LOSE = [
   "Not to worry! The world isn't going anywhere. Have a cup of tea and set off fresh — I believe in you.",
   "So the days ran short. Big deal! You learned the map a little better today. Back into the field with you!",
   "Every wrong turn teaches you something. You're getting sharper each trip — I can see it. Let's go again.",
-  "Don't you dare be discouraged. I couldn't have got even THIS far. Take a breath and let's have another crack.",
+  "Don't you dare be discouraged. Even I came home empty-handed more than once. Take a breath and let's have another crack.",
 ];
 
 // ---- The pre-game "meet Uncle" screen ----------------------------------
@@ -152,7 +159,7 @@ export const MEET_LINES = [
   "You know what they say — the best camera is the one you've got with you. And you've got mine!",
   "Travel light, but never travel without your curiosity. That's the one thing you can't pack too much of.",
   "The map is not the world, laddie. You have to go and stand in it.",
-  "I've read about a thousand places. You get to smell the air in them. Don't take that for granted.",
+  "I've stood in a thousand places in my time. You get to reach the ones I never did. Don't take that for granted.",
   "Getting lost is just the map's way of showing you something you didn't plan to see.",
   "A good traveler has no fixed plans and is not intent on arriving. Mind you, do watch the calendar.",
   "The whole world is a book, and those who don't travel read only a page. You're on chapter two hundred!",
@@ -168,7 +175,7 @@ export const MEET_LINES = [
   "I'm too old to climb the mountain, but I can still climb it through your eyes. Show me the top.",
   "Take the picture, then put the camera down for a minute. Some things you keep in here.",
   "There are no foreign lands. It's the traveler who's foreign. Go be a delightful stranger.",
-  "A ship in harbor is safe — but that's not what ships are for. Nor cameras. Nor grandchildren!",
+  "A ship in harbor is safe — but that's not what ships are for. Nor cameras. Nor young travelers!",
   "Some journeys take you far away so you can appreciate coming home. But we'll do the far-away part first.",
   "If it were easy, everyone would've photographed it. The tricky ones are the trophies.",
   "Adventure is worthwhile in itself, they say. And it pairs beautifully with a good photograph.",
@@ -225,10 +232,10 @@ export const RANKUP_LINE = (title) => `And would you look — the paper's promot
 // fix (see nextGoal in profiles.js): Uncle asking for something.
 //
 // It matters that he WANTS it rather than the game AWARDING it. A badge at 14/15
-// is a task. An old man saying he's never seen a desert is a reason — the child
-// isn't collecting, they're bringing something back to someone who asked.
+// is a task. An old traveler saying he never got to a desert is a reason — the
+// child isn't collecting, they're bringing back the one place he missed.
 //
-// `want` is phrased for "…and I've never seen ___." — keep them concrete and
+// `want` is phrased for "…the one I never got to: ___." — keep them concrete and
 // visual, the way he'd actually say it by the fire.
 export const GRANDPA_WANTS = [
   { category: "volcano",   want: "a mountain that's actually on fire" },
@@ -245,17 +252,17 @@ export const GRANDPA_WANTS = [
 
 // How he asks. `%` is replaced with the want above.
 export const WANT_LINES = [
-  "You know what I've never seen? %. Not once in eighty years.",
+  "You know the one place I never quite reached? %. Would you get it for me?",
   "Here's a thought for your next trip — I've always wondered about %.",
-  "Do you know the one thing missing from my whole life? %. Fetch me that.",
-  "If you're going out again… I'd dearly love to see %.",
+  "There's a gap in my old albums, and it's %. See if you can fill it for me.",
+  "If you're going out again… I'd dearly love to finally see %.",
 ];
 
 // The triumphant close, shown once the Dream is fulfilled (wired in a later
 // pass). Warm and proud; the game keeps playing afterward.
 export const DREAM_FULFILLED = [
   "You've done it. You truly have.",
-  "Every place I ever dreamed of — and I've seen them all now, through your eyes and this old camera.",
+  "Every place I ever missed — and I've seen them all now, through your eyes and this old camera.",
   "Thank you, my dear. You gave an old man the whole wide world.",
   "Now… don't stop on my account. There's always another horizon.",
 ];
