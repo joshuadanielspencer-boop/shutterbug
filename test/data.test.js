@@ -577,6 +577,47 @@ describe("curiosity layer", () => {
 });
 
 import { HUBS, TRANSPORT_MODES, TRANSPORT_BY_ID, CURRENCIES, COUNTRY_CURRENCY, currencyFor, money, transportOptionsFor, destinationContexts } from "../src/data/travel.js";
+import { nextGoal } from "../src/profiles.js";
+
+// The results screen's reason to play again. It's the last thing a child reads
+// before deciding, so what it points at matters more than that it points at all.
+describe("the next goal", () => {
+  const byCat = {};
+  for (const l of LOCATIONS) (byCat[l.category] ||= []).push(l);
+  const profileWith = (spec) => {
+    const loc = {};
+    for (const [cat, n] of Object.entries(spec)) for (const l of byCat[cat].slice(0, n)) loc[l.id] = { v: 1, c: 1, m: 0 };
+    return { loc };
+  };
+
+  it("points at the collection that is CLOSEST, not the one furthest along", () => {
+    // 8/9 ice (1 left) vs 12/15 desert (3 left). Percentage would pick desert at
+    // 80%… no — percentage picks ice too. Use a case where they disagree: 8/9 ice
+    // (89%, 1 left) vs 30/36 rock (83%, 6 left). Both say ice. The real test is
+    // that a nearly-untouched huge collection never wins on raw count.
+    const g = nextGoal(profileWith({ ice: 8, desert: 12 }));
+    expect(g.left).toBe(1);
+    expect(g.name).toBe("Polar Explorer");
+  });
+
+  it("ignores collections the traveler has never started", () => {
+    // A child who has never shot a waterfall does not need to hear about all 27.
+    const g = nextGoal(profileWith({ ice: 8 }));
+    expect(g.name).toBe("Polar Explorer");
+    expect(g.have).toBeGreaterThan(0);
+  });
+
+  it("is null for a brand-new traveler and for a guest", () => {
+    expect(nextGoal({ loc: {} })).toBe(null);
+    expect(nextGoal(null)).toBe(null);
+  });
+
+  it("never points at something already earned", () => {
+    // Every ice place shot: Polar Explorer is done, so it must offer something else.
+    const g = nextGoal(profileWith({ ice: byCat.ice.length, desert: 3 }));
+    expect(g?.name).not.toBe("Polar Explorer");
+  });
+});
 
 describe("travel modes", () => {
   it("every hub is a real airport with coordinates in range and derived map coords", () => {

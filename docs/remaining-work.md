@@ -55,7 +55,7 @@ Journeys, and the Grandpa Nigel story frame.
 - **Live** at `joshuadanielspencer-boop.github.io/shutterbug/`. `git push` to `main`
   triggers `.github/workflows/deploy.yml`, which tests, builds and publishes. There
   is no separate deploy step.
-- `npm test` → **85 tests, 4 files** (`test/data.test.js`, `test/daily.test.js`,
+- `npm test` → **89 tests, 4 files** (`test/data.test.js`, `test/daily.test.js`,
   `test/routes.test.js`, `test/art.test.js`). They must stay green; several of them guard *facts*, not
   just shapes, and exist because a plausible-looking wrong map shipped once already.
 - **Every random choice must go through `src/rng.js`** (`rnd()`, `shuffled()`), never

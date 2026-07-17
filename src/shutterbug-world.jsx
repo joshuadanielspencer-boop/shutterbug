@@ -20,12 +20,13 @@ import { ANECDOTES } from "./data/anecdotes.js";
 import { TUNES, tuneKeyFor } from "./data/tunes.js";
 import { GRANDPA, INTRO_BEATS, SENDOFF_BEATS, NOTE_HEADER, GUIDEBOOK,
   HOMECOMING_INTRO, WRONG_REACTIONS, ACHIEVEMENT_INTRO, DREAM_FULFILLED,
-  END_WIN, END_LOSE, MEET_LINES, MEET_RUN, MEET_ASK, UNLOCK_LINES, RANKUP_LINE } from "./data/grandpa.js";
+  END_WIN, END_LOSE, MEET_LINES, MEET_RUN, MEET_ASK, UNLOCK_LINES, RANKUP_LINE,
+  GRANDPA_WANTS, WANT_LINES, nigelFace } from "./data/grandpa.js";
 import { dailyResult, recordDaily, dailyStreak } from "./profiles.js";
 import { listProfiles, lastProfileName, getProfile, createProfile, setLastProfile,
   deleteProfile, renameProfile, setAvatar, setProfileFlag, recordGame, recordExplore, recordQuiz,
   weightedOrder, freshFirst, passportData, achievements, topScores, storageAvailable,
-  careerRank, unlocks, UNLOCK_REQ, markCuriositySeen, curiositiesSeen } from "./profiles.js";
+  careerRank, unlocks, UNLOCK_REQ, markCuriositySeen, curiositiesSeen, nextGoal } from "./profiles.js";
 import { CURIOSITY_DECK_BY_ID, CURIOSITY_TOTAL } from "./data/curiosities.js";
 import { DIFFICULTY_ART, MODE_ART, THEME_ART, CATEGORY_ART, ACHIEVEMENT_ART,
   RANK_ART, RECORD_ART, ROUNDEL_ART, TRANSPORT_ART, SEAL_UNLOCKED, MARKER_MASTERED } from "./data/art.js";
@@ -1240,6 +1241,11 @@ export default function ShutterbugWorld() {
   const [soundOn, setSoundOn] = useState(true);
   const [flashHint, setFlashHint] = useState(null); // Scout: {type, key} of the correct answer to gently flash after a wrong pick
   const [howToPlay, setHowToPlay] = useState(false); // the splash's how-to-play card
+  // The results screen's reasons to go again — the nearest unfinished collection,
+  // something Grandpa wants, and the rank within reach. Fixed when the screen opens.
+  const [nextUp, setNextUp] = useState(null);
+  const [grandpaWant, setGrandpaWant] = useState(null);
+  const [rankNear, setRankNear] = useState(null);
   // Three greetings for the splash sky, redrawn every time the splash is entered.
   // shuffled() (not Math.random) because that's the rule, and it's safe here: the
   // Daily Expedition scopes its own generator with withSeed(), which restores the
@@ -1583,10 +1589,14 @@ export default function ShutterbugWorld() {
     const line = MEET_LINES[Math.floor(Math.random() * MEET_LINES.length)];
     const profile = profileName ? getProfile(profileName) : null;
     const lr = profile && profile.lastRun;
-    let pool;
-    if (!lr || !(profile.games > 0)) pool = MEET_RUN.firstTime;
-    else if (lr.won) pool = Math.random() < 0.4 ? MEET_RUN.great : MEET_RUN.good;
-    else pool = MEET_RUN.rough;
+    // The pool and the face he wears travel together — the pool IS the attitude
+    // (great = proud of you, rough = comforting you), so pick them at the same time.
+    let pool, mood;
+    if (!lr || !(profile.games > 0)) { pool = MEET_RUN.firstTime; mood = "meetFirst"; }
+    else if (lr.won) {
+      if (Math.random() < 0.4) { pool = MEET_RUN.great; mood = "meetGreat"; }
+      else { pool = MEET_RUN.good; mood = "meetGood"; }
+    } else { pool = MEET_RUN.rough; mood = "meetRough"; }
     const comment = pool[Math.floor(Math.random() * pool.length)];
 
     // Rank-up + newly-unlocked news (saved travelers only). On the very first
@@ -1609,7 +1619,7 @@ export default function ShutterbugWorld() {
       if (!u[gameMode]) setGameMode("assignments");
       if (!u[difficulty]) setDifficulty("easy");
     }
-    setMeetInfo({ line, comment, news });
+    setMeetInfo({ line, comment, news, mood });
     setMeetTyped(0); // Grandpa starts talking; controls stay grayed until he's done
     setScreen("meet");
   }
@@ -2116,6 +2126,26 @@ export default function ShutterbugWorld() {
     if (screen !== "end") return;
     const pool = endWon() ? END_WIN : END_LOSE;
     setEndLine(pool[Math.floor(Math.random() * pool.length)]);
+
+    // The three reasons to go again, fixed when the screen opens so they don't
+    // reshuffle under the player's eyes while they read.
+    const prof = profileName ? getProfile(profileName) : null;
+    setNextUp(nextGoal(prof));
+    const rank = prof ? careerRank(prof) : null;
+    // Only worth saying when the next rank is genuinely in reach — "94 more places
+    // to Globe Editor" is not encouragement, it's a wall.
+    setRankNear(rank && rank.next && rank.nextNeed - rank.have <= 12 ? rank : null);
+    // Grandpa asks for a KIND of place he hasn't got yet. If he has one of
+    // everything, he asks for nothing rather than for something he already has.
+    const pp = prof ? passportData(prof) : null;
+    const missing = pp ? GRANDPA_WANTS.filter((w) => {
+      const col = pp.collections.find((c) => c.category === w.category);
+      return col && col.mastered === 0;
+    }) : [];
+    setGrandpaWant(missing.length
+      ? WANT_LINES[Math.floor(Math.random() * WANT_LINES.length)]
+        .replace("%", missing[Math.floor(Math.random() * missing.length)].want)
+      : null);
   }, [screen]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const outOfDays = (subtitle) => {
@@ -2537,12 +2567,13 @@ export default function ShutterbugWorld() {
 
   // ---------- STORY / INTRO SCREEN (Grandpa Nigel's send-off) ----------
   if (screen === "intro") {
-    return <StoryScreen beats={INTRO_BEATS} reduced={prefersReduced} ctaLabel="Take the camera 📷" onDone={finishStory} />;
+    return <StoryScreen beats={INTRO_BEATS} reduced={prefersReduced} mood="intro" cta="bag"
+      ctaLabel="Take the camera" onDone={finishStory} />;
   }
 
   // ---------- DREAM FULFILLED (one-time win scene; game continues after) ----------
   if (screen === "dream") {
-    return <StoryScreen beats={DREAM_FULFILLED} reduced={prefersReduced} ctaLabel="Keep exploring the world 🌍"
+    return <StoryScreen beats={DREAM_FULFILLED} reduced={prefersReduced} mood="dream" ctaLabel="Keep exploring the world 🌍"
       onDone={() => { if (profileName) setProfileFlag(profileName, "dreamDone", true); setDreamPending(false); refreshProfiles(); setScreen("start"); }} />;
   }
 
@@ -2558,11 +2589,15 @@ export default function ShutterbugWorld() {
     const news = meetInfo?.news || [];
     return (
       <Frame>
-        <div style={{ maxWidth: 640, margin: "0 auto", padding: "4px 4px 8px" }}>
-          {/* Grandpa greets you */}
-          <div style={{ display: "flex", alignItems: "flex-start", gap: 18, background: PAPER, border: `2px solid ${GOLD}`, borderRadius: 16, padding: "18px 20px", flexWrap: "wrap" }}>
-            <NigelPortrait size={248} style={{ flex: "none" }} />
-            <div style={{ textAlign: "left", flex: "1 1 280px", minWidth: 240 }}>
+        <div style={{ maxWidth: 1180, margin: "0 auto", padding: "4px 4px 8px" }}>
+          {/* Grandpa greets you. He gets the bigger half of the screen and sits on
+              the RIGHT; what you read and click stays left, in one column, so the
+              eye isn't crossing him to get from his question to the answer. The
+              order flips on a narrow screen (he stacks under the words) because a
+              scene that wide leaves nothing for the text beside it. */}
+          <div style={{ display: "flex", alignItems: "center", gap: 20, flexWrap: "wrap" }}>
+            <div style={{ ...CARD_SURFACE, textAlign: "left", flex: "1 1 340px", minWidth: 280,
+              border: `2px solid ${GOLD}`, borderRadius: 16, padding: "18px 20px" }}>
               <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 24, fontWeight: 800, letterSpacing: "0.14em", color: CORAL, marginBottom: 10 }}>{GRANDPA.name.toUpperCase()}</div>
               {/* One line at a time: the follow-up note waits for the greeting to
                   finish, and the question waits for both. It is all one man talking,
@@ -2579,6 +2614,10 @@ export default function ShutterbugWorld() {
                 </>);
               })()}
             </div>
+            {/* His face follows the conversation: the mood of the run he's nodding to
+                while he's nodding to it, then amused once he gets to the question. */}
+            <NigelScene mood={meetReady ? "meetAsk" : (meetInfo?.mood || "meetLine")}
+              style={{ flex: "1.35 1 420px", minWidth: 300 }} />
           </div>
 
           {/* Newly unlocked! — Grandpa's announcements, under the wax seal. */}
@@ -2972,7 +3011,7 @@ export default function ShutterbugWorld() {
             {/* Homecoming: Grandpa on the LEFT, the quiz on the RIGHT (no scrolling). */}
             {home && (
               <div style={{ flex: "1 1 300px", minWidth: 260, background: PAPER, border: `2px solid ${GOLD}`, borderRadius: 16, padding: "20px 18px", textAlign: "center" }}>
-                <NigelPortrait size={192} style={{ margin: "0 auto 12px" }} />
+                <NigelScene mood="homecoming" style={{ margin: "0 auto 12px" }} />
                 <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 22, letterSpacing: "0.06em", color: CORAL, fontWeight: 800, marginBottom: 12 }}>{GRANDPA.name.toUpperCase()}</div>
                 {/* key by quiz.i so the line remounts every question — otherwise, when
                     two questions share the same intro text ("And this one…"), TypeLine's
@@ -3351,14 +3390,43 @@ export default function ShutterbugWorld() {
           <p style={{ color: INK, opacity: 0.7, marginTop: 2 }}>{r.note}</p>
 
           {/* Grandpa's word on the trip — proud on a clean sweep, encouraging when
-              the days ran out. He is the emotional bookend to every expedition. */}
+              the days ran out. He is the emotional bookend to every expedition, so
+              he gets the room to be one: the whole scene, in the face that matches
+              what he's saying. Under it, the reason to go again. */}
           {endLine && (
-            <div style={{ display: "flex", alignItems: "center", gap: 16, background: PAPER, border: `2px solid ${GOLD}`, borderRadius: 14, padding: "16px 18px", margin: "18px auto 0", maxWidth: 520, textAlign: "left" }}>
-              <NigelPortrait size={112} />
-              <div>
+            <div style={{ display: "flex", alignItems: "center", gap: 18, margin: "18px auto 0", maxWidth: 940, flexWrap: "wrap" }}>
+              <div style={{ ...CARD_SURFACE, flex: "1 1 320px", minWidth: 270, border: `2px solid ${GOLD}`, borderRadius: 14, padding: "16px 18px", textAlign: "left" }}>
                 <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.16em", color: CORAL, marginBottom: 5 }}>{GRANDPA.name.toUpperCase()}</div>
                 <p style={{ margin: 0, color: INK, fontSize: 17, lineHeight: 1.5 }}>{endLine}</p>
+                {/* ---- Why you'd go again. This is the whole point of the screen. ---- */}
+                {nextUp && (
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 14, paddingTop: 12, borderTop: `1px dashed ${PAPER_LINE}` }}>
+                    <ArtBadge art={nextUp.art} emoji={nextUp.emoji} size={40} dim />
+                    <div>
+                      <div style={{ fontWeight: 800, color: INK, fontSize: 15 }}>
+                        {nextUp.name} — {nextUp.have} of {nextUp.need}
+                      </div>
+                      <div style={{ color: CORAL, fontWeight: 700, fontSize: 14 }}>
+                        {nextUp.left === 1 ? "Just one more." : `Only ${nextUp.left} to go.`}
+                      </div>
+                    </div>
+                  </div>
+                )}
+                {grandpaWant && (
+                  <p style={{ margin: "12px 0 0", color: INK, fontSize: 15, lineHeight: 1.5, fontStyle: "italic", opacity: 0.9 }}>
+                    {grandpaWant}
+                  </p>
+                )}
+                {rankNear && (
+                  <div style={{ display: "flex", alignItems: "center", gap: 9, marginTop: 12 }}>
+                    <ArtBadge art={RANK_ART[rankNear.tier + 1]} emoji="★" size={30} dim />
+                    <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 12.5, color: INK, opacity: 0.85 }}>
+                      {rankNear.nextNeed - rankNear.have} more place{rankNear.nextNeed - rankNear.have === 1 ? "" : "s"} to <b>{rankNear.next}</b>
+                    </span>
+                  </div>
+                )}
               </div>
+              <NigelScene mood={endWon() ? "endWin" : "endLose"} style={{ flex: "1.15 1 380px", minWidth: 280 }} />
             </div>
           )}
 
@@ -4511,7 +4579,10 @@ function Frame({ children, desk = false }) {
         /* The camera bag Grandpa hands you: bobbing so a child knows to take it. */
         .sbw-bob{ animation: sbw-bob 1.5s ease-in-out infinite }
         @keyframes sbw-bob{ 0%,100%{ transform: translateY(0) } 50%{ transform: translateY(-9px) } }
-        @media (prefers-reduced-motion: reduce){ .sbw-wiggle:hover, .sbw-bob{ animation: none } }
+        /* Grandpa changing expression — a cross-fade, not a cut. */
+        .sbw-fade{ animation: sbw-fade 0.45s ease-out }
+        @keyframes sbw-fade{ 0%{ opacity: 0.25 } 100%{ opacity: 1 } }
+        @media (prefers-reduced-motion: reduce){ .sbw-wiggle:hover, .sbw-bob, .sbw-fade{ animation: none } }
         /* Photo develops like film: washed-out gray blooming into full color. */
         .sbw-develop{ animation: sbw-develop 1.5s ease-out both; }
         @keyframes sbw-develop{
@@ -5779,6 +5850,29 @@ function RiddleModal({ riddle, onAnswer, onClose, gain, reduced }) {
 
 // Grandpa Nigel's portrait — the real illustration (public/nigel.png), shown
 // whenever you're with him (story screen, homecoming visit, win scene).
+// Grandpa, wearing whichever of his ten painted expressions fits what he is
+// saying (the mapping is content, and lives in data/grandpa.js).
+//
+// These are whole SCENES of his study — the fire, the thistle, the Scotland books,
+// the dog asleep on the rug — so they're framed like a picture on the wall rather
+// than masked into a little circular avatar. That's the point of having ten of
+// them: at 108px in a circle you cannot tell proud from worried.
+//
+// `key` on the img forces a remount when the mood changes, which replays the fade;
+// without it React reuses the element and his face hard-cuts.
+function NigelScene({ mood, beat = 0, style }) {
+  const src = `${UI}${nigelFace(mood, beat)}`;
+  return (
+    <div aria-hidden="true" style={{ borderRadius: 16, overflow: "hidden", border: `4px solid ${GOLD}`,
+      background: "#2A1B0E", boxShadow: "0 8px 26px rgba(74,50,20,0.38)", lineHeight: 0, ...style }}>
+      <img key={src} src={src} alt="" className="sbw-fade"
+        style={{ width: "100%", height: "auto", display: "block" }} />
+    </div>
+  );
+}
+
+// The old circular bust, kept for the few places that want a small chip of him
+// rather than the whole room (the results header, the traveler list).
 function NigelPortrait({ size = 108, style }) {
   return (
     <div aria-hidden="true" style={{ width: size, height: size, flex: "none", borderRadius: "50%", overflow: "hidden", border: `3px solid ${GOLD}`, background: "#F3E4C6", boxShadow: "0 4px 14px rgba(74,50,20,0.3)", ...style }}>
@@ -5787,44 +5881,68 @@ function NigelPortrait({ size = 108, style }) {
   );
 }
 
-// The story screen: Grandpa Nigel speaks his beats one at a time at reading
-// speed; the "camera" button stays disabled until he has finished. A stand-in
-// portrait sits in for art the user will drop in later (public/grandpa.png).
-function StoryScreen({ beats, reduced, ctaLabel, onDone, onSkip }) {
+// The story screen: Grandpa Nigel speaks his beats one at a time at reading speed
+// and his face moves with them, beat by beat (see NIGEL_MOOD.intro) — he welcomes
+// you in, remembers never having gone, then brightens as he hands you the camera.
+// The bag stays un-takeable until he has finished talking.
+//
+// `mood` names which sequence in the mood map this screen's beats belong to.
+function StoryScreen({ beats, reduced, ctaLabel, onDone, onSkip, mood = "intro", cta = "button" }) {
   const [revealed, setRevealed] = useState(reduced ? beats.length : 0);
   const ready = revealed >= beats.length;
   return (
     <Frame>
-      <div style={{ maxWidth: 560, margin: "0 auto", padding: "6px 4px", textAlign: "center" }}>
-        <NigelPortrait size={232} style={{ margin: "0 auto 8px" }} />
-        <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 22, fontWeight: 700, letterSpacing: "0.14em", color: CORAL, marginBottom: 16 }}>{GRANDPA.name.toUpperCase()}</div>
+      <div style={{ maxWidth: 1180, margin: "0 auto", padding: "6px 4px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 20, flexWrap: "wrap" }}>
+          {/* Words and the way out on the left; Grandpa, large, on the right. */}
+          <div style={{ flex: "1 1 340px", minWidth: 280, textAlign: "left" }}>
+            <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 22, fontWeight: 700, letterSpacing: "0.14em", color: CORAL, marginBottom: 12 }}>{GRANDPA.name.toUpperCase()}</div>
 
-        <div style={{ background: PAPER, border: `1px solid ${PAPER_LINE}`, borderRadius: 12, padding: "18px 20px", textAlign: "left", minHeight: 180 }}>
-          {beats.slice(0, revealed + 1).map((b, i) => (
-            i < revealed
-              ? <p key={i} style={{ margin: i ? "12px 0 0" : 0, color: INK, fontSize: 16, lineHeight: 1.55 }}>{b}</p>
-              : <GradualText key={i} text={b} reduced={reduced} onDone={() => setRevealed((r) => r + 1)}
-                  style={{ margin: i ? "12px 0 0" : 0, color: INK, fontSize: 16, lineHeight: 1.55 }} />
-          ))}
-        </div>
+            <div style={{ ...CARD_SURFACE, border: `1px solid ${PAPER_LINE}`, borderRadius: 12, padding: "18px 20px", textAlign: "left", minHeight: 180 }}>
+              {beats.slice(0, revealed + 1).map((b, i) => (
+                i < revealed
+                  ? <p key={i} style={{ margin: i ? "12px 0 0" : 0, color: INK, fontSize: 16, lineHeight: 1.55 }}>{b}</p>
+                  : <GradualText key={i} text={b} reduced={reduced} onDone={() => setRevealed((r) => r + 1)}
+                      style={{ margin: i ? "12px 0 0" : 0, color: INK, fontSize: 16, lineHeight: 1.55 }} />
+              ))}
+            </div>
 
-        <div style={{ marginTop: 18, display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap" }}>
+        <div style={{ marginTop: 18, display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap", alignItems: "center" }}>
+          {/* The camera bag IS the button: he's holding out his old bag, and a child
+              takes it. It bobs so there's no mistaking what to do — but only once
+              he's finished speaking, so it never pulls them past his story. */}
+          {cta === "bag" ? (
+            <button onClick={ready ? onDone : undefined} disabled={!ready} aria-disabled={!ready} aria-label={ctaLabel}
+              className={ready ? "sbw-bob" : undefined}
+              style={{ background: "none", border: "none", padding: 0, margin: 0, width: 190, maxWidth: "60%",
+                cursor: ready ? "pointer" : "default", opacity: ready ? 1 : 0.4, transition: "opacity .3s" }}>
+              <img src={`${UI}camera-bag.png`} alt="" aria-hidden="true"
+                style={{ width: "100%", height: "auto", display: "block", filter: "drop-shadow(0 6px 10px rgba(16,38,46,0.4))" }} />
+              <span style={{ display: "block", marginTop: 2, fontFamily: HAND, fontWeight: 700, fontSize: 20, color: INK }}>{ctaLabel}</span>
+            </button>
+          ) : (
           <button onClick={ready ? onDone : undefined} disabled={!ready}
             aria-disabled={!ready}
             style={{ ...primaryBtn, margin: 0, opacity: ready ? 1 : 0.45, cursor: ready ? "pointer" : "default" }}>
             {ctaLabel}
           </button>
+          )}
           {onSkip && (
             <button onClick={onSkip} style={{ padding: "10px 16px", borderRadius: 10, border: `1.5px solid ${INK}`, background: "transparent", color: INK, fontWeight: 700, fontSize: 13, cursor: "pointer" }}>
               Skip
             </button>
           )}
         </div>
-        {!ready && (
-          <p role="status" style={{ fontSize: 12, color: INK, opacity: 0.5, marginTop: 8 }}>
-            (tap the text to read faster)
-          </p>
-        )}
+            {!ready && (
+              <p role="status" style={{ fontSize: 12, color: INK, opacity: 0.5, marginTop: 8, textAlign: "center" }}>
+                (tap the text to read faster)
+              </p>
+            )}
+          </div>
+          {/* His face tracks the beat he's on — the mood map for this sequence. */}
+          <NigelScene mood={mood} beat={Math.min(revealed, beats.length - 1)}
+            style={{ flex: "1.35 1 420px", minWidth: 300 }} />
+        </div>
       </div>
     </Frame>
   );

@@ -427,6 +427,30 @@ export function achievements(profile) {
   return list;
 }
 
+// ---- What to chase next ---------------------------------------------------
+// The closest unfinished thing, for the results screen.
+//
+// This exists because of what the results screen was doing wrong: it ended a run
+// with a SCORE. A score is a verdict on the trip you just finished. It gives a
+// child nothing to want. Everything needed to give them something was already
+// here — every badge already knows it's at have/need — it was just buried in a
+// passport tab nobody opens at the moment they're deciding whether to play again.
+//
+// Returns the nearest badge that is started but unfinished, or null if there's
+// nothing meaningful to point at. "Nearest" is by how many places are LEFT, not by
+// percentage: "one more desert" is a reason to fly, "82% of Monument Hunter" is a
+// statistic. Badges not yet started are skipped — a child who has never shot a
+// waterfall doesn't need to hear about all 27 of them.
+export function nextGoal(profile) {
+  if (!profile) return null;
+  const near = achievements(profile)
+    .filter((a) => !a.earned && a.have > 0 && a.need > a.have)
+    .sort((a, b) => (a.need - a.have) - (b.need - b.have) || b.have - a.have)[0];
+  if (!near) return null;
+  const left = near.need - near.have;
+  return { ...near, left };
+}
+
 // ---- Career rank + unlocks ------------------------------------------------
 // A traveler's PERSISTENT rank grows with how many distinct places they've
 // photographed (mastered) across all their trips — separate from the per-trip

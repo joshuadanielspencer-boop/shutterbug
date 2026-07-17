@@ -24,6 +24,53 @@ export const GRANDPA = {
   emoji: "👴",
 };
 
+// ---- His face ------------------------------------------------------------
+// Ten painted expressions live in public/assets/shutterbug-ui/nigel/. Which one
+// he wears is CONTENT, not presentation — it's a fact about what he's saying —
+// so the mapping lives here beside the words rather than in the component.
+//
+// Keyed by POOL rather than by line, because each pool below is already written
+// to a single attitude: END_WIN is ten ways of being proud of you, END_LOSE is
+// eight ways of telling you it's fine. Where a pool is a SEQUENCE and the mood
+// actually moves — the intro, where he goes from welcoming you in, to the regret
+// of never having gone, to handing you the camera — it's an array, one per beat.
+export const NIGEL_FACES = [
+  "excited", "affectionate", "skeptical", "amused", "pleasantly_surprised",
+  "laughing", "thoughtful", "worried", "proud", "sleepy_contented",
+];
+
+export const NIGEL_MOOD = {
+  // Sequences: one face per beat, in order.
+  intro: ["affectionate", "thoughtful", "excited", "affectionate", "excited", "affectionate"],
+  sendoff: ["amused", "thoughtful"],
+  dream: ["pleasantly_surprised", "thoughtful", "affectionate", "amused"],
+
+  // Pools: one face for the whole pool.
+  meetLine: "thoughtful",          // his little bits of travel wisdom
+  meetGreat: "proud",
+  meetGood: "pleasantly_surprised",
+  meetRough: "affectionate",       // comforting, never scolding
+  meetFirst: "excited",
+  meetAsk: "amused",               // "now then — what sort of adventure?"
+  homecoming: "excited",           // "look who's home! sit, sit."
+  wrongAnswer: "amused",           // rueful, never harsh — he's laughing at himself
+  achievement: "pleasantly_surprised",
+  endWin: "proud",
+  endLose: "affectionate",
+  unlock: "excited",
+  rankUp: "proud",
+  outOfDays: "worried",
+  idle: "sleepy_contented",        // the fallback, dozing by the fire
+};
+
+// The face for a mood key, or for one beat of a sequence. Falls back to his
+// contented doze rather than throwing — a missing face must never blank the screen.
+export function nigelFace(key, beat = 0) {
+  const m = NIGEL_MOOD[key];
+  const name = Array.isArray(m) ? (m[Math.min(beat, m.length - 1)] || NIGEL_MOOD.idle) : (m || NIGEL_MOOD.idle);
+  return `nigel/${NIGEL_FACES.includes(name) ? name : NIGEL_MOOD.idle}.jpg`;
+}
+
 // Shown once, the first time a traveler sets out. Each entry is one beat,
 // revealed at reading speed; keep each short enough to read in one breath.
 export const INTRO_BEATS = [
@@ -171,6 +218,38 @@ export const UNLOCK_LINES = {
 // When the traveler's press rank goes up, Grandpa tips his hat. Filled with the
 // new rank title.
 export const RANKUP_LINE = (title) => `And would you look — the paper's promoted you to ${title}! Wear it proudly.`;
+
+// ---- What Grandpa wants next ---------------------------------------------
+// The results screen used to end on a number. A number is a verdict on the trip
+// you just did; it gives a child nothing to want. This is the other half of the
+// fix (see nextGoal in profiles.js): Grandpa asking for something.
+//
+// It matters that he WANTS it rather than the game AWARDING it. A badge at 14/15
+// is a task. An old man saying he's never seen a desert is a reason — the child
+// isn't collecting, they're bringing something back to someone who asked.
+//
+// `want` is phrased for "…and I've never seen ___." — keep them concrete and
+// visual, the way he'd actually say it by the fire.
+export const GRANDPA_WANTS = [
+  { category: "volcano",   want: "a mountain that's actually on fire" },
+  { category: "waterfall", want: "a waterfall big enough to hear before you see it" },
+  { category: "desert",    want: "a proper desert — sand to the horizon, not a beach" },
+  { category: "ice",       want: "ice. Real ice, the blue kind, the sort that groans" },
+  { category: "wildlife",  want: "a lion. In the wild, mind, not behind glass" },
+  { category: "ruins",     want: "something built before anyone thought to write it down" },
+  { category: "mountain",  want: "a mountain with snow on the top of it in summer" },
+  { category: "coast",     want: "an island so small you can see all the way round it" },
+  { category: "temple",    want: "a temple where folk still go to pray" },
+  { category: "cityscape", want: "a city so big the lights don't stop at the horizon" },
+];
+
+// How he asks. `%` is replaced with the want above.
+export const WANT_LINES = [
+  "You know what I've never seen? %. Not once in eighty years.",
+  "Here's a thought for your next trip — I've always wondered about %.",
+  "Do you know the one thing missing from my whole life? %. Fetch me that.",
+  "If you're going out again… I'd dearly love to see %.",
+];
 
 // The triumphant close, shown once the Dream is fulfilled (wired in a later
 // pass). Warm and proud; the game keeps playing afterward.
