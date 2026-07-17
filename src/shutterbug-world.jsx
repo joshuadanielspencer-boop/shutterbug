@@ -2595,7 +2595,10 @@ export default function ShutterbugWorld() {
               eye isn't crossing him to get from his question to the answer. The
               order flips on a narrow screen (he stacks under the words) because a
               scene that wide leaves nothing for the text beside it. */}
-          <div style={{ display: "flex", alignItems: "center", gap: 20, flexWrap: "wrap" }}>
+          {/* flex-start, not center: centring re-positions Grandpa every time the
+              left column changes height, so he drifted as the card filled. Pinned to
+              the top he stays exactly where a child last looked at him. */}
+          <div style={{ display: "flex", alignItems: "flex-start", gap: 20, flexWrap: "wrap" }}>
             <div style={{ ...CARD_SURFACE, textAlign: "left", flex: "1 1 340px", minWidth: 280,
               border: `2px solid ${GOLD}`, borderRadius: 16, padding: "18px 20px" }}>
               <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 24, fontWeight: 800, letterSpacing: "0.14em", color: CORAL, marginBottom: 10 }}>{GRANDPA.name.toUpperCase()}</div>
@@ -2607,10 +2610,19 @@ export default function ShutterbugWorld() {
                   because it's the one he wants answered. */}
               {(() => {
                 const said = { color: INK, fontSize: 17, lineHeight: 1.5 };
+                // Each line he hasn't reached yet is laid out INVISIBLY rather than
+                // left unmounted, so the card is its final size from the first paint.
+                // Mounting them as he got to them grew the card line by line, which
+                // pushed the mode cards down the page mid-read and slid Grandpa about.
+                const ghost = (text, style) => <p aria-hidden="true" style={{ ...style, visibility: "hidden" }}>{text}</p>;
                 return (<>
                   <TypeLine text={meetInfo?.line} reduced={prefersReduced} onDone={() => setMeetTyped((n) => n + 1)} style={{ ...said, margin: 0 }} />
-                  {showRunNote && meetTyped >= 1 && <TypeLine text={meetInfo.comment} reduced={prefersReduced} onDone={() => setMeetTyped((n) => n + 1)} style={{ ...said, margin: "10px 0 0" }} />}
-                  {meetReady && <p style={{ ...said, margin: "12px 0 0", fontWeight: 800 }}>{MEET_ASK}</p>}
+                  {showRunNote && (meetTyped >= 1
+                    ? <TypeLine text={meetInfo.comment} reduced={prefersReduced} onDone={() => setMeetTyped((n) => n + 1)} style={{ ...said, margin: "10px 0 0" }} />
+                    : ghost(meetInfo.comment, { ...said, margin: "10px 0 0" }))}
+                  {meetReady
+                    ? <p style={{ ...said, margin: "12px 0 0", fontWeight: 800 }}>{MEET_ASK}</p>
+                    : ghost(MEET_ASK, { ...said, margin: "12px 0 0", fontWeight: 800 })}
                 </>);
               })()}
             </div>
@@ -5848,8 +5860,6 @@ function RiddleModal({ riddle, onAnswer, onClose, gain, reduced }) {
 }
 
 
-// Grandpa Nigel's portrait — the real illustration (public/nigel.png), shown
-// whenever you're with him (story screen, homecoming visit, win scene).
 // Grandpa, wearing whichever of his ten painted expressions fits what he is
 // saying (the mapping is content, and lives in data/grandpa.js).
 //
@@ -5858,15 +5868,21 @@ function RiddleModal({ riddle, onAnswer, onClose, gain, reduced }) {
 // than masked into a little circular avatar. That's the point of having ten of
 // them: at 108px in a circle you cannot tell proud from worried.
 //
+// The frame holds a fixed 4:3 box and the picture fills it, so HE NEVER MOVES: not
+// when his face changes, and not on the first paint before the image has loaded
+// (height:auto is 0 until then, which made the whole column jump). Every scene is
+// the same 1000x750, so nothing is cropped by the cover.
+//
 // `key` on the img forces a remount when the mood changes, which replays the fade;
 // without it React reuses the element and his face hard-cuts.
 function NigelScene({ mood, beat = 0, style }) {
   const src = `${UI}${nigelFace(mood, beat)}`;
   return (
     <div aria-hidden="true" style={{ borderRadius: 16, overflow: "hidden", border: `4px solid ${GOLD}`,
-      background: "#2A1B0E", boxShadow: "0 8px 26px rgba(74,50,20,0.38)", lineHeight: 0, ...style }}>
+      background: "#2A1B0E", boxShadow: "0 8px 26px rgba(74,50,20,0.38)", lineHeight: 0,
+      aspectRatio: "4 / 3", ...style }}>
       <img key={src} src={src} alt="" className="sbw-fade"
-        style={{ width: "100%", height: "auto", display: "block" }} />
+        style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
     </div>
   );
 }
@@ -5893,51 +5909,62 @@ function StoryScreen({ beats, reduced, ctaLabel, onDone, onSkip, mood = "intro",
   return (
     <Frame>
       <div style={{ maxWidth: 1180, margin: "0 auto", padding: "6px 4px" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 20, flexWrap: "wrap" }}>
-          {/* Words and the way out on the left; Grandpa, large, on the right. */}
+        <div style={{ display: "flex", alignItems: "flex-start", gap: 20, flexWrap: "wrap" }}>
+          {/* Words and the way out on the left; Grandpa, large, on the right. He is
+              pinned to the top of the row rather than centred in it — centring means
+              he slides every time anything on the left resizes. */}
           <div style={{ flex: "1 1 340px", minWidth: 280, textAlign: "left" }}>
             <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 22, fontWeight: 700, letterSpacing: "0.14em", color: CORAL, marginBottom: 12 }}>{GRANDPA.name.toUpperCase()}</div>
 
-            <div style={{ ...CARD_SURFACE, border: `1px solid ${PAPER_LINE}`, borderRadius: 12, padding: "18px 20px", textAlign: "left", minHeight: 180 }}>
-              {beats.slice(0, revealed + 1).map((b, i) => (
-                i < revealed
-                  ? <p key={i} style={{ margin: i ? "12px 0 0" : 0, color: INK, fontSize: 16, lineHeight: 1.55 }}>{b}</p>
-                  : <GradualText key={i} text={b} reduced={reduced} onDone={() => setRevealed((r) => r + 1)}
-                      style={{ margin: i ? "12px 0 0" : 0, color: INK, fontSize: 16, lineHeight: 1.55 }} />
-              ))}
+            {/* EVERY beat is laid out from the first paint — the ones he hasn't got
+                to yet are just invisible. They used to be mounted one at a time, so
+                the card grew with each line and shoved everything under it down the
+                page while a child was still reading. The box is the size of his whole
+                speech before he says a word of it. */}
+            <div style={{ ...CARD_SURFACE, border: `1px solid ${PAPER_LINE}`, borderRadius: 12, padding: "18px 20px", textAlign: "left" }}>
+              {beats.map((b, i) => {
+                const line = { margin: i ? "12px 0 0" : 0, color: INK, fontSize: 16, lineHeight: 1.55 };
+                if (i < revealed) return <p key={i} style={line}>{b}</p>;
+                if (i === revealed) {
+                  return <GradualText key={i} text={b} reduced={reduced} onDone={() => setRevealed((r) => r + 1)} style={line} />;
+                }
+                return <p key={i} aria-hidden="true" style={{ ...line, visibility: "hidden" }}>{b}</p>;
+              })}
             </div>
 
-        <div style={{ marginTop: 18, display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap", alignItems: "center" }}>
-          {/* The camera bag IS the button: he's holding out his old bag, and a child
-              takes it. It bobs so there's no mistaking what to do — but only once
-              he's finished speaking, so it never pulls them past his story. */}
-          {cta === "bag" ? (
-            <button onClick={ready ? onDone : undefined} disabled={!ready} aria-disabled={!ready} aria-label={ctaLabel}
-              className={ready ? "sbw-bob" : undefined}
-              style={{ background: "none", border: "none", padding: 0, margin: 0, width: 190, maxWidth: "60%",
-                cursor: ready ? "pointer" : "default", opacity: ready ? 1 : 0.4, transition: "opacity .3s" }}>
-              <img src={`${UI}camera-bag.png`} alt="" aria-hidden="true"
-                style={{ width: "100%", height: "auto", display: "block", filter: "drop-shadow(0 6px 10px rgba(16,38,46,0.4))" }} />
-              <span style={{ display: "block", marginTop: 2, fontFamily: HAND, fontWeight: 700, fontSize: 20, color: INK }}>{ctaLabel}</span>
-            </button>
-          ) : (
-          <button onClick={ready ? onDone : undefined} disabled={!ready}
-            aria-disabled={!ready}
-            style={{ ...primaryBtn, margin: 0, opacity: ready ? 1 : 0.45, cursor: ready ? "pointer" : "default" }}>
-            {ctaLabel}
-          </button>
-          )}
-          {onSkip && (
-            <button onClick={onSkip} style={{ padding: "10px 16px", borderRadius: 10, border: `1.5px solid ${INK}`, background: "transparent", color: INK, fontWeight: 700, fontSize: 13, cursor: "pointer" }}>
-              Skip
-            </button>
-          )}
-        </div>
-            {!ready && (
-              <p role="status" style={{ fontSize: 12, color: INK, opacity: 0.5, marginTop: 8, textAlign: "center" }}>
-                (tap the text to read faster)
-              </p>
-            )}
+            {/* One slot of fixed height, holding the read-faster hint while he talks
+                and the bag once he's done. Reserving the room means the bag can
+                APPEAR — rather than sit there greyed out, telegraphing the end of a
+                story a child hasn't heard yet — without the arrival shoving the page. */}
+            <div style={{ marginTop: 14, minHeight: cta === "bag" ? 196 : 74, display: "flex",
+              flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 8 }}>
+              {!ready && (
+                <p role="status" style={{ fontSize: 12, color: INK, opacity: 0.5, margin: 0, textAlign: "center" }}>
+                  (tap the text to read faster)
+                </p>
+              )}
+              {ready && (
+                <div style={{ display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap", alignItems: "center" }}>
+                  {/* The camera bag IS the button: he holds out his old bag and a child
+                      takes it. It bobs so there's no mistaking what to do. */}
+                  {cta === "bag" ? (
+                    <button onClick={onDone} aria-label={ctaLabel} className="sbw-bob"
+                      style={{ background: "none", border: "none", padding: 0, margin: 0, width: 190, maxWidth: "60%", cursor: "pointer" }}>
+                      <img src={`${UI}camera-bag.png`} alt="" aria-hidden="true"
+                        style={{ width: "100%", height: "auto", display: "block", filter: "drop-shadow(0 6px 10px rgba(16,38,46,0.4))" }} />
+                      <span style={{ display: "block", marginTop: 2, fontFamily: HAND, fontWeight: 700, fontSize: 20, color: INK }}>{ctaLabel}</span>
+                    </button>
+                  ) : (
+                    <button onClick={onDone} style={{ ...primaryBtn, margin: 0 }}>{ctaLabel}</button>
+                  )}
+                </div>
+              )}
+              {onSkip && (
+                <button onClick={onSkip} style={{ padding: "8px 16px", borderRadius: 10, border: `1.5px solid ${INK}`, background: "transparent", color: INK, fontWeight: 700, fontSize: 13, cursor: "pointer" }}>
+                  Skip
+                </button>
+              )}
+            </div>
           </div>
           {/* His face tracks the beat he's on — the mood map for this sequence. */}
           <NigelScene mood={mood} beat={Math.min(revealed, beats.length - 1)}
