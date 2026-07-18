@@ -42,6 +42,11 @@ import { Confetti, Stamp, GradualText, TypeLine, TALKING_CPS } from "./component
 // asset guide). `UI + "name.png"` builds a URL for an <img> or CSS background.
 const UI = `${BASE}assets/shutterbug-ui/`;
 
+// The build this bundle came from — date and commit, stamped in by vite.config.js
+// and printed faintly in the splash's corner. Guarded so the dev server (and tests,
+// which don't run through Vite's define) still render something sensible.
+const BUILD_ID = typeof __BUILD_ID__ === "string" ? __BUILD_ID__ : "dev";
+
 // An illustrated badge/icon/crest from the art registry (data/art.js), with the
 // emoji it replaced as the fallback. Two states come from the one colour file:
 // `dim` greys it (locked / not yet earned), which is why no locked art exists.
@@ -3092,6 +3097,18 @@ export default function ShutterbugWorld() {
                   </button>
                 );
               })()}
+            </div>
+
+            {/* Build stamp. Faint, in the corner, deliberately easy to ignore — it
+                exists to answer "is this actually the latest version, or is a stale
+                service worker still feeding me an old one?" without guesswork.
+                Left selectable so it can be read out or copied when something looks
+                wrong; it sits clear of everything clickable on the splash. */}
+            <div title="Build version" style={{ position: "absolute", right: "1.6%", bottom: "1.4%",
+              fontFamily: "ui-monospace, monospace", fontSize: "clamp(8px, 0.8vw, 11px)",
+              letterSpacing: "0.05em", color: "#fff", opacity: 0.38,
+              textShadow: "0 1px 2px rgba(0,0,0,0.55)" }}>
+              {BUILD_ID}
             </div>
           </div>
         </div>

@@ -1,6 +1,21 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import { VitePWA } from "vite-plugin-pwa";
+import { execSync } from "node:child_process";
+
+// A build stamp, printed faintly in the corner of the splash. It exists to answer
+// one question quickly — "am I actually looking at the latest build, or is a service
+// worker still feeding me an old one?" — which has cost us a few rounds of guessing.
+// Date plus the commit it was built from; falls back gracefully outside a git
+// checkout so a tarball build still compiles.
+const BUILD_ID = (() => {
+  const stamp = new Date().toISOString().slice(0, 10);
+  try {
+    return `${stamp} · ${execSync("git rev-parse --short HEAD").toString().trim()}`;
+  } catch {
+    return stamp;
+  }
+})();
 
 // Served from the domain root by default (Netlify, a user.github.io site, a
 // custom domain). For a GitHub Pages PROJECT site served under /<repo>/, the
@@ -11,6 +26,7 @@ const base = process.env.BASE_PATH || "/";
 // https://vite.dev/config/
 export default defineConfig({
   base,
+  define: { __BUILD_ID__: JSON.stringify(BUILD_ID) },
   build: {
     // Split the bundle so React, the (large) map-outline data, the location
     // catalogue, and the rest of the content each land in their own chunk. This
