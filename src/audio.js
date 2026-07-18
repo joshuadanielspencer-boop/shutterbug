@@ -649,10 +649,14 @@ const SPEECH_LANG = {
   "Filipino": "fil", "French": "fr", "French (Québec)": "fr-CA", "German": "de",
   "German (Austrian)": "de-AT", "Greek": "el", "Hindi": "hi", "Icelandic": "is",
   "Indonesian": "id", "Italian": "it", "Japanese": "ja", "Khmer": "km", "Korean": "ko",
-  "Malay": "ms", "Mandarin Chinese": "zh-CN", "Mongolian": "mn", "Māori": "mi", "Nepali": "ne",
-  "Norwegian": "nb", "Persian": "fa", "Portuguese": "pt", "Russian": "ru", "Sinhala": "si",
-  "Spanish": "es", "Swahili": "sw", "Swiss German": "de-CH", "Thai": "th", "Turkish": "tr",
+  "Malay": "ms", "Mandarin Chinese": "zh-CN", "Marathi": "mr", "Mongolian": "mn", "Māori": "mi",
+  "Nepali": "ne", "Norwegian": "nb", "Persian": "fa", "Portuguese": "pt", "Punjabi": "pa",
+  "Russian": "ru", "Sinhala": "si", "Spanish": "es", "Swahili": "sw", "Swiss German": "de-CH",
+  "Tamil": "ta", "Telugu": "te", "Thai": "th", "Turkish": "tr",
   "Urdu": "ur", "Uzbek": "uz", "Vietnamese": "vi", "Xhosa": "xh",
+  // Nigerian Pidgin has no BCP-47 voice in any browser; an English voice reads
+  // "How far?" perfectly well, which is better than no sound at all.
+  "Nigerian Pidgin": "en",
 };
 export const speechAvailable = typeof window !== "undefined" && "speechSynthesis" in window;
 // Speak a short English announcement aloud ("Welcome to France!") — used on map

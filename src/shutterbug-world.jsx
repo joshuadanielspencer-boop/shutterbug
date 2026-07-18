@@ -1359,17 +1359,37 @@ export default function ShutterbugWorld() {
   // shuffled() (not Math.random) because that's the rule, and it's safe here: the
   // Daily Expedition scopes its own generator with withSeed(), which restores the
   // previous one afterwards, so a reshuffle out here can't shift a daily's stream.
-  const [helloPicks, setHelloPicks] = useState(() => shuffled(HELLO_BUBBLES).slice(0, 3));
-  useEffect(() => { if (screen === "start") setHelloPicks(shuffled(HELLO_BUBBLES).slice(0, 3)); }, [screen]);
+  // Three bubbles, never two that READ the same. Persian and Urdu both greet with
+  // سلام, and Marathi and Hindi share नमस्कार/नमस्ते roots — two identical words side
+  // by side, labelled as different languages, reads as a bug rather than as the
+  // (true, and rather nice) fact that neighbours share their greetings.
+  const pickHellos = () => {
+    const out = [], seen = new Set();
+    for (const b of shuffled(HELLO_BUBBLES)) {
+      if (seen.has(b.text)) continue;
+      seen.add(b.text);
+      out.push(b);
+      if (out.length === 3) break;
+    }
+    return out;
+  };
+  const [helloPicks, setHelloPicks] = useState(pickHellos);
+  useEffect(() => { if (screen === "start") setHelloPicks(pickHellos()); }, [screen]);
+  // Which bubble is being pointed at, so the splash can name its language and say
+  // what the word actually means — the sound alone taught the pronunciation but
+  // never what was being said.
+  const [helloHover, setHelloHover] = useState(null);
   const sayHello = (b) => { if (soundOn) speakGreeting(b); };
   const [musicOn, setMusicOn] = useState(() => { try { return localStorage.getItem("shutterbug.music") !== "off"; } catch { return true; } });
   useEffect(() => { try { localStorage.setItem("shutterbug.music", musicOn ? "on" : "off"); } catch { /* ignore */ } }, [musicOn]);
-  // Music by screen: the passport is quiet; the results end the jig loop and play
-  // a flourish — or the wistful air, if the trip came up short. The start screen
-  // keeps the jig going if it's already playing (start-screen clicks kick it off).
+  // Music by screen: the results end the jig loop and play a flourish — or the
+  // wistful air, if the trip came up short. The start screen keeps the jig going if
+  // it's already playing (start-screen clicks kick it off).
+  //
+  // The passport used to silence the music because it was a whole screen; it's a
+  // popup now, opened over whatever you were doing, so the music plays on.
   useEffect(() => {
-    if (screen === "passport") MUSIC.stop();
-    else if (screen === "play") MUSIC.fadeJig();          // reach the map → the jig fades out
+    if (screen === "play") MUSIC.fadeJig();               // reach the map → the jig fades out
     // The results earn their tune. The homecoming air is a sad one, which is right
     // for a trip that didn't get finished and wrong for one that did — and the
     // celebratory flourish was playing over BOTH.
@@ -1462,7 +1482,6 @@ export default function ShutterbugWorld() {
   const [guideFresh, setGuideFresh] = useState(false);        // did this Field Guide open just spend the research day?
   const [passportOpen, setPassportOpen] = useState(false);    // Passport tool: multi-page booklet popup
   const [toolNote, setToolNote] = useState(null);             // why a greyed-out tool isn't usable this mode
-  const [passportFrom, setPassportFrom] = useState("start");  // where "back" returns from the passport (so opening it mid-game resumes play)
   const [createOpen, setCreateOpen] = useState(false);        // "Create New Traveler" modal open
   const [meetInfo, setMeetInfo] = useState(null);             // { line, comment } shown on the meet-Uncle screen
   const [meetTyped, setMeetTyped] = useState(0);              // how many of Jonah's meet lines have finished typing (gates the controls)
@@ -3068,10 +3087,17 @@ export default function ShutterbugWorld() {
             </button>
 
             {/* Three greetings in the clear sky left of the boy's head, reshuffled on
-                every visit to the splash. */}
+                every visit to the splash. Pointing at one speaks it AND names the
+                language and what the word literally means — the sound on its own
+                taught a child how to say it but never what they were saying. */}
             {helloPicks.map((b, i) => (
-              <button key={b.file} onMouseEnter={() => sayHello(b)} onFocus={() => sayHello(b)} onClick={() => sayHello(b)}
-                aria-label={`Hear "${b.word}" — hello in ${b.language}`}
+              <button key={b.file}
+                onMouseEnter={() => { sayHello(b); setHelloHover(i); }}
+                onMouseLeave={() => setHelloHover((h) => (h === i ? null : h))}
+                onFocus={() => { sayHello(b); setHelloHover(i); }}
+                onBlur={() => setHelloHover((h) => (h === i ? null : h))}
+                onClick={() => { sayHello(b); setHelloHover(i); }}
+                aria-label={`Hear “${b.word}” — ${b.language} for hello; it means “${b.means}”`}
                 style={{ position: "absolute", left: `${HELLO_SPOTS[i].x}%`, top: `${HELLO_SPOTS[i].y}%`,
                   width: `${HELLO_SPOTS[i].w}%`, transform: `translate(-50%, -50%) rotate(${HELLO_SPOTS[i].rot}deg)`,
                   background: "none", border: "none", padding: 0, cursor: "pointer" }}>
@@ -3079,6 +3105,25 @@ export default function ShutterbugWorld() {
                   style={{ width: "100%", height: "auto", display: "block", filter: "drop-shadow(0 3px 6px rgba(0,0,0,0.3))" }} />
               </button>
             ))}
+            {/* The caption for whichever bubble is being pointed at. Sits just under
+                that bubble so it reads as belonging to it, on a dark pill because the
+                sky behind it is a painting and plain text on it is unreadable.
+                aria-live is deliberately off: the button's own label already carries
+                all of this, and announcing it twice is worse than not at all. */}
+            {helloHover !== null && helloPicks[helloHover] && (() => {
+              const b = helloPicks[helloHover], s = HELLO_SPOTS[helloHover];
+              return (
+                <div aria-hidden="true" style={{ position: "absolute", left: `${s.x}%`, top: `${s.y + 8.5}%`,
+                  transform: "translate(-50%, 0)", maxWidth: "26%", textAlign: "center",
+                  background: "rgba(16,38,46,0.88)", color: "#F4ECD8", borderRadius: 9,
+                  padding: "clamp(4px, 0.5vw, 8px) clamp(7px, 0.9vw, 13px)", pointerEvents: "none",
+                  boxShadow: "0 3px 10px rgba(0,0,0,0.35)", lineHeight: 1.35 }}>
+                  <div style={{ fontFamily: "ui-monospace, monospace", fontSize: "clamp(8px, 0.82vw, 12px)",
+                    letterSpacing: "0.1em", textTransform: "uppercase", color: GOLD, fontWeight: 700 }}>{b.language}</div>
+                  <div style={{ fontSize: "clamp(10px, 1vw, 14px)", fontWeight: 600 }}>“{b.means}”</div>
+                </div>
+              );
+            })()}
 
             <div style={{ position: "absolute", left: 0, right: 0, bottom: "4%", display: "flex", flexDirection: "column", alignItems: "center", gap: 8, padding: "0 12px" }}>
               {(() => {
@@ -3181,7 +3226,7 @@ export default function ShutterbugWorld() {
                     </div>
                     <div style={{ fontWeight: 800, fontSize: 20, color: INK }}>{selected.name}</div>
                     <span style={{ display: "inline-flex", gap: 8, flexWrap: "wrap", justifyContent: "center" }}>
-                      <button onClick={() => { setConfirmRemove(false); setPassportFrom("start"); setScreen("passport"); }}
+                      <button onClick={() => setPassportOpen(true)}
                         style={{ padding: "7px 14px", borderRadius: 8, border: `1.5px solid ${CORAL}`, background: "rgba(255,255,255,0.8)", color: CORAL, fontWeight: 700, fontSize: 13, cursor: "pointer" }}>
                         📕 {selected.name}'s passport
                       </button>
@@ -3258,6 +3303,9 @@ export default function ShutterbugWorld() {
         {createOpen && (
           <CreateTravelerModal onSubmit={createAndBegin} onClose={() => setCreateOpen(false)} />
         )}
+        {/* The passport is ALWAYS the booklet popup — never its own screen — so it
+            looks and behaves identically wherever it's opened from. */}
+        {passportOpen && <PassportModal profile={profileName ? getProfile(profileName) : null} onClose={() => setPassportOpen(false)} />}
       </Frame>
     );
   }
@@ -3789,272 +3837,19 @@ export default function ShutterbugWorld() {
               🏠 Return to main screen
             </button>
             {profileName && (
-              <button onClick={() => { setConfirmRemove(false); setPassportFrom("start"); setScreen("passport"); }} style={{ ...primaryBtn, background: "transparent", color: CORAL, border: `2px solid ${CORAL}`, boxShadow: "none" }}>
+              <button onClick={() => setPassportOpen(true)} style={{ ...primaryBtn, background: "transparent", color: CORAL, border: `2px solid ${CORAL}`, boxShadow: "none" }}>
                 📕 View passport
               </button>
             )}
           </div>
         </DeskBoard>
+        {passportOpen && <PassportModal profile={profileName ? getProfile(profileName) : null} onClose={() => setPassportOpen(false)} />}
       </Frame>
     );
   }
 
   // ---------- THEMED EXPEDITIONS PICKER ----------
 
-  if (screen === "passport") {
-    const profile = getProfile(profileName);
-    if (!profile) {
-      return (
-        <Frame>
-          <div style={{ maxWidth: 620, margin: "0 auto", textAlign: "center" }}>
-            <p style={{ color: INK }}>No traveler selected yet.</p>
-            <button onClick={() => setScreen("start")} style={primaryBtn}>Back to start</button>
-          </div>
-        </Frame>
-      );
-    }
-    const pp = passportData(profile);
-    const best = profile.best || {};
-    const bt = profile.bestTime || {};
-    const badges = achievements(profile);
-    const earnedBadges = badges.filter((b) => b.earned).length;
-    const rank = careerRank(profile);
-    return (
-      <Frame>
-        <div style={{ maxWidth: 840, margin: "0 auto" }}>
-          <div className="sbw-noprint" style={{ display: "flex", justifyContent: "flex-end" }}>
-            <button onClick={() => { setConfirmRemove(false); setScreen(passportFrom); }} style={{ padding: "8px 16px", borderRadius: 8, border: `1.5px solid ${INK}`, background: "transparent", color: INK, fontWeight: 700, cursor: "pointer" }}>← {passportFrom === "play" ? "Back to the trip" : "Back"}</button>
-          </div>
-
-          {/* ---- The passport, as a real booklet: navy cover band + an identity
-               "photo page", then tabbed pages for stamps, collections, keepsakes. ---- */}
-          <div style={{ background: "linear-gradient(160deg, #1C3A5E, #16324E)", borderRadius: "14px 14px 4px 4px", padding: "18px 22px 16px", color: "#F4E3B8", boxShadow: "0 6px 20px rgba(0,0,0,0.28)", marginTop: 4 }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
-              <div style={{ fontFamily: "ui-monospace, monospace", letterSpacing: "0.3em", fontSize: 13, fontWeight: 700 }}>PASSPORT</div>
-              <div aria-hidden="true" style={{ fontSize: 26 }}>🌐</div>
-            </div>
-            <div style={{ fontFamily: "ui-monospace, monospace", letterSpacing: "0.16em", fontSize: 10, opacity: 0.7, marginTop: 2 }}>SHUTTERBUG · A WORLD PHOTO SAFARI</div>
-            <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 14, background: "rgba(244,227,184,0.08)", border: "1px solid rgba(244,227,184,0.25)", borderRadius: 8, padding: "10px 12px" }}>
-              <div style={{ background: "#F4E3B8", borderRadius: 6, padding: 3, flex: "none" }}><Avatar spec={avatarFor(profile)} size={48} title={`${profile.name}'s traveler`} /></div>
-              <div style={{ textAlign: "left", minWidth: 0 }}>
-                <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 9, letterSpacing: "0.16em", opacity: 0.65 }}>TRAVELER</div>
-                <div style={{ fontWeight: 900, fontSize: 22, color: "#fff", lineHeight: 1.1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{profile.name}</div>
-                <div style={{ display: "flex", alignItems: "center", gap: 5, fontWeight: 800, fontSize: 13, color: GOLD, marginTop: 2 }}>
-                  <ArtBadge art={RANK_ART[rank.tier]} emoji="★" size={26} /> {rank.title}
-                </div>
-                <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, opacity: 0.8, marginTop: 3 }}>Stamps {pp.masteredCount}/{pp.totalCountries} · Trips {profile.games || 0} · {rank.have} places shot</div>
-              </div>
-              {earnedBadges > 0 && <div style={{ marginLeft: "auto", textAlign: "center", flex: "none" }}><div style={{ fontSize: 24 }}>🏅</div><div style={{ fontFamily: "ui-monospace, monospace", fontSize: 10, opacity: 0.85 }}>{earnedBadges}</div></div>}
-            </div>
-            {rank.next && (
-              <div style={{ marginTop: 8 }}>
-                <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 10, opacity: 0.7, marginBottom: 3 }}>{rank.nextNeed - rank.have} more place{rank.nextNeed - rank.have === 1 ? "" : "s"} to <b style={{ color: "#fff" }}>{rank.next}</b></div>
-                <div style={{ height: 6, background: "rgba(244,227,184,0.18)", borderRadius: 4, overflow: "hidden" }}>
-                  <div style={{ width: `${Math.min(100, Math.round((rank.have / rank.nextNeed) * 100))}%`, height: "100%", background: GOLD }} />
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Page tabs */}
-          <div className="sbw-noprint" role="tablist" aria-label="Passport pages" style={{ display: "flex", gap: 5, flexWrap: "wrap", margin: "12px 0 14px" }}>
-            {[["id", "🪪 Identity"], ["stamps", "📖 Stamps"], ["collections", "🗂 Collections"], ["badges", "🏅 Keepsakes"]].map(([id, label]) => {
-              const on = passportPage === id;
-              return (
-                <button key={id} role="tab" aria-selected={on} onClick={() => setPassportPage(id)}
-                  style={{ padding: "8px 14px", borderRadius: "9px 9px 0 0", border: `1.5px solid ${on ? CORAL : PAPER_LINE}`, borderBottomWidth: on ? 3 : 1.5, borderBottomColor: on ? CORAL : PAPER_LINE, background: on ? CORAL : "transparent", color: on ? "#fff" : INK, fontWeight: 800, fontSize: 12.5, cursor: "pointer" }}>
-                  {label}
-                </button>
-              );
-            })}
-          </div>
-
-          {passportPage === "id" && (<>
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-            <StatCard label="Stamps earned" value={`${pp.masteredCount} / ${pp.totalCountries}`} />
-            <StatCard label="Countries visited" value={`${pp.visitedCount}`} />
-            <StatCard label="Trips taken" value={`${profile.games || 0}`} />
-            {best.scout ? <StatCard label="Best · Scout" value={String(best.scout)} /> : null}
-            <StatCard label="Best · Explorer" value={best.easy ? String(best.easy) : "—"} />
-            <StatCard label="Best · Adventurer" value={best.medium ? String(best.medium) : "—"} />
-            <StatCard label="Best · Expert" value={best.hard ? String(best.hard) : "—"} />
-          </div>
-
-          <div style={{ marginTop: 12, display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-            <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.12em", color: INK, opacity: 0.6 }}>
-              <ArtBadge art={RECORD_ART.bestTime} emoji="⏱" size={24} /> BEST TIMES
-            </span>
-            {MODE_ORDER.map((k) => (
-              <span key={k} style={{ fontFamily: "ui-monospace, monospace", fontSize: 12, color: INK, background: PAPER, border: `1px solid ${PAPER_LINE}`, borderRadius: 14, padding: "4px 10px" }}>
-                {MODES[k].label}: {bt[k] ? fmtTime(bt[k]) : "—"}
-              </span>
-            ))}
-          </div>
-
-          {/* Continent progress. Each roundel wears its landmass in the same colour
-              the world map paints that continent, so the two reinforce each other —
-              the name is still spelled out, since colour alone can't carry it. */}
-          <div style={{ marginTop: 14, display: "flex", gap: 8, flexWrap: "wrap" }}>
-            {Object.entries(pp.continents).sort().map(([k, v]) => (
-              <span key={k} style={{ display: "inline-flex", alignItems: "center", gap: 6, fontFamily: "ui-monospace, monospace", fontSize: 12, color: INK, background: PAPER, border: `1px solid ${PAPER_LINE}`, borderRadius: 16, padding: "3px 10px 3px 4px" }}>
-                <ArtBadge art={ROUNDEL_ART[k]} emoji="🌐" size={26} dim={v.mastered === 0} />
-                {k}: {v.mastered}/{v.total}
-              </span>
-            ))}
-          </div>
-
-          </>)}
-
-          {passportPage === "collections" && (<>
-          {/* Collections — one card per subject category, with progress. */}
-          <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.18em", color: INK, opacity: 0.6, margin: "4px 0 10px" }}>COLLECTIONS</div>
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 }}>
-            {Object.entries(KIND_META).map(([k, meta]) => {
-              const kk = pp.kinds[k] || { mastered: 0, total: 0 };
-              return (
-                <span key={k} style={{ display: "inline-flex", alignItems: "center", gap: 6, fontFamily: "ui-monospace, monospace", fontSize: 12, fontWeight: 700, color: INK, background: PAPER, border: `1px solid ${PAPER_LINE}`, borderRadius: 16, padding: "3px 12px 3px 4px" }}>
-                  <ArtBadge art={ACHIEVEMENT_ART["kind_" + k]} emoji={meta.emoji} size={28} dim={kk.mastered === 0} /> {meta.name}: {kk.mastered}/{kk.total}
-                </span>
-              );
-            })}
-          </div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))", gap: 10 }}>
-            {CATEGORY_ORDER.map((cat) => {
-              const c = CATEGORIES[cat];
-              const col = pp.collections.find((x) => x.category === cat) || { mastered: 0, total: 0 };
-              const done = col.total > 0 && col.mastered === col.total;
-              const pct = col.total ? Math.round((col.mastered / col.total) * 100) : 0;
-              return (
-                <div key={cat} style={{ background: "#fff", border: `2px solid ${done ? c.color : PAPER_LINE}`, borderRadius: 8, padding: "10px 12px", opacity: col.mastered ? 1 : 0.7 }}>
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 4 }}>
-                    <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontWeight: 800, color: INK, fontSize: 13, lineHeight: 1.2 }}>
-                      <ArtBadge art={CATEGORY_ART[cat]} emoji={c.emoji} size={30} dim={!col.mastered} /> {c.name}
-                    </span>
-                    {/* role+label on the wrapper: the marker itself is aria-hidden art,
-                        but "complete" must still reach a screen reader. */}
-                    {done && (
-                      <span role="img" aria-label="Collection complete!" title="Collection complete!" style={{ display: "inline-flex", flex: "0 0 auto" }}>
-                        <ArtBadge art={MARKER_MASTERED} emoji="⭐" size={22} />
-                      </span>
-                    )}
-                  </div>
-                  <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 12, color: INK, opacity: 0.7, marginTop: 5 }}>{col.mastered} / {col.total}{done ? "" : ""}</div>
-                  <div style={{ height: 6, background: PAPER, borderRadius: 4, marginTop: 6, overflow: "hidden" }}>
-                    <div style={{ width: `${pct}%`, height: "100%", background: c.color, transition: "width .3s ease" }} />
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          </>)}
-
-          {passportPage === "badges" && (<>
-          {/* Achievements — long-term keepsakes earned across games. */}
-          <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.18em", color: INK, opacity: 0.6, margin: "4px 0 10px" }}>KEEPSAKES <span style={{ opacity: 0.7 }}>— {earnedBadges}/{badges.length}</span></div>
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            {badges.slice().sort((a, b) => (b.earned - a.earned) || (b.have / b.need - a.have / a.need)).map((b) => (
-              <div key={b.id} title={b.earned ? "Earned!" : `${b.have} / ${b.need}`}
-                style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 12px 6px 7px", borderRadius: 22,
-                  background: b.earned ? GOLD : PAPER, border: `1.5px solid ${b.earned ? GOLD : PAPER_LINE}`,
-                  color: INK, opacity: b.earned ? 1 : 0.8 }}>
-                <ArtBadge art={b.art} emoji={b.emoji} size={34} dim={!b.earned} />
-                <span style={{ fontWeight: 800, fontSize: 13 }}>{b.name}</span>
-                <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, opacity: 0.7 }}>{b.earned ? "★" : `${b.have}/${b.need}`}</span>
-              </div>
-            ))}
-          </div>
-
-          </>)}
-
-          {passportPage === "stamps" && (<>
-          {/* ---- STICKER BOOK: one page per continent, one slot per country. ----
-               A mastered country's slot fills with the photo the traveler actually
-               earned there — the gaps are the invitation to keep flying. */}
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", margin: "4px 0 4px", flexWrap: "wrap", gap: 8 }}>
-            <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.18em", color: INK, opacity: 0.6 }}>STICKER BOOK</span>
-            <button onClick={() => window.print()} className="sbw-noprint"
-              style={{ padding: "6px 14px", borderRadius: 8, border: `1.5px solid ${INK}`, background: "transparent", color: INK, fontWeight: 700, fontSize: 12, cursor: "pointer" }}>
-              🖨 Print passport
-            </button>
-          </div>
-          {STICKER_PAGES.map(({ continent, countries }) => {
-            const done = countries.filter((c) => pp.byCountry[c.country]?.mastered).length;
-            return (
-              <section key={continent} style={{ marginTop: 14, breakInside: "avoid" }}>
-                <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 8 }}>
-                  <span style={{ fontWeight: 900, color: INK, fontSize: 16 }}>{continent}</span>
-                  <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 12, color: done === countries.length ? GREEN : INK, opacity: done === countries.length ? 1 : 0.6 }}>
-                    {done}/{countries.length} countries{done === countries.length ? " · page complete! ⭐" : ""}
-                  </span>
-                  <span aria-hidden="true" style={{ flex: 1, borderBottom: `1px dashed ${PAPER_LINE}` }} />
-                </div>
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(148px, 1fr))", gap: 10, alignItems: "start" }}>
-                  {countries.map((slot) => {
-                    const st = pp.byCountry[slot.country];
-                    const total = pp.countryLocTotals[slot.country] || 0;
-                    const state = st?.mastered ? "mastered" : st?.visited ? "visited" : "locked";
-                    return (
-                      <div key={slot.country} style={{
-                        background: "#fff", borderRadius: 8, padding: 9, minHeight: 92,
-                        border: state === "mastered" ? `2px solid ${CORAL}` : `2px dashed ${PAPER_LINE}`,
-                        opacity: state === "locked" ? 0.55 : 1,
-                        transform: state === "mastered" ? `rotate(${(slot.country.charCodeAt(0) % 5) - 2}deg)` : "none",
-                        breakInside: "avoid" }}>
-                        {state === "mastered" && st.photo && (
-                          <div style={{ width: "100%", aspectRatio: "16 / 9", borderRadius: 4, overflow: "hidden", background: "#DCE9EC", marginBottom: 6 }}>
-                            <img src={st.photo.src} alt={st.photo.subject} decoding="async"
-                              style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
-                          </div>
-                        )}
-                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                          <span aria-hidden="true" style={{ fontSize: 40, filter: state === "locked" ? "grayscale(1)" : "none" }}>{slot.flag}</span>
-                          <span style={{ fontWeight: 800, color: INK, fontSize: 12.5, lineHeight: 1.15 }}>{slot.country}</span>
-                        </div>
-                        <div style={{ display: "flex", alignItems: "center", gap: 4, fontFamily: "ui-monospace, monospace", fontSize: 10, letterSpacing: "0.06em", marginTop: 4,
-                          color: state === "mastered" ? CORAL : INK, opacity: state === "mastered" ? 1 : 0.55 }}>
-                          {state === "mastered" ? (
-                            <><ArtBadge art={MARKER_MASTERED} emoji="★" size={18} />{`${st.locsMastered}/${total} place${total === 1 ? "" : "s"} shot`}</>
-                          ) : state === "visited" ? "✓ visited — no shot yet"
-                            : `${total} place${total === 1 ? "" : "s"} to find`}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </section>
-            );
-          })}
-          </>)}
-
-          {/* Remove traveler — two-step so it can't be clicked by accident. */}
-          <div className="sbw-noprint" style={{ marginTop: 28, paddingTop: 16, borderTop: `1px solid ${PAPER_LINE}`, textAlign: "center" }}>
-            {confirmRemove ? (
-              <div>
-                <p style={{ color: INK, fontWeight: 700, margin: "0 0 4px" }}>Remove {profile.name}?</p>
-                <p style={{ color: INK, opacity: 0.7, fontSize: 13, margin: "0 0 12px" }}>This permanently erases {profile.name}'s stamps, scores, and best times. This can't be undone.</p>
-                <div style={{ display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap" }}>
-                  <button onClick={() => { deleteProfile(profile.name); setConfirmRemove(false); setProfileName(null); refreshProfiles(); setScreen("start"); }}
-                    style={{ padding: "10px 18px", borderRadius: 8, border: "none", background: CORAL, color: "#fff", fontWeight: 800, cursor: "pointer", boxShadow: "0 3px 0 #A93A28" }}>
-                    Yes, remove
-                  </button>
-                  <button onClick={() => setConfirmRemove(false)}
-                    style={{ padding: "10px 18px", borderRadius: 8, border: `1.5px solid ${INK}`, background: "transparent", color: INK, fontWeight: 700, cursor: "pointer" }}>
-                    Cancel
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <button onClick={() => setConfirmRemove(true)}
-                style={{ padding: "8px 16px", borderRadius: 8, border: `1.5px solid ${PAPER_LINE}`, background: "transparent", color: INK, opacity: 0.7, fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
-                Remove this traveler…
-              </button>
-            )}
-          </div>
-        </div>
-      </Frame>
-    );
-  }
 
   // play screen
   const mode = MODES[difficulty];
