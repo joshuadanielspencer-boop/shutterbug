@@ -2777,7 +2777,7 @@ export default function ShutterbugWorld() {
     };
     return (
       <Frame>
-        <div style={{ maxWidth: 1180, margin: "0 auto", padding: "4px 4px 8px" }}>
+        <DeskBoard>
           {/* Uncle greets you. He gets the bigger half of the screen and sits on
               the RIGHT; what you read and click stays left, in one column, so the
               eye isn't crossing him to get from his question to the answer. The
@@ -3006,7 +3006,7 @@ export default function ShutterbugWorld() {
             style={{ marginTop: 14, background: "none", border: "none", color: INK, opacity: 0.6, fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
             ← Back to travelers
           </button>
-        </div>
+        </DeskBoard>
       </Frame>
     );
   }
@@ -3255,12 +3255,14 @@ export default function ShutterbugWorld() {
     const homeReady = !home || homeTypedI === quiz.i;
     return (
       <Frame>
-        <div style={{ maxWidth: home ? 960 : 560, margin: "0 auto" }}>
+        <DeskBoard>
           <div style={{ display: "flex", gap: 18, alignItems: "flex-start", flexWrap: "wrap" }}>
             {/* Homecoming: Uncle on the LEFT, the quiz on the RIGHT (no scrolling). */}
             {home && (
               <div style={{ flex: "1 1 300px", minWidth: 260, background: PAPER, border: `2px solid ${GOLD}`, borderRadius: 16, padding: "20px 18px", textAlign: "center" }}>
-                <NigelScene mood={!answered ? "homecoming" : (q.options[quiz.answeredIdx].correct ? "quizRight" : "quizWrong")} style={{ margin: "0 auto 12px" }} />
+                {/* beat = the question number, so each mood POOL rotates through his
+                    expressions across the five questions instead of repeating one. */}
+                <NigelScene beat={quiz.i} mood={!answered ? "homecoming" : (q.options[quiz.answeredIdx].correct ? "quizRight" : "quizWrong")} style={{ margin: "0 auto 12px" }} />
                 <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 22, letterSpacing: "0.06em", color: CORAL, fontWeight: 800, marginBottom: 12 }}>{GRANDPA.name.toUpperCase()}</div>
                 {/* key by quiz.i so the line remounts every question — otherwise, when
                     two questions share the same intro text ("And this one…"), TypeLine's
@@ -3334,7 +3336,7 @@ export default function ShutterbugWorld() {
               </div>
             </div>
           </div>
-        </div>
+        </DeskBoard>
       </Frame>
     );
   }
@@ -3629,14 +3631,22 @@ export default function ShutterbugWorld() {
     return (
       <Frame>
         {totalTargets > 0 && album.length >= totalTargets && <Confetti reduced={prefersReduced} />}
-        <div style={{ maxWidth: 640, margin: "0 auto", textAlign: "center" }}>
-          <Stamp>Roll Developed</Stamp>
-          <h2 style={{ fontFamily: "ui-sans-serif, system-ui", fontWeight: 900, letterSpacing: "0.08em", fontSize: 30, color: INK, margin: "10px 0 4px" }}>{album.length} / {totalTargets} shots filed</h2>
-          <p style={{ fontFamily: "ui-monospace, monospace", fontSize: 22, color: CORAL, fontWeight: 700, margin: "6px 0" }}>{score} pts · ⏱ {fmtTime(elapsedMs)}</p>
-          <p style={{ fontFamily: "ui-monospace, monospace", fontSize: 12, color: INK, opacity: 0.6, margin: "0 0 6px", letterSpacing: "0.06em" }}>{isDailyEnd ? `Daily Expedition · Day ${dailyDay}` : isTourEnd ? "Grand Tour" : "Assignments"} · {mode.label} · {Math.round(pct * 100)}% of a perfect run</p>
-          {quizBonus > 0 && <p style={{ fontFamily: "ui-monospace, monospace", fontSize: 12, color: GREEN, fontWeight: 700, margin: "0 0 6px" }}>+{tidyScore(quizBonus)} review-quiz extra credit ✔</p>}
-          <p style={{ color: INK, fontWeight: 700, marginTop: 6 }}>{r.title}</p>
-          <p style={{ color: INK, opacity: 0.7, marginTop: 2 }}>{r.note}</p>
+        <DeskBoard>
+          {/* The tally reads as ONE compact banner across the top rather than six
+              centred lines. Those lines were what pushed the roll and Uncle below the
+              fold — the two things the screen exists to show — so the score is stated
+              once, in a row, and the rest of the height goes to the pictures. */}
+          <div style={{ display: "flex", alignItems: "baseline", justifyContent: "center", gap: "clamp(10px, 2vw, 22px)",
+            flexWrap: "wrap", textAlign: "center", marginBottom: 4 }}>
+            <Stamp>Roll Developed</Stamp>
+            <h2 style={{ fontFamily: "ui-sans-serif, system-ui", fontWeight: 900, letterSpacing: "0.06em", fontSize: "clamp(19px, 2.3vw, 26px)", color: INK, margin: 0 }}>{album.length} / {totalTargets} shots filed</h2>
+            <p style={{ fontFamily: "ui-monospace, monospace", fontSize: "clamp(15px, 1.7vw, 20px)", color: CORAL, fontWeight: 700, margin: 0 }}>{score} pts · ⏱ {fmtTime(elapsedMs)}</p>
+            <p style={{ color: INK, fontWeight: 700, margin: 0, fontSize: 15 }}>{r.title}</p>
+          </div>
+          <p style={{ fontFamily: "ui-monospace, monospace", fontSize: 11.5, color: INK, opacity: 0.6, margin: "0 0 2px", letterSpacing: "0.06em", textAlign: "center" }}>
+            {isDailyEnd ? `Daily Expedition · Day ${dailyDay}` : isTourEnd ? "Grand Tour" : "Assignments"} · {mode.label} · {Math.round(pct * 100)}% of a perfect run
+            {quizBonus > 0 && <span style={{ color: GREEN, fontWeight: 700 }}>{"  ·  "}+{tidyScore(quizBonus)} review extra credit ✔</span>}
+          </p>
 
           {/* Jonah's word on the trip — proud on a clean sweep, encouraging when
               the days ran out. He is the emotional bookend to every expedition, so
@@ -3745,7 +3755,7 @@ export default function ShutterbugWorld() {
               </button>
             )}
           </div>
-        </div>
+        </DeskBoard>
       </Frame>
     );
   }
@@ -4415,6 +4425,17 @@ export default function ShutterbugWorld() {
                   {[...Array(7)].map((_, i) => <line key={i} x1="0" y1={i * 30} x2="360" y2={i * 30} stroke={SEA_DEEP} strokeWidth="0.4" />)}
                   {[...Array(13)].map((_, i) => <line key={"v" + i} x1={i * 30} y1="0" x2={i * 30} y2="180" stroke={SEA_DEEP} strokeWidth="0.4" />)}
                 </pattern>
+                {/* Paper grain for the flat world map. Four octaves of fractal noise,
+                    desaturated, laid over the finished map on multiply — so the ocean
+                    and every continent pick up the mottling of printed atlas paper
+                    instead of reading as six flat swatches of colour.
+                    It is a DRAWN layer, not a new map: the continents underneath keep
+                    their exact shapes, their hit areas and their hover states, and the
+                    grain is pointer-transparent so it can never intercept a click. */}
+                <filter id="mapGrain" x="0" y="0" width="100%" height="100%">
+                  <feTurbulence type="fractalNoise" baseFrequency="0.55" numOctaves="4" seed="11" result="n" />
+                  <feColorMatrix in="n" type="saturate" values="0" />
+                </filter>
               </defs>
               {/* Everything is drawn inside one group so a whole map can be given the
                   gentle vertical exaggeration (Europe / UK); it's the identity transform
@@ -4490,6 +4511,11 @@ export default function ShutterbugWorld() {
                     photograph, not text over the continents you're trying to click.
                     (Labels stay on the zoomed continent/country maps.) */}
                 <WaterFeatures box={box} vbW={box.w} vbH={box.h} zoomed={false} frameAR={FRAME_AR} labels={false} />
+                {/* The paper grain, over the whole finished map. pointer-events:none is
+                    load-bearing — this rect covers every continent, and without it the
+                    map would look right and be entirely unclickable. */}
+                <rect x={box.x} y={box.y} width={box.w} height={box.h} filter="url(#mapGrain)"
+                  opacity="0.3" style={{ mixBlendMode: "multiply", pointerEvents: "none" }} />
                 </>
               )}
 
@@ -4724,10 +4750,13 @@ export default function ShutterbugWorld() {
           </div>
         </div>
         {/* ===== Right tool rail — evenly spaced over the desk height, no labels ===== */}
-        {/* space-between: first tool at the top, passport at the very bottom (flush
-            with the ribbon and the last itinerary step), the album evenly between. */}
+        {/* space-between with equal-height tiles (all three PNGs are square), so the
+            two gaps are always identical. The bottom padding lifts the passport off
+            the very edge of the desk — flush looked like it had slid off — and because
+            space-between shares out whatever height is left, both gaps close by the
+            same amount, so lifting it keeps the rail evenly spaced. */}
         <div style={{ flex: "0 0 210px", alignSelf: "stretch", display: "flex", flexDirection: "column",
-          justifyContent: "space-between", alignItems: "center", padding: "4px 0" }}>
+          justifyContent: "space-between", alignItems: "center", padding: "4px 0 26px" }}>
           {/* All three tools show in every mode. The Field Guide researches a CLUE, so
               it only works where there is one to solve — greyed (not gone) on the Grand
               Tour, on Explore, and on Expert, with a tap explaining why. Keeping the
@@ -4813,6 +4842,28 @@ function SepiaMapBackground() {
     </div>
   );
 }
+// The shared "desk" backdrop for every screen where Uncle Jonah appears — his
+// intro, the meet screen, the homecoming quiz and the final roll. It's the same
+// flat-lay the traveler picker uses: aged map paper on a wooden desk, ringed by a
+// passport, stamps, a compass and a few leaves.
+//
+// The art's props crowd the edges, so the content sits in the blank tan middle:
+// the horizontal inset is the generous one (the passport and compass eat into the
+// left and right), and it's expressed in vw so the margin scales with the picture
+// rather than drifting over the props on a small screen.
+function DeskBoard({ children, maxWidth = 1180, pad }) {
+  return (
+    <div style={{ position: "relative", minHeight: "min(90vh, 820px)", width: "100%", maxWidth, margin: "0 auto",
+      backgroundImage: `url("${UI}main-screen-bg.jpg")`, backgroundSize: "cover", backgroundPosition: "center",
+      borderRadius: 16, overflow: "hidden", boxShadow: "0 8px 26px rgba(0,0,0,0.32)" }}>
+      <div style={{ position: "relative", zIndex: 2, minHeight: "inherit",
+        padding: pad || "clamp(16px, 3.2vw, 40px) clamp(24px, 6.5vw, 92px) clamp(18px, 3vw, 40px)" }}>
+        {children}
+      </div>
+    </div>
+  );
+}
+
 function Frame({ children, desk = false }) {
   return (
     <div style={{ minHeight: "100%", position: "relative", padding: 18, fontFamily: "ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif" }}>
@@ -5904,29 +5955,22 @@ function CreateTravelerModal({ onSubmit, onClose }) {
 // landscape frame (16:9) so a portrait source can never push the rest of the card
 // off-screen. Sources are landscape wherever one could be found; `object-position`
 // biases the crop upward so faces survive on the few that aren't.
-// Countries with several peoples carry several cards (see COUNTRY_PEOPLE). Which
-// one you meet first ROTATES between visits, so coming back to the United States
-// introduces you to someone new rather than repeating the same photo — and the
-// others are always one tap away. Kept per-country in module scope so it survives
-// the card unmounting between arrivals; it's a display cursor, not player data,
-// so it deliberately doesn't persist across sessions.
-const peopleCursor = {};
-
+// Countries with several peoples carry several cards (see COUNTRY_PEOPLE). ONE of
+// them is picked at random per arrival and that's what you meet — there's no
+// stepping through the set. The card is a moment on the way to a photograph, not a
+// gallery to work through, and a "1 of 3" counter invites a child to clear all
+// three before moving on. Coming back to a country still shows someone new, which
+// was the point of having several; it just happens by chance rather than by chore.
 function PeoplePhoto({ country }) {
   const cards = peopleCards(country);
-  // Start where this country's rotation left off, then advance it for next time.
-  const [i, setI] = useState(() => {
-    const start = peopleCursor[country] || 0;
-    peopleCursor[country] = (start + 1) % Math.max(1, cards.length);
-    return start % Math.max(1, cards.length);
-  });
+  // Chosen once per mount. The card is remounted per country (key={country}), so a
+  // new arrival re-rolls, while a re-render of the same card keeps the same face.
+  const [i] = useState(() => Math.floor(Math.random() * Math.max(1, cards.length)));
   // Is the caption/credit panel showing? Hover reveals it; the ⓘ button latches it
   // open for anyone who can't hover. See the note on the frame below.
   const [creditOpen, setCreditOpen] = useState(false);
   if (!cards.length) return null;
-  const people = cards[i];
-  const many = cards.length > 1;
-  const step = (d) => setI((n) => (n + d + cards.length) % cards.length);
+  const people = cards[Math.min(i, cards.length - 1)];
   return (
     <figure style={{ margin: "10px 0 0", textAlign: "left" }}>
       {/* Fixed landscape frame, so a culture card can never push the page into a
@@ -5981,20 +6025,12 @@ function PeoplePhoto({ country }) {
           </span>
         </figcaption>
       </div>
-      {/* Which of this country's peoples you're looking at, and how to see the
-          others. The count is spelled out ("1 of 3") rather than shown as dots —
-          a position you can only read from color or size is no position at all
-          (rule 3). Both arrows are real buttons, so they're keyboard-reachable. */}
-      {many && (
-        <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 6 }}>
-          <button onClick={() => step(-1)} aria-label="Previous people of this country"
-            style={peopleArrow}>◀</button>
-          <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, color: OCEAN, fontWeight: 700 }}
-            aria-live="polite">
-            {people.people ? `${people.people} · ` : ""}{i + 1} of {cards.length}
-          </span>
-          <button onClick={() => step(1)} aria-label="Next people of this country"
-            style={{ ...peopleArrow, marginLeft: "auto" }}>▶</button>
+      {/* Who you're looking at, when the entry names them. No counter and no arrows:
+          there's nothing to step through — one of this country's peoples was chosen
+          at random for this visit. */}
+      {people.people && (
+        <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, color: OCEAN, fontWeight: 700, marginTop: 6 }}>
+          {people.people}
         </div>
       )}
     </figure>
@@ -6003,9 +6039,6 @@ function PeoplePhoto({ country }) {
 
 const routeBtn = { background: "transparent", border: `1.5px solid ${OCEAN}`, color: OCEAN,
   borderRadius: 6, fontSize: 12, lineHeight: 1, padding: "6px 9px", fontWeight: 800, cursor: "pointer" };
-
-const peopleArrow = { background: "transparent", border: `1.5px solid ${OCEAN}`, color: OCEAN,
-  borderRadius: 6, cursor: "pointer", fontSize: 11, lineHeight: 1, padding: "4px 8px", fontWeight: 700 };
 
 // The country card — the game's cultural centerpiece, shown the moment you're
 // in a country in ANY mode: the country and its flag, a photo of its people in
@@ -6333,7 +6366,7 @@ function StoryScreen({ beats, reduced, ctaLabel, onDone, onSkip, mood = "intro",
   const ready = revealed >= beats.length;
   return (
     <Frame>
-      <div style={{ maxWidth: 1180, margin: "0 auto", padding: "6px 4px" }}>
+      <DeskBoard>
         <div style={{ display: "flex", alignItems: "flex-start", gap: 20, flexWrap: "wrap" }}>
           {/* Words and the way out on the left; Uncle, large, on the right. He is
               pinned to the top of the row rather than centred in it — centring means
@@ -6395,7 +6428,7 @@ function StoryScreen({ beats, reduced, ctaLabel, onDone, onSkip, mood = "intro",
           <NigelScene mood={mood} beat={Math.min(revealed, beats.length - 1)}
             style={{ flex: "1.35 1 420px", minWidth: 300 }} />
         </div>
-      </div>
+      </DeskBoard>
     </Frame>
   );
 }

@@ -41,7 +41,7 @@ export const GRANDPA = {
 // service worker had the previous faces cached under the old filenames, and a
 // same-name swap is invisible to that cache — a fresh name always reloads.
 export const NIGEL_FACES = [
-  "hand_over_heart", "joyful_wave", "startled_surprise", "thumbs_up",
+  "hand_over_heart_v2", "joyful_wave", "startled_surprise", "thumbs_up",
   "worried_shrug", "sleepy_yawn", "thoughtful_glance", "playful_wink",
   "cheerful_toast", "proud_contentment", "grateful_relief", "wide_eyed_astonishment",
   "hearty_laughter", "awkward", "skeptical_side_eye", "mischievous_shush", "encouraging_cheer",
@@ -55,33 +55,38 @@ export const NIGEL_MOOD = {
   // Sequences: one face per beat, in order.
   // Intro: welcomes you in → reminisces → a wistful "the world I never reached" →
   // leans in with his plan (a conspiratorial shush) → offers the camera → heartfelt.
-  intro: ["hand_over_heart", "thoughtful_glance", "hand_over_heart", "mischievous_shush", "cheerful_toast", "hand_over_heart"],
+  intro: ["hand_over_heart_v2", "thoughtful_glance", "hand_over_heart_v2", "mischievous_shush", "cheerful_toast", "hand_over_heart_v2"],
   sendoff: ["playful_wink", "thoughtful_glance"],
   // Dream fulfilled: astonishment → gratitude → warmth → and a cheer sending you
   // back out ("don't stop on my account — there's always another horizon").
-  dream: ["wide_eyed_astonishment", "grateful_relief", "hand_over_heart", "encouraging_cheer"],
+  dream: ["wide_eyed_astonishment", "grateful_relief", "hand_over_heart_v2", "encouraging_cheer"],
 
   // Pools: one face for the whole pool.
   meetLine: "thoughtful_glance",     // his little bits of travel wisdom
   meetGreat: "proud_contentment",
   meetGood: "thumbs_up",             // "most of them came home — good work"
-  meetRough: "hand_over_heart",      // comforting, never scolding
+  meetRough: "hand_over_heart_v2",      // comforting, never scolding
   meetFirst: "joyful_wave",          // welcoming a first-timer in
   meetAsk: "skeptical_side_eye",     // a knowing look — "now then, what'll it be?"
-  quizRight: "hearty_laughter",      // homecoming quiz: you remembered! (delighted)
-  quizWrong: "awkward",              // homecoming quiz: a sheepish "my memory too"
+  // The homecoming quiz runs five questions, so these are POOLS, cycled by question
+  // number (see nigelFace) rather than one fixed face — sitting through five in a row
+  // with the same two expressions made him look like a photograph of himself.
+  quizRight: ["hearty_laughter", "thumbs_up", "proud_contentment", "cheerful_toast"],
+  quizWrong: ["awkward", "playful_wink", "thoughtful_glance"],
   // His face as you dial the difficulty up — more impressed / wide-eyed the harder
   // the trip you pick, from a warm "aw, a gentle one" to a wide-eyed "you're taking
   // on THAT?". Keyed by difficulty in the component (DIFFICULTY_MOOD).
-  diffScout: "hand_over_heart",
+  diffScout: "hand_over_heart_v2",
   diffEasy: "playful_wink",
-  diffMedium: "startled_surprise",
-  diffHard: "wide_eyed_astonishment",
-  homecoming: "joyful_wave",         // "look who's home! sit, sit."
+  diffMedium: "encouraging_cheer",     // "an Adventurer, are we? go on then!"
+  diffHard: "wide_eyed_astonishment",  // the peak — "you're taking on THAT?"
+  // His face while ASKING each question — also a pool, so the run of questions
+  // doesn't hold one expression from "look who's home!" to the last answer.
+  homecoming: ["joyful_wave", "thoughtful_glance", "mischievous_shush", "skeptical_side_eye"],
   wrongAnswer: "playful_wink",       // rueful, never harsh — he's laughing at himself
   achievement: "startled_surprise",
   endWin: "proud_contentment",
-  endLose: "hand_over_heart",
+  endLose: "hand_over_heart_v2",
   unlock: "cheerful_toast",
   rankUp: "proud_contentment",
   outOfDays: "worried_shrug",
@@ -90,9 +95,16 @@ export const NIGEL_MOOD = {
 
 // The face for a mood key, or for one beat of a sequence. Falls back to his
 // contented doze rather than throwing — a missing face must never blank the screen.
+//
+// A list WRAPS rather than clamping, so a mood can be a rotating POOL as well as a
+// fixed sequence: the homecoming quiz asks five questions and cycles his face
+// through the list rather than freezing on the last one. The story sequences are
+// written one face per beat, so they never reach the wrap either way.
 export function nigelFace(key, beat = 0) {
   const m = NIGEL_MOOD[key];
-  const name = Array.isArray(m) ? (m[Math.min(beat, m.length - 1)] || NIGEL_MOOD.idle) : (m || NIGEL_MOOD.idle);
+  const name = Array.isArray(m)
+    ? (m[((beat % m.length) + m.length) % m.length] || NIGEL_MOOD.idle)
+    : (m || NIGEL_MOOD.idle);
   return `jonah/${NIGEL_FACES.includes(name) ? name : NIGEL_MOOD.idle}.jpg`;
 }
 
