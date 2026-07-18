@@ -68,6 +68,11 @@ export const NIGEL_MOOD = {
   meetRough: "hand_over_heart_v2",      // comforting, never scolding
   meetFirst: "joyful_wave",          // welcoming a first-timer in
   meetAsk: "skeptical_side_eye",     // a knowing look — "now then, what'll it be?"
+  // The two unscored modes have no difficulty to react to, so they get a face of
+  // their own rather than all sharing meetAsk: a conspiratorial "come on, let's go
+  // poke about" for a free roam, and a reflective one for retracing a real journey.
+  modeExplore: "mischievous_shush",
+  modeJourney: "thoughtful_glance",
   // The homecoming quiz runs five questions, so these are POOLS, cycled by question
   // number (see nigelFace) rather than one fixed face — sitting through five in a row
   // with the same two expressions made him look like a photograph of himself.

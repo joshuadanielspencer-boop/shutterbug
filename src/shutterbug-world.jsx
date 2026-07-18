@@ -1230,9 +1230,11 @@ function WaterFeatures({ box, vbW, vbH, zoomed, frameAR, labels = true }) {
   // counter-stretched back to the right shape.
   const size = 0.016 * (zoomed ? Math.max(vbW, frameAR * vbH) : frameAR * box.h);
   const stretch = zoomed ? 1 : box.w / (frameAR * box.h);
-  // Where the decorative compass rose sits, as a fraction of the frame (see the
-  // atlas furniture below the map) — labels give it a wide berth.
-  const avoid = { x0: box.x, x1: box.x + 0.22 * box.w, y0: box.y + 0.72 * box.h };
+  // Where the compass rose sits, as a fraction of the frame (see the atlas furniture
+  // below the map) — labels give it a wide berth. Kept in step with the button's own
+  // size/offset: it was shrunk into the corner so it stops covering Hawaii, which
+  // frees this much water back up for labels too.
+  const avoid = { x0: box.x, x1: box.x + 0.14 * box.w, y0: box.y + 0.82 * box.h };
   const shown = (f) => f.tier <= max;
   const lakes = zoomed ? LAKES.filter((f) => shown(f) && inView(f.b, box)) : [];
   const rivers = zoomed ? RIVERS.filter((f) => shown(f) && inView(f.b, box)) : [];
@@ -1489,6 +1491,7 @@ export default function ShutterbugWorld() {
   // "did you know" matches the map you just landed on. Non-blocking; auto-dismisses.
   const arrivalRollRef = useRef(0); // counts continent arrivals, for the Daily's seeded riddle cadence
   const mrOGapRef = useRef(MRO_MIN_GAP); // arrivals since Mr O last appeared (starts eligible)
+  const tipPendingRef = useRef(false);   // Field-Guide coaching tip, queued until assignment 2
   // Show a "did you know?" bubble. He leads with somewhere you've actually BEEN this
   // trip — a country you photographed, told in the very words that used to sit on its
   // arrival card (the blurb was moved OFF that card to here, so a child meets the fact
@@ -1530,11 +1533,15 @@ export default function ShutterbugWorld() {
     const ix = arrivalRollRef.current++;
     mrOGapRef.current += 1;
     if (mrOGapRef.current < MRO_MIN_GAP) return;      // too soon since he last rode
-    // A player's very first meeting with Mr O shouldn't land ON their very first
-    // arrival — the game board is already a lot to take in the first time. Until
-    // they've met him, hold him back from the opening stop so his introduction
-    // arrives at the SECOND location, not stacked on top of a brand-new screen.
-    if (!hasMetMrO() && ix === 0) return;
+    // Nobody rides along on the FIRST assignment. A player opening a run is taking in
+    // the whole board — the note, the map, the itinerary, the tools — and Mr O landing
+    // on top of that is one thing too many. He waits for assignment 2.
+    //
+    // Gated on `step`, the assignment number, NOT on the arrival counter: a player who
+    // guesses the wrong continent first has already "arrived" twice by the time they
+    // reach the right one, and an arrival-counted gate let him through while the note
+    // still read ASSIGNMENT 1.
+    if (step < 1) return;
     const seed = riddleSeedRef.current;
     const roll = seed ? withSeed(seed + "|arr|" + ix, () => rnd()) : Math.random();
     if (roll < 0.5) {
@@ -1547,6 +1554,16 @@ export default function ShutterbugWorld() {
       else showMrOFact(continent);
     }
   };
+  // The queued Field-Guide coaching tip, released once the player is past their first
+  // assignment (see startGame). Fires on the step change rather than a timer from the
+  // start of the run, so it can't land while assignment 1 is still being read.
+  useEffect(() => {
+    if (screen !== "play" || step < 1 || !tipPendingRef.current) return;
+    tipPendingRef.current = false;
+    const t = setTimeout(() => { sfx("bwooop"); setMrO(MR_O_FIELDGUIDE_TIP); }, 900);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, screen]);
   const poppedCountryRef = useRef(null); // country whose arrival popup already showed this leg
   const [dreamPending, setDreamPending] = useState(false); // Jonah's dream just fulfilled — show the win scene
   const pendingRunRef = useRef(null); // start action to run after the intro story
@@ -1892,10 +1909,12 @@ export default function ShutterbugWorld() {
     // Coaching: every 5th run, Mr O reminds the player they can research a clue via
     // the Field Guide (only where research applies). The first run is skipped — his
     // first-time introduction (see introduceMrO) already explains the Field Guide.
+    //
+    // QUEUED, not fired: this used to pop 1.6s after the map appeared, which put him
+    // on screen while the player was still reading their first assignment. Like every
+    // other appearance he now waits for assignment 2 (see the effect on `step`).
     const gamesPlayed = profile ? (profile.games || 0) : 0;
-    if (!daily && mode.research !== "off" && gamesPlayed > 0 && gamesPlayed % 5 === 0) {
-      setTimeout(() => { sfx("bwooop"); setMrO(MR_O_FIELDGUIDE_TIP); }, 1600);
-    }
+    tipPendingRef.current = !daily && mode.research !== "off" && gamesPlayed > 0 && gamesPlayed % 5 === 0;
   }
 
   // ---- Grand Tour: build an itinerary of targets across continents on one shared ----
@@ -2999,7 +3018,10 @@ export default function ShutterbugWorld() {
               while he's nodding to it, then amused once he gets to the question. It
               sticks in view as the choices scroll past on a short screen. */}
           <NigelScene mood={!meetReady ? (meetInfo?.mood || "meetLine")
-              : ((gameMode === "assignments" || gameMode === "tour") ? DIFFICULTY_MOOD[difficulty] : "meetAsk")}
+              : (gameMode === "assignments" || gameMode === "tour") ? DIFFICULTY_MOOD[difficulty]
+              : gameMode === "explore" ? "modeExplore"
+              : gameMode === "journey" ? "modeJourney"
+              : "meetAsk"}
             style={{ flex: "1.35 1 420px", minWidth: 300, position: "sticky", top: 12 }} />
           </div>{/* end flex row */}
           <button onClick={() => setScreen("start")}
@@ -4715,13 +4737,20 @@ export default function ShutterbugWorld() {
             {/* Decorative atlas furniture (non-interactive, over the map plate). */}
             <img src={`${UI}map-ink-distress.png`} alt="" aria-hidden="true"
               style={{ position: "absolute", inset: 12, width: "calc(100% - 24px)", height: "calc(100% - 24px)", objectFit: "cover", opacity: 0.16, mixBlendMode: "multiply", pointerEvents: "none", borderRadius: 8 }} />
-            {/* The compass rose is also a tap-to-learn target. It's the ONLY furniture
-                that takes clicks, so it's kept to the art's own footprint in the corner
-                (where map labels already give it a wide berth) and off during a flight,
-                so it never steals a continent tap. */}
+            {/* The compass rose is also a tap-to-learn target — the ONLY furniture that
+                takes clicks, which makes its footprint a real hazard: anything under it
+                cannot be tapped. It sat big and well inside the plate, and on North
+                America that put it squarely over Hawaii, which was effectively
+                unclickable.
+                Every corner of every continent has SOMETHING near it (Oceania's Milford
+                Sound sits 3% from its bottom-right), so moving it to another corner just
+                moves the problem. Instead it's smaller and tucked right into the corner,
+                inside the viewBox's 10% padding margin — the ring of empty ocean the map
+                already leaves around the land — so it overlaps frame, not targets.
+                It's also off during a flight, so it can never steal a continent tap. */}
             <button onClick={() => openCurio("compass")} title="About the compass" aria-label="About the compass"
               disabled={flying}
-              style={{ position: "absolute", left: 44, bottom: 38, width: "clamp(58px, 9vw, 104px)", height: "clamp(58px, 9vw, 104px)",
+              style={{ position: "absolute", left: 16, bottom: 14, width: "clamp(40px, 6vw, 72px)", height: "clamp(40px, 6vw, 72px)",
                 padding: 0, border: "none", background: "transparent", cursor: flying ? "default" : "help", zIndex: 4 }}>
               <img src={`${UI}compass-rose.png`} alt="" aria-hidden="true"
                 style={{ width: "100%", height: "100%", objectFit: "contain", opacity: 0.92, filter: "drop-shadow(0 2px 3px rgba(0,0,0,0.35))" }} />
