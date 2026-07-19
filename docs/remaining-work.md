@@ -32,6 +32,38 @@ Last updated **2026-07-18**.
 >   cache erases months of progress, and that work is the same serialization Supabase
 >   (§7) would reuse.
 
+> ### ⚠ 2026-07-19 supersedes parts of the box above
+>
+> The **passport export/import** recommended above is **DONE** — "Save a copy" /
+> "Restore from a file" under the passport, serialization in `src/profiles.js`
+> (`exportPassport` / `importPassport`), tests in `test/passport-file.test.js`.
+> §7's Supabase work would reuse that envelope as-is.
+>
+> Also landed: teach-on-miss, Mr O's intro fixed to fire once at assignment 2, the
+> homecoming quiz scaled to one question per assignment, the results and quiz screens
+> fitted to one widescreen, Chile/USA/UK map crops, circular pins, a splash drone that
+> swells into the jig, single-pass country tunes, and the music/voice balance. See
+> "Recently shipped" and `git log 8b8a738..HEAD`.
+>
+> **Still open from that session's list** (Joshua asked for these; they are not done):
+> 1. **A Progress page in the passport** — mastery by continent and a "keeps getting
+>    missed" list. All the data already exists (`passportData`, `profile.loc`,
+>    `weightFor`); it needs a view. Highest value per line of code of anything left.
+> 2. **Tint mastered countries on the world map** — `passportData()` returns a
+>    `mastered` flag per country and `WORLD_COUNTRIES` has the paths. The satisfying
+>    "watch the map fill in" feedback the game currently has no version of.
+> 3. **Content for the thin continents** — South America 34, Oceania 30, Antarctica 6
+>    against Europe's 107. Chile is the ONLY country in the game with fewer than three
+>    landmarks on a continent layer (2 on the mainland, plus Easter Island filed under
+>    Oceania); a code-level floor now borrows nearest neighbours so no map shows fewer
+>    than three pins, but Chile still wants real mainland places. Joshua's steer: add
+>    genuinely notable places, don't pad to hit a number, and Europe/Asia/North America
+>    may still gain places of real cultural or geographic interest.
+> 4. **A rewards/progression layer** — earning an achievement currently grants a chip
+>    on the results screen and nothing else. See §10 (new) for the brainstorm.
+> 5. **The dog** — art is in `public/assets/shutterbug-ui/dog/` (6 poses) and already
+>    appears beside Jonah in his scenes. No gameplay role yet; see §10.
+
 ### THE THREE THINGS TO DO NEXT (start here)
 
 1. **Travel-modes balance playtest.** The feature is built and live (see §9); its
@@ -446,3 +478,129 @@ price shows **dollars first, local currency in parentheses** (rule 3 style). A m
 - ~~Real transport icons~~ — ✅ done 2026-07-16; 12 top-down icons at 46px in the chooser.
 - **A lighter hub-only version in Assignments** — deferred: choosing transport to a named
   landmark would spoil that mode's deduction game.
+
+---
+
+## 10. Rewards, progression, and the dog (brainstorm, 2026-07-19)
+
+Joshua's report: *"I recently accomplished something (maybe visiting all 7 continents)
+and there was the option to go see Jonah — and he said congratulations and then that
+was it. If there was a stamp awarded or a game mode unlocked, it wasn't clear."*
+
+He is right, and the code confirms it. **Earning an achievement grants nothing.**
+`achievements()` in `profiles.js` derives 24 badges live from `profile.loc` on every
+call — nothing about them is persisted, nothing is awarded, and the only consequence
+is a chip on the results screen plus a line from Jonah. Separately, `UNLOCK_REQ` has
+five real gates (Adventurer, Grand Tour, Expert, Expeditions) but they unlock quietly
+and are announced only in passing.
+
+So there are two systems that both *look* like progression and neither of which pays
+out. Options, cheapest first:
+
+**a. Make the existing gates land properly.** The unlock moment is the strongest beat
+the game already has and it's thrown away in a sentence. A full-screen "Uncle Jonah
+has something for you" — the badge drawn large, what it unlocked named explicitly,
+and the new mode's card visibly lighting up on the meet screen next time. No new
+systems, just staging what already happens.
+
+**b. Give achievements a home worth filling.** They already appear in the passport as
+"keepsakes", but the passport is a list. A shelf/case where the 24 sit as visible
+empty silhouettes from the start would do what the map-tinting idea does: show the
+child the shape of what they haven't done yet. Pairs naturally with the Progress page.
+
+**c. Tie unlocks to Jonah's anecdotes.** `src/data/anecdotes.js` has 300 lines of his
+stories. Earning a continent badge could unlock the story of *his* trip there — a
+reward that is more of the thing the child already likes, costs no new art, and
+reinforces the frame (he went young, you go now).
+
+**d. Themed expeditions as the unlock currency.** Expeditions already exist and are
+already gated. Making specific ones unlock from specific achievements ("photograph
+all 7 summits → the Roof of the World expedition") gives badges a concrete payout
+without inventing a new reward type.
+
+**e. A "first time only" bonus** on each newly photographed place, so a child who
+ranges wide is scored differently from one who replays the same five. Cheap, and it
+pushes toward the breadth the content is there to teach.
+
+Recommendation: **(a) then (c)**. Both are staging and content rather than new
+systems, and (a) fixes the specific thing that felt hollow.
+
+### The dog
+
+Art is in `public/assets/shutterbug-ui/dog/` — six poses (standing, sitting with paw
+up, play bow, walking, head-tilt sit, lying down). She already appears *in* Jonah's
+painted scenes, lying by the fire, so she is established as his dog and the player
+has met her without being told anything about her.
+
+Ideas, best first:
+
+1. **She stays home with Jonah and reacts.** Cheapest and most in keeping with what's
+   already on screen: the pose changes with the result — play bow on a perfect shot,
+   head tilt on a miss, lying down when the days run out. A second emotional channel
+   on the screens Jonah already owns, no new mechanic, no new writing, and it uses
+   all six poses. A young child reads a dog's posture faster than a sentence.
+2. **She finds things.** A "sniff it out" tool alongside the Field Guide: once per
+   run she points to the right continent (not the country, not the pin) for a cost.
+   The play-bow and standing poses are exactly the vocabulary for that. Note this is
+   close to what the Field Guide already does — worth checking with Joshua whether a
+   second hint tool helps or muddies.
+3. **She travels with you as a streak keeper.** She rides along and appears on the
+   map after N correct shots in a row, and goes back to Jonah when the streak breaks.
+   Makes an invisible stat visible, but it does add a mechanic.
+4. **She is the Explore-mode companion.** Explore has no pressure and no Mr O; a dog
+   trotting along the bottom of the map would give that mode its own character.
+
+Recommendation: **(1) unconditionally** — it is nearly free and strictly additive —
+and ask Joshua whether he wants (2). Her name is also unwritten; that's his call, and
+naming her is what turns her from set-dressing into a character.
+
+## 11. The music, honestly (2026-07-19)
+
+Joshua asked which countries have their own tune, and what it would cost to write
+"dozens" more. The numbers, counted by resolving every country in `locations.js`
+through `tuneKeyFor`:
+
+| | count | share |
+|---|---|---|
+| Countries in the game | 106 | |
+| With their **own real melody** | **6** | 5.7% |
+| On a **regional style bed** | 100 | 94.3% |
+
+The six: **Germany** (Ode to Joy), **France** (Frère Jacques), **United States**
+(The Star-Spangled Banner), **United Kingdom** (Rule, Britannia!), **Mexico**
+(La Cucaracha), **Australia** (Waltzing Matilda).
+
+The other 100 fall through `COUNTRY_MOTIF` (49 named) or `CONTINENT_MOTIF` (51) onto
+one of eleven original regional beds — koto pentatonic for East Asia, oud in hijaz
+for the Middle East, kalimba for sub-Saharan Africa, and so on. **18 countries** (in
+North America and Europe, not otherwise mapped) get the neutral music-box `generic`
+bed with no regional flavour at all — those are the weakest case and the ones worth
+fixing first.
+
+**Cost of doing dozens properly.** The engine is not the problem: it is a note-name
+sequencer (`["E4", 1]`), so adding a tune is adding ~20 lines of data — call it 15
+minutes each once you have the notes. The cost is entirely **sourcing and verifying
+the notes**, and that is bound by rule 2 and by copyright:
+
+- The melody must be **public domain**. Most national anthems are; most 20th-century
+  folk arrangements are not, and many countries' best-known tunes are recent enough
+  to still be in copyright.
+- The notes must come **off a score**, not from memory. This session tried to lengthen
+  La Cucaracha and Waltzing Matilda, could not reach usable notation for either, and
+  so **left them alone** rather than guess — which is the correct outcome under rule 2
+  and also the reason this is slow. The Star-Spangled Banner in `tunes.js` carries its
+  source and a bar-by-bar note explaining the raised fourth, because a previous pass
+  shipped a wrong note in it.
+
+Realistic estimate: **30–40 more countries is a day of focused work** given a good
+public-domain source (IMSLP, the Wikimedia national-anthem collection, abcnotation.com),
+with most of the time in verification rather than transcription. All 106 is not
+sensible — plenty of countries have no single melody that a child would recognise, and
+a well-chosen regional bed is honestly better than a badly-sourced "national tune".
+
+Suggested order if Joshua wants it: **the 18 `generic` countries first** (they have no
+regional character at all), then the largest countries on regional beds, then anthem
+openings for countries whose anthem is genuinely famous.
+
+Note the tunes now play **once, not twice** — the eleven regional beds were rewritten
+as two-phrase call-and-response melodies (4.7–9.9s) so a single pass stands alone.
