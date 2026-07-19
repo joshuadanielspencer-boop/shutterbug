@@ -1729,6 +1729,7 @@ export default function ShutterbugWorld() {
       homecoming: () => startHomecoming(),
       pending: (p) => { setScreen("play"); setPending(p); },
       profile: (n) => setProfileName(n),
+      days: (n) => setDays(n),
       passport: () => setPassportOpen(true),
     };
     return () => { delete window.__sbw; };
@@ -5036,6 +5037,19 @@ function Frame({ children, desk = false }) {
   return (
     <div style={{ minHeight: "100%", position: "relative", padding: 18, fontFamily: "ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif" }}>
       <style>{`
+        /* ---- Keyboard focus, everywhere ------------------------------------
+           A visible focus state is a hard requirement (rule 4), and the browser
+           default is a 1px hairline that vanishes against this game's painted
+           backgrounds. This gives every focusable thing the same 3px gold ring the
+           tool rail already uses.
+
+           :where() so it carries ZERO specificity: the map's own, louder focus
+           treatments (.sbw-pin, .sbw-cont, .sbw-country each set outline:none and
+           light the shape itself instead) still win, and any future control that
+           styles its own focus wins too. This is a floor, not a ceiling. */
+        :where(button, a[href], input, select, textarea, summary, [role="button"]):focus-visible{
+          outline: 3px solid ${GOLD}; outline-offset: 2px; border-radius: 6px;
+        }
         /* Whole-continent highlight when hovering or keyboard-focusing a region. */
         /* Right-rail tool props lift on hover / keyboard focus. */
         .sbw-tool img{ transition: transform .14s ease, filter .14s ease; }
