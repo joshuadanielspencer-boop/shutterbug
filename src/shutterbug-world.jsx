@@ -1529,6 +1529,26 @@ export default function ShutterbugWorld() {
   const [promptTraveler, setPromptTraveler] = useState(false); // nudge to pick a traveler
   const [newName, setNewName] = useState("");
   const [lastResult, setLastResult] = useState(null); // {isBest, isBestTime} after a recorded game
+  // Countries this traveler has photographed something in, EVER — not just this run.
+  // The world map washes them gold, so the map visibly fills in across a whole term of
+  // playing; it's the one place the collection reads as a shape rather than a number.
+  // Recomputed when a run is recorded (lastResult) or a different traveler is picked —
+  // the only two ways the set can change.
+  const collectedCountries = useMemo(() => {
+    const p = profileName ? getProfile(profileName) : null;
+    if (!p) return new Set();
+    const out = new Set();
+    for (const c of passportData(p).countries) {
+      if (!c.mastered) continue;
+      // The world map's paths carry the Robinson dataset's names, which are not always
+      // the names in locations.js — it says "United States of America". Without the
+      // alias the single most-visited country in the game never lit up at all.
+      out.add(c.country);
+      if (WC_ALIAS[c.country]) out.add(WC_ALIAS[c.country]);
+    }
+    return out;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profileName, lastResult]);
   const [newBadges, setNewBadges] = useState([]); // achievements newly earned this game
   const [confirmRemove, setConfirmRemove] = useState(false); // passport delete confirmation
   const [passportPage, setPassportPage] = useState("id"); // passport booklet page: id | stamps | collections | badges
@@ -4516,6 +4536,17 @@ export default function ShutterbugWorld() {
                   <feTurbulence type="fractalNoise" baseFrequency="0.55" numOctaves="4" seed="11" result="n" />
                   <feColorMatrix in="n" type="saturate" values="0" />
                 </filter>
+                {/* A country you've photographed is washed gold AND hatched. The hatch
+                    isn't decoration — the continent colour is doing real work on this
+                    map (it's how you tell Asia from Africa at a glance), so "collected"
+                    cannot also be a colour without the two fighting, and rule 4 forbids
+                    carrying meaning on colour alone regardless. Diagonal lines read as
+                    "filled in" to everyone, including a colour-blind child, and they
+                    survive the paper grain drawn over the top. */}
+                <pattern id="collectedHatch" width="2.6" height="2.6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+                  <rect width="2.6" height="2.6" fill={GOLD} fillOpacity="0.62" />
+                  <line x1="0" y1="0" x2="0" y2="2.6" stroke="#6B4E12" strokeOpacity="0.7" strokeWidth="1.1" />
+                </pattern>
               </defs>
               {/* Everything is drawn inside one group so a whole map can be given the
                   gentle vertical exaggeration (Europe / UK); it's the identity transform
@@ -4575,9 +4606,19 @@ export default function ShutterbugWorld() {
                      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); pickContinent(cont); } }}
                      onMouseEnter={() => sayOnHover(cont)}
                      style={{ cursor: busy ? "default" : "pointer" }}>
-                    {robinsonCountries.filter((c) => COUNTRY_CONTINENT[c.name] === cont).map((c) => (
-                      <path key={c.name} d={cont === "North America" ? trimWrappedSubpaths(c.d) : c.d} fill={CONTINENT_COLOR[cont]} fillRule="evenodd" stroke={INK} strokeWidth="0.3" vectorEffect="non-scaling-stroke" />
-                    ))}
+                    {robinsonCountries.filter((c) => COUNTRY_CONTINENT[c.name] === cont).map((c) => {
+                      const d = cont === "North America" ? trimWrappedSubpaths(c.d) : c.d;
+                      const got = collectedCountries.has(c.name);
+                      return (
+                        <g key={c.name}>
+                          <path d={d} fill={CONTINENT_COLOR[cont]} fillRule="evenodd" stroke={INK} strokeWidth="0.3" vectorEffect="non-scaling-stroke" />
+                          {/* The same path again, hatched, over the continent colour —
+                              so a collected country still reads as part of its continent
+                              rather than becoming a gold blob detached from it. */}
+                          {got && <path d={d} fill="url(#collectedHatch)" fillRule="evenodd" stroke="#6B4E12" strokeOpacity="0.5" strokeWidth="0.5" vectorEffect="non-scaling-stroke" style={{ pointerEvents: "none" }} />}
+                        </g>
+                      );
+                    })}
                   </g>
                 )) : (
                   // Chunk still in flight (rare — it loads right after first paint). Show

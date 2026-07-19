@@ -857,3 +857,35 @@ describe("miss lessons", () => {
     expect(line).toMatch(/miles \(/);
   });
 });
+
+// ---------------------------------------------------------------------------
+// The world map washes a country gold once you've photographed something in it.
+// That lookup matches locations.js country names against the Robinson dataset's
+// names, and the two disagree — the Robinson map says "United States of America".
+// WC_ALIAS bridges them, and a missing entry is invisible: the country simply never
+// lights up, which looks like "the feature doesn't work sometimes" rather than a bug.
+// ---------------------------------------------------------------------------
+describe("world-map country names line up with the tinting", () => {
+  // Kept in step with WC_ALIAS in shutterbug-world.jsx.
+  const ALIAS = { "United States": "United States of America" };
+  // Countries with no polygon in the Robinson dataset at all: a city-state and an
+  // overseas island group, both far too small to render at world scale. They can
+  // never be tinted, and that's a property of the map, not a naming bug.
+  const NO_WORLD_PATH = new Set(["Singapore", "French Polynesia"]);
+
+  it("every country in the game either matches a map path or is knowingly too small", async () => {
+    const { WORLD_COUNTRIES_ROBINSON } = await import("../src/data/worldmap-robinson.js");
+    const names = new Set(WORLD_COUNTRIES_ROBINSON.map((c) => c.name));
+    const unmatched = [...new Set(LOCATIONS.map((l) => l.country))]
+      .filter((c) => !names.has(c) && !names.has(ALIAS[c]) && !NO_WORLD_PATH.has(c));
+    expect(unmatched).toEqual([]);
+  });
+
+  it("every alias actually resolves to a real map path", async () => {
+    const { WORLD_COUNTRIES_ROBINSON } = await import("../src/data/worldmap-robinson.js");
+    const names = new Set(WORLD_COUNTRIES_ROBINSON.map((c) => c.name));
+    for (const [from, to] of Object.entries(ALIAS)) {
+      expect(names.has(to), `alias ${from} -> ${to} points at no map path`).toBe(true);
+    }
+  });
+});
