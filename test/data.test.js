@@ -811,3 +811,49 @@ describe("Uncle Jonah is never just \"Uncle\"", () => {
     expect(hits).toEqual([]);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Wrong answers have to teach something TRUE. These sentences are assembled from
+// location data plus computed geometry, so the risk isn't a false fact — it's a
+// missing table entry silently falling back to a vaguer phrasing, or a distance
+// that breaks rule 3 by leading with metric.
+// ---------------------------------------------------------------------------
+describe("miss lessons", () => {
+  it("names a crossing for every ordered pair of continents that share a lesson", async () => {
+    const { continentMissLesson } = await import("../src/data/misses.js");
+    const conts = ["Africa", "Asia", "Europe", "North America", "South America", "Oceania"];
+    const vague = [];
+    for (const a of conts) for (const b of conts) {
+      if (a === b) continue;
+      const line = continentMissLesson({ from: a, to: b, bearing: "east", alreadyHere: false });
+      expect(line).toContain(b);
+      // The fallback is "to the {bearing}" with the raw compass word — fine as a
+      // safety net, but every real pair should have a named crossing or direction.
+      if (line.includes("to the east") && !(a === "Europe" && b === "Asia")) vague.push(`${a} -> ${b}`);
+    }
+    expect(vague).toEqual([]);
+  });
+
+  it("reads imperial first, metric in brackets (rule 3)", async () => {
+    const { distancePhrase } = await import("../src/data/misses.js");
+    for (const km of [12, 80, 240, 999, 1500, 8000, 19000]) {
+      const s = distancePhrase(km);
+      expect(s).toMatch(/^about [\d,]+ miles \([\d,]+ km\)$/);
+      const [, mi, k] = s.match(/about ([\d,]+) miles \(([\d,]+) km\)/).map((x) => String(x).replace(/,/g, ""));
+      // The imperial figure must be the smaller number — catches a swapped pair.
+      expect(Number(mi)).toBeLessThan(Number(k));
+    }
+  });
+
+  it("tells you the country when the miss was in a different one", async () => {
+    const { cityMissLesson } = await import("../src/data/misses.js");
+    const line = cityMissLesson({
+      clicked: { city: "Santiago", country: "Chile" },
+      target: { city: "Buenos Aires", country: "Argentina" },
+      km: 1140, bearing: "east",
+    });
+    expect(line).toContain("Chile");
+    expect(line).toContain("Argentina");
+    expect(line).toMatch(/miles \(/);
+  });
+});

@@ -28,6 +28,7 @@ import { listProfiles, lastProfileName, getProfile, createProfile, setLastProfil
   weightedOrder, freshFirst, passportData, achievements, topScores, storageAvailable,
   careerRank, unlocks, UNLOCK_REQ, markCuriositySeen, curiositiesSeen, nextGoal } from "./profiles.js";
 import { CURIOSITY_DECK_BY_ID, CURIOSITY_TOTAL } from "./data/curiosities.js";
+import { cityMissLesson, categoryMissLesson, continentMissLesson } from "./data/misses.js";
 import { DIFFICULTY_ART, MODE_ART, THEME_ART, CATEGORY_ART, ACHIEVEMENT_ART,
   RANK_ART, RECORD_ART, ROUNDEL_ART, TRANSPORT_ART, SEAL_UNLOCKED, MARKER_MASTERED } from "./data/art.js";
 import { HELLO_BUBBLES, HELLO_SPOTS } from "./data/hello.js";
@@ -1691,6 +1692,7 @@ export default function ShutterbugWorld() {
         return { id, subject: l.subject, city: l.city, country: l.country, flag: l.flag, fact: l.fact, photo: l.photo };
       })),
       homecoming: () => startHomecoming(),
+      pending: (p) => { setScreen("play"); setPending(p); },
     };
     return () => { delete window.__sbw; };
     // No dep array on purpose: re-registering every render keeps these bound to the
@@ -2630,8 +2632,15 @@ export default function ShutterbugWorld() {
       if (nd <= 0) outOfDays(`${cont} wasn't right, and that was your last day.`);
       else setPending({ kind: "wrong", tone: "bad", emoji: "❌", title: sameHere ? "Still the wrong continent" : "Not that continent",
         subtitle: sameHere
-          ? `You're already in ${cont}, but Jonah's subject isn't here. Read his note and pick the continent it points to.`
-          : `Jonah's subject isn't in ${cont}. A wasted flight there and back cost you ${cost} day${cost === 1 ? "" : "s"} — read his note and try again.`,
+          ? `Read his note again and pick the continent it points to.`
+          : `A wasted flight there and back cost you ${cost} day${cost === 1 ? "" : "s"} — read his note and try again.`,
+        // Named outright, on every tier: which continent it IS, and what lies between
+        // the two. "West of Africa" teaches nothing on its own; "across the Atlantic"
+        // is the thing worth carrying away from a wrong guess.
+        lesson: continentMissLesson({
+          from: cont, to: target.continent, alreadyHere: sameHere,
+          bearing: compass(CONTINENT_PIN[cont], CONTINENT_PIN[target.continent]),
+        }),
         hint: MODES[difficulty].hints ? `Try looking ${compass(CONTINENT_PIN[cont], CONTINENT_PIN[target.continent])} of ${cont}.` : null,
         buttonLabel: "Try again" });
     }
@@ -2915,6 +2924,15 @@ export default function ShutterbugWorld() {
       }
     } else {
       const wantTxt = a.type === "category" ? `a ${CATEGORIES[a.category].noun}` : target.subject;
+      // The lesson is given on EVERY tier, not just the ones with hints on. Warm/cold
+      // was a hint — it helped you find the pin and taught nothing — so it was fair to
+      // withhold on the harder tiers. A sentence about where the place you clicked
+      // actually sits is the teaching this game exists to do, and an Expert player
+      // has no less use for it than a Scout. What the higher tiers still lose is the
+      // glowing pin and the warm/cold steer.
+      const lesson = a.type === "specific"
+        ? cityMissLesson({ clicked, target, km: kmBetween(clicked, target), bearing: compass(clicked, target) })
+        : categoryMissLesson({ clicked, wantNoun: wantTxt, clickedKindName: (CATEGORIES[clicked.category] || {}).name });
       const km = (MODES[difficulty].hints && a.type === "specific") ? kmBetween(clicked, target) : null;
       const warmth = km === null ? null
         : km < 400 ? "You're very warm — the right pin is close to where you just shot!"
@@ -2926,8 +2944,9 @@ export default function ShutterbugWorld() {
         missesRef.current[step] = (missesRef.current[step] || 0) + 1;
         const rightId = a.type === "specific" ? a.targetId : (cityPlan?.ids || []).find((oid) => BY_ID[oid] && BY_ID[oid].category === a.category);
         flashRight("city", rightId); // Scout: glow the right pin
-        setPending({ kind: "wrong", tone: "bad", emoji: "❌", title: "Not the assignment", hint: warmth,
-          subtitle: `That's ${clicked.subject}${a.type === "category" ? ` — a ${CATEGORIES[clicked.category].name}` : ""}. The editor wants ${wantTxt}. Half a day gone — pick another city.`,
+        setPending({ kind: "wrong", tone: "bad", emoji: "❌", title: "Not the assignment",
+          hint: warmth, lesson,
+          subtitle: `The editor wants ${wantTxt}. Half a day gone — pick another city.`,
           buttonLabel: "Keep looking 🔍" });
       }
     }
@@ -5619,6 +5638,7 @@ function ResultModal({ data, onContinue, reduced }) {
             <div style={{ flex: "1 1 240px", minWidth: 220, display: "flex", flexDirection: "column", gap: 12 }}>
               {factEl}
               {/* Game-mechanic text (what you shot, points) appears INSTANTLY. */}
+              {data.lesson && <MissLesson text={data.lesson} />}
               <p style={{ color: INK, fontSize: 15, lineHeight: 1.5, margin: 0 }}>{data.subtitle}</p>
               {data.hint && (
                 <p style={{ color: OCEAN, fontSize: 14, fontWeight: 700, lineHeight: 1.45, margin: 0 }}>
@@ -5635,6 +5655,7 @@ function ResultModal({ data, onContinue, reduced }) {
         ) : (
           <>
             {hasPhoto && <div style={{ margin: "0 auto 10px", maxWidth: 500 }}>{photoEl}</div>}
+            {data.lesson && <div style={{ maxWidth: 380, margin: "0 auto 12px" }}><MissLesson text={data.lesson} /></div>}
             <p style={{ color: INK, fontSize: 15, lineHeight: 1.5, margin: "0 auto", maxWidth: 340 }}>{data.subtitle}</p>
             {data.hint && (
               <p style={{ color: OCEAN, fontSize: 14, fontWeight: 700, lineHeight: 1.45, margin: "10px auto 0", maxWidth: 340 }}>
@@ -6561,6 +6582,18 @@ function polaroidWidth(n) {
   if (n <= 12) return 98;
   return 86;
 }
+// The one true thing a wrong answer leaves behind. Styled as a small map note rather
+// than an error: it is the same visual weight as the fact box on a CORRECT shot,
+// because a missed guess is meant to be worth as much to learn from as a right one.
+function MissLesson({ text }) {
+  return (
+    <div style={{ background: "#FFF8E6", border: `1px solid ${GOLD}`, borderLeft: `4px solid ${GOLD}`, borderRadius: 8, padding: "10px 12px", textAlign: "left" }}>
+      <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 10, letterSpacing: "0.16em", color: CORAL, marginBottom: 4 }}>🧭 WHERE YOU ARE</div>
+      <p style={{ margin: 0, color: INK, fontSize: 14.5, lineHeight: 1.5 }}>{text}</p>
+    </div>
+  );
+}
+
 function Polaroid({ p, w = 172 }) {
   const s = w / 172; // everything below is the 172px design, scaled
   return (
