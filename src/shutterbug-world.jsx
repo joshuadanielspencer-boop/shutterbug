@@ -6801,10 +6801,10 @@ function DeskDog({ days, beat, flying, isExplore }) {
     : isExplore ? "stand"
     : (typeof days === "number" && days > 0 && days <= 1.5) ? "lying"
     : "sit";
+  // Sized off the viewport height, not fixed: the itinerary column is already tall,
+  // and a fixed 108px dog was what tipped it over the bottom edge of a 900px window —
+  // she was cut off at the paws, which is worse than small.
   return (
-    {/* Sized off the viewport height, not fixed: the itinerary column is already
-        tall, and a fixed 108px dog was the thing that tipped it over the bottom edge
-        of a 900px window — she was cut off at the paws, which is worse than small. */}
     <div aria-hidden="true" style={{ marginTop: 10, display: "flex", justifyContent: "center", pointerEvents: "none" }}>
       <img src={`${UI}dog/${DOG_POSES[pose]}`} alt=""
         style={{ width: "min(104px, 11vh)", height: "auto", display: "block", filter: "drop-shadow(0 6px 8px rgba(16,38,46,0.34))" }} />
