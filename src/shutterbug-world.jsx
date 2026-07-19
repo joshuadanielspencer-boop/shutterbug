@@ -341,7 +341,10 @@ const routeCost = (order) => legCost(order, CONTINENT_PIN, HUB);
 // home (which needs a par route AND no wrong shots), and full marks on the quiz.
 const tourMaxScore = (nReqs, difficulty) => {
   const tm = TOUR_MODES[difficulty];
-  return nReqs * tm.points + tm.slack * tm.dayPoints + Math.min(5, nReqs) * QUIZ_BONUS;
+  // The review now asks one question per photo brought home, so the quiz ceiling is
+  // nReqs, not a flat 5. Left at 5 this under-reported a long perfect run as short of
+  // 100% (the score includes bonuses the max didn't count).
+  return nReqs * tm.points + tm.slack * tm.dayPoints + nReqs * QUIZ_BONUS;
 };
 
 // ---- Themed Expeditions: guided, curated Grand Tours around a single learning ----
@@ -977,8 +980,10 @@ const pickCountryCityIds = (continent, country, mustInclude, cap) => {
 
 // The best score a game could reach: every photo landed (points each), the small
 // efficient-route day bonus, and full marks on the homecoming review quiz.
+// One review question per assignment (see startHomecoming), so the quiz ceiling
+// scales with the run rather than sitting at a flat 5.
 const maxScoreFor = (nAssign, mode) =>
-  nAssign * mode.points + dayBonus(mode.slack) + Math.min(5, nAssign) * QUIZ_BONUS;
+  nAssign * mode.points + dayBonus(mode.slack) + nAssign * QUIZ_BONUS;
 
 // Rank on the FRACTION of the achievable max, so a perfect Easy run and a
 // perfect Hard run both earn the top title regardless of raw points.
@@ -1679,10 +1684,18 @@ export default function ShutterbugWorld() {
         setPhase("city");
       },
       continent: (c) => { setScreen("play"); setPickedContinent(c); setPickedCountry(null); setPhase("country"); },
+      // Fill the album with real places, then jump to the review or the results —
+      // the two screens whose layout is hardest to reach and easiest to break.
+      album: (ids) => setAlbum((ids || []).map((id) => {
+        const l = BY_ID[id];
+        return { id, subject: l.subject, city: l.city, country: l.country, flag: l.flag, fact: l.fact, photo: l.photo };
+      })),
+      homecoming: () => startHomecoming(),
     };
     return () => { delete window.__sbw; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    // No dep array on purpose: re-registering every render keeps these bound to the
+    // CURRENT closures, so `homecoming()` sees the album a previous call just set.
+  });
   const poppedCountryRef = useRef(null); // country whose arrival popup already showed this leg
   const [dreamPending, setDreamPending] = useState(false); // Jonah's dream just fulfilled — show the win scene
   const pendingRunRef = useRef(null); // start action to run after the intro story
@@ -2311,7 +2324,12 @@ export default function ShutterbugWorld() {
     const ids = album.map((p) => p.id);
     setQuizBonus(0);
     if (!ids.length) { setScreen("end"); return; }
-    const questions = buildQuiz(ids, Math.min(5, ids.length));
+    // One question per photo brought home, so the review scales with the trip: a
+    // three-assignment Scout run is asked three, a fourteen-assignment Expert run
+    // fourteen. It used to be capped at five regardless, which meant a long run's
+    // last nine places were never reviewed at all — and buildQuiz takes the FIRST n
+    // in album order, so it was always the same early five.
+    const questions = buildQuiz(ids, ids.length);
     setQuiz({ questions, i: 0, answeredIdx: null, score: 0, correctCount: 0, streak: 0, lastGain: 0, done: false, best: null, homecoming: true });
     setScreen("homecoming");
   }
@@ -3471,13 +3489,34 @@ export default function ShutterbugWorld() {
                   const wasCorrect = q.options[quiz.answeredIdx].correct;
                   const tidbit = (loc && ANECDOTES[loc.id]) || (loc && loc.fact) || "";
                   const wrongLine = WRONG_REACTIONS[quiz.i % WRONG_REACTIONS.length];
+                  const lead = wasCorrect ? "That's the one!" : wrongLine;
+                  const body = wasCorrect ? tidbit : q.explain;
                   return (
                     <div style={{ marginTop: 12, background: wasCorrect ? "#EAF6EF" : "#fff", border: `1px solid ${wasCorrect ? GREEN : PAPER_LINE}`, borderRadius: 10, padding: "12px 14px", fontSize: 15.5, color: INK, lineHeight: 1.55, textAlign: "left" }}>
-                      <b style={{ color: wasCorrect ? GREEN : CORAL }}>{wasCorrect ? "That's the one!" : wrongLine}</b>{" "}
-                      <TypeLine text={wasCorrect ? tidbit : q.explain} reduced={prefersReduced} inline style={{ display: "inline" }} />
+                      {/* The box is its FINAL size from the first frame. TypeLine's
+                          `inline` mode reserves no space, so this panel used to grow
+                          line by line as Jonah talked — which shoved the button below
+                          it down the page and off the bottom of the screen mid-
+                          sentence. A hidden full-text layer holds the height open and
+                          the animated copy is laid over it. */}
+                      <span style={{ display: "grid" }}>
+                        <span aria-hidden="true" style={{ gridArea: "1 / 1", visibility: "hidden" }}><b>{lead}</b>{" "}{body}</span>
+                        <span style={{ gridArea: "1 / 1" }}>
+                          <b style={{ color: wasCorrect ? GREEN : CORAL }}>{lead}</b>{" "}
+                          <TypeLine text={body} reduced={prefersReduced} inline style={{ display: "inline" }} />
+                        </span>
+                      </span>
                     </div>
                   );
                 })()}
+                {/* The onward button lives directly under Jonah's own text box, so a
+                    child who has just finished reading his answer doesn't have to look
+                    across the page (or scroll) to find how to go on. */}
+                {answered && (
+                  <button onClick={nextQuiz} style={{ ...primaryBtn, margin: "14px 0 0", padding: "10px 22px", width: "100%" }}>
+                    {quiz.i + 1 >= quiz.questions.length ? "Show him the rest →" : "Next question →"}
+                  </button>
+                )}
               </div>
             )}
 
@@ -3488,8 +3527,11 @@ export default function ShutterbugWorld() {
                 <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 13, fontWeight: 700, color: CORAL }}>{home ? `${quiz.correctCount} right` : `${quiz.score} pts${quiz.streak > 1 ? ` · 🔥${quiz.streak}` : ""}`}</span>
               </div>
               {q.photo && (
-                <div style={{ margin: "0 auto 14px", maxWidth: 380, borderRadius: 8, overflow: "hidden", border: `1px solid ${PAPER_LINE}` }}>
-                  <Photo photo={q.photo} alt="Quiz landmark" size={360} full />
+                // Height-capped, not just width-capped. A tall portrait shot at 380px
+                // wide ran to ~450px and pushed the answer buttons off the bottom of a
+                // 720px-high window — the child then had to scroll to find the options.
+                <div style={{ margin: "0 auto 12px", maxWidth: 300, maxHeight: "30vh", borderRadius: 8, overflow: "hidden", border: `1px solid ${PAPER_LINE}`, display: "flex", justifyContent: "center" }}>
+                  <Photo photo={q.photo} alt="Quiz landmark" size={300} full />
                 </div>
               )}
               {q.bigEmoji && (
@@ -3524,12 +3566,14 @@ export default function ShutterbugWorld() {
                   </div>
                 );
               })()}
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 16 }}>
-                {home
-                  ? <span />/* the homecoming review must be answered in full — no skip */
-                  : <button onClick={() => { setQuiz(null); setGameMode("assignments"); setScreen("start"); }} style={{ background: "none", border: "none", color: INK, opacity: 0.6, fontSize: 13, cursor: "pointer", fontWeight: 700 }}>← Quit</button>}
-                {answered && <button onClick={nextQuiz} style={{ ...primaryBtn, margin: 0, padding: "10px 22px" }}>{quiz.i + 1 >= quiz.questions.length ? (home ? "Show him the rest →" : "See results") : "Next question →"}</button>}
-              </div>
+              {/* On the homecoming the onward button sits under Jonah's text instead
+                  (see above), so this footer is only the standalone quiz's. */}
+              {!home && (
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 16 }}>
+                  <button onClick={() => { setQuiz(null); setGameMode("assignments"); setScreen("start"); }} style={{ background: "none", border: "none", color: INK, opacity: 0.6, fontSize: 13, cursor: "pointer", fontWeight: 700 }}>← Quit</button>
+                  {answered && <button onClick={nextQuiz} style={{ ...primaryBtn, margin: 0, padding: "10px 22px" }}>{quiz.i + 1 >= quiz.questions.length ? "See results" : "Next question →"}</button>}
+                </div>
+              )}
             </div>
           </div>
         </DeskBoard>
@@ -3850,18 +3894,24 @@ export default function ShutterbugWorld() {
               what he's saying. Under it, the reason to go again. */}
           {/* The developed roll on the LEFT, Uncle's word on the RIGHT — the pictures
               you brought back beside the man you brought them back to. */}
-          <div style={{ display: "flex", alignItems: "flex-start", gap: 22, margin: "18px auto 0", maxWidth: 1040, flexWrap: "wrap", justifyContent: "center" }}>
+          <div style={{ display: "flex", alignItems: "flex-start", gap: 22, margin: "12px auto 0", maxWidth: 1180, flexWrap: "wrap", justifyContent: "center" }}>
             {album.length > 0 && (
               <div style={{ flex: "1.5 1 440px", minWidth: 300 }}>
-                <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.18em", color: CORAL, marginBottom: 10, textAlign: "left" }}>📸 YOUR ROLL, DEVELOPED</div>
-                <div style={{ display: "flex", gap: 14, flexWrap: "wrap", justifyContent: "flex-start" }}>
-                  {album.map((p, i) => (<Polaroid key={`${p.id}-${i}`} p={p} />))}
+                <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.18em", color: CORAL, marginBottom: 8, textAlign: "left" }}>📸 YOUR ROLL, DEVELOPED</div>
+                <div style={{ display: "flex", gap: Math.max(8, Math.round(14 * polaroidWidth(album.length) / 172)), flexWrap: "wrap", justifyContent: "flex-start" }}>
+                  {album.map((p, i) => (<Polaroid key={`${p.id}-${i}`} p={p} w={polaroidWidth(album.length)} />))}
                 </div>
               </div>
             )}
-            {endLine && (
-              <div style={{ flex: "1 1 300px", minWidth: 270, display: "flex", flexDirection: "column", gap: 14 }}>
-                <NigelScene mood={endWon() ? "endWin" : "endLose"} style={{ width: "100%" }} />
+            {/* The right-hand column carries EVERYTHING that isn't the roll: Jonah,
+                his word on the trip, the record chips, any badge earned, and the way
+                onward. All of that used to stack down the page under both columns,
+                which is what put the buttons below the fold on a widescreen — the
+                left column is tall (it's photographs), so the page was as tall as the
+                photos PLUS all of this. Beside them, it costs no height at all. */}
+            <div style={{ flex: "1 1 330px", minWidth: 300, maxWidth: 460, display: "flex", flexDirection: "column", gap: 12 }}>
+              {endLine && <NigelScene mood={endWon() ? "endWin" : "endLose"} style={{ width: "100%" }} />}
+              {endLine && (
                 <div style={{ ...CARD_SURFACE, border: `2px solid ${GOLD}`, borderRadius: 14, padding: "16px 18px", textAlign: "left" }}>
                   <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.16em", color: CORAL, marginBottom: 5 }}>{GRANDPA.name.toUpperCase()}</div>
                   <p style={{ margin: 0, color: INK, fontSize: 17, lineHeight: 1.5 }}>{endLine}</p>
@@ -3893,14 +3943,12 @@ export default function ShutterbugWorld() {
                     </div>
                   )}
                 </div>
-              </div>
-            )}
-          </div>
+              )}
 
           {isDailyEnd && dailyBanked && <DailyShare banked={dailyBanked} />}
 
           {profileName && (lastResult?.isBest || lastResult?.isBestTime) && (
-            <div style={{ marginTop: 10, display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap" }}>
+            <div style={{ display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap" }}>
               {lastResult.isBest && (
                 <span style={{ display: "inline-flex", alignItems: "center", gap: 7, background: GOLD, color: INK, fontWeight: 800, fontSize: 14, padding: "5px 14px 5px 6px", borderRadius: 22 }}>
                   <ArtBadge art={RECORD_ART.bestScore} emoji="★" size={30} /> New best score!
@@ -3916,7 +3964,7 @@ export default function ShutterbugWorld() {
 
 
           {profileName && newBadges.length > 0 && (
-            <div style={{ marginTop: 12 }}>
+            <div>
               <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.18em", color: CORAL, marginBottom: 6 }}>🏅 ACHIEVEMENT{newBadges.length > 1 ? "S" : ""} UNLOCKED!</div>
               <div style={{ display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap" }}>
                 {newBadges.map((b) => (
@@ -3932,7 +3980,7 @@ export default function ShutterbugWorld() {
           )}
 
           {dreamPending && (
-            <div style={{ marginTop: 24, textAlign: "center" }}>
+            <div style={{ textAlign: "center" }}>
               <div style={{ background: "linear-gradient(160deg, #1C3A5E, #16324E)", color: "#F4E3B8", borderRadius: 12, padding: "14px 18px", maxWidth: 460, margin: "0 auto" }}>
                 <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.18em", marginBottom: 6 }}>🌍 YOU'VE BROUGHT HIM THE WORLD</div>
                 <p style={{ margin: 0, fontSize: 14, lineHeight: 1.5, color: "#fff" }}>Uncle Jonah has something to say to you…</p>
@@ -3940,16 +3988,18 @@ export default function ShutterbugWorld() {
               </div>
             </div>
           )}
-          <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap", marginTop: 26 }}>
-            <button onClick={() => { startMusicMaybe(); enterMeetScreen(); }} style={primaryBtn}>Continue your adventure ✈</button>
-            <button onClick={() => { startMusicMaybe(); setScreen("start"); }} style={{ ...primaryBtn, background: "transparent", color: INK, border: `2px solid ${INK}`, boxShadow: "none" }}>
-              🏠 Return to main screen
+          <div style={{ display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap", marginTop: 4 }}>
+            <button onClick={() => { startMusicMaybe(); enterMeetScreen(); }} style={{ ...primaryBtn, marginTop: 0, padding: "12px 22px", fontSize: 15 }}>Continue your adventure ✈</button>
+            <button onClick={() => { startMusicMaybe(); setScreen("start"); }} style={{ ...primaryBtn, marginTop: 0, padding: "12px 22px", fontSize: 15, background: "transparent", color: INK, border: `2px solid ${INK}`, boxShadow: "none" }}>
+              🏠 Main screen
             </button>
             {profileName && (
-              <button onClick={() => setPassportOpen(true)} style={{ ...primaryBtn, background: "transparent", color: CORAL, border: `2px solid ${CORAL}`, boxShadow: "none" }}>
-                📕 View passport
+              <button onClick={() => setPassportOpen(true)} style={{ ...primaryBtn, marginTop: 0, padding: "12px 22px", fontSize: 15, background: "transparent", color: CORAL, border: `2px solid ${CORAL}`, boxShadow: "none" }}>
+                📕 Passport
               </button>
             )}
+          </div>
+            </div>
           </div>
         </DeskBoard>
         {passportOpen && <PassportModal profile={profileName ? getProfile(profileName) : null} onClose={() => setPassportOpen(false)} />}
@@ -6460,19 +6510,34 @@ const shortSubject = (s) => String(s || "").split(/\s*[,—–]\s*/)[0].trim();
 // name in Uncle's handwriting, nothing else. The blurb and photo credit that used to
 // crowd underneath now live only on the place's own card, so the roll reads as a wall
 // of pictures a child took, not a page of captions.
-function Polaroid({ p }) {
+// How wide each print is, given how many came home. A three-shot Scout roll gets big
+// keepsake prints; a fourteen-shot Expert roll shrinks them so the whole roll still
+// fits beside Uncle Jonah without the results screen growing a scrollbar. Everything
+// inside scales off `w`, so a print stays a print at every size.
+// Sized so the tallest case still clears a 720px-high window — the shortest screen
+// the game is meant to run in (rule 4: a desktop window, no scrolling). A print's
+// height is about 0.74w plus its caption, so each step down buys ~3 rows x 6px.
+function polaroidWidth(n) {
+  if (n <= 4) return 168;
+  if (n <= 6) return 142;
+  if (n <= 9) return 114;
+  if (n <= 12) return 98;
+  return 86;
+}
+function Polaroid({ p, w = 172 }) {
+  const s = w / 172; // everything below is the 172px design, scaled
   return (
-    <div style={{ width: 172, background: "#fff", border: `1px solid ${PAPER_LINE}`, borderRadius: 3, padding: "8px 8px 14px", transform: `rotate(${(p.id.charCodeAt(0) % 5) - 2}deg)`, boxShadow: "0 4px 10px rgba(16,38,46,0.22)" }}>
+    <div style={{ width: w, background: "#fff", border: `1px solid ${PAPER_LINE}`, borderRadius: 3, padding: `${Math.round(8 * s)}px ${Math.round(8 * s)}px ${Math.round(14 * s)}px`, transform: `rotate(${(p.id.charCodeAt(0) % 5) - 2}deg)`, boxShadow: "0 4px 10px rgba(16,38,46,0.22)" }}>
       {/* The print FILLS the window. It used to be a fixed 96px square floating in a
           156px-wide frame, which left a cream band down either side and made a
           developed photograph look like a postage stamp someone had centred. An
           icon placeholder still sits in the middle at its own size. */}
-      <div style={{ background: PAPER, display: "flex", alignItems: "center", justifyContent: "center", height: 128, borderRadius: 2, overflow: "hidden" }}>
+      <div style={{ background: PAPER, display: "flex", alignItems: "center", justifyContent: "center", height: Math.round(128 * s), borderRadius: 2, overflow: "hidden" }}>
         {p.photo?.src
-          ? <Photo photo={p.photo} icon={p.icon} alt={p.subject} size={128} full />
-          : <Photo photo={p.photo} icon={p.icon} alt={p.subject} size={96} />}
+          ? <Photo photo={p.photo} icon={p.icon} alt={p.subject} size={Math.round(128 * s)} full />
+          : <Photo photo={p.photo} icon={p.icon} alt={p.subject} size={Math.round(96 * s)} />}
       </div>
-      <div style={{ fontFamily: HAND, fontWeight: 700, color: INK, fontSize: 21, lineHeight: 1.08, marginTop: 9, textAlign: "center" }}>
+      <div style={{ fontFamily: HAND, fontWeight: 700, color: INK, fontSize: Math.max(14, Math.round(21 * s)), lineHeight: 1.08, marginTop: Math.round(9 * s), textAlign: "center" }}>
         <span style={{ fontSize: "1.3em", verticalAlign: "-0.1em" }}>{p.flag}</span> {shortSubject(p.subject)}
       </div>
     </div>
