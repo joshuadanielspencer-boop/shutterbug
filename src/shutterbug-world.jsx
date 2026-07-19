@@ -1483,6 +1483,17 @@ export default function ShutterbugWorld() {
     return () => { ok = false; };
   }, []);
   const [pending, setPending] = useState(null); // result popup that pauses play until dismissed
+  // How the dog on the desk is reacting: "good" | "bad" | null. Set when a shot
+  // resolves and cleared on a timer, so her reaction outlives the result popup that
+  // covers her while it's open (see DeskDog).
+  const [dogBeat, setDogBeat] = useState(null);
+  const dogBeatRef = useRef(null);
+  const wagDog = (kind) => {
+    clearTimeout(dogBeatRef.current);
+    setDogBeat(kind);
+    dogBeatRef.current = setTimeout(() => setDogBeat(null), 7000);
+  };
+  useEffect(() => () => clearTimeout(dogBeatRef.current), []);
   // Mr. O's double-points riddle: a blocking popup that appears at least once every
   // five shots (at a random shot within each window). { data, choices, answeredIdx }.
   const [riddle, setRiddle] = useState(null);
@@ -2939,6 +2950,7 @@ export default function ShutterbugWorld() {
       } else {
         setScore((s) => s + gain + pBonus);
         rewardSfx(perfect ? "perfect" : "success");
+        wagDog("good");
         // "Perfect shot!" is now earned — a first-try shot. A shot filed after a
         // wrong guess still counts, but it's a plainer "Nice shot!".
         setPending({ kind: "correct", tone: "good", emoji: perfect ? "🎯" : "✅",
@@ -2965,6 +2977,7 @@ export default function ShutterbugWorld() {
       if (d <= 0) outOfDays(`That's ${clicked.subject}, not ${wantTxt} — and the trip's over.`);
       else {
         sfx("fail");
+        wagDog("bad");
         missesRef.current[step] = (missesRef.current[step] || 0) + 1;
         const rightId = a.type === "specific" ? a.targetId : (cityPlan?.ids || []).find((oid) => BY_ID[oid] && BY_ID[oid].category === a.category);
         flashRight("city", rightId); // Scout: glow the right pin
@@ -4431,6 +4444,17 @@ export default function ShutterbugWorld() {
               {curioFound >= CURIOSITY_TOTAL && <span style={{ color: GREEN }}>· all found! 🎉</span>}
             </p>
           )}
+
+          {/* Jonah's dog came along. She sits at the bottom of the itinerary column,
+              on the desk — the one warm thing on a screen that is otherwise all
+              instruments — and her posture tracks how the trip is going. A child reads
+              a dog's posture faster than a sentence, so she's a second, wordless
+              channel for the same state the panel above states in words.
+
+              She is a SPRITE here, deliberately placed where Uncle Jonah isn't: he
+              already has her painted into every one of his scenes, lying by the fire,
+              and a cut-out dog beside a painted dog would read as a bug. */}
+          <DeskDog days={days} beat={dogBeat} flying={flying} isExplore={isExplore} />
 
           {/* The research clue no longer persists in the panel — the player taps the
               Field Guide tool again to re-read it (free after the first look). */}
@@ -6751,6 +6775,38 @@ function polaroidWidth(n) {
   if (n <= 12) return 98;
   return 86;
 }
+// ---- Jonah's dog, along for the trip -----------------------------------------
+// Six poses, chosen by what just happened. She never blocks anything, never takes a
+// click, and says nothing — she is tone, not information, so every state she reacts
+// to is also stated in words elsewhere on the screen (rule 4: nothing meaningful is
+// carried by the picture alone).
+const DOG_POSES = {
+  bow: "dog_pose_03_play_bow.png",       // you got one right
+  tilt: "dog_pose_05_head_tilt_sit.png", // you got one wrong
+  walk: "dog_pose_04_walking.png",       // in the air
+  lying: "dog_pose_06_lying_down.png",   // the days have nearly run out
+  sit: "dog_pose_02_sitting_paw_up.png", // waiting on you
+  stand: "dog_pose_01_standing.png",     // roaming, no clock
+};
+function DeskDog({ days, beat, flying, isExplore }) {
+  // Reacting to `pending` directly would be invisible: the result popup covers the
+  // screen for exactly as long as pending is set, so she'd finish celebrating before
+  // the child could see her. `beat` is set when a shot resolves and cleared a few
+  // seconds LATER, so her reaction is still there when the popup is dismissed.
+  const pose = flying ? "walk"
+    : beat === "good" ? "bow"
+    : beat === "bad" ? "tilt"
+    : isExplore ? "stand"
+    : (typeof days === "number" && days > 0 && days <= 1.5) ? "lying"
+    : "sit";
+  return (
+    <div aria-hidden="true" style={{ marginTop: 14, display: "flex", justifyContent: "center", pointerEvents: "none" }}>
+      <img src={`${UI}dog/${DOG_POSES[pose]}`} alt=""
+        style={{ width: 108, height: "auto", display: "block", filter: "drop-shadow(0 6px 8px rgba(16,38,46,0.34))" }} />
+    </div>
+  );
+}
+
 // The one true thing a wrong answer leaves behind. Styled as a small map note rather
 // than an error: it is the same visual weight as the fact box on a CORRECT shot,
 // because a missed guess is meant to be worth as much to learn from as a right one.
