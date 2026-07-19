@@ -572,9 +572,28 @@ Ideas, best first:
 4. **She is the Explore-mode companion.** Explore has no pressure and no Mr O; a dog
    trotting along the bottom of the map would give that mode its own character.
 
-Recommendation: **(1) unconditionally** — it is nearly free and strictly additive —
-and ask Joshua whether he wants (2). Her name is also unwritten; that's his call, and
-naming her is what turns her from set-dressing into a character.
+> **✅ SHIPPED 2026-07-19 — but NOT as option (1). Read this before acting on the
+> list above.**
+>
+> Option (1) said to put her on Jonah's screens. That was written before I opened the
+> art files, and it is **wrong**: she is already *painted into* every one of Jonah's
+> scenes, lying by the fire. A cut-out sprite next to a painted dog reads as a bug,
+> not as a feature. The sprites have to go somewhere Jonah isn't.
+>
+> What shipped instead: **she came along on the trip.** She sits on the travel desk
+> under the itinerary column and her pose tracks the run — play bow after a good
+> shot, head tilt after a miss, walking mid-flight, lying down when the days have
+> nearly run out, standing on Explore where there's no clock. `DeskDog` in
+> `shutterbug-world.jsx`.
+>
+> One trap worth remembering if this is ever reworked: reacting to `pending` (the
+> result popup) is invisible, because `pending` is set for exactly as long as a
+> full-screen popup is covering her. Her mood is its own state (`dogBeat`), set when
+> a shot resolves and cleared seven seconds later, so the reaction survives the popup.
+>
+> Options (2), (3) and (4) are all still open and none of them conflict with what
+> shipped. **Her name is still unwritten** — that's Joshua's call, and naming her is
+> what would turn her from set-dressing into a character.
 
 ## 11. The music, honestly (2026-07-19)
 
