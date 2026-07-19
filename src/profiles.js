@@ -516,3 +516,93 @@ function continentTotals(list) {
   for (const c of list) if (c.mastered && out[c.continent]) out[c.continent].mastered += 1;
   return out;
 }
+
+// ===========================================================================
+// Export / import a passport as a file.
+//
+// Everything above persists to ONE localStorage key. That is fine until it isn't:
+// clearing site data, "reset your browser" advice, a new laptop, or Safari's own
+// eviction of unused site storage all wipe months of a child's progress with no
+// warning and nothing to restore from. There is no backend and no account, so a
+// file the family keeps is the only recovery there can be.
+//
+// The envelope is deliberately more than the bare profile. `app` and `kind` let the
+// importer reject a JSON file that isn't a passport instead of merging nonsense into
+// the store, and `version` is the hook for migrating an old export if the profile
+// shape ever changes. When a backend does arrive (see docs/remaining-work.md §7),
+// this is the same serialization it would sync — which is why it's worth having now.
+// ===========================================================================
+
+export const PASSPORT_FILE_VERSION = 1;
+
+// One traveler's whole record, ready to be written to disk. Returns null if there's
+// no such traveler. `at` is passed in rather than read from the clock so a caller
+// (or a test) can stamp it deterministically.
+export function exportPassport(name, at = Date.now()) {
+  const p = getProfile(name);
+  if (!p) return null;
+  return {
+    app: "shutterbug",
+    kind: "passport",
+    version: PASSPORT_FILE_VERSION,
+    exported: at,
+    profile: p,
+  };
+}
+
+// A filename a parent can recognise a year later: shutterbug-ana-2026-07-19.json
+export function passportFilename(name, at = Date.now()) {
+  const slug = String(name || "traveler").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "traveler";
+  const d = new Date(at);
+  const pad = (n) => String(n).padStart(2, "0");
+  return `shutterbug-${slug}-${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}.json`;
+}
+
+// Read a parsed file back in.
+//
+// It NEVER overwrites an existing traveler. Importing onto a name that's already in
+// use lands as "Ana (2)" instead, because the failure mode of guessing wrong here is
+// asymmetric: a duplicate traveler is a minor annoyance the family can delete, and a
+// silently clobbered passport is the exact loss this feature exists to prevent.
+//
+// Returns { ok, name, error }.
+export function importPassport(data) {
+  if (!data || typeof data !== "object") return { ok: false, error: "That file isn't a Shutterbug passport." };
+  if (data.app !== "shutterbug" || data.kind !== "passport") {
+    return { ok: false, error: "That file isn't a Shutterbug passport." };
+  }
+  if (typeof data.version !== "number" || data.version > PASSPORT_FILE_VERSION) {
+    return { ok: false, error: "That passport was saved by a newer version of Shutterbug." };
+  }
+  const p = data.profile;
+  if (!p || typeof p !== "object" || typeof p.name !== "string" || !p.name.trim()) {
+    return { ok: false, error: "That passport file is damaged — no traveler in it." };
+  }
+  const store = read();
+  // Keep every key the file carries. Deliberately NOT a whitelist: setProfileFlag
+  // writes arbitrary keys, so a whitelist here would silently drop any flag added
+  // after this function was written, and the bug would look like lost progress.
+  const incoming = { ...p };
+  let name = String(p.name).slice(0, MAX_NAME).trim();
+  if (store.profiles[name]) {
+    let n = 2;
+    while (store.profiles[`${name} (${n})`] && n < 100) n++;
+    name = `${name} (${n})`;
+  }
+  incoming.name = name;
+  if (!incoming.created) incoming.created = Date.now();
+  incoming.loc = incoming.loc && typeof incoming.loc === "object" ? incoming.loc : {};
+  incoming.best = incoming.best && typeof incoming.best === "object" ? incoming.best : {};
+  store.profiles[name] = incoming;
+  if (!write(store)) return { ok: false, error: "Couldn't save — this browser's storage is full or blocked." };
+  return { ok: true, name };
+}
+
+// Parse-then-import, for a file the user picked. Kept separate from importPassport
+// so the pure object path stays testable without a File.
+export function importPassportText(text) {
+  let data;
+  try { data = JSON.parse(text); }
+  catch { return { ok: false, error: "That file isn't readable JSON." }; }
+  return importPassport(data);
+}

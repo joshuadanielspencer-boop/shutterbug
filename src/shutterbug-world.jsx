@@ -26,7 +26,8 @@ import { dailyResult, recordDaily, dailyStreak } from "./profiles.js";
 import { listProfiles, lastProfileName, getProfile, createProfile, setLastProfile,
   deleteProfile, renameProfile, setAvatar, setProfileFlag, recordGame, recordExplore, recordQuiz,
   weightedOrder, freshFirst, passportData, achievements, topScores, storageAvailable,
-  careerRank, unlocks, UNLOCK_REQ, markCuriositySeen, curiositiesSeen, nextGoal } from "./profiles.js";
+  careerRank, unlocks, UNLOCK_REQ, markCuriositySeen, curiositiesSeen, nextGoal,
+  exportPassport, passportFilename, importPassportText } from "./profiles.js";
 import { CURIOSITY_DECK_BY_ID, CURIOSITY_TOTAL } from "./data/curiosities.js";
 import { cityMissLesson, categoryMissLesson, continentMissLesson } from "./data/misses.js";
 import { DIFFICULTY_ART, MODE_ART, THEME_ART, CATEGORY_ART, ACHIEVEMENT_ART,
@@ -1693,6 +1694,8 @@ export default function ShutterbugWorld() {
       })),
       homecoming: () => startHomecoming(),
       pending: (p) => { setScreen("play"); setPending(p); },
+      profile: (n) => setProfileName(n),
+      passport: () => setPassportOpen(true),
     };
     return () => { delete window.__sbw; };
     // No dep array on purpose: re-registering every render keeps these bound to the
@@ -5506,6 +5509,63 @@ function PassportModal({ profile, onClose }) {
         <button onClick={() => setPage((p) => Math.min(lastPage, p + 1))} disabled={page >= lastPage} aria-label="Next page"
           style={{ background: "rgba(255,255,255,0.14)", border: "1.5px solid rgba(244,236,216,0.5)", color: "#F4ECD8", borderRadius: 8, width: 40, height: 34, fontSize: 18, cursor: page >= lastPage ? "default" : "pointer", opacity: page >= lastPage ? 0.4 : 1 }}>›</button>
       </div>
+      {profile && <PassportBackup profile={profile} />}
+    </div>
+  );
+}
+
+// ---- Keeping a passport safe --------------------------------------------------
+// All the progress lives in one localStorage key, so clearing site data — or a new
+// laptop, or Safari deciding to evict storage it hasn't seen used lately — takes
+// months of it with no warning. With no backend and no accounts, a file the family
+// keeps somewhere is the only restore there is. Both halves sit under the passport
+// because that's where a parent goes looking for "the record".
+function PassportBackup({ profile }) {
+  const [note, setNote] = useState(null);
+  const fileRef = useRef(null);
+  const save = () => {
+    const at = Date.now();
+    const data = exportPassport(profile.name, at);
+    if (!data) { setNote({ bad: true, text: "Couldn't read that traveler." }); return; }
+    // Object URL rather than a data: URI — a long passport exceeds what some
+    // browsers will accept in a data: URL, and it fails silently when it does.
+    const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }));
+    const a = document.createElement("a");
+    a.href = url; a.download = passportFilename(profile.name, at);
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    setNote({ bad: false, text: `Saved ${passportFilename(profile.name, at)}` });
+  };
+  const load = (e) => {
+    const f = e.target.files && e.target.files[0];
+    e.target.value = ""; // so picking the same file twice still fires onChange
+    if (!f) return;
+    const r = new FileReader();
+    r.onload = () => {
+      const res = importPassportText(String(r.result));
+      setNote(res.ok
+        ? { bad: false, text: `Loaded "${res.name}" — pick them on the travelers screen.` }
+        : { bad: true, text: res.error });
+    };
+    r.onerror = () => setNote({ bad: true, text: "Couldn't read that file." });
+    r.readAsText(f);
+  };
+  const btn = {
+    background: "rgba(255,255,255,0.14)", border: "1.5px solid rgba(244,236,216,0.5)", color: "#F4ECD8",
+    borderRadius: 8, padding: "7px 14px", fontSize: 12.5, fontWeight: 700, cursor: "pointer",
+  };
+  return (
+    <div onClick={(e) => e.stopPropagation()} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 7, marginTop: 4 }}>
+      <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+        <button onClick={save} style={btn} title="Save this passport to a file you can keep">⬇ Save a copy</button>
+        <button onClick={() => fileRef.current?.click()} style={btn} title="Load a passport from a file">⬆ Restore from a file</button>
+        <input ref={fileRef} type="file" accept="application/json,.json" onChange={load}
+          style={{ position: "absolute", width: 1, height: 1, opacity: 0, pointerEvents: "none" }} tabIndex={-1} aria-hidden="true" />
+      </div>
+      {note && (
+        <p role="status" style={{ margin: 0, fontSize: 12, fontWeight: 700, maxWidth: 460, textAlign: "center", lineHeight: 1.4,
+          color: note.bad ? "#F6B0A0" : "#BFE6CB" }}>{note.text}</p>
+      )}
     </div>
   );
 }
