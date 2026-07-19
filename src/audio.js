@@ -454,13 +454,25 @@ export const MUSIC = (() => {
       }
     } catch { /* music must never break gameplay */ }
   };
-  const startDrone = (t) => {
+  const DRONE_FULL = 0.05;   // the drone's level under the jig melody
+  const DRONE_BED = 0.032;   // quieter still on the splash, where it plays alone
+  const startDrone = (t, peak = DRONE_FULL, rampSecs = 0.5) => {
     for (const f of [73.42, 110.0]) { // D2 + A2 — the pipe's tonic and fifth
       const o = ctx.createOscillator(); o.type = "sawtooth"; o.frequency.value = f;
       const lp = ctx.createBiquadFilter(); lp.type = "lowpass"; lp.frequency.value = 700;
-      const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.05, t + 0.5);
+      const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(peak, t + rampSecs);
       o.connect(lp); lp.connect(g); g.connect(jigBus); o.start(t);
       drone.push({ o, g });
+    }
+  };
+  // Bring an already-sounding drone up (or down) to a level over `secs`.
+  const rampDrone = (peak, secs) => {
+    if (!ctx) return;
+    const t = ctx.currentTime;
+    for (const d of drone) {
+      d.g.gain.cancelScheduledValues(t);
+      d.g.gain.setValueAtTime(Math.max(0.0001, d.g.gain.value), t);
+      d.g.gain.exponentialRampToValueAtTime(Math.max(0.0001, peak), t + secs);
     }
   };
   // How long the background music takes to fade out — a slow, unhurried 4-second
@@ -480,6 +492,25 @@ export const MUSIC = (() => {
   // loop is faded out at the map).
   const wake = (c) => { master.gain.cancelScheduledValues(c.currentTime); master.gain.setTargetAtTime(0.16, c.currentTime, 0.3); };
   return {
+    // The SPLASH bed: the pipes' drone alone, no melody — the sound of a piper with
+    // the bag filled, about to start. It is deliberately the same D2+A2 the jig's own
+    // drone uses, because the jig is in D Mixolydian: when "Begin your adventure"
+    // starts the melody over the top, the drone underneath simply swells and carries
+    // on, so the two are the same piece of music rather than a cut between two.
+    //
+    // Web Audio cannot sound before a user gesture, so this may start silent; the
+    // caller re-arms it on the first interaction (see startSplashDrone in the game).
+    droneBed() {
+      try {
+        const c = ac(); if (!c) return;
+        wake(c);
+        jigBus.gain.cancelScheduledValues(c.currentTime);
+        jigBus.gain.setValueAtTime(Math.max(0.0001, jigBus.gain.value), c.currentTime);
+        jigBus.gain.linearRampToValueAtTime(1.0, c.currentTime + 2.0); // a slow swell in
+        if (drone.length) { rampDrone(DRONE_BED, 1.5); return; }
+        startDrone(c.currentTime + 0.05, DRONE_BED, 2.0);
+      } catch { /* ignore */ }
+    },
     // Start (or resume) the looping Scottish jig — splash + meet screens. On a
     // FRESH start one of the five jig phrases is picked at random; the bus fades
     // in over 1 second (and out over ~2s in fadeJig/stop).
@@ -490,6 +521,9 @@ export const MUSIC = (() => {
         jigBus.gain.cancelScheduledValues(c.currentTime);
         jigBus.gain.setValueAtTime(Math.max(0.0001, jigBus.gain.value), c.currentTime);
         jigBus.gain.linearRampToValueAtTime(1.0, c.currentTime + 1.0); // 1s fade-in
+        // A drone already sounding is the splash bed: swell it to full under the
+        // melody rather than layering a second pair of oscillators on top of it.
+        if (drone.length) rampDrone(DRONE_FULL, 0.8);
         if (running) return;
         running = true;
         // Chain THREE of the five phrases into one long set (~3× a single phrase),
@@ -500,7 +534,10 @@ export const MUSIC = (() => {
         activeMelody = order.flat();
         idx = 0; // start the chosen set from its first bar
         nextBeat = Math.max(nextBeat, c.currentTime + 0.15);
-        startDrone(c.currentTime + 0.1);
+        // Only if the splash bed isn't already holding one — otherwise the swell
+        // above is joined by a second pair of sawtooths on the same two pitches,
+        // which doubles the drone and puts a phasing beat under the opening.
+        if (!drone.length) startDrone(c.currentTime + 0.1);
         if (!timer) timer = setInterval(schedule, 200);
         schedule();
       } catch { /* ignore */ }

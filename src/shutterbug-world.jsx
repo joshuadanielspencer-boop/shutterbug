@@ -1696,6 +1696,31 @@ export default function ShutterbugWorld() {
     // No dep array on purpose: re-registering every render keeps these bound to the
     // CURRENT closures, so `homecoming()` sees the album a previous call just set.
   });
+  // ---- The splash bed ---------------------------------------------------------
+  // On the splash the pipes hold a quiet drone — the sound of a piper stood ready —
+  // and clicking "Begin your adventure" starts the melody over the top of it. Both
+  // are D Mixolydian over the same D2+A2 drone, so that transition is a swell into
+  // the tune rather than one piece of music being cut off by another.
+  //
+  // A browser will not let audio sound before the user has interacted with the page,
+  // and arriving at a splash screen is not an interaction. So this tries immediately
+  // (which works on a soft navigation, where the context is already unlocked) and
+  // otherwise waits for the first pointer or key event and tries once more.
+  useEffect(() => {
+    if (!musicOn || screen !== "start") return;
+    let done = false;
+    const go = () => { if (done) return; done = true; MUSIC.droneBed(); off(); };
+    const off = () => {
+      window.removeEventListener("pointerdown", go);
+      window.removeEventListener("pointermove", go);
+      window.removeEventListener("keydown", go);
+    };
+    MUSIC.droneBed();
+    window.addEventListener("pointerdown", go);
+    window.addEventListener("pointermove", go, { once: false });
+    window.addEventListener("keydown", go);
+    return off;
+  }, [musicOn, screen]);
   const poppedCountryRef = useRef(null); // country whose arrival popup already showed this leg
   const [dreamPending, setDreamPending] = useState(false); // Jonah's dream just fulfilled — show the win scene
   const pendingRunRef = useRef(null); // start action to run after the intro story
@@ -3154,26 +3179,38 @@ export default function ShutterbugWorld() {
             )}
           </div>
 
-          {/* Set off / back */}
-          <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap", marginTop: 8 }}>
-            <button onClick={setOff} disabled={!meetReady} aria-disabled={!meetReady}
-              style={{ ...primaryBtn, opacity: meetReady ? 1 : 0.5, cursor: meetReady ? "pointer" : "default" }}>
-              {gameMode === "journey" ? `Set out: ${JOURNEY_BY_ID[journeyId].title} 🛶` : gameMode === "explore" ? "Start exploring 🧭"
-                : gameMode === "tour" ? (tourTheme === "classic" ? "Set off on the Grand Tour ✈" : `Set off: ${TOUR_THEMES.find((t) => t.id === tourTheme)?.title} 🗺️`)
-                : "Set off with the camera 📷"}
-            </button>
-          </div>
           </div>
           </div>{/* end LEFT COLUMN */}
           {/* His face follows the conversation: the mood of the run he's nodding to
               while he's nodding to it, then amused once he gets to the question. It
               sticks in view as the choices scroll past on a short screen. */}
-          <NigelScene mood={!meetReady ? (meetInfo?.mood || "meetLine")
-              : (gameMode === "assignments" || gameMode === "tour") ? DIFFICULTY_MOOD[difficulty]
-              : gameMode === "explore" ? "modeExplore"
-              : gameMode === "journey" ? "modeJourney"
-              : "meetAsk"}
-            style={{ flex: "1.35 1 420px", minWidth: 300, position: "sticky", top: 12 }} />
+          {/* Jonah, and under him the bag. Setting off is the same gesture as the very
+              first playthrough — he holds out his old camera bag and you take it — so
+              it wears the same art, in the same place, instead of a text button parked
+              under the settings in the other column. It only bobs once the run is
+              actually configured; before that it sits still and greyed, which is the
+              screen's answer to "what am I waiting for?". */}
+          <div style={{ flex: "1.35 1 420px", minWidth: 300, position: "sticky", top: 12, display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+            <NigelScene mood={!meetReady ? (meetInfo?.mood || "meetLine")
+                : (gameMode === "assignments" || gameMode === "tour") ? DIFFICULTY_MOOD[difficulty]
+                : gameMode === "explore" ? "modeExplore"
+                : gameMode === "journey" ? "modeJourney"
+                : "meetAsk"}
+              style={{ width: "100%" }} />
+            <button onClick={setOff} disabled={!meetReady} aria-disabled={!meetReady}
+              className={meetReady ? "sbw-bob" : undefined}
+              style={{ background: "none", border: "none", padding: 0, marginTop: -6, width: 210, maxWidth: "62%",
+                cursor: meetReady ? "pointer" : "default", opacity: meetReady ? 1 : 0.45,
+                filter: meetReady ? "none" : "grayscale(0.7)", transition: "opacity .2s ease, filter .2s ease" }}>
+              <img src={`${UI}camera-bag.png`} alt="" aria-hidden="true"
+                style={{ width: "100%", height: "auto", display: "block", filter: "drop-shadow(0 7px 12px rgba(16,38,46,0.42))" }} />
+              <span style={{ display: "block", marginTop: 2, fontFamily: HAND, fontWeight: 700, fontSize: 23, color: INK, lineHeight: 1.15 }}>
+                {gameMode === "journey" ? `Set out: ${JOURNEY_BY_ID[journeyId].title}` : gameMode === "explore" ? "Start exploring"
+                  : gameMode === "tour" ? (tourTheme === "classic" ? "Set off on the Grand Tour" : `Set off: ${TOUR_THEMES.find((t) => t.id === tourTheme)?.title}`)
+                  : "Take the camera"}
+              </span>
+            </button>
+          </div>
           </div>{/* end flex row */}
           <button onClick={() => setScreen("start")}
             style={{ marginTop: 14, background: "none", border: "none", color: INK, opacity: 0.6, fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
