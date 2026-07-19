@@ -64,6 +64,24 @@ Last updated **2026-07-18**.
 > 5. **The dog** — art is in `public/assets/shutterbug-ui/dog/` (6 poses) and already
 >    appears beside Jonah in his scenes. No gameplay role yet; see §10.
 
+### Contents
+
+This document is long enough that things get lost in it. Every section, in order:
+
+| § | | |
+|---|---|---|
+| [1](#1-finish-the-avatar-redesign-wiring) | Avatar redesign (wiring) | paused — needs Joshua's art |
+| [2](#2-rotating-people-cards--done-2026-07-15) | Rotating people cards | ✅ done |
+| [3](#3-the-roguelike-layer) | The roguelike layer | biggest unstarted build |
+| [4](#4-the-tap-to-learn-curiosity-layer) | Curiosity layer | ✅ done |
+| [5](#5-more-journeys) | More Journeys | ongoing content |
+| [6](#6-wire-the-awardprogression-graphics-into-the-passport) | Award graphics into the passport | ✅ done |
+| [7](#7-backend-for-cross-device-profiles-and-friend-leaderboards) | **Supabase backend** | schema + merge built 2026-07-19; needs the migration run |
+| [8](#8-optionally-package-a-desktop-app) | Desktop app | recommended against |
+| [9](#9-travel-modes--built-2026-07-15-balance-wants-a-playtest) | Travel modes | built; balance wants Joshua's feel |
+| [10](#10-rewards-progression-and-the-dog-brainstorm-2026-07-19) | **Rewards, progression, and the dog** | brainstorm — decisions needed |
+| [11](#11-the-music-honestly-2026-07-19) | **The music, honestly** | the tune-by-tune count and what more would cost |
+
 ### THE THREE THINGS TO DO NEXT (start here)
 
 1. **Travel-modes balance playtest.** The feature is built and live (see §9); its
@@ -130,9 +148,13 @@ Journeys, and the Grandpa Nigel story frame.
 - **Live** at `joshuadanielspencer-boop.github.io/shutterbug/`. `git push` to `main`
   triggers `.github/workflows/deploy.yml`, which tests, builds and publishes. There
   is no separate deploy step.
-- `npm test` → **89 tests, 4 files** (`test/data.test.js`, `test/daily.test.js`,
-  `test/routes.test.js`, `test/art.test.js`). They must stay green; several of them guard *facts*, not
-  just shapes, and exist because a plausible-looking wrong map shipped once already.
+- `npm test` → **120 tests, 7 files** (`data`, `daily`, `routes`, `art`, `audio`,
+  `passport-file`, `passport-merge`). They must stay green; several of them guard
+  *facts*, not just shapes, and exist because a plausible-looking wrong map shipped
+  once already. Three caught real bugs on their first run: a second bagpipe drone
+  stacking over the splash bed, three missing continent-crossing pairs, and the
+  world-map tint never matching "United States" because the map data calls it
+  "United States of America".
 - **Every random choice must go through `src/rng.js`** (`rnd()`, `shuffled()`), never
   `Math.random()` — a stray `Math.random()` breaks reproducibility *silently*.
   `test/daily.test.js` guards the primitives. (It was written for the Daily
