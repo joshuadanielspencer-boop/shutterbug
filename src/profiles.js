@@ -613,3 +613,63 @@ export function importPassportText(text) {
   catch { return { ok: false, error: "That file isn't readable JSON." }; }
   return importPassport(data);
 }
+
+// ===========================================================================
+// The teaching view.
+//
+// The game already runs spaced repetition — weightedOrder, freshFirst, per-location
+// mastery in profile.loc — and none of it is visible to anyone. For a homeschool tool
+// that's a real miss: a parent can't see that a child is solid on Europe and shaky on
+// South America, or which places he keeps missing, and those are exactly the things
+// you'd teach from.
+//
+// Nothing here is newly tracked. It is all derived from profile.loc, which has been
+// filling up since the first game.
+// ===========================================================================
+
+// Per-continent mastery at PLACE level, not country level. continentTotals() above
+// counts countries, which flatters a big country: photographing one thing in Brazil
+// marks the country mastered while 90% of South America's places remain unseen.
+// "14 of 34 places" is the number a parent can actually teach from.
+export function progressByContinent(profile) {
+  const loc = (profile && profile.loc) || {};
+  const out = {};
+  for (const l of LOCATIONS) {
+    const e = out[l.continent] || (out[l.continent] = { continent: l.continent, total: 0, mastered: 0, visited: 0, missed: 0 });
+    e.total += 1;
+    const st = loc[l.id];
+    if (!st) continue;
+    if (st.c > 0) e.mastered += 1;
+    else if (st.v > 0) e.visited += 1;       // been there, never got the shot
+    if (st.c === 0 && st.m > 0) e.missed += 1;
+  }
+  return Object.values(out).sort((a, b) => b.mastered / (b.total || 1) - a.mastered / (a.total || 1));
+}
+
+// The places a child has been given and got wrong, and has never since got right.
+// This is the same signal weightFor() already uses to resurface a place (weight 4,
+// its highest) — surfaced so a parent can see it too. Sorted by how often it's been
+// missed, so the top of the list is the thing to go over at the table.
+export function troubleSpots(profile, limit = 8) {
+  const loc = (profile && profile.loc) || {};
+  return LOCATIONS
+    .map((l) => ({ l, st: loc[l.id] }))
+    .filter(({ st }) => st && st.c === 0 && st.m > 0)
+    .sort((a, b) => (b.st.m - a.st.m) || ((b.st.t || 0) - (a.st.t || 0)))
+    .slice(0, limit)
+    .map(({ l, st }) => ({
+      id: l.id, city: l.city, country: l.country, continent: l.continent,
+      subject: l.subject, flag: l.flag, category: l.category, misses: st.m,
+    }));
+}
+
+// Places photographed correctly, most recently first — "what he's learned lately".
+export function recentlyLearned(profile, limit = 6) {
+  const loc = (profile && profile.loc) || {};
+  return LOCATIONS
+    .map((l) => ({ l, st: loc[l.id] }))
+    .filter(({ st }) => st && st.c > 0)
+    .sort((a, b) => (b.st.t || 0) - (a.st.t || 0))
+    .slice(0, limit)
+    .map(({ l }) => ({ id: l.id, city: l.city, country: l.country, subject: l.subject, flag: l.flag }));
+}

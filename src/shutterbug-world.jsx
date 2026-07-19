@@ -27,7 +27,8 @@ import { listProfiles, lastProfileName, getProfile, createProfile, setLastProfil
   deleteProfile, renameProfile, setAvatar, setProfileFlag, recordGame, recordExplore, recordQuiz,
   weightedOrder, freshFirst, passportData, achievements, topScores, storageAvailable,
   careerRank, unlocks, UNLOCK_REQ, markCuriositySeen, curiositiesSeen, nextGoal,
-  exportPassport, passportFilename, importPassportText } from "./profiles.js";
+  exportPassport, passportFilename, importPassportText,
+  progressByContinent, troubleSpots } from "./profiles.js";
 import { CURIOSITY_DECK_BY_ID, CURIOSITY_TOTAL } from "./data/curiosities.js";
 import { cityMissLesson, categoryMissLesson, continentMissLesson } from "./data/misses.js";
 import { DIFFICULTY_ART, MODE_ART, THEME_ART, CATEGORY_ART, ACHIEVEMENT_ART,
@@ -5462,11 +5463,18 @@ function PassportModal({ profile, onClose }) {
   ];
   const PER = 12; // items per two-page spread (6 a page)
   const spreads = Math.max(1, Math.ceil(items.length / PER));
-  const lastPage = spreads; // page 0 = profile, 1..spreads = accomplishments
+  // page 0 = profile, page 1 = PROGRESS, 2..(spreads+1) = accomplishments.
+  // Progress sits second on purpose: it's the page a parent opens the passport FOR,
+  // and burying it behind the stamp spreads would make it the page nobody finds.
+  const PROGRESS_PAGE = 1;
+  const lastPage = spreads + 1;
   const isProfile = page === 0;
+  const isProgress = page === PROGRESS_PAGE;
   const bookImg = isProfile ? "passport-open-profile-blank.png" : "passport-open-pages-blank.png";
-  const spreadItems = isProfile ? [] : items.slice((page - 1) * PER, page * PER);
+  const spreadItems = (isProfile || isProgress) ? [] : items.slice((page - 2) * PER, (page - 1) * PER);
   const leftItems = spreadItems.slice(0, PER / 2), rightItems = spreadItems.slice(PER / 2);
+  const byCont = profile ? progressByContinent(profile) : [];
+  const trouble = profile ? troubleSpots(profile, 6) : [];
   const bestPairs = profile ? Object.entries(profile.best || {}).filter(([, v]) => typeof v === "number") : [];
   // A country stamp shows its flag emoji; an earned keepsake shows its badge art
   // where that badge has been drawn (ArtBadge falls back to `icon` if not).
@@ -5526,13 +5534,73 @@ function PassportModal({ profile, onClose }) {
               )}
             </div>
           </>
+        ) : isProgress ? (
+          <>
+            {/* LEFT: how much of each continent has actually been photographed, at
+                PLACE level. The country-level number flatters a big country — one
+                photo in Brazil marks it "mastered" while 90% of South America is
+                unseen — and "14 of 34 places" is the number you can teach from. */}
+            <div style={{ position: "absolute", left: "15.5%", top: "13%", width: "27%", bottom: "14%", color: INK }}>
+              <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 10, letterSpacing: "0.16em", color: OCEAN, fontWeight: 700, marginBottom: 8 }}>🌍 HOW THE WORLD IS GOING</div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
+                {byCont.map((c) => {
+                  const pct = c.total ? c.mastered / c.total : 0;
+                  return (
+                    <div key={c.continent}>
+                      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11.5, fontWeight: 700, marginBottom: 2 }}>
+                        <span>{c.continent}</span>
+                        <span style={{ fontFamily: "ui-monospace, monospace", opacity: 0.85 }}>{c.mastered}/{c.total}</span>
+                      </div>
+                      {/* The bar is paired with its own number, never colour alone. */}
+                      <div style={{ height: 7, background: "rgba(16,38,46,0.13)", borderRadius: 4, overflow: "hidden" }}>
+                        <div style={{ width: `${Math.round(pct * 100)}%`, height: "100%", background: pct >= 0.99 ? GREEN : GOLD, borderRadius: 4 }} />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+            {/* RIGHT: the places he's been given and never yet got right. This is the
+                same signal the spaced-repetition weighting already uses to resurface
+                a place (its highest weight) — it just wasn't visible to anyone. */}
+            <div style={{ position: "absolute", right: "15.5%", top: "13%", width: "27%", bottom: "14%", color: INK, overflow: "hidden" }}>
+              <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 10, letterSpacing: "0.16em", color: CORAL, fontWeight: 700, marginBottom: 8 }}>🔁 WORTH ANOTHER LOOK</div>
+              {trouble.length === 0 ? (
+                <div style={{ fontSize: 12.5, opacity: 0.75, lineHeight: 1.5 }}>
+                  Nothing outstanding — every place {profile.name} has been given, {profile.name} has photographed.
+                </div>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  {/* Two lines per entry rather than one. A subject like "the Inca
+                      citadel of Machu Picchu" plus its country plus the count does not
+                      fit one line of a passport page, and squeezing it produced an
+                      ellipsis exactly where the useful word was. */}
+                  {trouble.map((t) => (
+                    <div key={t.id} style={{ fontSize: 11.5, lineHeight: 1.3 }}>
+                      <div style={{ display: "flex", alignItems: "baseline", gap: 5 }}>
+                        <span aria-hidden="true">{t.flag}</span>
+                        <span style={{ fontWeight: 700, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.subject}</span>
+                      </div>
+                      <div style={{ display: "flex", justifyContent: "space-between", gap: 6, opacity: 0.75, paddingLeft: 18 }}>
+                        <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.country}</span>
+                        <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 10, color: CORAL, fontWeight: 700, whiteSpace: "nowrap" }}>missed {t.misses}×</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </>
         ) : (
           <>
-            <div style={{ position: "absolute", left: "11%", top: "12%", width: "34%", bottom: "13%" }}>
+            {/* 14%, not 11%: the book art's printed page starts inside its cover, and
+                at 11% the first column of flags sat on the spine and the heading ran
+                off the left edge of the paper. */}
+            <div style={{ position: "absolute", left: "15.5%", top: "13%", width: "27%", bottom: "14%" }}>
               <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 10, letterSpacing: "0.16em", color: OCEAN, fontWeight: 700, marginBottom: 8 }}>📖 STAMPS & KEEPSAKES</div>
               {pageCol(leftItems)}
             </div>
-            <div style={{ position: "absolute", right: "11%", top: "12%", width: "34%", bottom: "13%" }}>
+            <div style={{ position: "absolute", right: "15.5%", top: "13%", width: "27%", bottom: "14%" }}>
               <div style={{ height: 18, marginBottom: 8 }} />
               {pageCol(rightItems)}
               {spreadItems.length === 0 && <div style={{ fontSize: 13, color: INK, opacity: 0.7 }}>No stamps yet — photograph places to fill your passport!</div>}
@@ -5545,7 +5613,7 @@ function PassportModal({ profile, onClose }) {
         <button onClick={() => setPage((p) => Math.max(0, p - 1))} disabled={page === 0} aria-label="Previous page"
           style={{ background: "rgba(255,255,255,0.14)", border: "1.5px solid rgba(244,236,216,0.5)", color: "#F4ECD8", borderRadius: 8, width: 40, height: 34, fontSize: 18, cursor: page === 0 ? "default" : "pointer", opacity: page === 0 ? 0.4 : 1 }}>‹</button>
         <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 13, fontWeight: 700, minWidth: 150, textAlign: "center" }}>
-          {isProfile ? "Profile" : `Page ${page} of ${spreads}`}
+          {isProfile ? "Profile" : isProgress ? "Progress" : `Page ${page - 1} of ${spreads}`}
         </span>
         <button onClick={() => setPage((p) => Math.min(lastPage, p + 1))} disabled={page >= lastPage} aria-label="Next page"
           style={{ background: "rgba(255,255,255,0.14)", border: "1.5px solid rgba(244,236,216,0.5)", color: "#F4ECD8", borderRadius: 8, width: 40, height: 34, fontSize: 18, cursor: page >= lastPage ? "default" : "pointer", opacity: page >= lastPage ? 0.4 : 1 }}>›</button>

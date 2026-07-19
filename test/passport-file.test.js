@@ -94,3 +94,47 @@ describe("passport round trip", () => {
     expect(name).toMatch(/^shutterbug-ana-ruiz-2026-07-19\.json$/);
   });
 });
+
+// ---------------------------------------------------------------------------
+// The teaching view. These read profile.loc, which the game has been filling since
+// the first run — the risk isn't that they crash, it's that they quietly measure the
+// wrong thing (counting countries instead of places, or listing places the child has
+// since got right as though they were still a problem).
+// ---------------------------------------------------------------------------
+describe("progress report", () => {
+  it("counts PLACES per continent, not countries", async () => {
+    const { LOCATIONS } = await import("../src/data/locations.js");
+    const sa = LOCATIONS.filter((l) => l.continent === "South America");
+    const loc = {};
+    // Two places mastered in South America, both in the same country if possible.
+    loc[sa[0].id] = { v: 1, c: 1, m: 0, last: "c", t: 1 };
+    loc[sa[1].id] = { v: 1, c: 1, m: 0, last: "c", t: 2 };
+    const rows = profiles.progressByContinent({ loc });
+    const row = rows.find((r) => r.continent === "South America");
+    expect(row.mastered).toBe(2);
+    expect(row.total).toBe(sa.length); // every PLACE, not every country
+  });
+
+  it("lists only places still unphotographed, worst first", async () => {
+    const { LOCATIONS } = await import("../src/data/locations.js");
+    const [a, b, c] = LOCATIONS;
+    const loc = {
+      [a.id]: { v: 1, c: 0, m: 2, last: "m", t: 10 },  // missed twice, never got it
+      [b.id]: { v: 1, c: 0, m: 5, last: "m", t: 20 },  // missed five times
+      [c.id]: { v: 1, c: 1, m: 9, last: "c", t: 30 },  // missed a lot, but HAS got it
+    };
+    const spots = profiles.troubleSpots({ loc }, 10);
+    expect(spots.map((s) => s.id)).toEqual([b.id, a.id]); // worst first, c excluded
+  });
+
+  it("says nothing is outstanding for a spotless profile", () => {
+    expect(profiles.troubleSpots({ loc: {} })).toEqual([]);
+    expect(profiles.troubleSpots(null)).toEqual([]);
+  });
+
+  it("handles a profile with no history at all", () => {
+    const rows = profiles.progressByContinent({});
+    expect(rows.length).toBeGreaterThan(0);
+    expect(rows.every((r) => r.mastered === 0 && r.total > 0)).toBe(true);
+  });
+});
