@@ -758,6 +758,19 @@ const quoteGloss = (mean) => {
   if (selfQuoted) return mean.replace(/\.$/, "");
   return `\u201C${mean.replace(/\.$/, "")}.\u201D`;
 };
+// Is the gloss worth printing at all? Where a country's greeting is already in
+// English the meaning IS the word, and the card read: \u201CHere they say \u201CHello\u201D in
+// English \u2014 it means \u201CHello.\u201D\u201D \u2014 a sentence that teaches nothing and sounds like
+// the game is being funny at the child's expense. Compared loosely (case, accents,
+// punctuation and any parenthesised romanisation stripped) so "\u00A1Hola!"/"hola"
+// counts as the same word too.
+const sameWord = (a, b) => {
+  const norm = (s) => String(s || "").split(" (")[0]
+    .normalize("NFD").replace(/[\u0300-\u036F]/g, "")
+    .replace(/[^\p{L}\p{N}]/gu, "").toLowerCase();
+  return !!a && !!b && norm(a) === norm(b);
+};
+const usefulGloss = (g, mean) => (mean && !sameWord(mean, g?.text) && !sameWord(mean, g?.word) ? mean : null);
 // How to print a greeting: the native words, and ONE guide to saying them.
 //
 // A greeting carries up to two romanizations. `text` may hold a scholarly
@@ -1020,7 +1033,8 @@ function quizQuestionFor(l) {
     const mean = greetingMeaning(g);
     return { kind, prompt: `How do people say hello in ${l.country}?`, photo: null,
       options: opts.map((o) => ({ label: o, correct: o === g.text })),
-      explain: `In ${l.country} they say “${g.text}” (${g.language})${mean ? ` — it means ${quoteGloss(mean)}` : "."}` };
+      explain: (() => { const gloss = usefulGloss(g, mean);
+        return `In ${l.country} they say “${g.text}” (${g.language})${gloss ? ` — it means ${quoteGloss(gloss)}` : "."}`; })() };
   }
   if (kind === "capital") {
     const answer = CAPITAL_OF[l.country];
@@ -5911,11 +5925,12 @@ function CountryCard({ country }) {
       <PeoplePhoto key={country} country={country} />
       {g && (() => {
         const { words, say } = greetingSaid(g);
+        const gloss = usefulGloss(g, mean);
         return (
           <div style={{ fontSize: 13.5, color: OCEAN, lineHeight: 1.55, marginTop: 8 }}>
             <span aria-hidden="true">💬 </span>Here they say <b>“{words}”</b>
             {say ? ` (${say})` : ""} in {g.language}
-            {mean ? ` — it means ${quoteGloss(mean)}` : "."}
+            {gloss ? ` — it means ${quoteGloss(gloss)}` : "."}
             <SpeakButton greeting={g} />
           </div>
         );
@@ -6312,8 +6327,14 @@ const shortSubject = (s) => String(s || "").split(/\s*[,—–]\s*/)[0].trim();
 function Polaroid({ p }) {
   return (
     <div style={{ width: 172, background: "#fff", border: `1px solid ${PAPER_LINE}`, borderRadius: 3, padding: "8px 8px 14px", transform: `rotate(${(p.id.charCodeAt(0) % 5) - 2}deg)`, boxShadow: "0 4px 10px rgba(16,38,46,0.22)" }}>
+      {/* The print FILLS the window. It used to be a fixed 96px square floating in a
+          156px-wide frame, which left a cream band down either side and made a
+          developed photograph look like a postage stamp someone had centred. An
+          icon placeholder still sits in the middle at its own size. */}
       <div style={{ background: PAPER, display: "flex", alignItems: "center", justifyContent: "center", height: 128, borderRadius: 2, overflow: "hidden" }}>
-        <Photo photo={p.photo} icon={p.icon} alt={p.subject} size={96} />
+        {p.photo?.src
+          ? <Photo photo={p.photo} icon={p.icon} alt={p.subject} size={128} full />
+          : <Photo photo={p.photo} icon={p.icon} alt={p.subject} size={96} />}
       </div>
       <div style={{ fontFamily: HAND, fontWeight: 700, color: INK, fontSize: 21, lineHeight: 1.08, marginTop: 9, textAlign: "center" }}>
         <span style={{ fontSize: "1.3em", verticalAlign: "-0.1em" }}>{p.flag}</span> {shortSubject(p.subject)}
