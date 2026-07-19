@@ -590,19 +590,24 @@ describe("the next goal", () => {
     return { loc };
   };
 
+  // Counts are DERIVED from the data, never written in. These used to say "8 of 9
+  // ice", and adding a single new ice location to the game broke a test that is
+  // about which goal gets CHOSEN — nothing to do with how big the ice collection
+  // happens to be. A test that fails whenever content is added trains you to edit
+  // the test without reading it.
+  const allBut = (cat, n) => byCat[cat].length - n;
+
   it("points at the collection that is CLOSEST, not the one furthest along", () => {
-    // 8/9 ice (1 left) vs 12/15 desert (3 left). Percentage would pick desert at
-    // 80%… no — percentage picks ice too. Use a case where they disagree: 8/9 ice
-    // (89%, 1 left) vs 30/36 rock (83%, 6 left). Both say ice. The real test is
-    // that a nearly-untouched huge collection never wins on raw count.
-    const g = nextGoal(profileWith({ ice: 8, desert: 12 }));
+    // One ice left vs three deserts left: the near-finished collection must win,
+    // and a big barely-started one must never win on raw count.
+    const g = nextGoal(profileWith({ ice: allBut("ice", 1), desert: allBut("desert", 3) }));
     expect(g.left).toBe(1);
     expect(g.name).toBe("Polar Explorer");
   });
 
   it("ignores collections the traveler has never started", () => {
-    // A child who has never shot a waterfall does not need to hear about all 27.
-    const g = nextGoal(profileWith({ ice: 8 }));
+    // A child who has never shot a waterfall does not need to hear about all of them.
+    const g = nextGoal(profileWith({ ice: allBut("ice", 1) }));
     expect(g.name).toBe("Polar Explorer");
     expect(g.have).toBeGreaterThan(0);
   });

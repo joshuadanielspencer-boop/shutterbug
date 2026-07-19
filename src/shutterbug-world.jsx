@@ -725,6 +725,8 @@ const ANT_LONLAT = {
   emperorpenguins: { lon: 150, lat: -71 },
   dryvalleys: { lon: 130, lat: -75 },
   erebus: { lon: 167, lat: -77.6 },
+  deception: { lon: -60.65, lat: -62.97 },
+  bloodfalls: { lon: 162.27, lat: -77.72 },
 };
 const ANT_ROT = 0, ANT_DIR = 1, ANT_EDGE = 60; // edge latitude of the plate image
 const antPlate = (id) => {
@@ -6800,9 +6802,12 @@ function DeskDog({ days, beat, flying, isExplore }) {
     : (typeof days === "number" && days > 0 && days <= 1.5) ? "lying"
     : "sit";
   return (
-    <div aria-hidden="true" style={{ marginTop: 14, display: "flex", justifyContent: "center", pointerEvents: "none" }}>
+    {/* Sized off the viewport height, not fixed: the itinerary column is already
+        tall, and a fixed 108px dog was the thing that tipped it over the bottom edge
+        of a 900px window — she was cut off at the paws, which is worse than small. */}
+    <div aria-hidden="true" style={{ marginTop: 10, display: "flex", justifyContent: "center", pointerEvents: "none" }}>
       <img src={`${UI}dog/${DOG_POSES[pose]}`} alt=""
-        style={{ width: 108, height: "auto", display: "block", filter: "drop-shadow(0 6px 8px rgba(16,38,46,0.34))" }} />
+        style={{ width: "min(104px, 11vh)", height: "auto", display: "block", filter: "drop-shadow(0 6px 8px rgba(16,38,46,0.34))" }} />
     </div>
   );
 }
