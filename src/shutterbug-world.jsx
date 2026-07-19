@@ -638,7 +638,21 @@ const pathBBox = (d, refX, refY = null, clip = Infinity) => {
   //   USA: contiguous 48, lon −125…−66 (x 55…114), lat 24…50 (y 40…66).
   const box145 = (cx, cy, w) => ({ x: cx - w / 2, y: cy - (w / 1.45) / 2, w, h: w / 1.45 });
   const OVERRIDE = {
-    "North America|United States": box145(84.5, 52.5, 64),
+    // Trimmed east to the real Atlantic coast (lon −66, x 114) and re-centred a
+    // degree south: the old 64°-wide box ran to lon −52.5, so a third of the frame
+    // was open Atlantic with Hudson Bay in the top corner.
+    "North America|United States": box145(84.5, 51.5, 59),
+    // Chile is the one country the clip heuristic above cannot size. Its border path
+    // includes Easter Island (lon −109, x 71) — 2,200 miles off the coast, but still
+    // INSIDE the 70° clip that its own widely-spread landmarks earn it. So the border
+    // bbox ran x 70.5…113.5 and Chile's "country map" was really a map of the south
+    // Pacific with South America down one edge. Hand-set to the mainland: lon −84…−58,
+    // lat −14…−58. Easter Island keeps working — it is filed under Oceania, and any
+    // run whose options fall outside this box goes wide via optionsFitCountry().
+    "South America|Chile": { x: 96, y: 104, w: 26, h: 44 },
+    // The UK's derived box carried ~5° of margin on every side, so the islands sat
+    // small in a lot of North Sea and Atlantic. Hug them instead.
+    "Europe|United Kingdom": { x: 171, y: 29.5, w: 12, h: 12 },
   };
   for (const [key, box] of Object.entries(OVERRIDE)) if (COUNTRY_META[key]) COUNTRY_META[key].box = box;
 })();
@@ -800,7 +814,7 @@ const categoryMissionOK = (category, continent, mode = null) =>
 // specific one. `order` is the weighted
 // resurfacing order, used to pick plausible same-continent decoys.
 function makeAssignmentPlan(mode, anchors, order) {
-  const want = mode.cityDecoys + 1;
+  const want = Math.max(MIN_CITY_PINS, mode.cityDecoys + 1);
   // The anchor + cityDecoys same-continent decoys, spaced for the continent zoom.
   const buildOptions = (anchor) => {
     const far = spacedFor(CONTINENT_META[anchor.continent].box);
@@ -908,6 +922,10 @@ const weightedPick = (items) => {
   return items[items.length - 1].v;
 };
 
+// The destination step must always offer a real choice. Three is the floor: two pins
+// is a coin-flip and one is no question at all. Difficulty still decides how far ABOVE
+// three a map goes (Scout sits at the floor; Expert shows five).
+const MIN_CITY_PINS = 3;
 // Keep decoy pins from stacking, scaled to whatever continent box is on screen.
 const spacedFor = (box) => {
   const minSep = Math.max(4, box.w * 0.05);
@@ -923,7 +941,27 @@ const spacedFor = (box) => {
 // target is present and reduces pin/label overlap. `wrap` shifts eastern-Pacific
 // points so Oceania spacing is measured correctly.
 const pickCountryCityIds = (continent, country, mustInclude, cap) => {
-  const all = (COUNTRY_LOCS[continent] && COUNTRY_LOCS[continent][country]) || [];
+  const own = (COUNTRY_LOCS[continent] && COUNTRY_LOCS[continent][country]) || [];
+  // A destination step with one or two pins isn't a choice — the answer is whichever
+  // one isn't obviously wrong, and on a single-pin map it's simply handed over. So a
+  // country that can't field MIN_CITY_PINS of its own borrows its NEAREST neighbours
+  // on the same continent to make up the number. Those pins fall outside the country's
+  // zoom box, which makes optionsFitCountry() false and sends the run to the wider
+  // continent view — where a pin in the next country along is honestly placed and
+  // readable as being outside the coral border.
+  const all = own.length >= MIN_CITY_PINS ? own : (() => {
+    const wrapC = CONTINENT_META[continent] && CONTINENT_META[continent].mode === "wrap";
+    const px = (l) => (wrapC && l.x < 180 ? l.x + 360 : l.x);
+    const anchor = own.length ? BY_ID[own[0]] : null;
+    if (!anchor) return own;
+    const near = LOCATIONS
+      .filter((l) => l.continent === continent && !own.includes(l.id))
+      .map((l) => ({ id: l.id, d: Math.hypot(px(l) - px(anchor), l.y - anchor.y) }))
+      .sort((a, b) => a.d - b.d)
+      .slice(0, MIN_CITY_PINS - own.length)
+      .map((n) => n.id);
+    return own.concat(near);
+  })();
   if (all.length <= cap) return shuffleArr(all);
   const meta = COUNTRY_META[countryKey(continent, country)];
   const wrap = CONTINENT_META[continent] && CONTINENT_META[continent].mode === "wrap";
@@ -1602,6 +1640,30 @@ export default function ShutterbugWorld() {
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step, screen]);
+  // ---- Dev-only screen jump ---------------------------------------------------
+  // Reaching the Chile map (or the homecoming quiz, or the results screen) through
+  // the UI takes a dozen correct clicks, which makes checking a layout change slow
+  // enough that it tends not to get checked. In `npm run dev` only, hang the state
+  // setters off window so a screen can be jumped to directly:
+  //   __sbw.country("South America", "Chile")   __sbw.go("end")
+  // import.meta.env.DEV is false in `npm run build`, so this whole block is dropped
+  // from the shipped bundle — it can never be reached by a player.
+  useEffect(() => {
+    if (!import.meta.env.DEV) return;
+    window.__sbw = {
+      go: setScreen,
+      phase: setPhase,
+      difficulty: setDifficulty,
+      country: (continent, country, ids) => {
+        setScreen("play"); setPickedContinent(continent); setPickedCountry(country);
+        setCityPlan({ ids: ids || (COUNTRY_LOCS[continent] || {})[country] || [], wide: false });
+        setPhase("city");
+      },
+      continent: (c) => { setScreen("play"); setPickedContinent(c); setPickedCountry(null); setPhase("country"); },
+    };
+    return () => { delete window.__sbw; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const poppedCountryRef = useRef(null); // country whose arrival popup already showed this leg
   const [dreamPending, setDreamPending] = useState(false); // Jonah's dream just fulfilled — show the win scene
   const pendingRunRef = useRef(null); // start action to run after the intro story
@@ -2584,7 +2646,7 @@ export default function ShutterbugWorld() {
       // like the USA never floods the map with 30 overlapping pins.
       const mustInc = a.type === "specific" ? [a.targetId]
         : ownIds.filter((id) => BY_ID[id].category === a.category).slice(0, 2);
-      const cap = MODES[difficulty].cityDecoys + 1;
+      const cap = Math.max(MIN_CITY_PINS, MODES[difficulty].cityDecoys + 1);
       // On a Daily this is picked from a seed derived from the country itself, not
       // from the run's RNG stream: the player might reach this country in any order,
       // or after any number of riddles, and the pins must still match everyone else's.
@@ -3921,14 +3983,23 @@ export default function ShutterbugWorld() {
   // same top-anchored stretch to keep Mexico/Central America and the oceans out of the
   // bottom of the frame.
   const usCountryView = inCity && pickedCountry === "United States" && !!countryBox;
-  const topCrop = naContinentView || usCountryView;
+  // The USA pivots on its CENTRE now, not its top. Top-anchoring pushed the surplus
+  // height downward, which meant the frame kept everything to the north — Hudson Bay
+  // and the Labrador coast — and cropped the Gulf instead. Centre-pivot trims both
+  // ends, which is what leaves the lower 48 filling the frame.
+  const topCrop = naContinentView;
+  // These are not arbitrary "looks nicer" numbers: equirectangular squashes a map
+  // vertically by cos(latitude), so the stretch that restores true proportions is
+  // 1/cos(lat) at the map's centre. USA ≈ 39°N → 1.29; UK ≈ 55°N → 1.74. Both are
+  // set below the true figure deliberately — a full correction reads as a caricature
+  // — but nearer it than they were.
   const mapStretchY = naContinentView ? 1.2
-    : usCountryView ? 1.12
+    : usCountryView ? 1.22
     : saContinentView ? 1.15
     : (inCountry && pickedContinent === "Europe") ? 1.15
     : (inCountry && pickedContinent === "Asia") ? 1.10
     : (inCountry && pickedContinent === "Africa") ? 1.10
-    : (inCity && pickedCountry === "United Kingdom") ? 1.15
+    : (inCity && pickedCountry === "United Kingdom") ? 1.27
     : 1;
   const mapPivotY = topCrop ? box.y : box.y + box.h / 2;
   const mapTransform = mapStretchY === 1 ? undefined
@@ -3948,23 +4019,42 @@ export default function ShutterbugWorld() {
   const viewBox = zoomed
     ? `${box.x - VB_PAD * box.w} ${box.y - VB_PAD * box.h} ${box.w * (1 + 2 * VB_PAD)} ${box.h * (1 + 2 * VB_PAD)}`
     : `${box.x} ${box.y} ${box.w} ${box.h}`;
-  // Pin circles: world fills the frame (non-uniform scale → aspect = FRAME_AR);
-  // a fitted zoom scales uniformly (aspect = the box's own ratio).
-  const aspect = zoomed ? box.w / box.h : FRAME_AR;
-  // Pins are ellipses sized so they render as perfect CIRCLES of a steady on-screen
-  // size at every zoom. On-screen rx = rx_user·(W/box.w) and ry = ry_user·(H/box.h);
-  // setting ry_user = k·box.h·(W/H) makes both equal k·W. W/H is the frame aspect.
-  const pinR = (k) => ({ rx: k * box.w, ry: k * box.h * aspect });
+  // How many plate units the frame's WIDTH spans. Under `meet` the fit is uniform and
+  // limited by whichever dimension is proportionally larger, so this is the one honest
+  // "screen unit" — every pin, glyph and label is sized as a fraction of it. Sizing off
+  // box.w (or box.h) instead is what made pins wildly different sizes between countries:
+  // Chile's box is 26×44 and the USA's is 59×41, so the same k meant a pin less than
+  // half as wide in Chile as in the USA. Under `none` (the world map) the frame width
+  // simply spans box.w.
+  const WoverS = !zoomed ? box.w
+    : (box.w / box.h) > FRAME_AR ? (1 + 2 * VB_PAD) * box.w
+    : FRAME_AR * (1 + 2 * VB_PAD) * box.h;
+  // Pins render as perfect CIRCLES of a steady on-screen size at every zoom. A fitted
+  // zoom scales uniformly, so equal user-unit radii ARE a circle. The world map fills
+  // the frame non-uniformly (par="none"), so there ry must be scaled by the frame
+  // aspect to come out round.
+  const pinR = (k) => zoomed
+    ? { rx: k * WoverS, ry: k * WoverS }
+    : { rx: k * box.w, ry: k * box.h * FRAME_AR };
+  // The vertical exaggeration above is applied to the map PLATE, and a pin has to sit
+  // at the stretched position of its landmark — but must not itself come out as an
+  // ellipse. So each pin is drawn inside a group that undoes the stretch about its own
+  // centre: net identity for the shape, while the parent transform still places it.
+  // Without this the whole <g> was scaled together and every pin on the USA and UK maps
+  // was ~15–25% taller than it was wide.
+  const unstretchAt = (cy) => mapStretchY === 1 ? undefined
+    : `translate(0 ${(cy * (1 - 1 / mapStretchY)).toFixed(4)}) scale(1 ${(1 / mapStretchY).toFixed(4)})`;
   // ---- De-overlapped landmark pins --------------------------------------------
   // Two landmarks close together (Singapore's, the small Gulf states, Vatican vs
   // Rome…) render as overlapping discs a child can't tell apart or tap. So the pins
   // are nudged off their exact spot just enough that their borders only slightly
   // overlap — approximately in the right place, but always distinguishable. A pin
   // that had to move draws a hairline leader back to its TRUE location. On-screen a
-  // pin is a circle of radius ≈ PIN_K × frame-width; convert that to plate units via
-  // the map's uniform fit scale (width- or height-limited by the box aspect).
-  const PIN_K = 0.085;
-  const WoverS = (box.w / box.h) > FRAME_AR ? (1 + 2 * VB_PAD) * box.w : FRAME_AR * (1 + 2 * VB_PAD) * box.h;
+  // pin is a circle of radius ≈ PIN_K × frame-width, in the same WoverS plate units
+  // the pin radii themselves are built from (defined above).
+  // PIN_K matches the radius actually drawn for the CURRENT pin (0.078) rather than
+  // the old 0.085, so the solver spaces pins for the size they really are.
+  const PIN_K = 0.078;
   const pinOverlapDist = 2 * PIN_K * WoverS;   // closer than this on screen = overlapping
   const pinTargetDist = 1.8 * PIN_K * WoverS;  // push apart to here: borders just kissing
   const cityPinLayout = (() => {
@@ -4399,7 +4489,7 @@ export default function ShutterbugWorld() {
                           not a generic green blob. */}
                       {(!wrapPlate && d)
                         ? <path d={d} fillRule="evenodd" fill={CONTINENT_COLOR[pickedContinent]} fillOpacity="0.62" stroke={INK} strokeWidth="0.6" vectorEffect="non-scaling-stroke" />
-                        : <ellipse cx={cm.cx} cy={cm.cy} {...pinR(0.028)} fill={CONTINENT_COLOR[pickedContinent]} fillOpacity="0.9" stroke={PAPER} strokeWidth="1" vectorEffect="non-scaling-stroke" />}
+                        : <g transform={unstretchAt(cm.cy)}><ellipse cx={cm.cx} cy={cm.cy} {...pinR(0.028)} fill={CONTINENT_COLOR[pickedContinent]} fillOpacity="0.9" stroke={PAPER} strokeWidth="1" vectorEffect="non-scaling-stroke" /></g>}
                     </g>
                   );
                 });
@@ -4499,7 +4589,11 @@ export default function ShutterbugWorld() {
                 return <g key={"lead" + id} style={{ pointerEvents: "none" }}>
                   <line x1={p.x} y1={p.y} x2={t.x} y2={t.y} stroke={INK} strokeWidth="3" strokeOpacity="0.45" strokeDasharray="2 2" vectorEffect="non-scaling-stroke" />
                   <line x1={p.x} y1={p.y} x2={t.x} y2={t.y} stroke="#FFFFFF" strokeWidth="1.4" strokeOpacity="0.95" strokeDasharray="2 2" vectorEffect="non-scaling-stroke" />
-                  <ellipse cx={t.x} cy={t.y} {...pinR(0.013)} fill="#FFFFFF" fillOpacity="0.95" stroke={INK} strokeOpacity="0.5" strokeWidth="1" vectorEffect="non-scaling-stroke" />
+                  {/* the leader LINE may stay stretched (a line is a line), but the
+                      dot marking the true spot has to stay a dot */}
+                  <g transform={unstretchAt(t.y)}>
+                    <ellipse cx={t.x} cy={t.y} {...pinR(0.013)} fill="#FFFFFF" fillOpacity="0.95" stroke={INK} strokeOpacity="0.5" strokeWidth="1" vectorEffect="non-scaling-stroke" />
+                  </g>
                 </g>;
               })}
               {/* Draw the hovered/focused pin LAST so its icon (and revealed name) ride
@@ -4520,11 +4614,18 @@ export default function ShutterbugWorld() {
                      onMouseEnter={() => setHoverPin(id)} onMouseLeave={() => setHoverPin((p) => (p === id ? null : p))}
                      onFocus={() => setHoverPin(id)} onBlur={() => setHoverPin((p) => (p === id ? null : p))}
                      style={{ cursor: busy ? "default" : "pointer" }}>
+                    {/* Undo the plate's vertical exaggeration about this pin's own
+                        centre — the disc stays a disc, the emoji stays upright, and
+                        the pin still sits where the stretched map puts its landmark.
+                        Every size here is a fraction of WoverS (the frame width in
+                        plate units), so a pin is the same size on every country map. */}
+                    <g transform={unstretchAt(py)}>
                     <ellipse cx={px} cy={py} {...pinR(0.095)} fill="transparent" />
                     <ellipse cx={px} cy={py} {...pinR(isCurrent ? 0.078 : 0.066)} fill={isCurrent ? "rgba(233,92,66,0.22)" : "rgba(255,255,255,0.82)"} stroke={isCurrent ? CORAL : INK} strokeWidth={isCurrent ? "1.4" : "1"} vectorEffect="non-scaling-stroke" />
                     {isCurrent && <ellipse cx={px} cy={py} {...pinR(0.1)} fill="none" stroke="#FFFFFF" strokeWidth="3" vectorEffect="non-scaling-stroke" className="sbw-ping" />}
-                    <text x={px} y={py} fontSize={0.11 * box.h} textAnchor="middle" dominantBaseline="central" style={{ pointerEvents: "none" }}>{emoji}</text>
-                    <text className="sbw-label" x={px + 0.075 * box.w} y={py - 0.05 * box.h} fontSize={0.03 * box.h} fontFamily="ui-monospace, monospace" fill={INK} style={{ paintOrder: "stroke", stroke: PAPER, strokeWidth: 0.008 * box.h }}>{l.city}</text>
+                    <text x={px} y={py} fontSize={0.105 * WoverS} textAnchor="middle" dominantBaseline="central" style={{ pointerEvents: "none" }}>{emoji}</text>
+                    <text className="sbw-label" x={px + 0.075 * WoverS} y={py - 0.05 * WoverS} fontSize={0.028 * WoverS} fontFamily="ui-monospace, monospace" fill={INK} style={{ paintOrder: "stroke", stroke: PAPER, strokeWidth: 0.0075 * WoverS }}>{l.city}</text>
+                    </g>
                   </g>
                 );
               })}
@@ -4536,10 +4637,12 @@ export default function ShutterbugWorld() {
                 const l = BY_ID[p.id];
                 if (!l || (zoomed && l.continent !== pickedContinent)) return null;
                 const pos = zoomed ? pinXY(l) : eqToRobinson(l.x, l.y);
-                const sz = (zoomed ? 0.032 : 0.024) * box.h;
+                const sz = (zoomed ? 0.032 : 0.024) * WoverS;
                 return (
-                  <text key={"star" + p.id} x={pos.x} y={pos.y} fontSize={sz} textAnchor="middle" dominantBaseline="central"
+                  <g key={"star" + p.id} transform={zoomed ? unstretchAt(pos.y) : undefined}>
+                  <text x={pos.x} y={pos.y} fontSize={sz} textAnchor="middle" dominantBaseline="central"
                     fill="#2E6FC9" style={{ paintOrder: "stroke", stroke: "#fff", strokeWidth: sz * 0.26, pointerEvents: "none" }}>★</text>
+                  </g>
                 );
               })}
 
