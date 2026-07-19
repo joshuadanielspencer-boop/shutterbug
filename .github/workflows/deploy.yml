@@ -38,6 +38,20 @@ jobs:
         run: npm run build
         env:
           BASE_PATH: /${{ github.event.repository.name }}/
+          # Passport sync. Both are PUBLIC values — the anon key is designed to ship
+          # in client JavaScript, and every access rule lives in the row-level
+          # security policies in supabase/migrations/. They are repo secrets only so
+          # they aren't hard-coded, not because they're sensitive.
+          #
+          # Until these secrets exist they resolve to empty strings, src/sync.js
+          # short-circuits, and the build is byte-for-byte what it is today — the
+          # Supabase client isn't even bundled. So this is safe to land before the
+          # secrets are set.
+          #
+          # The service_role key must NEVER be added here: it bypasses RLS entirely,
+          # and anything in this build is public.
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
       - uses: actions/upload-pages-artifact@v5
         with:
           path: dist
