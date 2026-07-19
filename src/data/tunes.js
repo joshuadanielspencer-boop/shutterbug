@@ -84,49 +84,72 @@ export const TUNES = {
   ] },
 
   // ---- Regional style motifs (evocative, not a specific tune) ----
+  //
+  // These are ORIGINAL phrases written for this game — they claim to evoke a region's
+  // scale and instrument, never to BE any real melody, which is why they can be
+  // lengthened freely where the six tunes above cannot (rule 2: a real tune's notes
+  // have to come off a score, not out of a guess).
+  //
+  // Each is now a two-phrase, call-and-response melody rather than the short figure it
+  // used to be. That is the whole reason a country tune no longer plays twice: the
+  // repeat existed to pad a phrase too short to stand on its own, and a longer phrase
+  // is the honest fix. Phrase one opens and leaves the ear hanging; phrase two answers
+  // it and settles onto the tonic.
+  //
   // East Asia — koto, major pentatonic (C D E G A).
   eastasia: { timbre: "koto", spb: 0.3, seq: [
-    ["A4",1],["G4",0.5],["E4",1.5],["G4",1],["A4",1],["C5",2],["A4",1],["G4",1],["E4",2],["D4",1],["E4",3],
+    ["A4",1],["G4",0.5],["E4",1.5],["G4",1],["A4",1],["C5",2],["A4",1],["G4",1],["E4",2],["D4",1],["E4",2],["r",1],
+    ["C5",1],["D5",0.5],["E5",1.5],["D5",1],["C5",1],["A4",2],["G4",1],["E4",1],["G4",1],["A4",1],["G4",1],["E4",3],
   ] },
   // South Asia — sitar-ish, over a drone (the engine adds a low drone for this one).
   southasia: { timbre: "sitar", spb: 0.28, seq: [
-    ["D4",1],["E4",0.5],["F4",1.5],["E4",0.5],["F4",0.5],["A4",2],["G4",1],["F4",1],["E4",1],["D4",3],
+    ["D4",1],["E4",0.5],["F4",1.5],["E4",0.5],["F4",0.5],["A4",2],["G4",1],["F4",1],["E4",1],["D4",2],["r",1],
+    ["A4",1],["Bb4",0.5],["C5",1.5],["Bb4",0.5],["A4",0.5],["G4",2],["F4",1],["E4",1],["F4",1],["E4",1],["D4",3],
   ] },
   // Middle East / North Africa — oud, hijaz scale (D Eb F# G A Bb C).
   mideast: { timbre: "oud", spb: 0.3, seq: [
-    ["D4",1],["Eb4",0.5],["F#4",1.5],["G4",1],["F#4",0.5],["Eb4",1.5],["D4",2],["A4",1],["G4",1],["F#4",1],["Eb4",1],["D4",3],
+    ["D4",1],["Eb4",0.5],["F#4",1.5],["G4",1],["F#4",0.5],["Eb4",1.5],["D4",2],["A4",1],["G4",1],["F#4",1],["Eb4",1],["D4",2],["r",1],
+    ["A4",1],["Bb4",0.5],["C5",1.5],["Bb4",1],["A4",1],["G4",2],["F#4",1],["Eb4",1],["F#4",1],["G4",1],["F#4",1],["D4",3],
   ] },
   // Latin America — bright guitar, major with a lilt.
   latin: { timbre: "guitar", spb: 0.26, seq: [
-    ["G4",0.5],["A4",0.5],["B4",1],["D5",1],["B4",1],["G4",1],["A4",1],["D4",1],["G4",2],["B4",1],["A4",1],["G4",2],
+    ["G4",0.5],["A4",0.5],["B4",1],["D5",1],["B4",1],["G4",1],["A4",1],["D4",1],["G4",2],["B4",1],["A4",1],["G4",2],["r",1],
+    ["D5",0.5],["E5",0.5],["D5",1],["B4",1],["G4",1],["A4",1],["B4",1],["A4",1],["G4",1],["F#4",1],["E4",1],["D4",1],["G4",3],
   ] },
   // Caribbean — steel-drum, bright major arpeggios.
   caribbean: { timbre: "steel", spb: 0.24, seq: [
-    ["C4",0.5],["E4",0.5],["G4",0.5],["C5",1],["G4",0.5],["E4",1],["F4",0.5],["A4",0.5],["C5",1.5],["G4",1],["E4",1],["C4",2],
+    ["C4",0.5],["E4",0.5],["G4",0.5],["C5",1],["G4",0.5],["E4",1],["F4",0.5],["A4",0.5],["C5",1.5],["G4",1],["E4",1],["C4",2],["r",1],
+    ["E5",0.5],["D5",0.5],["C5",1],["G4",1],["A4",0.5],["G4",0.5],["F4",1],["E4",1],["D4",0.5],["E4",0.5],["F4",1],["E4",1],["C4",3],
   ] },
   // Sub-Saharan Africa — kalimba/marimba, warm pentatonic.
   africa: { timbre: "kalimba", spb: 0.26, seq: [
-    ["G4",0.5],["E4",0.5],["D4",0.5],["E4",0.5],["G4",1],["A4",0.5],["G4",0.5],["E4",1],["D4",0.5],["C4",0.5],["D4",1],["E4",0.5],["G4",1.5],
+    ["G4",0.5],["E4",0.5],["D4",0.5],["E4",0.5],["G4",1],["A4",0.5],["G4",0.5],["E4",1],["D4",0.5],["C4",0.5],["D4",1],["E4",0.5],["G4",1.5],["r",1],
+    ["C5",0.5],["A4",0.5],["G4",0.5],["A4",0.5],["C5",1],["D5",0.5],["C5",0.5],["A4",1],["G4",0.5],["E4",0.5],["G4",1],["D4",0.5],["C4",2.5],
   ] },
   // Andes — pan flute, airy minor pentatonic.
   andes: { timbre: "flute", spb: 0.34, seq: [
-    ["A4",1.5],["C5",1],["D5",1.5],["E5",2],["D5",1],["C5",1],["A4",2],["G4",1],["A4",3],
+    ["A4",1.5],["C5",1],["D5",1.5],["E5",2],["D5",1],["C5",1],["A4",2],["G4",1],["A4",2],["r",1],
+    ["E5",1.5],["G5",1],["E5",1.5],["D5",2],["C5",1],["D5",1],["C5",2],["A4",1],["G4",1],["A4",3],
   ] },
   // Slavic / Eastern Europe — brisk minor (balalaika-ish).
   slavic: { timbre: "pluck", spb: 0.22, seq: [
-    ["A4",0.5],["B4",0.5],["C5",0.5],["A4",0.5],["B4",1],["E4",1],["A4",0.5],["B4",0.5],["C5",1],["B4",0.5],["A4",0.5],["G#4",1],["A4",2],
+    ["A4",0.5],["B4",0.5],["C5",0.5],["A4",0.5],["B4",1],["E4",1],["A4",0.5],["B4",0.5],["C5",1],["B4",0.5],["A4",0.5],["G#4",1],["A4",2],["r",1],
+    ["E5",0.5],["D5",0.5],["C5",0.5],["B4",0.5],["C5",1],["A4",1],["D5",0.5],["C5",0.5],["B4",1],["A4",0.5],["G#4",0.5],["B4",1],["A4",3],
   ] },
   // Mediterranean — bouzouki/Greek-ish minor.
   mediterranean: { timbre: "pluck", spb: 0.24, seq: [
-    ["E4",0.5],["F4",0.5],["G4",1],["A4",0.5],["G4",0.5],["F4",1],["E4",1],["D4",0.5],["E4",0.5],["F4",1],["E4",2],
+    ["E4",0.5],["F4",0.5],["G4",1],["A4",0.5],["G4",0.5],["F4",1],["E4",1],["D4",0.5],["E4",0.5],["F4",1],["E4",2],["r",1],
+    ["A4",0.5],["B4",0.5],["C5",1],["B4",0.5],["A4",0.5],["G4",1],["F4",1],["G4",0.5],["F4",0.5],["E4",1],["D4",1],["E4",3],
   ] },
   // Pacific / island — mellow ukulele major.
   tropical: { timbre: "uke", spb: 0.3, seq: [
-    ["C4",0.5],["E4",0.5],["G4",1],["A4",1],["G4",1],["E4",1],["F4",0.5],["A4",0.5],["G4",1.5],["C4",1],["E4",2],
+    ["C4",0.5],["E4",0.5],["G4",1],["A4",1],["G4",1],["E4",1],["F4",0.5],["A4",0.5],["G4",1.5],["C4",1],["E4",2],["r",1],
+    ["G4",0.5],["A4",0.5],["C5",1],["A4",1],["G4",1],["E4",1],["D4",0.5],["F4",0.5],["E4",1.5],["G4",1],["C4",2.5],
   ] },
   // Fallback — a gentle music-box major.
   generic: { timbre: "music", spb: 0.3, seq: [
-    ["C4",1],["E4",1],["G4",1],["C5",1],["B4",1],["G4",1],["A4",1],["F4",1],["G4",2],
+    ["C4",1],["E4",1],["G4",1],["C5",1],["B4",1],["G4",1],["A4",1],["F4",1],["G4",2],["r",1],
+    ["E5",1],["D5",1],["C5",1],["A4",1],["G4",1],["E4",1],["F4",1],["D4",1],["C4",3],
   ] },
 };
 

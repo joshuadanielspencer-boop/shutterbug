@@ -32,7 +32,7 @@ import { DIFFICULTY_ART, MODE_ART, THEME_ART, CATEGORY_ART, ACHIEVEMENT_ART,
   RANK_ART, RECORD_ART, ROUNDEL_ART, TRANSPORT_ART, SEAL_UNLOCKED, MARKER_MASTERED } from "./data/art.js";
 import { HELLO_BUBBLES, HELLO_SPOTS } from "./data/hello.js";
 import { MR_O, MR_O_FACTS, MR_O_RIDDLES } from "./data/mr-o.js";
-import { SFX, MUSIC, speakEn, speakGreeting, speechAvailable } from "./audio.js";
+import { SFX, MUSIC, speakEn, speakGreeting, speakArrival, speechAvailable } from "./audio.js";
 import { BASE, OCEAN, OCEAN_DEEP, SEA, SEA_DEEP, SEA_LINE, LAND, LAND_EDGE, INK, GOLD, CORAL, GREEN, PAPER, PAPER_LINE } from "./theme.js";
 import { Confetti, Stamp, GradualText, TypeLine, TALKING_CPS } from "./components/text.jsx";
 
@@ -1618,23 +1618,42 @@ export default function ShutterbugWorld() {
     // reach the right one, and an arrival-counted gate let him through while the note
     // still read ASSIGNMENT 1.
     if (step < 1) return;
+    // His INTRODUCTION is not rolled for here — it is fired once, deterministically,
+    // by the effect below. Leaving it in the roll meant it competed with riddles for
+    // the same slot, so one player met him at assignment 2 and another at assignment 7
+    // (and a player could see the same "hello, I'm Mr O" beats twice, since only the
+    // fact branch set the flag). From here on he only ever brings a fact or a riddle.
     const seed = riddleSeedRef.current;
     const roll = seed ? withSeed(seed + "|arr|" + ix, () => rnd()) : Math.random();
     if (roll < 0.5) {
       mrOGapRef.current = 0;
       sfx("bwooop");                                   // his cheerful pop-in, every time
-      // Riddles (which score) are unchanged for everyone so a Daily stays fair; only
-      // the non-scoring FACT is replaced, the very first time, by his introduction.
-      if (roll < 0.2) openArrivalRiddle(ix);
-      else if (!hasMetMrO()) introduceMrO();
+      if (roll < 0.4) openArrivalRiddle(ix);
       else showMrOFact(continent);
     }
   };
+  // Mr O introduces himself ONCE EVER, at the same moment for every player: the
+  // instant assignment 1 is filed and the note turns over to ASSIGNMENT 2. He explains
+  // who he is and what the Field Guide does, and never says either again — `metMrO`
+  // persists on the profile (a guest remembers for the session).
+  useEffect(() => {
+    if (screen !== "play" || step < 1 || hasMetMrO()) return;
+    const t = setTimeout(() => {
+      sfx("bwooop");
+      introduceMrO();
+      mrOGapRef.current = 0;   // he just rode; don't let him ride again next arrival
+      tipPendingRef.current = false; // his intro already covers the Field Guide
+    }, 900);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, screen]);
   // The queued Field-Guide coaching tip, released once the player is past their first
   // assignment (see startGame). Fires on the step change rather than a timer from the
   // start of the run, so it can't land while assignment 1 is still being read.
   useEffect(() => {
-    if (screen !== "play" || step < 1 || !tipPendingRef.current) return;
+    // Stand down if he hasn't introduced himself yet — the intro carries the same
+    // Field-Guide explanation, and the two firing together would say it twice.
+    if (screen !== "play" || step < 1 || !tipPendingRef.current || !hasMetMrO()) return;
     tipPendingRef.current = false;
     const t = setTimeout(() => { sfx("bwooop"); setMrO(MR_O_FIELDGUIDE_TIP); }, 900);
     return () => clearTimeout(t);
@@ -1786,6 +1805,20 @@ export default function ShutterbugWorld() {
   // plane has settled and the landing engines have died away, rather than talking
   // over them.
   const say = (text) => { if (soundOn) setTimeout(() => { if (soundOn) speakEn(text); }, 1500); };
+  // Arriving in a COUNTRY says its name, waits a beat, then says hello in the local
+  // language — the greeting the culture card is showing on screen at that moment, so
+  // the child hears the words they're looking at. Cancelled if they leave first.
+  const sayArrivalRef = useRef(null);
+  const sayCountry = (country) => {
+    if (!soundOn) return;
+    if (sayArrivalRef.current) sayArrivalRef.current();
+    const t = setTimeout(() => {
+      if (!soundOn) return;
+      sayArrivalRef.current = speakArrival(country, COUNTRY_GREETING[country]);
+    }, 1500);
+    sayArrivalRef.current = () => clearTimeout(t);
+  };
+  useEffect(() => () => { if (sayArrivalRef.current) sayArrivalRef.current(); }, []);
   // On the two gentlest tiers, the map reads itself aloud: hover a continent or a
   // country and hear its name. It's how a five-year-old who can't read "Madagascar"
   // still learns to find it.
@@ -2600,7 +2633,7 @@ export default function ShutterbugWorld() {
       setCityPlan({ ids: pickCountryCityIds(pickedContinent, country, [], 7), wide: false });
       setPhase("city"); setCurrent(null); setRevealed(false);
       music("countryTune", country, pickedContinent); // a few seconds of local music on arrival
-      say(country); // spoken arrival: just the country's name
+      sayCountry(country); // spoken arrival: the country, a beat, then hello in its language
       setMsg({ type: "info", text: `${country} — click any place to learn about it.` });
       return;
     }
@@ -2617,7 +2650,7 @@ export default function ShutterbugWorld() {
       setPhase("city"); setCurrent(null); setRevealed(false);
       if (COUNTRY_INFO[country] && poppedCountryRef.current !== country) { poppedCountryRef.current = country; setCountryPopup(country); }
       music("countryTune", country, pickedContinent); // a few seconds of local music on arrival
-      say(country); // spoken arrival: just the country's name
+      sayCountry(country); // spoken arrival: the country, a beat, then hello in its language
       const targetHere = tourReqs.some((r) => !r.done && (COUNTRY_LOCS[pickedContinent]?.[country] || []).some((id) => r.kind === "category" ? BY_ID[id].category === r.category : r.targetId === id));
       setMsg({ type: targetHere ? "info" : "warn", text: targetHere ? `Arrived in ${country}. Photograph your target here!` : `Arrived in ${country} — but no target on your list is here. Pick another country, or fly on.` });
       return;
@@ -2663,7 +2696,7 @@ export default function ShutterbugWorld() {
       // Pop the culture card the moment you land in the country.
       if (COUNTRY_INFO[country] && poppedCountryRef.current !== country) { poppedCountryRef.current = country; setCountryPopup(country); }
       music("countryTune", country, pickedContinent); // a few seconds of local music on arrival
-      say(country); // spoken arrival: just the country's name
+      sayCountry(country); // spoken arrival: the country, a beat, then hello in its language
       setMsg({ type: "info", text: `Arrived in ${country}. Now photograph Jonah's subject.` });
     } else {
       const nd = Math.round((days - 0.5) * 10) / 10; // a wrong country costs half a day
@@ -3903,7 +3936,7 @@ export default function ShutterbugWorld() {
               <div style={{ background: "linear-gradient(160deg, #1C3A5E, #16324E)", color: "#F4E3B8", borderRadius: 12, padding: "14px 18px", maxWidth: 460, margin: "0 auto" }}>
                 <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.18em", marginBottom: 6 }}>🌍 YOU'VE BROUGHT HIM THE WORLD</div>
                 <p style={{ margin: 0, fontSize: 14, lineHeight: 1.5, color: "#fff" }}>Uncle Jonah has something to say to you…</p>
-                <button onClick={() => setScreen("dream")} style={{ ...primaryBtn, marginTop: 14, background: GOLD, color: INK, boxShadow: "0 4px 0 #A9861E" }}>Go and see Uncle →</button>
+                <button onClick={() => setScreen("dream")} style={{ ...primaryBtn, marginTop: 14, background: GOLD, color: INK, boxShadow: "0 4px 0 #A9861E" }}>Go and see Uncle Jonah →</button>
               </div>
             </div>
           )}

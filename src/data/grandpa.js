@@ -27,7 +27,10 @@
 
 export const GRANDPA = {
   name: "Uncle Jonah",
-  short: "Uncle",
+  // Never bare "Uncle" — nobody addresses or refers to a person as just "Uncle", and
+  // in a game a child reads aloud it lands as a missing word. The short form is his
+  // given name; "Uncle Jonah" is the default everywhere else.
+  short: "Jonah",
   emoji: "👨",
 };
 

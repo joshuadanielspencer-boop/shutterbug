@@ -783,3 +783,31 @@ describe("travel modes", () => {
     expect(money(120, "Belgium")).toMatch(/€\d/);   // a glyph still hugs its number
   });
 });
+
+// ---------------------------------------------------------------------------
+// He is "Uncle Jonah", or "Jonah" — never bare "Uncle". Nobody refers to a person
+// as just "Uncle", and in a game a child reads aloud it lands as a missing word.
+// Two shipped strings had drifted into it (a results-screen button and a field-note
+// card), so this guards the whole content layer rather than those two spots.
+// ---------------------------------------------------------------------------
+describe("Uncle Jonah is never just \"Uncle\"", () => {
+  const bareUncle = /\bUncle\b(?!\s+Jonah)/;
+  const walk = (value, path, hits) => {
+    if (typeof value === "string") { if (bareUncle.test(value)) hits.push(`${path}: ${value.slice(0, 70)}`); return; }
+    if (Array.isArray(value)) { value.forEach((v, i) => walk(v, `${path}[${i}]`, hits)); return; }
+    if (value && typeof value === "object") { for (const k of Object.keys(value)) walk(value[k], `${path}.${k}`, hits); }
+  };
+  it("never appears in any player-facing content module", async () => {
+    const modules = {
+      grandpa: await import("../src/data/grandpa.js"),
+      curiosities: await import("../src/data/curiosities.js"),
+      mrO: await import("../src/data/mr-o.js"),
+      anecdotes: await import("../src/data/anecdotes.js"),
+      locations: await import("../src/data/locations.js"),
+      culture: await import("../src/data/culture.js"),
+    };
+    const hits = [];
+    for (const [name, mod] of Object.entries(modules)) walk({ ...mod }, name, hits);
+    expect(hits).toEqual([]);
+  });
+});

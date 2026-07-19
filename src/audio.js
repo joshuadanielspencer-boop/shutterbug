@@ -327,13 +327,22 @@ export const MUSIC = (() => {
   // The rest matters. Back-to-back passes with no gap don't read as "the tune
   // again", they read as a longer, stranger tune — the ear needs the phrase to
   // end before it can hear it start over.
-  const TUNE_PASSES = 2;
+  // ONE pass. The tunes used to be short phrases played twice with a rest between,
+  // which is what you do when a phrase is too short to stand alone — and the fix for
+  // that is a longer phrase, not a repeat. The sequences in src/data/tunes.js are now
+  // full melodies, so a country is heard once, whole.
+  const TUNE_PASSES = 1;
   const TUNE_REST_BEATS = 2;
   // Peak amplitude of one tune note into `master`. There is no limiter on this
-  // context and `master` sits at 0.16, so a note lands at 0.28 * 0.16 ≈ 0.045 at
-  // the destination — decades of headroom even with the decay tails overlapping.
-  const TUNE_PEAK = 0.28;
-  const DRONE_PEAK = 0.1;
+  // context and `master` sits at 0.16, so a note lands at 0.45 * 0.16 ≈ 0.072 at
+  // the destination — still decades of headroom even with the decay tails
+  // overlapping. Raised from 0.28 (≈0.045) because the spoken country name is a
+  // SpeechSynthesis utterance: it never passes through this graph, so no gain node
+  // here can touch it, and at its default volume of 1.0 it was some 20 dB over the
+  // music. The two had to be moved toward each other from both ends — see
+  // SPEECH_VOLUME below for the other half.
+  const TUNE_PEAK = 0.45;
+  const DRONE_PEAK = 0.16;
 
   // Play a country/region tune (from src/data/tunes.js) onto the current
   // countryBus (see countryTune, which opens one). Falls back to `master` so a
@@ -659,27 +668,65 @@ const SPEECH_LANG = {
   "Nigerian Pidgin": "en",
 };
 export const speechAvailable = typeof window !== "undefined" && "speechSynthesis" in window;
-// Speak a short English announcement aloud ("Welcome to France!") — used on map
-// arrivals. A nice-to-have; never breaks anything if speech is unavailable.
+// SpeechSynthesis output does not pass through the Web Audio graph, so none of the
+// gain nodes above can duck it — its volume can only be set per-utterance, here. At
+// the default 1.0 the announcement drowned the arrival music; this is the speech half
+// of that rebalance (TUNE_PEAK above is the other half).
+const SPEECH_VOLUME = 0.55;
+// Build an utterance without touching the queue, so callers can decide whether this
+// one interrupts what's speaking or follows it.
+const utter = (text, opts = {}) => {
+  const u = new SpeechSynthesisUtterance(String(text));
+  u.lang = opts.lang || "en-US";
+  u.rate = opts.rate ?? 0.95;
+  if (opts.pitch != null) u.pitch = opts.pitch;
+  u.volume = SPEECH_VOLUME;
+  return u;
+};
+// Speak a short English announcement aloud ("France") — used on map arrivals.
+// A nice-to-have; never breaks anything if speech is unavailable.
 export function speakEn(text) {
   try {
     if (!speechAvailable || !text) return;
-    const u = new SpeechSynthesisUtterance(String(text));
-    u.lang = "en-US"; u.rate = 0.95; u.pitch = 1.05;
     window.speechSynthesis.cancel();
-    window.speechSynthesis.speak(u);
+    window.speechSynthesis.speak(utter(text, { pitch: 1.05 }));
   } catch { /* speech is optional */ }
+}
+function greetingUtterance(g) {
+  // Speak the native-script form (before any "(romanization)"), a touch slowly.
+  const native = String(g.text).split(" (")[0].trim();
+  const code = SPEECH_LANG[g.language];
+  return utter(native, { lang: code || "en-US", rate: 0.85 });
 }
 export function speakGreeting(g) {
   try {
     if (!speechAvailable || !g?.text) return;
-    // Speak the native-script form (before any "(romanization)"), a touch slowly.
-    const native = String(g.text).split(" (")[0].trim();
-    const u = new SpeechSynthesisUtterance(native);
-    const code = SPEECH_LANG[g.language];
-    if (code) u.lang = code;
-    u.rate = 0.85;
     window.speechSynthesis.cancel();
-    window.speechSynthesis.speak(u);
+    window.speechSynthesis.speak(greetingUtterance(g));
   } catch { /* speech is a nice-to-have; never break gameplay */ }
+}
+// Arrival announcement: the country's name, a beat of silence, then hello in the
+// local language. The pause is measured from when the NAME finishes rather than from
+// when it starts — utterance length varies enormously ("Chad" against "the Democratic
+// Republic of the Congo"), so a fixed timer would either overlap the name or leave a
+// hole after it. Returns a cancel function; the caller must call it if the player
+// leaves, or a queued greeting will speak over the next screen.
+export function speakArrival(country, greeting, gapMs = 1000) {
+  let timer = null, done = false;
+  try {
+    if (!speechAvailable) return () => {};
+    window.speechSynthesis.cancel();
+    const name = utter(country, { pitch: 1.05 });
+    const sayHello = () => {
+      if (done || !greeting?.text) return;
+      try { window.speechSynthesis.speak(greetingUtterance(greeting)); } catch { /* optional */ }
+    };
+    // onend doesn't fire on every browser (and never fires if the utterance is
+    // cancelled), so a timer backstops it — whichever lands first wins, and `done`
+    // keeps the greeting from being spoken twice.
+    name.onend = () => { if (!done) { clearTimeout(timer); timer = setTimeout(sayHello, gapMs); } };
+    window.speechSynthesis.speak(name);
+    timer = setTimeout(() => { name.onend = null; sayHello(); }, 4000 + gapMs);
+  } catch { /* speech is optional */ }
+  return () => { done = true; clearTimeout(timer); };
 }

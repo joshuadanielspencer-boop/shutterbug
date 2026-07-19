@@ -51,7 +51,7 @@ export const CURIOSITY_DECKS = [
       {
         id: "logo-film",
         title: "Every frame counts",
-        body: "Uncle's camera uses real film — a common roll holds just 24 or 36 pictures, and you "
+        body: "Uncle Jonah's camera uses real film — a common roll holds just 24 or 36 pictures, and you "
           + "can't see any of them until the roll is developed. That's why he said to make every shot "
           + "count: no deleting, no trying again.",
         source: "https://en.wikipedia.org/wiki/135_film",
