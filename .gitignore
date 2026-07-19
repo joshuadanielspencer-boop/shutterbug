@@ -27,3 +27,7 @@ art-drops/
 
 # Natural Earth source data cached by scripts/gen-geography.mjs (hundreds of MB)
 scripts/.cache/
+
+# Local Supabase keys (see .env.example)
+.env
+.env.local

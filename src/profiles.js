@@ -41,6 +41,13 @@ function write(store) {
   }
 }
 
+// The raw store, for the sync layer only (src/sync.js). Game code must go through the
+// named functions above and below — these two exist so background reconciliation can
+// read and replace the whole store atomically without profiles.js having to know that
+// a network exists.
+export const readStore = () => read();
+export const writeStore = (store) => write(store);
+
 export function storageAvailable() {
   try {
     const k = "__sb_probe__";
