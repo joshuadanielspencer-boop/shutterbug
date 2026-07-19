@@ -1,9 +1,29 @@
 # Shutterbug — A World Photo Safari
 
 An educational geography photo game for kids (homeschool use). The player is a
-travelling photographer: read the editor's clue, fly to the right city, and
+travelling photographer: read Uncle Jonah's clue, fly to the right city, and
 photograph the right subject before the travel days run out. Every correct shot
 teaches a verifiable geography fact. Built with **Vite + React**.
+
+## Who and what is in the game right now
+
+Read this before trusting any older prose in this file or in `docs/`.
+
+- **Uncle Jonah** is the storyteller — a Vietnamese man who travelled widely when
+  he was young with the camera he now lends you, and who is too old to travel now.
+  He is NOT a man who never went anywhere; keep his lines on the "places I never
+  got to" side of that, never "I never went". His words live in `src/data/grandpa.js`
+  (the filename and the `GRANDPA`/`NIGEL_*` identifiers are pre-rebrand and
+  deliberately left alone — they are internal, and renaming them buys nothing).
+  His painted expressions live in `public/assets/shutterbug-ui/jonah/`.
+- **Mr O** is the eager-kid foil who rides along with a fact or a double-points
+  riddle. He never appears during assignment 1.
+- **Four modes:** Assignments, Grand Tour, Explore, Journeys. The standalone
+  **Quiz mode and the Daily Expedition mode were removed** — the review quiz now
+  runs at the end of every scored run (the "homecoming"), and there is no
+  once-a-day mode. Anything describing either as a mode is stale.
+- **The passport is always the booklet popup**, never its own screen.
+- **Target device is a desktop window** (see rule 4).
 
 ## Commands
 
@@ -34,9 +54,11 @@ map that looked entirely plausible and was wrong:
   continents (there is a Colorado in Argentina, a Mackenzie in Queensland) and it
   stores a long river under its *local* names, so a naive lookup silently produced
   a Nile that stopped in Sudan.
-- **The Daily Expedition** (`test/daily.test.js`) pins the promise that everyone
-  playing on the same day at the same level flies the *same* run. One stray
-  `Math.random()` in the mission generator would break that invisibly.
+- **Seeded runs** (`test/daily.test.js`) pin the reproducibility primitives in
+  `rng.js` — that `withSeed()` restores the previous generator even when its body
+  throws, and that a seeded plan is identical every time. The Daily Expedition it
+  was written for is gone (see below), but the primitives it guards are still what
+  keep one stray `Math.random()` from making every run subtly non-reproducible.
 
 ### Deploy / install as an app
 
@@ -79,7 +101,8 @@ src/
   shutterbug-world.jsx     # main game component (the whole game, for now)
   profiles.js              # localStorage profiles, bests, spaced-repetition, passport
   rng.js                   # the one swappable RNG — withSeed() makes a run reproducible
-  daily.js                 # the Daily Expedition: day number, seed, share card
+  daily.js                 # day number + seed helpers (the Daily MODE is gone; the
+                           #   seeding primitives are still used and still tested)
   robinson.js              # Robinson projection helpers for the world map
   data/
     locations.js           # game content: 144 places — clues, facts, photos, greetings, category
@@ -156,9 +179,14 @@ deck marks 1997, the year Astana became Kazakhstan's capital.
 - **Colorblind-safe UI:** never rely on color alone to convey meaning; pair color
   with text, shape, icons, or patterns. Maintain sufficient contrast.
 - **Full keyboard navigation:** every interactive element must be reachable and
-  operable by keyboard, with visible focus states and a sensible tab order.
-- **Works on a phone:** responsive layout, touch-friendly targets, and readable
-  text on small screens. Test at narrow viewport widths.
+  operable by keyboard, with visible focus states and a sensible tab order. This
+  one carries MORE weight now, not less: the target device is a desktop, so
+  keyboard and mouse are the primary way in.
+- **Target size is a DESKTOP window.** Phones are explicitly not a target — don't
+  spend effort on narrow-viewport layouts, and don't compromise a desktop layout
+  to suit one. An iPad should still work (the PWA installs there) but it's a
+  secondary consideration; a tablet-width regression is worth noting, not worth
+  blocking on. Layouts may assume a landscape window with room to breathe.
 
 ## Notes
 

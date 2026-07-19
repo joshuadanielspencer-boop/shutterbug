@@ -4,7 +4,33 @@ A handoff document. Everything here is written so a **new session with no memory
 the previous ones** can pick up a task and finish it. Read `CLAUDE.md` first (the
 three project rules are hard requirements), then the task you're doing.
 
-Last updated **2026-07-16**.
+Last updated **2026-07-18**.
+
+> ### ⚠ Read this before anything below
+>
+> A long session on 2026-07-17/18 changed things this document still describes the
+> old way. Where they disagree, **this box wins**:
+>
+> - **Grandpa Nigel is now Uncle Jonah** — a Vietnamese man who DID travel widely when
+>   young (with the camera he lends you) and is too old to travel now. Not a man who
+>   never went. Art in `public/assets/shutterbug-ui/jonah/`; words still in
+>   `src/data/grandpa.js` (filename and `GRANDPA`/`NIGEL_*` identifiers are
+>   pre-rebrand and intentionally left alone — internal only).
+> - **Quiz mode and Daily Expedition mode were REMOVED.** The review quiz now runs at
+>   the end of every scored run (the homecoming). There is no once-a-day mode, no
+>   share card, no daily streak. Four modes remain: Assignments, Grand Tour, Explore,
+>   Journeys. §7 below says to do Supabase "after the Daily has proved out" — that
+>   condition no longer exists and is not a reason to wait.
+> - **The passport is always the booklet popup**, never its own screen.
+> - **Target device is a DESKTOP window.** Phones are explicitly not a target; iPad is
+>   secondary. §8's "final single-screen pixel fit" should be tuned to a desktop
+>   window. See the amended rule 4 in `CLAUDE.md`.
+> - **The desktop executable (§8) is NOT recommended.** The PWA already installs on
+>   desktop; signing costs $99/yr and unsigned builds throw OS warnings at parents.
+>   Do it only if a real double-click icon is worth that.
+> - **Recommended next build:** export/import the passport as a file. Today a cleared
+>   cache erases months of progress, and that work is the same serialization Supabase
+>   (§7) would reuse.
 
 ### THE THREE THINGS TO DO NEXT (start here)
 
@@ -33,7 +59,24 @@ the capstone. The Supabase backend (§7) sits off to the side whenever he wants 
 
 ### Recently shipped
 
-This session: **travel modes** (§9 — the big one), plus a small-fixes UI pass (flight
+**2026-07-17/18 — the recast + a long polish run.** Grandpa Nigel became **Uncle
+Jonah** (new art, new signature, backstory reworked from "never went" to "went young,
+passing it on"); his expression set grew to 17 faces mapped per mood, including a
+difficulty ladder that climbs to wide-eyed astonishment on Expert. **Quiz and Daily
+modes removed.** Uncle Jonah's screens (intro, meet, homecoming, results) share one
+desk backdrop; the results screen fits without scrolling, roll left and Jonah right,
+polaroids title-only in a handwritten face. **Mr O** got a first-time introduction, a
+"bwooop", and now stays away for the whole of assignment 1. Audio: the Star-Spangled
+Banner replaced "When the Saints" (and had a wrong note fixed), country tunes play
+twice at double volume, a 4-second music fade, a shutter at capture with the reward
+chime held until the photo develops, and a quiet thunk under every button. Maps:
+Russia's NE coast regenerated, relief re-rendered at 12288px, North/South America and
+the USA re-cropped, paper grain over the world map, and the compass shrunk out of
+Hawaii's way. Ten new greeting bubbles (with the corrected Russian and Hindi) that now
+tell you the language and what the word means. The passport became popup-only. A build
+stamp sits in the splash corner so you can tell which build you're on.
+
+Earlier this month: **travel modes** (§9 — the big one), plus a small-fixes UI pass (flight
 music plays the full 4s then fades over 2s; hover-only country/landmark labels; the
 Aleutian wrap cut off the world map; Europe/UK/Asia map crops + vertical stretch; the
 polaroid result layout; US-English spellings), CI action bumps, the Mr O riddle
@@ -59,13 +102,15 @@ Journeys, and the Grandpa Nigel story frame.
   `test/routes.test.js`, `test/art.test.js`). They must stay green; several of them guard *facts*, not
   just shapes, and exist because a plausible-looking wrong map shipped once already.
 - **Every random choice must go through `src/rng.js`** (`rnd()`, `shuffled()`), never
-  `Math.random()` — that's what makes the Daily Expedition identical for everyone, and
-  a stray `Math.random()` breaks it *silently*. `test/daily.test.js` guards it.
+  `Math.random()` — a stray `Math.random()` breaks reproducibility *silently*.
+  `test/daily.test.js` guards the primitives. (It was written for the Daily
+  Expedition; that mode is gone but the primitives are still load-bearing.)
 - The deploy workflow uses `actions/upload-pages-artifact@v5` + `deploy-pages@v5`
   (bumped off the deprecated Node 20 in July 2025).
-- **Game modes that exist:** Assignments, Daily Expedition, Grand Tour (route
-  optimisation), Journeys, Themed Expeditions, Explore, Quiz.
-- **The one big file:** `src/shutterbug-world.jsx` (~4,900 lines) is the whole game
+- **Game modes that exist:** Assignments, Grand Tour (route optimisation), Journeys,
+  Themed Expeditions, Explore. **Quiz and Daily Expedition were removed** — the review
+  quiz now runs at the end of every scored run (the homecoming).
+- **The one big file:** `src/shutterbug-world.jsx` (~6,500 lines) is the whole game
   component. Everything else is data, rules pulled out for testability
   (`missions.js`, `routes.js`, `rng.js`, `daily.js`, `profiles.js`), or generators
   under `scripts/`.
@@ -159,10 +204,12 @@ build. Suggested order — each piece is playable on its own, so ship them separ
    run still feels like progress.
 
 **Use `src/rng.js` for every random choice** (`rnd()`, `shuffled()`, `pickOne()`).
-Never call `Math.random()` directly in generation code: `withSeed()` is what lets the
-Daily Expedition hand every player the identical run, and a stray `Math.random()` in
-the generator breaks that *silently* — nothing looks wrong until two kids compare
-score cards and their clues don't match. `test/daily.test.js` guards this.
+Never call `Math.random()` directly in generation code: `withSeed()` is what makes a
+run reproducible from a seed, and a stray `Math.random()` in the generator breaks that
+*silently* — nothing looks wrong until a run that should replay identically doesn't.
+`test/daily.test.js` guards this. (It was written when the Daily Expedition needed
+every player to get the same run; that mode is gone, but seeded reproducibility is
+still what any future shared/replayable run would be built on.)
 
 ---
 
@@ -306,16 +353,37 @@ Async — no live networking needed.
 
 **For kids: anonymous accounts + a shareable code. No passwords, no PII, no open chat.**
 
-This one decision unlocks both cross-device sync and friend competition. Do it *after*
-the Daily Expedition has proved out, since the Daily deliberately needs no server.
+This one decision unlocks both cross-device sync and friend competition.
+
+**Sequencing (updated 2026-07-18).** This used to say "do it after the Daily Expedition
+has proved out" — the Daily mode is gone, so that condition no longer exists and is not
+a reason to wait. Two things that DO matter:
+
+- **Build it local-first.** Keep `localStorage` as the read path and sync to Supabase in
+  the background, so `profiles.js` stays synchronous and no call site changes. That is
+  also simply correct for an offline-capable PWA. The alternative — `await`ing cloud
+  reads — turns all ~25 exported functions async and touches call sites throughout the
+  6.5k-line component, which WILL collide with any feature work happening in parallel.
+  Done local-first, this can proceed alongside everything else.
+- **Sync the profile as a JSON blob**, not a normalised schema. Profile fields are still
+  being added (`metNigel`, `metMrO`, `grandpaWant`…) and a blob makes that churn free.
+  Keep a few denormalised columns beside it (name, best score, difficulty, rank) purely
+  so the leaderboard query stays cheap.
+
+**Do the file export/import first** (see the box at the top). It ships the durability
+win on its own, needs no backend, and produces exactly the serialization this reuses.
 
 ---
 
 ## 8. Optionally package a desktop app
 
-**Needs Joshua's decision.** The game already installs as a PWA (Chrome/Edge/Safari →
-Install) with zero work, which may well be enough. For a real double-click
-`.app`/`.exe`, wrap it with Tauri.
+**Needs Joshua's decision — and the standing recommendation (2026-07-18) is DON'T.**
+The game already installs as a PWA (Chrome/Edge/Safari → Install) with zero work, and
+the target device is a desktop where that install works fine. The only thing Tauri adds
+is a real double-click icon, and it costs $99/yr to sign; unsigned, it throws OS
+security warnings at whoever opens it. Revisit only if that icon is genuinely wanted.
+
+For a real double-click `.app`/`.exe`, wrap it with Tauri.
 
 ⚠ Unsigned apps trigger OS security warnings, and code signing costs money (Apple
 $99/yr). Don't start this without him agreeing to that.
