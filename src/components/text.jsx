@@ -24,8 +24,8 @@ import { SFX } from "../audio.js";
 // effect is meant not to be. The floor keeps the fastest speeds from buzzing.
 const MIN_GAP = 55;
 const gapFor = (tick) => Math.max(MIN_GAP, Math.round(tick * 2.4));
-function typeTick(ref, ch, minGap) {
-  if (!ch || /\s/.test(ch)) return;
+function typeTick(ref, ch, minGap, mute) {
+  if (mute || !ch || /\s/.test(ch)) return;
   const now = Date.now();
   if (now - ref.current < minGap) return;
   ref.current = now;
@@ -137,11 +137,17 @@ export const TALKING_CPS = 45;
 // is far likelier to be a fact than a line of speech, so forgetting reads too slow
 // rather than too fast, and too slow is the recoverable mistake (you can click to
 // finish a line; you cannot click to un-miss one).
-export function TypeLine({ text, reduced, style, inline = false, cps = Math.round(TALKING_CPS / 2), onDone }) {
+export function TypeLine({ text, reduced, style, inline = false, cps = Math.round(TALKING_CPS / 2), onDone, mute = false }) {
   const str = text == null ? "" : String(text);
   const [n, setN] = useState(reduced ? str.length : 0);
   const idRef = useRef(null);
   const lastTick = useRef(0);
+  // Read the live mute value from inside the interval (rather than closing over the
+  // prop) so a bubble opening MID-line silences this line's remaining clicks without
+  // restarting the reveal. This is how the assignment clue goes quiet the instant Mr
+  // O pops up, instead of two typewriters racing.
+  const muteRef = useRef(mute);
+  muteRef.current = mute;
   const tick = Math.max(8, Math.round(1000 / cps));
   const gap = gapFor(tick);
   useEffect(() => {
@@ -151,7 +157,7 @@ export function TypeLine({ text, reduced, style, inline = false, cps = Math.roun
     let i = 0;
     idRef.current = setInterval(() => {
       i += 1; setN(i);
-      typeTick(lastTick, str[i - 1], gap);
+      typeTick(lastTick, str[i - 1], gap, muteRef.current);
       if (i >= str.length) { clearInterval(idRef.current); idRef.current = null; if (onDone) onDone(); }
     }, tick);
     return () => { if (idRef.current) clearInterval(idRef.current); };

@@ -1467,9 +1467,16 @@ export default function ShutterbugWorld() {
     // Coming home to Uncle is a warm moment, not a mournful one — he's about to
     // ask you about everything you saw. Keep the jig under it.
     else if (screen === "homecoming") { MUSIC.stopCountry(); if (musicOn) MUSIC.start(); else MUSIC.stop(); }
-    // splash / meet / intro / dream / quiz: the happy Scottish jig plays the whole
-    // way from the splash through meeting Uncle (it only fades at the world map),
-    // and resumes here on a return trip so every playthrough is scored to it.
+    // The SPLASH holds only the quiet drone — the piper stood ready. The lively jig
+    // must NOT play here: it begins when the player clicks "Begin your adventure"
+    // (that button calls MUSIC.start()), swelling up out of the drone. On a first
+    // load nothing has started, so hushToDrone is a no-op and the splash effect below
+    // brings the drone; on a RETURN to the splash it drops the still-running jig back
+    // to the bed.
+    else if (screen === "start") { MUSIC.stopCountry(); if (musicOn) MUSIC.hushToDrone(); else MUSIC.stop(); }
+    // meet / travelers / intro / dream / quiz: the jig plays from the moment you leave
+    // the splash through meeting Uncle (it only fades at the world map), and resumes
+    // here on a return trip so every playthrough is scored to it.
     else { MUSIC.stopCountry(); if (musicOn) MUSIC.start(); }
   }, [screen]); // eslint-disable-line react-hooks/exhaustive-deps
   // The country's looping tune belongs to the country map (the "city" step). The
@@ -1655,15 +1662,25 @@ export default function ShutterbugWorld() {
   // when it can land rather than while trying to get past the arrival). When there's
   // nowhere seen yet to draw on, he falls back to a fact about the continent underfoot.
   const showMrOFact = (continent) => {
-    const seenCountries = [...new Set(album.map((p) => p.country))].filter((c) => COUNTRY_INFO[c]?.blurb);
-    if (seenCountries.length && Math.random() < 0.6) {
-      const c = seenCountries[Math.floor(Math.random() * seenCountries.length)];
+    // His "did you know" stays on the map you're standing on. His recall of a place
+    // you've been is restricted to THIS continent too — "remember Peru?" while you're
+    // in Peru, never while you're in Japan. Off-continent recall was the main way he
+    // talked about somewhere that wasn't where you were.
+    const seenHere = [...new Set(album.filter((p) => BY_ID[p.id]?.continent === continent).map((p) => p.country))]
+      .filter((c) => COUNTRY_INFO[c]?.blurb);
+    if (seenHere.length && Math.random() < 0.5) {
+      const c = seenHere[Math.floor(Math.random() * seenHere.length)];
       setMrO(`Remember ${c}? ${COUNTRY_INFO[c].blurb}`);
       return;
     }
-    const relevant = MR_O_FACTS.map((_, i) => i).filter((i) => MR_O_FACTS[i].where === continent || MR_O_FACTS[i].where == null);
-    let pool = relevant.filter((i) => !mrOSeen.current.includes(i));
-    if (!pool.length) { mrOSeen.current = mrOSeen.current.filter((i) => !relevant.includes(i)); pool = relevant; } // seen them all here — reshuffle just this continent
+    // Facts ABOUT this continent only. Every continent has at least five, so the
+    // globally-true facts are just a safety net if a continent's set ever emptied —
+    // they are not mixed in by default any more, which is what let him deliver a fact
+    // about the Sahara while the player was in Asia.
+    let onCont = MR_O_FACTS.map((_, i) => i).filter((i) => MR_O_FACTS[i].where === continent);
+    if (!onCont.length) onCont = MR_O_FACTS.map((_, i) => i).filter((i) => MR_O_FACTS[i].where == null);
+    let pool = onCont.filter((i) => !mrOSeen.current.includes(i));
+    if (!pool.length) { mrOSeen.current = mrOSeen.current.filter((i) => !onCont.includes(i)); pool = onCont; } // seen them all here — reshuffle just this continent
     const i = pool[Math.floor(Math.random() * pool.length)];
     mrOSeen.current.push(i);
     setMrO(MR_O_FACTS[i].text);
@@ -1767,6 +1784,8 @@ export default function ShutterbugWorld() {
         return { id, subject: l.subject, city: l.city, country: l.country, flag: l.flag, fact: l.fact, photo: l.photo };
       })),
       homecoming: () => startHomecoming(),
+      mrO: (t) => setMrO(t || "Oh! Did you know the Sahara is nearly the size of the whole United States?"),
+      mrOIntro: () => setMrOBeats([MR_O.intro, MR_O.fieldGuide]),
       pending: (p) => { setScreen("play"); setPending(p); },
       profile: (n) => setProfileName(n),
       days: (n) => setDays(n),
@@ -4275,7 +4294,7 @@ export default function ShutterbugWorld() {
   // the pin radii themselves are built from (defined above).
   // PIN_K matches the radius actually drawn for the CURRENT pin, so the solver spaces
   // pins for the size they really are.
-  const PIN_K = 0.066;
+  const PIN_K = 0.033;
   const pinOverlapDist = 2 * PIN_K * WoverS;   // closer than this on screen = overlapping
   const pinTargetDist = 1.8 * PIN_K * WoverS;  // push apart to here: borders just kissing
   const cityPinLayout = (() => {
@@ -4302,6 +4321,11 @@ export default function ShutterbugWorld() {
     return { pos, moved };
   })();
   const busy = !!flying || !!pending || !!riddle || !!mrO || !!mrOBeats || (!isExplore && days <= 0);
+  // Whose typewriter is it? When Mr O (or a riddle) is on screen, HIS text is the one
+  // that should click; the assignment clue and the arrival fact under him fall silent,
+  // so the player hears one typewriter, not two racing. Only these blocking overlays
+  // count — the non-blocking dog popup has no typing sound of its own.
+  const typingElsewhere = !!mrO || !!mrOBeats || !!riddle;
   // Journey-tracker step, derived from phase (continent → country → destination → shot).
   const stepIdx = phase === "continent" ? 0 : phase === "country" ? 1 : (revealed ? 3 : 2);
   // Cap the atlas so the whole desk (header + map + ribbon) fits one screen with NO
@@ -4460,10 +4484,10 @@ export default function ShutterbugWorld() {
             {(isCatAsg || namesSubject) ? (
               <>
                 <p style={{ margin: 0, color: INK, fontFamily: HAND, lineHeight: 1.35, fontSize: 18 }}>Bring me a photo of <b>{promptSubject}</b>.</p>
-                <TypeLine text={clue} reduced={prefersReduced} style={{ margin: "6px 0 0", color: INK, opacity: 0.9, fontFamily: HAND, lineHeight: 1.35, fontSize: 16.5 }} />
+                <TypeLine text={clue} reduced={prefersReduced} mute={typingElsewhere} style={{ margin: "6px 0 0", color: INK, opacity: 0.9, fontFamily: HAND, lineHeight: 1.35, fontSize: 16.5 }} />
               </>
             ) : (
-              <TypeLine text={clue} reduced={prefersReduced} style={{ margin: 0, color: INK, fontFamily: HAND, lineHeight: 1.35, fontSize: 18 }} />
+              <TypeLine text={clue} reduced={prefersReduced} mute={typingElsewhere} style={{ margin: 0, color: INK, fontFamily: HAND, lineHeight: 1.35, fontSize: 18 }} />
             )}
             {/* The landmark-type marker rides at the very END of Jonah's note (just
                 above his signature), not mid-note. */}
@@ -4527,7 +4551,7 @@ export default function ShutterbugWorld() {
                 <div style={{ marginTop: 10, textAlign: "left" }}>
                   <div style={{ textAlign: "center", marginBottom: 8 }}><CategoryBadge category={currentLoc.category} size="sm" /></div>
                   <div style={{ background: PAPER, border: `1px solid ${PAPER_LINE}`, borderRadius: 6, padding: "9px 11px", fontSize: 13, color: INK, lineHeight: 1.5 }}>
-                    <b style={{ color: CORAL }}>Did you know?</b> <TypeLine text={currentLoc.fact} reduced={prefersReduced} inline style={{ display: "inline" }} />
+                    <b style={{ color: CORAL }}>Did you know?</b> <TypeLine text={currentLoc.fact} reduced={prefersReduced} mute={typingElsewhere} inline style={{ display: "inline" }} />
                   </div>
                   <details style={{ marginTop: 8, fontSize: 12, color: INK }}>
                     <summary style={{ cursor: "pointer", color: OCEAN, fontWeight: 700 }}>How the editor might clue this place</summary>
@@ -4596,17 +4620,6 @@ export default function ShutterbugWorld() {
                   <feTurbulence type="fractalNoise" baseFrequency="0.55" numOctaves="4" seed="11" result="n" />
                   <feColorMatrix in="n" type="saturate" values="0" />
                 </filter>
-                {/* A country you've photographed is washed gold AND hatched. The hatch
-                    isn't decoration — the continent colour is doing real work on this
-                    map (it's how you tell Asia from Africa at a glance), so "collected"
-                    cannot also be a colour without the two fighting, and rule 4 forbids
-                    carrying meaning on colour alone regardless. Diagonal lines read as
-                    "filled in" to everyone, including a colour-blind child, and they
-                    survive the paper grain drawn over the top. */}
-                <pattern id="collectedHatch" width="2.6" height="2.6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
-                  <rect width="2.6" height="2.6" fill={GOLD} fillOpacity="0.62" />
-                  <line x1="0" y1="0" x2="0" y2="2.6" stroke="#6B4E12" strokeOpacity="0.7" strokeWidth="1.1" />
-                </pattern>
               </defs>
               {/* Everything is drawn inside one group so a whole map can be given the
                   gentle vertical exaggeration (Europe / UK); it's the identity transform
@@ -4672,10 +4685,17 @@ export default function ShutterbugWorld() {
                       return (
                         <g key={c.name}>
                           <path d={d} fill={CONTINENT_COLOR[cont]} fillRule="evenodd" stroke={INK} strokeWidth="0.3" vectorEffect="non-scaling-stroke" />
-                          {/* The same path again, hatched, over the continent colour —
-                              so a collected country still reads as part of its continent
-                              rather than becoming a gold blob detached from it. */}
-                          {got && <path d={d} fill="url(#collectedHatch)" fillRule="evenodd" stroke="#6B4E12" strokeOpacity="0.5" strokeWidth="0.5" vectorEffect="non-scaling-stroke" style={{ pointerEvents: "none" }} />}
+                          {/* A country you've photographed reads as a LIGHTER patch of
+                              its own continent's colour — the same hue, washed with
+                              white, so it plainly stands out while still belonging to
+                              the continent around it. Lightness (not hue) is what
+                              carries "been there", which keeps it legible to a
+                              colour-blind child (rule 4): a value difference survives
+                              every kind of colour vision, and a soft white outline
+                              gives the patch an edge that doesn't depend on colour at
+                              all. This replaces the gold diagonal hatch, which read as
+                              a separate orange thing stuck on top of the map. */}
+                          {got && <path d={d} fill="#FFFFFF" fillOpacity="0.5" fillRule="evenodd" stroke="#FFFFFF" strokeOpacity="0.85" strokeWidth="0.7" vectorEffect="non-scaling-stroke" style={{ pointerEvents: "none" }} />}
                         </g>
                       );
                     })}
@@ -4863,11 +4883,11 @@ export default function ShutterbugWorld() {
                         Every size here is a fraction of WoverS (the frame width in
                         plate units), so a pin is the same size on every country map. */}
                     <g transform={unstretchAt(py)}>
-                    <ellipse cx={px} cy={py} {...pinR(0.085)} fill="transparent" />
-                    <ellipse cx={px} cy={py} {...pinR(isCurrent ? 0.066 : 0.056)} fill={isCurrent ? "rgba(233,92,66,0.22)" : "rgba(255,255,255,0.82)"} stroke={isCurrent ? CORAL : INK} strokeWidth={isCurrent ? "1.4" : "1"} vectorEffect="non-scaling-stroke" />
-                    {isCurrent && <ellipse cx={px} cy={py} {...pinR(0.086)} fill="none" stroke="#FFFFFF" strokeWidth="3" vectorEffect="non-scaling-stroke" className="sbw-ping" />}
-                    <text x={px} y={py} fontSize={0.088 * WoverS} textAnchor="middle" dominantBaseline="central" style={{ pointerEvents: "none" }}>{emoji}</text>
-                    <text className="sbw-label" x={px + 0.064 * WoverS} y={py - 0.044 * WoverS} fontSize={0.026 * WoverS} fontFamily="ui-monospace, monospace" fill={INK} style={{ paintOrder: "stroke", stroke: PAPER, strokeWidth: 0.0075 * WoverS }}>{l.city}</text>
+                    <ellipse cx={px} cy={py} {...pinR(0.046)} fill="transparent" />
+                    <ellipse cx={px} cy={py} {...pinR(isCurrent ? 0.033 : 0.028)} fill={isCurrent ? "rgba(233,92,66,0.22)" : "rgba(255,255,255,0.82)"} stroke={isCurrent ? CORAL : INK} strokeWidth={isCurrent ? "1.1" : "0.8"} vectorEffect="non-scaling-stroke" />
+                    {isCurrent && <ellipse cx={px} cy={py} {...pinR(0.043)} fill="none" stroke="#FFFFFF" strokeWidth="2" vectorEffect="non-scaling-stroke" className="sbw-ping" />}
+                    <text x={px} y={py} fontSize={0.044 * WoverS} textAnchor="middle" dominantBaseline="central" style={{ pointerEvents: "none" }}>{emoji}</text>
+                    <text className="sbw-label" x={px + 0.033 * WoverS} y={py - 0.024 * WoverS} fontSize={0.017 * WoverS} fontFamily="ui-monospace, monospace" fill={INK} style={{ paintOrder: "stroke", stroke: PAPER, strokeWidth: 0.0048 * WoverS }}>{l.city}</text>
                     </g>
                   </g>
                 );
@@ -6519,14 +6539,19 @@ function MrOBubble({ fact, beats, onClose, reduced }) {
     <div role="dialog" aria-modal="true" aria-label={`${MR_O.name} says`} onClick={advance}
       style={{ position: "fixed", inset: 0, zIndex: 58, background: "rgba(8,20,24,0.66)",
         display: "flex", alignItems: "flex-end", justifyContent: "center", gap: 0, padding: "0 20px", cursor: "pointer" }}>
-      <div className={reduced ? "" : "sbw-pop"} key={beat} style={{ display: "flex", alignItems: "flex-end", gap: 6, maxWidth: 980, width: "100%", justifyContent: "center" }}>
+      <div className={reduced ? "" : "sbw-pop"} key={beat} style={{ display: "flex", alignItems: "flex-end", gap: 6, maxWidth: 1120, width: "100%", justifyContent: "center" }}>
         {imgOk ? (
+          // Taller, and pinned to the very bottom of the screen (the overlay has no
+          // bottom padding and the row is flex-end), so Mr O stands ON the floor of
+          // the frame instead of floating mid-air with his legs cropped off. He is
+          // drawn head-to-shins, so "bigger + bottom-anchored" is what makes him read
+          // as a person leaning in rather than a portrait pasted on.
           <img src={`${UI}${img}`} alt="" onError={() => setImgOk(false)}
-            style={{ height: "min(66vh, 620px)", width: "auto", flex: "none", objectFit: "contain", filter: "drop-shadow(0 8px 16px rgba(0,0,0,0.5))" }} />
+            style={{ height: "min(94vh, 900px)", width: "auto", maxWidth: "52vw", flex: "none", objectFit: "contain", objectPosition: "bottom", filter: "drop-shadow(0 8px 16px rgba(0,0,0,0.5))" }} />
         ) : (
           <div aria-hidden="true" style={{ fontSize: 160, lineHeight: 1, flex: "none" }}>{MR_O.emoji}</div>
         )}
-        <div style={{ background: "#fff", border: `4px solid ${OCEAN}`, borderRadius: "22px 22px 22px 6px", padding: "22px 26px", boxShadow: "0 10px 30px rgba(16,38,46,0.4)", marginBottom: "12vh", maxWidth: 460 }}>
+        <div style={{ background: "#fff", border: `4px solid ${OCEAN}`, borderRadius: "22px 22px 22px 6px", padding: "22px 26px", boxShadow: "0 10px 30px rgba(16,38,46,0.4)", marginBottom: "20vh", maxWidth: 460 }}>
           <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 15, letterSpacing: "0.12em", color: OCEAN, fontWeight: 800, marginBottom: 10 }}>{MR_O.name.toUpperCase()}</div>
           {/* For a plain fact the catchphrase already leads the line ("Oh! Did you
               know… <fact>"); intro beats are whole self-contained lines. */}

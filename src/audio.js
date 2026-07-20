@@ -248,6 +248,7 @@ export const MUSIC = (() => {
   let ctx = null, master = null, jigBus = null, countryBus = null, timer = null, nextBeat = 0, running = false;
   let drone = []; // sustained bagpipe drone oscillators, torn down on stop()
   let countryActive = false; // is a country-arrival tune currently sounding?
+  let fadeStopT = null;       // stops the jig scheduler once its fade-out has run its course
   const ac = () => {
     try {
       if (typeof window === "undefined") return null;
@@ -441,7 +442,7 @@ export const MUSIC = (() => {
     N.G4, N.A4, N.B4,   N.Cn5, N.D5, N.E5,
     N.D5, N.A4, N.Fs4,  N.D4, 0, 0,
   ];
-  const TRAVEL_2 = [
+  const MELODY_6 = [
     N.A4, N.D5, N.A4,   N.Fs5, N.E5, N.D5,
     N.B4, N.E5, N.B4,   N.D5, N.Cn5, N.B4,
     N.A4, N.Fs4, N.A4,  N.D5, N.A4, N.Fs4,
@@ -451,6 +452,8 @@ export const MUSIC = (() => {
     N.E5, N.D5, N.B4,   N.A4, N.G4, N.Fs4,
     N.E4, N.Fs4, N.A4,  N.D4, 0, 0,
   ];
+  // A seventh, kept in the same pool — an even upbeat jig with a touch more leap in it.
+  const MELODY_7 = TRAVEL_1;
   // ---- Celebration: brighter, higher, and it lands UP --------------------------
   // The opening and travel jigs both fall back to a low D at the end, which reads as
   // "settled". These finish on the octave above, which reads as "won". Pitched a
@@ -476,13 +479,26 @@ export const MUSIC = (() => {
     N.E5, N.Fs5, N.G5,  N.A5, N.G5, N.Fs5,
     N.D5, N.Fs5, N.A5,  N.D5, 0, 0,
   ];
-  // Three pools, three moods. The opening set is the one you hear most, so it keeps
-  // the largest share of phrases.
-  const MELODIES = [MELODY, MELODY_2, MELODY_3, MELODY_4, MELODY_5];
-  const TRAVEL_MELODIES = [TRAVEL_1, TRAVEL_2];
+  // ONE pool of upbeat Scottish jigs, shared by the title screen and the flights.
+  // Each playthrough draws a title tune and a DIFFERENT travel tune from it (see
+  // chooseRunTunes), so the tune you set off to is never the one that was looping on
+  // the menu — that sameness was the complaint. Celebration keeps its own brighter,
+  // higher pool (a won trip should not sound like the title screen).
+  const JIGS = [MELODY, MELODY_2, MELODY_3, MELODY_4, MELODY_5, MELODY_6, MELODY_7];
   const CELEBRATE_MELODIES = [CELEBRATE_1, CELEBRATE_2];
   const pickOne = (pool) => pool[Math.floor(Math.random() * pool.length)];
-  let activeMelody = MELODY; // set at random on each fresh start()
+  // The pair for the current playthrough. Re-rolled each fresh start() (i.e. each new
+  // trip), always distinct, so title ≠ travel within a playthrough and both wander
+  // across the six from one trip to the next.
+  let titleJig = MELODY, travelTune = TRAVEL_1;
+  const chooseRunTunes = () => {
+    const a = Math.floor(Math.random() * JIGS.length);
+    let b = Math.floor(Math.random() * (JIGS.length - 1));
+    if (b >= a) b += 1;   // uniform over the OTHER five — guarantees b !== a
+    titleJig = JIGS[a];
+    travelTune = JIGS[b];
+  };
+  let activeMelody = MELODY; // the title jig currently looping; set in start()
   // A short reedy note — sawtooth through its own lowpass, quick attack and a
   // clipped tail so notes stay distinct at jig tempo. Chanter-like.
   const reed = (t, f, peak, dur) => {
@@ -567,9 +583,14 @@ export const MUSIC = (() => {
         startDrone(c.currentTime + 0.05, DRONE_BED, 2.0);
       } catch { /* ignore */ }
     },
+    // Test hook: roll a playthrough's tune pair and report whether they came out
+    // distinct. The title≠travel guarantee is enforced by construction in
+    // chooseRunTunes, and this lets a test exercise that directly rather than
+    // inferring it from scheduled notes (two different jigs can share an opening).
+    _rollDistinct() { chooseRunTunes(); return titleJig !== travelTune; },
     // Start (or resume) the looping Scottish jig — splash + meet screens. On a
-    // FRESH start one of the five jig phrases is picked at random; the bus fades
-    // in over 1 second (and out over ~2s in fadeJig/stop).
+    // FRESH start THIS playthrough's title jig loops; the bus fades in over 1 second
+    // (and out over 4s in fadeJig/stop).
     start() {
       try {
         const c = ac(); if (!c) return;
@@ -580,15 +601,17 @@ export const MUSIC = (() => {
         // A drone already sounding is the splash bed: swell it to full under the
         // melody rather than layering a second pair of oscillators on top of it.
         if (drone.length) rampDrone(DRONE_FULL, 0.8);
+        // A fade might be mid-flight (you dipped onto the map and straight back). Cancel
+        // its scheduled stop and keep the loop alive rather than re-initialising.
+        if (fadeStopT) { clearTimeout(fadeStopT); fadeStopT = null; }
         if (running) return;
         running = true;
-        // Chain THREE of the five phrases into one long set (~3× a single phrase),
-        // so the opening jig — heard across several click-through screens — takes far
-        // longer to come back around and never feels like a short loop. (Math.random
-        // here is fine: this is audio, not the seeded game RNG.)
-        const order = [...MELODIES].sort(() => Math.random() - 0.5).slice(0, 3);
-        activeMelody = order.flat();
-        idx = 0; // start the chosen set from its first bar
+        // Fresh trip: roll THIS playthrough's title/travel pair (distinct), and loop the
+        // ONE title jig — not a chained medley. (Math.random is fine here: audio, not the
+        // seeded game RNG.)
+        chooseRunTunes();
+        activeMelody = titleJig;
+        idx = 0; // start the chosen jig from its first bar
         nextBeat = Math.max(nextBeat, c.currentTime + 0.15);
         // Only if the splash bed isn't already holding one — otherwise the swell
         // above is joined by a second pair of sawtooths on the same two pitches,
@@ -598,14 +621,43 @@ export const MUSIC = (() => {
         schedule();
       } catch { /* ignore */ }
     },
-    // Fade the jig loop out (at the map) but keep the context + master alive so
-    // the travel jig and country tunes can still play. A slow 4-second fade.
+    // Fade the jig loop out (at the map) over a full 4 seconds, keeping the context +
+    // master alive so the travel jig and country tunes can still play.
+    //
+    // The scheduler is DELIBERATELY left running through the fade. It used to stop the
+    // instant this was called (running = false, timer cleared), which dried up the note
+    // pipeline in a fraction of a second — so the jigBus gain ramped down over 4s with
+    // nothing playing through it, and the "fade" was really an instant cut after the
+    // last already-scheduled beat. That's the "sometimes it stops instantly" report.
+    // Now the loop keeps laying down beats, each quieter than the last as the bus fades,
+    // and only stops once the ramp is complete.
     fadeJig() {
       try {
-        running = false;
-        if (timer) { clearInterval(timer); timer = null; }
+        const c = ac();
         stopDrone();
         if (jigBus) fadeOut(jigBus.gain);
+        if (!running || !c) { running = false; if (timer) { clearInterval(timer); timer = null; } return; }
+        if (fadeStopT) clearTimeout(fadeStopT);
+        fadeStopT = setTimeout(() => {
+          running = false;
+          if (timer) { clearInterval(timer); timer = null; }
+          fadeStopT = null;
+        }, MUSIC_FADE_SECS * 1000 + 150);
+      } catch { /* ignore */ }
+    },
+    // Returning to the splash: drop the looping title jig but keep the quiet drone
+    // going underneath, so the menu holds the "piper stood ready" bed rather than
+    // either silence or the full jig still blaring over it. The ~0.6s of melody notes
+    // already on the clock tail off; the sustained drone remains and settles to the
+    // bed level. (droneBed, called by the splash effect, then keeps it there.)
+    hushToDrone() {
+      try {
+        if (fadeStopT) { clearTimeout(fadeStopT); fadeStopT = null; }
+        running = false;
+        if (timer) { clearInterval(timer); timer = null; }
+        this.stopCountry();
+        const c = ac(); if (!c) return;
+        if (drone.length) rampDrone(DRONE_BED, 1.2);
       } catch { /* ignore */ }
     },
     // Full stop (leaving to the passport / music off): fade everything out over
@@ -663,10 +715,11 @@ export const MUSIC = (() => {
         fade.gain.linearRampToValueAtTime(0.0001, t0 + TOTAL);       // then fade out over 3s
         fade.connect(master);
         const n = Math.ceil(TOTAL / EIGHTH);
-        // A TRAVEL tune, not the opening one. Flights used to reuse MELODY, so setting
-        // off sounded like the menu you had just left. Re-picked every flight so a long
-        // Grand Tour doesn't hear one tune a dozen times.
-        const air = pickOne(TRAVEL_MELODIES);
+        // THIS playthrough's travel tune — chosen once per trip in chooseRunTunes and
+        // guaranteed different from the title jig, so setting off never sounds like the
+        // menu you just left. It stays the same tune for every flight of one trip (so a
+        // Grand Tour has a consistent "travelling" theme) and changes next trip.
+        const air = travelTune;
         for (let i = 0; i < n; i++) {
           const f = air[i % air.length];
           if (f) voice(t0 + i * EIGHTH, f, i % 3 === 0 ? 0.12 : 0.085, EIGHTH * 0.95, "reed", fade);

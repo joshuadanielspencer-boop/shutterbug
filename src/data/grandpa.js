@@ -58,7 +58,8 @@ export const NIGEL_MOOD = {
   // Sequences: one face per beat, in order.
   // Intro: welcomes you in → reminisces → a wistful "the world I never reached" →
   // leans in with his plan (a conspiratorial shush) → offers the camera → heartfelt.
-  intro: ["hand_over_heart_v2", "thoughtful_glance", "hand_over_heart_v2", "mischievous_shush", "cheerful_toast", "hand_over_heart_v2"],
+  // …offers the camera → introduces the pup with a fond wink → heartfelt send-off.
+  intro: ["hand_over_heart_v2", "thoughtful_glance", "hand_over_heart_v2", "mischievous_shush", "cheerful_toast", "playful_wink", "hand_over_heart_v2"],
   sendoff: ["playful_wink", "thoughtful_glance"],
   // Dream fulfilled: astonishment → gratitude → warmth → and a cheer sending you
   // back out ("don't stop on my account — there's always another horizon").
@@ -124,6 +125,7 @@ export const INTRO_BEATS = [
   "But no one sees all of it in one life, and these days I do my travelling from this chair. There's a whole wide world still out there I never reached.",
   "You, though — young legs and a sharp pair of eyes. So here's my plan, if you'll hear an old traveler out.",
   "Take my camera. It's older than your mother and it still uses real film, so make every shot count. No telephones, no glowing screens — just you and the wide world.",
+  "Oh — and take the wee pup, here. My travelling companion for years, and restless as anything since I stopped. The two of you will get on grand — expect a visit whenever you've done something worth a wag.",
   "Go and find the places I loved, and the ones I never got to. Then hurry home, show me every picture, and tell me all about it. Bring the world back to me.",
 ];
 
