@@ -550,50 +550,65 @@ systems, and (a) fixes the specific thing that felt hollow.
 ### The dog
 
 Art is in `public/assets/shutterbug-ui/dog/` — six poses (standing, sitting with paw
-up, play bow, walking, head-tilt sit, lying down). She already appears *in* Jonah's
-painted scenes, lying by the fire, so she is established as his dog and the player
-has met her without being told anything about her.
+up, play bow, walking, head-tilt sit, lying down). He already appears *in* Jonah's
+painted scenes, lying by the fire, so he is established as his dog and the player
+has met him without being told anything about him.
 
 Ideas, best first:
 
-1. **She stays home with Jonah and reacts.** Cheapest and most in keeping with what's
+1. **He stays home with Jonah and reacts.** Cheapest and most in keeping with what's
    already on screen: the pose changes with the result — play bow on a perfect shot,
    head tilt on a miss, lying down when the days run out. A second emotional channel
    on the screens Jonah already owns, no new mechanic, no new writing, and it uses
    all six poses. A young child reads a dog's posture faster than a sentence.
-2. **She finds things.** A "sniff it out" tool alongside the Field Guide: once per
-   run she points to the right continent (not the country, not the pin) for a cost.
+2. **He finds things.** A "sniff it out" tool alongside the Field Guide: once per
+   run he points to the right continent (not the country, not the pin) for a cost.
    The play-bow and standing poses are exactly the vocabulary for that. Note this is
    close to what the Field Guide already does — worth checking with Joshua whether a
    second hint tool helps or muddies.
-3. **She travels with you as a streak keeper.** She rides along and appears on the
+3. **He travels with you as a streak keeper.** He rides along and appears on the
    map after N correct shots in a row, and goes back to Jonah when the streak breaks.
    Makes an invisible stat visible, but it does add a mechanic.
-4. **She is the Explore-mode companion.** Explore has no pressure and no Mr O; a dog
+4. **He is the Explore-mode companion.** Explore has no pressure and no Mr O; a dog
    trotting along the bottom of the map would give that mode its own character.
 
 > **✅ SHIPPED 2026-07-19 — but NOT as option (1). Read this before acting on the
 > list above.**
 >
-> Option (1) said to put her on Jonah's screens. That was written before I opened the
-> art files, and it is **wrong**: she is already *painted into* every one of Jonah's
+> Option (1) said to put him on Jonah's screens. That was written before I opened the
+> art files, and it is **wrong**: he is already *painted into* every one of Jonah's
 > scenes, lying by the fire. A cut-out sprite next to a painted dog reads as a bug,
 > not as a feature. The sprites have to go somewhere Jonah isn't.
 >
-> What shipped instead: **she came along on the trip.** She sits on the travel desk
-> under the itinerary column and her pose tracks the run — play bow after a good
+> What shipped instead: **he came along on the trip.** He sits on the travel desk
+> under the itinerary column and his pose tracks the run — play bow after a good
 > shot, head tilt after a miss, walking mid-flight, lying down when the days have
 > nearly run out, standing on Explore where there's no clock. `DeskDog` in
 > `shutterbug-world.jsx`.
 >
 > One trap worth remembering if this is ever reworked: reacting to `pending` (the
 > result popup) is invisible, because `pending` is set for exactly as long as a
-> full-screen popup is covering her. Her mood is its own state (`dogBeat`), set when
+> full-screen popup is covering him. His mood is its own state (`dogBeat`), set when
 > a shot resolves and cleared seven seconds later, so the reaction survives the popup.
 >
+> **UPDATE — he now has a JOB (2026-07-19, Joshua's call).** Reacting to the run was
+> tone, not function. Three PERFECT shots in a row — right first time, no wrong guess
+> between them — and he digs one of Uncle Jonah's own stories out of the camera bag,
+> about a place you've just been. `src/data/anecdotes.js` was full of these and only
+> the homecoming quiz ever showed one, so most were never read at all.
+>
+> Why a streak of PERFECT shots rather than plain correct ones: a correct shot already
+> pays points, and paying it twice teaches nothing. Getting it right first time is what
+> the game wants and had no growing reward for.
+>
+> Why a story and not a bonus travel day (the other option on the table): a mechanical
+> reward would make a strong player's runs measurably easier and quietly reshape the
+> difficulty curve Joshua tunes by feel. A story costs nothing and is more of what the
+> child already likes. `DOG_FIND_EVERY` in shutterbug-world.jsx is the dial.
+>
 > Options (2), (3) and (4) are all still open and none of them conflict with what
-> shipped. **Her name is still unwritten** — that's Joshua's call, and naming her is
-> what would turn her from set-dressing into a character.
+> shipped. **His name is still unwritten** — that's Joshua's call, and naming him is
+> what would turn him from set-dressing into a character.
 
 ## 11. The music, honestly (2026-07-19)
 

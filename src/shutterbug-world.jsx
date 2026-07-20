@@ -1490,12 +1490,48 @@ export default function ShutterbugWorld() {
   // covers her while it's open (see DeskDog).
   const [dogBeat, setDogBeat] = useState(null);
   const dogBeatRef = useRef(null);
+  // ---- The dog's job -----------------------------------------------------------
+  // Three PERFECT shots in a row — right first time, no wrong guess in between —
+  // and he digs something out of the camera bag: one of Uncle Jonah's own stories
+  // about a place you've just been. src/data/anecdotes.js is full of them and until
+  // now only the homecoming quiz ever showed one, so most were never read at all.
+  //
+  // Why a streak of perfect shots and not simply "a correct shot": a correct shot
+  // already pays points, and rewarding it again teaches nothing. Getting it right
+  // FIRST TIME is the thing this game wants and had no growing reward for — the
+  // dog is what makes that streak visible and worth keeping.
+  //
+  // The reward is deliberately not mechanical. A bonus travel day would make a good
+  // player's runs measurably easier and quietly reshape the difficulty Joshua tunes
+  // by feel; a story costs nothing and is more of what the child already likes.
+  const [dogFind, setDogFind] = useState(null);   // { text, subject } while a find is up
+  const perfectStreakRef = useRef(0);
+  const dogFoundRef = useRef([]);                 // anecdote ids already dug up this run
+  const dogFindRef = useRef(null);
+  const DOG_FIND_EVERY = 3;
   const wagDog = (kind) => {
     clearTimeout(dogBeatRef.current);
     setDogBeat(kind);
     dogBeatRef.current = setTimeout(() => setDogBeat(null), 7000);
   };
-  useEffect(() => () => clearTimeout(dogBeatRef.current), []);
+  const noteShot = (perfect, id) => {
+    wagDog(perfect || id ? "good" : "bad");
+    if (!perfect) { perfectStreakRef.current = 0; return; }
+    perfectStreakRef.current += 1;
+    if (perfectStreakRef.current % DOG_FIND_EVERY !== 0) return;
+    // Prefer a story about somewhere on THIS trip — the shot just taken first, then
+    // anywhere else in the album. Falls through quietly if none of them has one.
+    const pool = [id, ...album.map((p) => p.id)]
+      .filter((x) => x && ANECDOTES[x] && !dogFoundRef.current.includes(x));
+    const pick = pool[0];
+    if (!pick) return;
+    dogFoundRef.current.push(pick);
+    clearTimeout(dogFindRef.current);
+    setDogFind({ id: pick, text: ANECDOTES[pick], subject: BY_ID[pick]?.subject || "" });
+    sfx("badge");
+    dogFindRef.current = setTimeout(() => setDogFind(null), 22000);
+  };
+  useEffect(() => () => { clearTimeout(dogBeatRef.current); clearTimeout(dogFindRef.current); }, []);
   // Mr. O's double-points riddle: a blocking popup that appears at least once every
   // five shots (at a random shot within each window). { data, choices, answeredIdx }.
   const [riddle, setRiddle] = useState(null);
@@ -1730,6 +1766,7 @@ export default function ShutterbugWorld() {
       pending: (p) => { setScreen("play"); setPending(p); },
       profile: (n) => setProfileName(n),
       days: (n) => setDays(n),
+      dogFind: (id) => setDogFind({ id, text: ANECDOTES[id], subject: BY_ID[id]?.subject || "" }),
       passport: () => setPassportOpen(true),
     };
     return () => { delete window.__sbw; };
@@ -2953,7 +2990,7 @@ export default function ShutterbugWorld() {
       } else {
         setScore((s) => s + gain + pBonus);
         rewardSfx(perfect ? "perfect" : "success");
-        wagDog("good");
+        noteShot(perfect, clicked.id);
         // "Perfect shot!" is now earned — a first-try shot. A shot filed after a
         // wrong guess still counts, but it's a plainer "Nice shot!".
         setPending({ kind: "correct", tone: "good", emoji: perfect ? "🎯" : "✅",
@@ -2980,7 +3017,7 @@ export default function ShutterbugWorld() {
       if (d <= 0) outOfDays(`That's ${clicked.subject}, not ${wantTxt} — and the trip's over.`);
       else {
         sfx("fail");
-        wagDog("bad");
+        noteShot(false, null);
         missesRef.current[step] = (missesRef.current[step] || 0) + 1;
         const rightId = a.type === "specific" ? a.targetId : (cityPlan?.ids || []).find((oid) => BY_ID[oid] && BY_ID[oid].category === a.category);
         flashRight("city", rightId); // Scout: glow the right pin
@@ -4457,7 +4494,8 @@ export default function ShutterbugWorld() {
               She is a SPRITE here, deliberately placed where Uncle Jonah isn't: he
               already has her painted into every one of his scenes, lying by the fire,
               and a cut-out dog beside a painted dog would read as a bug. */}
-          <DeskDog days={days} beat={dogBeat} flying={flying} isExplore={isExplore} />
+          <DeskDog days={days} beat={dogBeat} flying={flying} isExplore={isExplore}
+            find={dogFind} onDismissFind={() => setDogFind(null)} />
 
           {/* The research clue no longer persists in the panel — the player taps the
               Field Guide tool again to re-read it (free after the first look). */}
@@ -6804,12 +6842,13 @@ const DOG_POSES = {
   sit: "dog_pose_02_sitting_paw_up.png", // waiting on you
   stand: "dog_pose_01_standing.png",     // roaming, no clock
 };
-function DeskDog({ days, beat, flying, isExplore }) {
+function DeskDog({ days, beat, flying, isExplore, find, onDismissFind }) {
   // Reacting to `pending` directly would be invisible: the result popup covers the
-  // screen for exactly as long as pending is set, so she'd finish celebrating before
-  // the child could see her. `beat` is set when a shot resolves and cleared a few
-  // seconds LATER, so her reaction is still there when the popup is dismissed.
-  const pose = flying ? "walk"
+  // screen for exactly as long as pending is set, so he'd finish celebrating before
+  // the child could see him. `beat` is set when a shot resolves and cleared a few
+  // seconds LATER, so his reaction is still there when the popup is dismissed.
+  const pose = find ? "bow"
+    : flying ? "walk"
     : beat === "good" ? "bow"
     : beat === "bad" ? "tilt"
     : isExplore ? "stand"
@@ -6819,9 +6858,29 @@ function DeskDog({ days, beat, flying, isExplore }) {
   // and a fixed 108px dog was what tipped it over the bottom edge of a 900px window —
   // she was cut off at the paws, which is worse than small.
   return (
-    <div aria-hidden="true" style={{ marginTop: 10, display: "flex", justifyContent: "center", pointerEvents: "none" }}>
-      <img src={`${UI}dog/${DOG_POSES[pose]}`} alt=""
-        style={{ width: "min(104px, 11vh)", height: "auto", display: "block", filter: "drop-shadow(0 6px 8px rgba(16,38,46,0.34))" }} />
+    <div style={{ marginTop: 10 }}>
+      {/* What he dug up. Non-blocking on purpose — it never pauses the game, has no
+          button you must press, and clears itself. A child who wants to read it can;
+          one who doesn't carries on and loses nothing. Unlike the dog himself this
+          IS information, so it's real text, announced, and dismissible by keyboard. */}
+      {find && (
+        <div role="status" style={{ background: PAPER, border: `2px solid ${GOLD}`, borderRadius: 12,
+          padding: "10px 12px", marginBottom: 4, textAlign: "left", position: "relative" }}>
+          <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 9.5, letterSpacing: "0.14em", color: CORAL, fontWeight: 800, marginBottom: 4 }}>
+            🦴 HE DUG SOMETHING UP
+          </div>
+          <p style={{ margin: 0, color: INK, fontSize: 12.5, lineHeight: 1.45 }}>
+            <b>{find.subject}:</b> {find.text}
+          </p>
+          <button onClick={onDismissFind} aria-label="Put it back in the bag"
+            style={{ position: "absolute", top: 4, right: 6, background: "none", border: "none", color: INK,
+              opacity: 0.5, fontSize: 15, lineHeight: 1, cursor: "pointer", padding: 2 }}>×</button>
+        </div>
+      )}
+      <div aria-hidden="true" style={{ display: "flex", justifyContent: "center", pointerEvents: "none" }}>
+        <img src={`${UI}dog/${DOG_POSES[pose]}`} alt=""
+          style={{ width: "min(104px, 11vh)", height: "auto", display: "block", filter: "drop-shadow(0 6px 8px rgba(16,38,46,0.34))" }} />
+      </div>
     </div>
   );
 }
