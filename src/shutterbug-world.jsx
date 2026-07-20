@@ -283,6 +283,10 @@ const PERFECT_BONUS = 1;
 const QUIZ_BONUS = 0.5;
 // Round a score to at most one decimal place (quiz extra credit is in halves).
 const tidyScore = (n) => Math.round(n * 10) / 10;
+// "1 point", "2 points" — never "+1 points". A child reading the screen aloud hears
+// the mistake immediately, and this is a teaching tool. Half-points from the review
+// quiz take the plural ("0.5 points"), which is correct: only exactly one is singular.
+const pts = (n) => `${tidyScore(n)} point${Math.abs(n) === 1 ? "" : "s"}`;
 const MODE_ORDER = ["scout", "easy", "medium", "hard"];
 // Uncle's face reacts to the difficulty you pick on the meet screen — warmer and
 // gentler at the bottom, more impressed / wide-eyed as it climbs (see NIGEL_MOOD).
@@ -1488,8 +1492,6 @@ export default function ShutterbugWorld() {
   // How the dog on the desk is reacting: "good" | "bad" | null. Set when a shot
   // resolves and cleared on a timer, so her reaction outlives the result popup that
   // covers her while it's open (see DeskDog).
-  const [dogBeat, setDogBeat] = useState(null);
-  const dogBeatRef = useRef(null);
   // ---- The dog's job -----------------------------------------------------------
   // Three PERFECT shots in a row — right first time, no wrong guess in between —
   // and he digs something out of the camera bag: one of Uncle Jonah's own stories
@@ -1504,34 +1506,36 @@ export default function ShutterbugWorld() {
   // The reward is deliberately not mechanical. A bonus travel day would make a good
   // player's runs measurably easier and quietly reshape the difficulty Joshua tunes
   // by feel; a story costs nothing and is more of what the child already likes.
-  const [dogFind, setDogFind] = useState(null);   // { text, subject } while a find is up
+  // He VISITS — he isn't stationed anywhere. { find } when he's brought a story,
+  // { pose } when he's just popped in to be pleased with you. null the rest of the
+  // time, which is most of the time; that's what keeps him an event.
+  const [dogVisit, setDogVisit] = useState(null);
   const perfectStreakRef = useRef(0);
   const dogFoundRef = useRef([]);                 // anecdote ids already dug up this run
-  const dogFindRef = useRef(null);
   const DOG_FIND_EVERY = 3;
-  const wagDog = (kind) => {
-    clearTimeout(dogBeatRef.current);
-    setDogBeat(kind);
-    dogBeatRef.current = setTimeout(() => setDogBeat(null), 7000);
-  };
   const noteShot = (perfect, id) => {
-    wagDog(perfect || id ? "good" : "bad");
     if (!perfect) { perfectStreakRef.current = 0; return; }
     perfectStreakRef.current += 1;
-    if (perfectStreakRef.current % DOG_FIND_EVERY !== 0) return;
+    const n = perfectStreakRef.current;
+    if (n % DOG_FIND_EVERY !== 0) {
+      // One short before a find he pops in with nothing to say — pure anticipation,
+      // so the child learns that a third clean shot in a row brings him back.
+      if (n % DOG_FIND_EVERY === DOG_FIND_EVERY - 1) {
+        sfx("hover");
+        setDogVisit({ pose: "bow" });
+      }
+      return;
+    }
     // Prefer a story about somewhere on THIS trip — the shot just taken first, then
     // anywhere else in the album. Falls through quietly if none of them has one.
     const pool = [id, ...album.map((p) => p.id)]
       .filter((x) => x && ANECDOTES[x] && !dogFoundRef.current.includes(x));
     const pick = pool[0];
-    if (!pick) return;
+    if (!pick) { setDogVisit({ pose: "bow" }); return; }
     dogFoundRef.current.push(pick);
-    clearTimeout(dogFindRef.current);
-    setDogFind({ id: pick, text: ANECDOTES[pick], subject: BY_ID[pick]?.subject || "" });
     sfx("badge");
-    dogFindRef.current = setTimeout(() => setDogFind(null), 22000);
+    setDogVisit({ find: { id: pick, text: ANECDOTES[pick], subject: BY_ID[pick]?.subject || "" } });
   };
-  useEffect(() => () => { clearTimeout(dogBeatRef.current); clearTimeout(dogFindRef.current); }, []);
   // Mr. O's double-points riddle: a blocking popup that appears at least once every
   // five shots (at a random shot within each window). { data, choices, answeredIdx }.
   const [riddle, setRiddle] = useState(null);
@@ -1766,7 +1770,8 @@ export default function ShutterbugWorld() {
       pending: (p) => { setScreen("play"); setPending(p); },
       profile: (n) => setProfileName(n),
       days: (n) => setDays(n),
-      dogFind: (id) => setDogFind({ id, text: ANECDOTES[id], subject: BY_ID[id]?.subject || "" }),
+      dogFind: (id) => setDogVisit({ find: { id, text: ANECDOTES[id], subject: BY_ID[id]?.subject || "" } }),
+      dogPop: () => setDogVisit({ pose: "bow" }),
       passport: () => setPassportOpen(true),
     };
     return () => { delete window.__sbw; };
@@ -2968,7 +2973,7 @@ export default function ShutterbugWorld() {
       // Perfect = the correct subject on the first click here (no wrong guess).
       const perfect = !missesRef.current[step];
       const pBonus = perfect ? PERFECT_BONUS : 0;
-      const perfectTxt = pBonus ? ` (+${pBonus} for a perfect first-try shot!)` : "";
+      const perfectTxt = pBonus ? ` (+${pts(pBonus)} for a perfect first-try shot!)` : "";
       setAlbum((al) => (al.some((x) => x.id === clicked.id) ? al : [...al, { id: clicked.id, subject: clicked.subject, flag: clicked.flag, city: clicked.city, country: clicked.country, continent: clicked.continent, category: clicked.category, fact: clicked.fact, icon: clicked.icon, photo: clicked.photo, greeting: clicked.greeting }]));
       const found = a.type === "category" ? `You found a ${CATEGORIES[a.category].noun} — ${clicked.subject}!` : `You photographed ${clicked.subject}.`;
       const done = step + 1 >= assignments.length;
@@ -2995,7 +3000,7 @@ export default function ShutterbugWorld() {
         // wrong guess still counts, but it's a plainer "Nice shot!".
         setPending({ kind: "correct", tone: "good", emoji: perfect ? "🎯" : "✅",
           title: perfect ? "Perfect shot!" : "Nice shot!",
-          subtitle: perfect ? `${found} +${gain}${perfectTxt}` : `${found} +${gain} points.`,
+          subtitle: perfect ? `${found} +${gain}${perfectTxt}` : `${found} +${pts(gain)}.`,
           fact: clicked.fact, photo: clicked.photo, category: clicked.category, buttonLabel: "Next assignment ✈" });
       }
     } else {
@@ -3295,7 +3300,7 @@ export default function ShutterbugWorld() {
               style={{ width: "100%" }} />
             <button onClick={setOff} disabled={!meetReady} aria-disabled={!meetReady}
               className={meetReady ? "sbw-bob" : undefined}
-              style={{ background: "none", border: "none", padding: 0, marginTop: -6, width: 210, maxWidth: "62%",
+              style={{ background: "none", border: "none", padding: 0, marginTop: 18, width: 210, maxWidth: "62%",
                 cursor: meetReady ? "pointer" : "default", opacity: meetReady ? 1 : 0.45,
                 filter: meetReady ? "none" : "grayscale(0.7)", transition: "opacity .2s ease, filter .2s ease" }}>
               <img src={`${UI}camera-bag.png`} alt="" aria-hidden="true"
@@ -4268,9 +4273,9 @@ export default function ShutterbugWorld() {
   // that had to move draws a hairline leader back to its TRUE location. On-screen a
   // pin is a circle of radius ≈ PIN_K × frame-width, in the same WoverS plate units
   // the pin radii themselves are built from (defined above).
-  // PIN_K matches the radius actually drawn for the CURRENT pin (0.078) rather than
-  // the old 0.085, so the solver spaces pins for the size they really are.
-  const PIN_K = 0.078;
+  // PIN_K matches the radius actually drawn for the CURRENT pin, so the solver spaces
+  // pins for the size they really are.
+  const PIN_K = 0.066;
   const pinOverlapDist = 2 * PIN_K * WoverS;   // closer than this on screen = overlapping
   const pinTargetDist = 1.8 * PIN_K * WoverS;  // push apart to here: borders just kissing
   const cityPinLayout = (() => {
@@ -4485,17 +4490,6 @@ export default function ShutterbugWorld() {
             </p>
           )}
 
-          {/* Jonah's dog came along. She sits at the bottom of the itinerary column,
-              on the desk — the one warm thing on a screen that is otherwise all
-              instruments — and her posture tracks how the trip is going. A child reads
-              a dog's posture faster than a sentence, so she's a second, wordless
-              channel for the same state the panel above states in words.
-
-              She is a SPRITE here, deliberately placed where Uncle Jonah isn't: he
-              already has her painted into every one of his scenes, lying by the fire,
-              and a cut-out dog beside a painted dog would read as a bug. */}
-          <DeskDog days={days} beat={dogBeat} flying={flying} isExplore={isExplore}
-            find={dogFind} onDismissFind={() => setDogFind(null)} />
 
           {/* The research clue no longer persists in the panel — the player taps the
               Field Guide tool again to re-read it (free after the first look). */}
@@ -4869,11 +4863,11 @@ export default function ShutterbugWorld() {
                         Every size here is a fraction of WoverS (the frame width in
                         plate units), so a pin is the same size on every country map. */}
                     <g transform={unstretchAt(py)}>
-                    <ellipse cx={px} cy={py} {...pinR(0.095)} fill="transparent" />
-                    <ellipse cx={px} cy={py} {...pinR(isCurrent ? 0.078 : 0.066)} fill={isCurrent ? "rgba(233,92,66,0.22)" : "rgba(255,255,255,0.82)"} stroke={isCurrent ? CORAL : INK} strokeWidth={isCurrent ? "1.4" : "1"} vectorEffect="non-scaling-stroke" />
-                    {isCurrent && <ellipse cx={px} cy={py} {...pinR(0.1)} fill="none" stroke="#FFFFFF" strokeWidth="3" vectorEffect="non-scaling-stroke" className="sbw-ping" />}
-                    <text x={px} y={py} fontSize={0.105 * WoverS} textAnchor="middle" dominantBaseline="central" style={{ pointerEvents: "none" }}>{emoji}</text>
-                    <text className="sbw-label" x={px + 0.075 * WoverS} y={py - 0.05 * WoverS} fontSize={0.028 * WoverS} fontFamily="ui-monospace, monospace" fill={INK} style={{ paintOrder: "stroke", stroke: PAPER, strokeWidth: 0.0075 * WoverS }}>{l.city}</text>
+                    <ellipse cx={px} cy={py} {...pinR(0.085)} fill="transparent" />
+                    <ellipse cx={px} cy={py} {...pinR(isCurrent ? 0.066 : 0.056)} fill={isCurrent ? "rgba(233,92,66,0.22)" : "rgba(255,255,255,0.82)"} stroke={isCurrent ? CORAL : INK} strokeWidth={isCurrent ? "1.4" : "1"} vectorEffect="non-scaling-stroke" />
+                    {isCurrent && <ellipse cx={px} cy={py} {...pinR(0.086)} fill="none" stroke="#FFFFFF" strokeWidth="3" vectorEffect="non-scaling-stroke" className="sbw-ping" />}
+                    <text x={px} y={py} fontSize={0.088 * WoverS} textAnchor="middle" dominantBaseline="central" style={{ pointerEvents: "none" }}>{emoji}</text>
+                    <text className="sbw-label" x={px + 0.064 * WoverS} y={py - 0.044 * WoverS} fontSize={0.026 * WoverS} fontFamily="ui-monospace, monospace" fill={INK} style={{ paintOrder: "stroke", stroke: PAPER, strokeWidth: 0.0075 * WoverS }}>{l.city}</text>
                     </g>
                   </g>
                 );
@@ -5028,6 +5022,7 @@ export default function ShutterbugWorld() {
           seen={profileName ? curiositiesSeen(getProfile(profileName)) : {}}
           onSeen={onCurioSeen} onClose={() => setCurioDeck(null)} reduced={prefersReduced} />
       )}
+      <DogPopup visit={dogVisit} onClose={() => setDogVisit(null)} reduced={prefersReduced} />
       {mrO && <MrOBubble fact={mrO} onClose={() => setMrO(null)} reduced={prefersReduced} />}
       {mrOBeats && <MrOBubble beats={mrOBeats} onClose={() => setMrOBeats(null)} reduced={prefersReduced} />}
       {riddle && <RiddleModal riddle={riddle} onAnswer={answerRiddle} onClose={() => setRiddle(null)}
@@ -5112,9 +5107,9 @@ function Frame({ children, desk = false }) {
         .sbw-country:focus-visible ellipse{ fill: rgba(240,165,0,0.92); }
         .sbw-pin{ outline: none; }
         .sbw-pin ellipse:nth-child(2){ transition: transform .12s ease; transform-box: fill-box; transform-origin: center; }
-        .sbw-pin:hover ellipse:nth-child(2){ transform: scale(1.45); }
+        .sbw-pin:hover ellipse:nth-child(2){ transform: scale(1.14); }
         /* Visible keyboard-focus state on the pin dot. */
-        .sbw-pin:focus-visible ellipse:nth-child(2){ transform: scale(1.45); stroke: ${CORAL}; stroke-width: 2; }
+        .sbw-pin:focus-visible ellipse:nth-child(2){ transform: scale(1.14); stroke: ${CORAL}; stroke-width: 2.5; }
         /* Smart labels: hidden until the pin is hovered or keyboard-focused;
            the current city and Easy mode keep their labels always on. */
         .sbw-pin--hide .sbw-label{ opacity: 0; transition: opacity .12s ease; }
@@ -5141,6 +5136,10 @@ function Frame({ children, desk = false }) {
         .sbw-polaroid{ animation: sbw-polaroid 0.6s cubic-bezier(.2,.8,.3,1.05) both; }
         @keyframes sbw-polaroid{ 0%{ transform: translateY(46px) rotate(-1.6deg) scale(0.95); opacity: 0 } 60%{ opacity: 1 } 100%{ transform: translateY(0) rotate(-1.6deg) scale(1); opacity: 1 } }
         /* Result popup pop-in. */
+        /* The dog trots in from off-screen left, then settles. He is an event, so he
+           arrives rather than appearing. */
+        .sbw-trot{ animation: sbw-trot 0.42s cubic-bezier(.2,.8,.3,1.05); }
+        @keyframes sbw-trot{ 0%{ transform: translateX(-120%) } 70%{ transform: translateX(6%) } 100%{ transform: translateX(0) } }
         .sbw-pop{ animation: sbw-pop 0.22s cubic-bezier(.2,.8,.3,1.2); }
         @keyframes sbw-pop{ 0%{ transform: scale(0.82); opacity: 0 } 100%{ transform: scale(1); opacity: 1 } }
         /* The splash's one button, breathing so a first-time player sees where to
@@ -5204,7 +5203,7 @@ function Frame({ children, desk = false }) {
         body.sbw-no-anim .sbw-ping{ animation: none }
         body.sbw-no-anim .sbw-plane-group{ display: none }
         body.sbw-no-anim .sbw-flash{ animation: none; opacity: 0 }
-        body.sbw-no-anim .sbw-pop{ animation: none }
+        body.sbw-no-anim .sbw-pop, body.sbw-no-anim .sbw-trot{ animation: none }
         body.sbw-no-anim .sbw-polaroid{ animation: none }
         body.sbw-no-anim .sbw-develop{ animation: none }
         body.sbw-no-anim .sbw-confetti{ animation: none; opacity: 0 }
@@ -6649,7 +6648,7 @@ function RiddleModal({ riddle, onAnswer, onClose, gain, reduced }) {
         </div>
         {answered && (
           <div style={{ marginTop: 14, background: "#fff", border: `1px dashed ${wasCorrect ? GREEN : CORAL}`, borderRadius: 10, padding: "11px 13px", textAlign: "left" }}>
-            <b style={{ color: wasCorrect ? GREEN : CORAL }}>{wasCorrect ? `Spot on! +${gain} points.` : "Not quite —"}</b>{" "}
+            <b style={{ color: wasCorrect ? GREEN : CORAL }}>{wasCorrect ? `Spot on! +${pts(gain)}.` : "Not quite —"}</b>{" "}
             <span style={{ color: INK, fontSize: 14, lineHeight: 1.5 }}>{data.explain}</span>
           </div>
         )}
@@ -6842,45 +6841,49 @@ const DOG_POSES = {
   sit: "dog_pose_02_sitting_paw_up.png", // waiting on you
   stand: "dog_pose_01_standing.png",     // roaming, no clock
 };
-function DeskDog({ days, beat, flying, isExplore, find, onDismissFind }) {
-  // Reacting to `pending` directly would be invisible: the result popup covers the
-  // screen for exactly as long as pending is set, so he'd finish celebrating before
-  // the child could see him. `beat` is set when a shot resolves and cleared a few
-  // seconds LATER, so his reaction is still there when the popup is dismissed.
-  const pose = find ? "bow"
-    : flying ? "walk"
-    : beat === "good" ? "bow"
-    : beat === "bad" ? "tilt"
-    : isExplore ? "stand"
-    : (typeof days === "number" && days > 0 && days <= 1.5) ? "lying"
-    : "sit";
-  // Sized off the viewport height, not fixed: the itinerary column is already tall,
-  // and a fixed 108px dog was what tipped it over the bottom edge of a 900px window —
-  // she was cut off at the paws, which is worse than small.
+function DogPopup({ visit, onClose, reduced }) {
+  // Jonah's dog is an INTERRUPTION, not furniture. He used to sit permanently at the
+  // bottom of the itinerary column, which made him wallpaper — after ten minutes you
+  // stop seeing a thing that is always in the same place. Now he trots in, does his
+  // bit and leaves, so every appearance registers.
+  //
+  // Unlike Mr O this does NOT dim the screen or block play. Mr O's riddles need an
+  // answer, so stopping the game is right for him. What the dog brings is optional
+  // reading — a story you can enjoy or ignore — and freezing a child mid-thought to
+  // deliver something optional is how an interruption stops being charming.
+  useEffect(() => {
+    if (!visit) return;
+    const t = setTimeout(onClose, visit.find ? 22000 : 4200);
+    const onKey = (e) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", onKey);
+    return () => { clearTimeout(t); window.removeEventListener("keydown", onKey); };
+  }, [visit, onClose]);
+  if (!visit) return null;
+  const pose = visit.find ? "bow" : visit.pose || "bow";
   return (
-    <div style={{ marginTop: 10 }}>
-      {/* What he dug up. Non-blocking on purpose — it never pauses the game, has no
-          button you must press, and clears itself. A child who wants to read it can;
-          one who doesn't carries on and loses nothing. Unlike the dog himself this
-          IS information, so it's real text, announced, and dismissible by keyboard. */}
-      {find && (
-        <div role="status" style={{ background: PAPER, border: `2px solid ${GOLD}`, borderRadius: 12,
-          padding: "10px 12px", marginBottom: 4, textAlign: "left", position: "relative" }}>
-          <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 9.5, letterSpacing: "0.14em", color: CORAL, fontWeight: 800, marginBottom: 4 }}>
+    <div style={{ position: "fixed", left: "clamp(12px, 2vw, 34px)", bottom: "clamp(12px, 2.5vh, 34px)",
+      zIndex: 57, display: "flex", alignItems: "flex-end", gap: 8, maxWidth: "min(520px, 46vw)",
+      pointerEvents: "none" }}>
+      <img src={`${UI}dog/${DOG_POSES[pose]}`} alt="" aria-hidden="true"
+        className={reduced ? "" : "sbw-trot"}
+        style={{ width: "clamp(96px, 13vh, 150px)", height: "auto", flex: "none",
+          filter: "drop-shadow(0 8px 14px rgba(16,38,46,0.45))" }} />
+      {visit.find && (
+        <div role="status" className={reduced ? "" : "sbw-pop"}
+          style={{ background: PAPER, border: `3px solid ${GOLD}`, borderRadius: "18px 18px 18px 4px",
+            padding: "13px 15px", boxShadow: "0 10px 26px rgba(16,38,46,0.4)", marginBottom: 14,
+            pointerEvents: "auto", position: "relative" }}>
+          <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 10, letterSpacing: "0.14em", color: CORAL, fontWeight: 800, marginBottom: 5 }}>
             🦴 HE DUG SOMETHING UP
           </div>
-          <p style={{ margin: 0, color: INK, fontSize: 12.5, lineHeight: 1.45 }}>
-            <b>{find.subject}:</b> {find.text}
+          <p style={{ margin: 0, color: INK, fontSize: 14, lineHeight: 1.45, maxWidth: 380 }}>
+            <b>{visit.find.subject}:</b> {visit.find.text}
           </p>
-          <button onClick={onDismissFind} aria-label="Put it back in the bag"
-            style={{ position: "absolute", top: 4, right: 6, background: "none", border: "none", color: INK,
-              opacity: 0.5, fontSize: 15, lineHeight: 1, cursor: "pointer", padding: 2 }}>×</button>
+          <button onClick={onClose} aria-label="Put it back in the bag"
+            style={{ position: "absolute", top: 3, right: 6, background: "none", border: "none",
+              color: INK, opacity: 0.5, fontSize: 16, lineHeight: 1, cursor: "pointer", padding: 3 }}>×</button>
         </div>
       )}
-      <div aria-hidden="true" style={{ display: "flex", justifyContent: "center", pointerEvents: "none" }}>
-        <img src={`${UI}dog/${DOG_POSES[pose]}`} alt=""
-          style={{ width: "min(104px, 11vh)", height: "auto", display: "block", filter: "drop-shadow(0 6px 8px rgba(16,38,46,0.34))" }} />
-      </div>
     </div>
   );
 }

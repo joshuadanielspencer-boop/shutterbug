@@ -425,7 +425,63 @@ export const MUSIC = (() => {
     N.A4, N.Fs4, N.D4,  N.E4, N.Fs4, N.G4,
     N.A4, N.Fs4, N.E4,  N.D4, 0, 0,
   ];
+  // ---- Travel: two jigs of their own -----------------------------------------
+  // The flight used to reuse MELODY — the same tune as the splash — so setting off
+  // sounded like the menu you had just left. These are still D mixolydian (the drone
+  // and the country tunes have to sit under them), but they MOVE: long rising runs
+  // and wider leaps instead of the opening's turn-around-the-tonic figures, so the
+  // journey feels like going somewhere rather than waiting somewhere.
+  const TRAVEL_1 = [
+    N.D4, N.Fs4, N.A4,  N.D5, N.Fs5, N.D5,
+    N.A4, N.D5, N.Fs5,  N.E5, N.D5, N.B4,
+    N.G4, N.B4, N.D5,   N.G5, N.D5, N.B4,
+    N.A4, N.B4, N.Cn5,  N.D5, 0, N.D5,
+    N.E5, N.D5, N.B4,   N.A4, N.B4, N.G4,
+    N.Fs4, N.A4, N.D5,  N.Cn5, N.A4, N.Fs4,
+    N.G4, N.A4, N.B4,   N.Cn5, N.D5, N.E5,
+    N.D5, N.A4, N.Fs4,  N.D4, 0, 0,
+  ];
+  const TRAVEL_2 = [
+    N.A4, N.D5, N.A4,   N.Fs5, N.E5, N.D5,
+    N.B4, N.E5, N.B4,   N.D5, N.Cn5, N.B4,
+    N.A4, N.Fs4, N.A4,  N.D5, N.A4, N.Fs4,
+    N.G4, N.B4, N.D5,   N.E5, 0, N.E5,
+    N.Fs5, N.E5, N.D5,  N.B4, N.A4, N.G4,
+    N.A4, N.B4, N.Cn5,  N.D5, N.E5, N.Fs5,
+    N.E5, N.D5, N.B4,   N.A4, N.G4, N.Fs4,
+    N.E4, N.Fs4, N.A4,  N.D4, 0, 0,
+  ];
+  // ---- Celebration: brighter, higher, and it lands UP --------------------------
+  // The opening and travel jigs both fall back to a low D at the end, which reads as
+  // "settled". These finish on the octave above, which reads as "won". Pitched a
+  // register higher throughout so the finale is audibly the brightest thing in the
+  // game rather than simply the same jig again at the end of a trip.
+  const CELEBRATE_1 = [
+    N.D5, N.A4, N.D5,   N.Fs5, N.A5, N.Fs5,
+    N.E5, N.Fs5, N.G5,  N.Fs5, N.E5, N.D5,
+    N.B4, N.D5, N.Fs5,  N.A5, N.Fs5, N.D5,
+    N.E5, N.Fs5, N.G5,  N.A5, 0, N.A5,
+    N.G5, N.Fs5, N.E5,  N.D5, N.E5, N.Fs5,
+    N.A5, N.G5, N.Fs5,  N.E5, N.D5, N.B4,
+    N.Cn5, N.D5, N.E5,  N.Fs5, N.G5, N.A5,
+    N.Fs5, N.A5, N.Fs5, N.D5, 0, 0,
+  ];
+  const CELEBRATE_2 = [
+    N.Fs5, N.E5, N.D5,  N.A4, N.D5, N.Fs5,
+    N.G5, N.Fs5, N.E5,  N.D5, N.Cn5, N.B4,
+    N.A4, N.D5, N.Fs5,  N.E5, N.D5, N.A4,
+    N.B4, N.Cn5, N.D5,  N.Fs5, 0, N.Fs5,
+    N.A5, N.Fs5, N.D5,  N.E5, N.Fs5, N.G5,
+    N.Fs5, N.E5, N.D5,  N.B4, N.Cn5, N.D5,
+    N.E5, N.Fs5, N.G5,  N.A5, N.G5, N.Fs5,
+    N.D5, N.Fs5, N.A5,  N.D5, 0, 0,
+  ];
+  // Three pools, three moods. The opening set is the one you hear most, so it keeps
+  // the largest share of phrases.
   const MELODIES = [MELODY, MELODY_2, MELODY_3, MELODY_4, MELODY_5];
+  const TRAVEL_MELODIES = [TRAVEL_1, TRAVEL_2];
+  const CELEBRATE_MELODIES = [CELEBRATE_1, CELEBRATE_2];
+  const pickOne = (pool) => pool[Math.floor(Math.random() * pool.length)];
   let activeMelody = MELODY; // set at random on each fresh start()
   // A short reedy note — sawtooth through its own lowpass, quick attack and a
   // clipped tail so notes stay distinct at jig tempo. Chanter-like.
@@ -607,8 +663,12 @@ export const MUSIC = (() => {
         fade.gain.linearRampToValueAtTime(0.0001, t0 + TOTAL);       // then fade out over 3s
         fade.connect(master);
         const n = Math.ceil(TOTAL / EIGHTH);
+        // A TRAVEL tune, not the opening one. Flights used to reuse MELODY, so setting
+        // off sounded like the menu you had just left. Re-picked every flight so a long
+        // Grand Tour doesn't hear one tune a dozen times.
+        const air = pickOne(TRAVEL_MELODIES);
         for (let i = 0; i < n; i++) {
-          const f = MELODY[i % MELODY.length];
+          const f = air[i % air.length];
           if (f) voice(t0 + i * EIGHTH, f, i % 3 === 0 ? 0.12 : 0.085, EIGHTH * 0.95, "reed", fade);
         }
         // a light low pulse on the downbeats for lift
@@ -642,11 +702,23 @@ export const MUSIC = (() => {
         wake(c);
         if (jigBus) jigBus.gain.setTargetAtTime(0.0001, c.currentTime, 0.2);
         const t0 = c.currentTime + 0.05;
-        const run = [N.D4, N.E4, N.Fs4, N.G4, N.A4, N.B4, N.A4, N.D5, N.Cn5, N.B4, N.A4, N.Fs4];
-        run.forEach((f, i) => voice(t0 + i * 0.13, f, i % 3 === 0 ? 0.14 : 0.1, 0.14, "reed", master));
-        const tc = t0 + run.length * 0.13; // final D-major chord
-        [N.D4, N.Fs4, N.A4, N.D5].forEach((f) => voice(tc, f, 0.11, 1.8, "reed", master));
-        master.gain.setTargetAtTime(0.0001, tc + 1.4, 0.5); // let it ring, then fade
+        // A whole celebration jig, not a twelve-note flourish. Coming home having filed
+        // the lot is the biggest moment in the game and it used to get about five
+        // seconds; this plays a full 8-bar phrase from its own pool — pitched a register
+        // above the opening and travel airs, so the finale is audibly the brightest
+        // thing in the game — and lands on a ringing D-major chord an octave up.
+        const tune = pickOne(CELEBRATE_MELODIES);
+        // A shade quicker than the opening jig: celebration should feel like it's
+        // running downhill.
+        const STEP = EIGHTH * 0.94;
+        tune.forEach((f, i) => {
+          if (f) voice(t0 + i * STEP, f, i % 3 === 0 ? 0.14 : 0.1, STEP * 0.95, "reed", master);
+        });
+        // A low pulse on each bar's downbeat so it has some floor under it.
+        for (let i = 0; i < tune.length; i += 6) voice(t0 + i * STEP, N.D4, 0.07, STEP * 3, "reed", master);
+        const tc = t0 + tune.length * STEP;
+        [N.D4, N.Fs4, N.A4, N.D5, N.Fs5].forEach((f) => voice(tc, f, 0.1, 2.1, "reed", master));
+        master.gain.setTargetAtTime(0.0001, tc + 1.7, 0.5); // let it ring, then fade
       } catch { /* ignore */ }
     },
     // A short, slow, wistful Scottish air — played once when the traveler comes
