@@ -1871,9 +1871,23 @@ export default function ShutterbugWorld() {
     setMrO(MR_O_FACTS[i].text);
   };
   // Open a double-points riddle (seeded on a Daily so every player gets the same chances).
-  const openArrivalRiddle = (ix) => {
-    let pool = MR_O_RIDDLES.map((_, i) => i).filter((i) => !riddleSeen.current.includes(i));
-    if (!pool.length) { riddleSeen.current = []; pool = MR_O_RIDDLES.map((_, i) => i); }
+  const openArrivalRiddle = (ix, continent) => {
+    // His riddles stay on the map you're standing on, the same way his facts already
+    // did. Untagged before, so he'd ask about a safari while you stood in the
+    // Philippines — the one thing that made him feel like a quiz machine rather than
+    // someone riding along with you.
+    //
+    // The fallbacks matter and are ordered: this continent's unseen riddles, then this
+    // continent's seen ones (repeat a local question rather than ask a foreign one),
+    // and only if a continent somehow has none at all does anything else get used.
+    const onCont = (i) => {
+      const w = MR_O_RIDDLES[i].where;
+      return !continent || w === continent || w === null;
+    };
+    const all = MR_O_RIDDLES.map((_, i) => i);
+    let pool = all.filter((i) => onCont(i) && !riddleSeen.current.includes(i));
+    if (!pool.length) pool = all.filter(onCont);
+    if (!pool.length) pool = all;
     const seed = riddleSeedRef.current;
     const pick = seed ? withSeed(seed + "|rq|" + ix, () => pool[randInt(pool.length)]) : pool[Math.floor(Math.random() * pool.length)];
     riddleSeen.current.push(pick);
@@ -1911,7 +1925,7 @@ export default function ShutterbugWorld() {
     if (roll < 0.5) {
       mrOGapRef.current = 0;
       sfx("bwooop");                                   // his cheerful pop-in, every time
-      if (roll < 0.4) openArrivalRiddle(ix);
+      if (roll < 0.4) openArrivalRiddle(ix, continent);
       else showMrOFact(continent);
     }
   };
@@ -1973,7 +1987,7 @@ export default function ShutterbugWorld() {
         return { id, subject: l.subject, city: l.city, country: l.country, flag: l.flag, fact: l.fact, photo: l.photo };
       })),
       homecoming: () => startHomecoming(),
-      mrO: (t) => setMrO(t || "Oh! Did you know the Sahara is nearly the size of the whole United States?"),
+      mrO: (t) => setMrO(t || "the Sahara is nearly the size of the whole United States?"),  // the bubble adds his "Oh! Did you know…" lead
       mrOIntro: () => setMrOBeats([MR_O.intro, MR_O.fieldGuide]),
       pending: (p) => { setScreen("play"); setPending(p); },
       profile: (n) => setProfileName(n),
@@ -7368,9 +7382,12 @@ function MrOBubble({ fact, beats, onClose, reduced }) {
           // drawn head-to-shins, so "bigger + bottom-anchored" is what makes him read
           // as a person leaning in rather than a portrait pasted on.
           <img src={`${UI}${img}`} alt="" onError={() => setImgOk(false)}
-            style={{ height: "min(94vh, 900px)", width: "auto", maxWidth: "52vw", flex: "none", objectFit: "contain", objectPosition: "bottom", filter: "drop-shadow(0 8px 16px rgba(0,0,0,0.5))" }} />
+            // ~30% down from min(94vh, 900px) / 52vw. He was filling the screen when
+            // he popped in, which read as the game stopping rather than someone
+            // leaning in; this still reads as "Mr O is here" without taking the desk.
+            style={{ height: "min(66vh, 630px)", width: "auto", maxWidth: "37vw", flex: "none", objectFit: "contain", objectPosition: "bottom", filter: "drop-shadow(0 8px 16px rgba(0,0,0,0.5))" }} />
         ) : (
-          <div aria-hidden="true" style={{ fontSize: 160, lineHeight: 1, flex: "none" }}>{MR_O.emoji}</div>
+          <div aria-hidden="true" style={{ fontSize: 112, lineHeight: 1, flex: "none" }}>{MR_O.emoji}</div>
         )}
         <div style={{ background: "#fff", border: `4px solid ${OCEAN}`, borderRadius: "22px 22px 22px 6px", padding: "22px 26px", boxShadow: "0 10px 30px rgba(16,38,46,0.4)", marginBottom: "20vh", maxWidth: 460 }}>
           <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 15, letterSpacing: "0.12em", color: OCEAN, fontWeight: 800, marginBottom: 10 }}>{MR_O.name.toUpperCase()}</div>
@@ -7466,18 +7483,22 @@ function RiddleModal({ riddle, onAnswer, onClose, gain, reduced }) {
   useModalFocus(ref, onClose, { escape: false });
   return (
     <div ref={ref} role="dialog" aria-modal="true" aria-label="Mr. O's riddle"
-      style={{ position: "fixed", inset: 0, background: "rgba(16,38,46,0.62)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16, zIndex: 58 }}>
+      style={{ position: "fixed", inset: 0, background: "rgba(8,20,24,0.66)", display: "flex", alignItems: "flex-end", justifyContent: "center", gap: 6, padding: "0 20px", zIndex: 58 }}>
+      {/* Mr O stands OUTSIDE the card, at the size he introduces himself at. He used
+          to be a 180px thumbnail tucked into the corner of a box, which made the
+          riddle read as a form to fill in rather than a boy leaning in to ask you
+          something. Same staging as his fact bubble now: he floats over a dimmed
+          desk, and the question is a card beside him. */}
+      {imgOk
+        ? <img src={`${UI}${img}`} alt="" onError={() => setImgOk(false)}
+            style={{ height: "min(66vh, 630px)", width: "auto", maxWidth: "37vw", flex: "none", objectFit: "contain", objectPosition: "bottom", filter: "drop-shadow(0 8px 16px rgba(0,0,0,0.5))" }} />
+        : <div aria-hidden="true" style={{ fontSize: 112, lineHeight: 1, flex: "none" }}>{MR_O.emoji}</div>}
       <div className={reduced ? "" : "sbw-pop"}
-        style={{ background: PAPER, borderRadius: 16, border: `3px solid ${OCEAN}`, boxShadow: "0 14px 44px rgba(0,0,0,0.35)", maxWidth: 560, width: "100%", padding: "22px 22px 24px", textAlign: "center" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10, justifyContent: "center", marginBottom: 6 }}>
-          {imgOk
-            ? <img src={`${UI}${img}`} alt="" onError={() => setImgOk(false)} style={{ height: 180, width: "auto", flex: "none", objectFit: "contain", filter: "drop-shadow(0 3px 5px rgba(0,0,0,0.3))" }} />
-            : <div aria-hidden="true" style={{ fontSize: 72, lineHeight: 1 }}>{MR_O.emoji}</div>}
-          <div style={{ textAlign: "left" }}>
-            <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.14em", color: OCEAN, fontWeight: 700 }}>{MR_O.name.toUpperCase()}</div>
-            <div style={{ fontFamily: "ui-sans-serif, system-ui", fontWeight: 900, fontSize: 18, color: INK }}>{MR_O.riddleLead}</div>
-            <div style={{ display: "inline-block", marginTop: 4, background: GOLD, color: INK, fontWeight: 800, fontSize: 12, padding: "2px 9px", borderRadius: 20 }}>★ Double points: +{gain}</div>
-          </div>
+        style={{ background: PAPER, borderRadius: 16, border: `3px solid ${OCEAN}`, boxShadow: "0 14px 44px rgba(0,0,0,0.35)", maxWidth: 560, width: "100%", padding: "22px 22px 24px", textAlign: "center", marginBottom: "12vh" }}>
+        <div style={{ marginBottom: 6 }}>
+          <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.14em", color: OCEAN, fontWeight: 700 }}>{MR_O.name.toUpperCase()}</div>
+          <div style={{ fontFamily: "ui-sans-serif, system-ui", fontWeight: 900, fontSize: 18, color: INK }}>{MR_O.riddleLead}</div>
+          <div style={{ display: "inline-block", marginTop: 4, background: GOLD, color: INK, fontWeight: 800, fontSize: 12, padding: "2px 9px", borderRadius: 20 }}>★ Double points: +{gain}</div>
         </div>
         <h2 style={{ fontFamily: "ui-sans-serif, system-ui", fontWeight: 800, fontSize: 19, color: INK, margin: "8px auto 16px", lineHeight: 1.35, maxWidth: 460 }}>{data.q}</h2>
         <div style={{ display: "grid", gap: 9 }}>
