@@ -105,7 +105,7 @@ src/
                            #   seeding primitives are still used and still tested)
   robinson.js              # Robinson projection helpers for the world map
   data/
-    locations.js           # game content: 144 places — clues, facts, photos, greetings, category
+    locations.js           # game content: 447 places in 106 countries — clues, facts, photos, greetings, category
     categories.js          # the 14 subject categories + kinds + display metadata
     art.js                 # UI art registry — game key → badge/icon/crest file
     worldmap.js            # country outline paths + COUNTRY_CONTINENT colour map
@@ -187,6 +187,26 @@ deck marks 1997, the year Astana became Kazakhstan's capital.
   to suit one. An iPad should still work (the PWA installs there) but it's a
   secondary consideration; a tablet-width regression is worth noting, not worth
   blocking on. Layouts may assume a landscape window with room to breathe.
+
+### 5. Every country map fills its frame
+
+A country's own map has one job the continent map cannot do: let a child see the
+*shape and texture of that country* — its mountains, its rivers, its coastline —
+big enough to recognise again. A country drawn as a small blob in an ocean of
+margin teaches nothing the continent view didn't already show.
+
+- **Fill the atlas frame with minimal margin**, centred on the country.
+- **Use a high-resolution physical map**, with natural features (mountains,
+  lakes, rivers, desert, ice) legible at that zoom.
+- **Distant territories go in an inset box**, placed on the side of the frame
+  they lie towards — never by zooming out until both fit. Hawaii sits in a box
+  off the USA's southwest; the mainland keeps its own framing and its own scale.
+- The frame is fitted to **where the country reads**, not to its raw bounding
+  box. A single far-flung island must not drag the whole map out to sea.
+
+This is why a flat percentage pad around a bounding box isn't enough: India,
+Italy, Turkey, China, Canada and Russia all have outlying territory that a naive
+fit frames *for*, at the expense of the landmass the assignment is about.
 
 ## Notes
 
