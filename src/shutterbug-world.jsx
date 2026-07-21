@@ -583,6 +583,39 @@ const WC_BY_NAME = Object.fromEntries(WORLD_COUNTRIES.map((c) => [c.name, c.d]))
 // tiny island — so it simply shows a marker with no border, which is fine.)
 const WC_ALIAS = { "United States": "United States of America" };
 const wcPath = (country) => WC_BY_NAME[country] || WC_BY_NAME[WC_ALIAS[country]];
+// pathBBox walks every coordinate in a path string, and the country layer re-renders
+// on every hover. Memoized by the path itself — the strings are module constants, so
+// the cache is bounded by the number of countries and never goes stale.
+const PATH_BBOX_CACHE = (() => {
+  const cache = new Map();
+  return (d) => {
+    if (!cache.has(d)) cache.set(d, pathBBox(d, null));
+    return cache.get(d);
+  };
+})();
+// Rewrite a country outline onto a PACIFIC-CENTRED plate (Oceania), where x runs
+// past 180 instead of wrapping to 0.
+//
+// Shifting the whole path by a multiple of 360 is not enough, because the countries
+// that need this most are the ones that straddle the antimeridian: Fiji has islands
+// at lon 177 and lon -178, New Zealand has the Chathams past the line. Left alone
+// their outlines span the entire plate — measured, New Zealand and Fiji each had a
+// hit area 2,053 pixels wide, so pointing anywhere along that band picked them.
+//
+// Per-POINT is the fix, using the same convention COUNTRY_META already uses for the
+// landmarks: anything west of x=180 belongs a turn to the east. The paths are
+// absolute M/L only (no curves), so every number pairs up as an (x, y) and this is a
+// safe rewrite rather than a parse.
+const wrapPathPacific = (() => {
+  const cache = new Map();
+  return (d) => {
+    if (!cache.has(d)) {
+      cache.set(d, d.replace(/(-?\d+(?:\.\d+)?)(\s+)(-?\d+(?:\.\d+)?)/g,
+        (_, xs, sp, ys) => `${(+xs < 180 ? +xs + 360 : +xs).toFixed(2)}${sp}${ys}`));
+    }
+    return cache.get(d);
+  };
+})();
 // The sticker book's fixed page layout: every country in the game, grouped by
 // continent — including countries the traveler hasn't touched yet, so the empty
 // slots show what's left to collect.
@@ -5241,20 +5274,49 @@ export default function ShutterbugWorld() {
                 const regions = list.map((country) => {
                   const cm = COUNTRY_META[countryKey(pickedContinent, country)];
                   if (!cm) return null;
-                  const d = wcPath(country);
+                  // A wrap plate (Oceania) is drawn with the Pacific in the middle, so a
+                  // raw Natural Earth outline lands a whole world to the left. That is
+                  // the ONLY reason Oceania used to draw every country as a disc — not
+                  // size. Put the outline on the plate and the real borders come back:
+                  // Australia is Australia again, and an island nation is its own
+                  // scatter of islands rather than a counter parked on top of them.
+                  const raw = wcPath(country);
+                  const d = raw && wrapPlate ? wrapPathPacific(raw) : raw;
+                  const pb = d ? PATH_BBOX_CACHE(d) : null;
+                  // How much of the frame does this country actually cover? AREA, not
+                  // span: the Solomon Islands are 5° wide and almost nothing, and a span
+                  // test calls them big while a child still can't hit one. Below ~1% of
+                  // the frame there is nothing to aim at, so those get a generous
+                  // invisible target and a pulse that says "there IS something here".
+                  const areaFrac = pb ? ((pb.maxX - pb.minX) * (pb.maxY - pb.minY)) / (box.w * box.h) : 0;
+                  const tiny = !d || areaFrac < 0.010;
                   return (
-                    <g key={country} className={`sbw-country${flashHint && flashHint.type === "country" && flashHint.key === country ? " sbw-flash-hint" : ""}`} role="button" tabIndex={busy ? -1 : 0}
+                    <g key={country} className={`sbw-country${tiny ? " sbw-country--tiny" : ""}${flashHint && flashHint.type === "country" && flashHint.key === country ? " sbw-flash-hint" : ""}`} role="button" tabIndex={busy ? -1 : 0}
                        aria-label={`Choose ${displayCountry(country)}`} onClick={() => pickCountry(country)}
                        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); pickCountry(country); } }}
                        onMouseEnter={() => { setHoverCountry(country); sayOnHover(country); }} onMouseLeave={() => setHoverCountry((c) => (c === country ? null : c))}
                        onFocus={() => setHoverCountry(country)} onBlur={() => setHoverCountry((c) => (c === country ? null : c))}
                        style={{ cursor: busy ? "default" : "pointer" }}>
+                      {/* The generous target, first and invisible, so a near-miss on a
+                          speck of an island still counts. Drawn BEFORE the shape so the
+                          shape sits on top and the highlight still reads as the country,
+                          not as a circle over it. */}
+                      {tiny && (
+                        <g transform={unstretchAt(cm.cy)}>
+                          {/* Wider when there's no outline at all (French Polynesia has
+                              no vector in Natural Earth's set), so the ring sits clear
+                              of the fallback disc instead of hiding behind it. */}
+                          <ellipse className="sbw-halo" cx={cm.cx} cy={cm.cy} {...pinR(d ? 0.030 : 0.042)}
+                            fill={CONTINENT_COLOR[pickedContinent]} fillOpacity="0.001"
+                            stroke={CONTINENT_COLOR[pickedContinent]} strokeOpacity="0.85" strokeWidth="1.6" vectorEffect="non-scaling-stroke" />
+                        </g>
+                      )}
                       {/* Selectable countries wear their CONTINENT's color (purple
                           Europe, red Asia…) so they read at a glance as part of it,
                           not a generic green blob. */}
-                      {(!wrapPlate && d)
+                      {d
                         ? <path d={d} fillRule="evenodd" fill={CONTINENT_COLOR[pickedContinent]} fillOpacity="0.62" stroke={INK} strokeWidth="0.6" vectorEffect="non-scaling-stroke" />
-                        : <g transform={unstretchAt(cm.cy)}><ellipse cx={cm.cx} cy={cm.cy} {...pinR(0.028)} fill={CONTINENT_COLOR[pickedContinent]} fillOpacity="0.9" stroke={PAPER} strokeWidth="1" vectorEffect="non-scaling-stroke" /></g>}
+                        : <g transform={unstretchAt(cm.cy)}><ellipse cx={cm.cx} cy={cm.cy} {...pinR(0.022)} fill={CONTINENT_COLOR[pickedContinent]} fillOpacity="0.9" stroke={PAPER} strokeWidth="1" vectorEffect="non-scaling-stroke" /></g>}
                     </g>
                   );
                 });
@@ -5696,6 +5758,15 @@ function Frame({ children, desk = false }) {
         .sbw-cont:hover,
         .sbw-cont:focus-visible{ filter: drop-shadow(0 0 1.4px #fff) drop-shadow(0 0 1.4px #fff) drop-shadow(0 0 1px #fff); }
         .sbw-country{ outline: none; }
+        /* Island nations that come out a pixel wide. The ring breathes so a child can
+           SEE there's something to aim at, and it's a big invisible target so they
+           don't have to hit the pixel. Colour is never the only signal (rule 4) — the
+           motion is what says "here", and the name still appears on hover/focus. */
+        .sbw-country--tiny .sbw-halo{ animation: sbw-isle 2s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
+        @keyframes sbw-isle{ 0%,100%{ transform: scale(0.82); stroke-opacity: 0.9 } 50%{ transform: scale(1.06); stroke-opacity: 0.45 } }
+        body.sbw-no-anim .sbw-country--tiny .sbw-halo{ animation: none; stroke-opacity: 0.85; }
+        .sbw-country--tiny:hover .sbw-halo,
+        .sbw-country--tiny:focus-visible .sbw-halo{ animation: none; stroke-opacity: 1; stroke-width: 2.6px; fill-opacity: 0.28; }
         .sbw-country path, .sbw-country ellipse{ transition: fill .12s ease; }
         .sbw-country:hover path,
         .sbw-country:focus-visible path{ fill: rgba(240,165,0,0.42); }
