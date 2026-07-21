@@ -31,6 +31,7 @@ import { listProfiles, lastProfileName, getProfile, createProfile, setLastProfil
   progressByContinent, troubleSpots } from "./profiles.js";
 import { CURIOSITY_DECK_BY_ID, CURIOSITY_TOTAL } from "./data/curiosities.js";
 import { KIT_ITEMS, KIT_BY_ID, KIT_OFFERED, KIT_TAKEN } from "./data/kit.js";
+import { CONDITIONS } from "./data/conditions.js";
 import { cityMissLesson, categoryMissLesson, continentMissLesson } from "./data/misses.js";
 import { DIFFICULTY_ART, MODE_ART, THEME_ART, CATEGORY_ART, ACHIEVEMENT_ART,
   RANK_ART, RECORD_ART, ROUNDEL_ART, TRANSPORT_ART, SEAL_UNLOCKED, MARKER_MASTERED } from "./data/art.js";
@@ -1560,6 +1561,10 @@ export default function ShutterbugWorld() {
   const [kit, setKit] = useState({});            // itemId -> charges left this run
   const [kitOffer, setKitOffer] = useState(null); // the hand Jonah is holding out
   const [kitPicked, setKitPicked] = useState([]);  // which of the offer you've chosen
+  // The weather and the state of the world for THIS Long Trip — one drawn per run
+  // (see src/data/conditions.js). Null in every other mode.
+  const [condition, setCondition] = useState(null);
+  const hasCond = (effect) => !!condition && condition.effect === effect;
   const [kitNote, setKitNote] = useState(null);   // "Fast film — half a day back!"
   const kitNoteTimer = useRef(null);
   // Does the bag hold a live charge of this effect? Spending one is a separate step,
@@ -2235,7 +2240,7 @@ export default function ShutterbugWorld() {
     // The Long Trip stops at Jonah's bag first: he deals a hand of kit, you take two,
     // and only then does the trip start. The hand is dealt through rng.js so a seeded
     // run gives everyone the same offer.
-    if (gameMode === "longtrip") { setKitPicked([]); setKitOffer(shuffled(KIT_ITEMS).slice(0, KIT_OFFERED)); setScreen("kit"); return; }
+    if (gameMode === "longtrip") { setKitPicked([]); setCondition(shuffled(CONDITIONS)[0]); setKitOffer(shuffled(KIT_ITEMS).slice(0, KIT_OFFERED)); setScreen("kit"); return; }
     return startGame(); // assignments (always unlocked) — also the safe fallback
   }
 
@@ -2329,6 +2334,7 @@ export default function ShutterbugWorld() {
     // began (the bag was packed, the days were right, and nothing else in the mode
     // was reachable because every check on gameMode had already gone false).
     setGameMode(daily ? "daily" : gameMode === "longtrip" ? "longtrip" : "assignments"); setExpedition(null);
+    if (gameMode !== "longtrip") setCondition(null);
     setScreen("play");
     // Coaching: every 5th run, Mr O reminds the player they can research a clue via
     // the Field Guide (only where research applies). The first run is skipped — his
@@ -2855,7 +2861,14 @@ export default function ShutterbugWorld() {
     // Then there's no real flight — skip the animation, music and day cost, and
     // just drop back onto its map.
     const sameHere = !!current && loc(current).continent === cont;
-    const cost = sameHere ? 0 : flightDays(from, to); // distance-based: farther continents cost more
+    // The run's condition bends the price of getting about: a monsoon over one
+    // continent adds a day to every flight there, fair winds take half a day off
+    // every crossing. Never below half a day — a free flight would make the day
+    // budget, which is the whole game, stop mattering.
+    const condFlight = sameHere ? 0
+      : (hasCond("slowContinent") && cont === condition.continent ? 1 : 0)
+      + (hasCond("fastFlights") ? -0.5 : 0);
+    const cost = sameHere ? 0 : Math.max(0.5, Math.round((flightDays(from, to) + condFlight) * 10) / 10);
     const costTxt = `−${cost} day${cost === 1 ? "" : "s"}`;
     if (cont === target.continent) {
       setFlashHint(null); // right continent — stop any Scout hint flash
@@ -3075,7 +3088,9 @@ export default function ShutterbugWorld() {
     // Press pass: research costs nothing all trip. Checked BEFORE the affordability
     // guard, so a player down to their last half-day can still read the guide.
     const freeRead = kitHas("freeResearch");
-    if (researched[step] || (!freeRead && days <= researchCost)) return;
+    // Peak season doubles what a look at the guide costs.
+    const readCost = hasCond("costlyResearch") ? researchCost * 2 : researchCost;
+    if (researched[step] || (!freeRead && days <= readCost)) return;
     const a = assignments[step];
     if (!a) return;
     const t = a.type === "category" ? loc(a.anchorId) : loc(a.targetId);
@@ -3084,7 +3099,7 @@ export default function ShutterbugWorld() {
       ? `Jonah's guidebook suggests ${t.city}, ${t.country} ${t.flag} in ${t.continent} — its ${catNoun}, ${t.subject}, would be a perfect shot.`
       : `Jonah's after ${t.subject} — in ${t.city}, ${t.country} ${t.flag} (${t.continent}).`;
     setResearched((r) => ({ ...r, [step]: text }));
-    if (researchCost > 0 && !freeRead) setDays((d) => Math.round((d - researchCost) * 10) / 10);
+    if (readCost > 0 && !freeRead) setDays((d) => Math.round((d - readCost) * 10) / 10);
     sfx("success");
     // The note pins itself under the telegram (and persists across the flight);
     // don't ALSO echo it into the message banner — that read as the hint
@@ -3111,7 +3126,9 @@ export default function ShutterbugWorld() {
     }
 
 
-    const d = Math.round((days - SHOT_COST) * 10) / 10; // a shot costs half a day
+    // "The long way round" makes every frame cost a whole day instead of half.
+    const shotCost = hasCond("costlyShots") ? SHOT_COST * 2 : SHOT_COST;
+    const d = Math.round((days - shotCost) * 10) / 10; // a shot costs half a day
     setDays(d);
 
     if (gameMode === "tour") {
@@ -3189,7 +3206,11 @@ export default function ShutterbugWorld() {
       const gain = MODES[difficulty].points;
       // Perfect = the correct subject on the first click here (no wrong guess).
       const perfect = !missesRef.current[step];
-      const pBonus = perfect ? PERFECT_BONUS : 0;
+      // Clear skies pay an extra point for a first-try shot; summit fever pays for
+      // the CATEGORY it favours. Both reward knowing the answer, never guessing.
+      const condPerfect = perfect && hasCond("bonusPerfect") ? 1 : 0;
+      const condCat = hasCond("bonusCategory") && clicked.category === condition.category ? 2 : 0;
+      const pBonus = (perfect ? PERFECT_BONUS : 0) + condPerfect + condCat;
       // Fast film: a first-try shot hands back half a day. Only spends a charge on a
       // shot that was actually perfect, so it rewards knowing the answer — never a
       // lucky guess that took three tries.
@@ -3305,6 +3326,25 @@ export default function ShutterbugWorld() {
                 you can. Jonah's rummaged in the old bag and found three things. You can't
                 carry them all.
               </p>
+              {/* The condition is shown BEFORE the choice, not after it. Drawing the
+                  weather and then asking what to pack is the decision; telling you
+                  afterwards would just be a thing that happened to you. */}
+              {condition && (
+                <div style={{ display: "flex", gap: 11, alignItems: "flex-start", marginBottom: 14,
+                  background: condition.kind === "good" ? "#EAF6EF" : "#FFF8E6",
+                  border: `2px solid ${condition.kind === "good" ? GREEN : GOLD}`, borderRadius: 12, padding: "11px 14px" }}>
+                  <span aria-hidden="true" style={{ fontSize: 27, lineHeight: 1 }}>{condition.emoji}</span>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 10, letterSpacing: "0.14em",
+                      color: condition.kind === "good" ? GREEN : CORAL, fontWeight: 800, marginBottom: 3 }}>
+                      {condition.kind === "good" ? "IN YOUR FAVOUR" : "AGAINST YOU"}
+                    </div>
+                    <div style={{ fontWeight: 800, color: INK, fontSize: 15 }}>{condition.name}</div>
+                    <div style={{ color: INK, opacity: 0.85, fontSize: 13.5, lineHeight: 1.45 }}>{condition.blurb}</div>
+                    <div style={{ color: OCEAN, fontSize: 13, fontStyle: "italic", marginTop: 5 }}>&ldquo;{condition.jonah}&rdquo;</div>
+                  </div>
+                </div>
+              )}
               <div style={{ display: "grid", gap: 10 }}>
                 {kitOffer.map((item) => {
                   const on = kitPicked.includes(item.id);
@@ -4887,6 +4927,17 @@ export default function ShutterbugWorld() {
               them. Spent items stay listed but greyed — seeing "0 left" is what
               teaches that it was a limited thing, where quietly vanishing would just
               look like a bug. */}
+          {isLongTrip && condition && (
+            <div style={{ marginTop: 12, display: "flex", gap: 9, alignItems: "center",
+              background: condition.kind === "good" ? "#EAF6EF" : "#FFF8E6",
+              border: `1px solid ${condition.kind === "good" ? GREEN : GOLD}`, borderRadius: 10, padding: "8px 11px" }}>
+              <span aria-hidden="true" style={{ fontSize: 19 }}>{condition.emoji}</span>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontWeight: 800, color: INK, fontSize: 12.5 }}>{condition.name}</div>
+                <div style={{ color: INK, opacity: 0.8, fontSize: 11.5, lineHeight: 1.35 }}>{condition.blurb}</div>
+              </div>
+            </div>
+          )}
           {isLongTrip && Object.keys(kit).length > 0 && (
             <div style={{ marginTop: 12, background: PAPER, border: `1px solid ${PAPER_LINE}`, borderRadius: 10, padding: "10px 12px" }}>
               <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 10, letterSpacing: "0.16em", color: CORAL, fontWeight: 800, marginBottom: 7 }}>🎒 IN YOUR BAG</div>

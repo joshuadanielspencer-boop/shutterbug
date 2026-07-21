@@ -16,6 +16,7 @@ import { JOURNEYS, journeyBox, closestStops, unrolledX } from "../src/data/journ
 import { CURIOSITY_DECKS, CURIOSITY_DECK_BY_ID, ALL_CURIOSITY_IDS } from "../src/data/curiosities.js";
 import { KIT_ITEMS, KIT_OFFERED, KIT_TAKEN } from "../src/data/kit.js";
 import { eqToRobinson } from "../src/robinson.js";
+import { CONDITIONS } from "../src/data/conditions.js";
 
 const CONTINENTS = [
   "North America", "South America", "Europe", "Africa", "Asia", "Oceania", "Antarctica",
@@ -1101,5 +1102,54 @@ describe("world map coverage", () => {
       expect(x, `${cont} pin is off the world map`).toBeGreaterThan(LEFT);
       expect(x, `${cont} pin is off the world map`).toBeLessThan(RIGHT);
     }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Travel conditions (The Long Trip). Same silent-failure risk as the camera bag: a
+// condition whose `effect` id has no handler is announced to the player, sits on the
+// panel all run, and changes nothing.
+// ---------------------------------------------------------------------------
+describe("travel conditions", () => {
+  // Every effect shutterbug-world.jsx honours. This list IS the contract.
+  const IMPLEMENTED = ["slowContinent", "fastFlights", "costlyResearch", "bonusPerfect", "bonusCategory", "costlyShots"];
+
+  it("every condition's effect is one the game implements", () => {
+    for (const c of CONDITIONS) {
+      expect(IMPLEMENTED, `${c.id} has effect "${c.effect}" with no handler`).toContain(c.effect);
+    }
+  });
+
+  it("conditions that name a continent or category name a REAL one", () => {
+    for (const c of CONDITIONS) {
+      if (c.continent) expect(CONTINENTS, `${c.id}`).toContain(c.continent);
+      if (c.category) expect(CATEGORIES[c.category], `${c.id} category "${c.category}"`).toBeTruthy();
+    }
+  });
+
+  it("is well-formed, readable, and honestly labelled", () => {
+    for (const c of CONDITIONS) {
+      expect(c.id).toMatch(/^[a-z]+$/);
+      expect(c.name, c.id).toBeTruthy();
+      expect(c.emoji, c.id).toBeTruthy();
+      expect(c.jonah, c.id).toBeTruthy();
+      expect(["good", "hard"], `${c.id} kind`).toContain(c.kind);
+      // One sentence a child can plan around.
+      expect(c.blurb.length, `${c.id} blurb is long`).toBeLessThan(130);
+    }
+  });
+
+  it("is roughly balanced between help and hindrance", () => {
+    // If drawing a condition were usually bad it would read as a punishment for
+    // choosing the mode at all.
+    const good = CONDITIONS.filter((c) => c.kind === "good").length;
+    expect(good).toBeGreaterThan(0);
+    expect(good).toBeLessThan(CONDITIONS.length);
+    expect(Math.abs(good - (CONDITIONS.length - good))).toBeLessThanOrEqual(1);
+  });
+
+  it("has unique ids", () => {
+    const ids = CONDITIONS.map((c) => c.id);
+    expect(new Set(ids).size).toBe(ids.length);
   });
 });
