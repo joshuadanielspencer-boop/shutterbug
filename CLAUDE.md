@@ -15,7 +15,7 @@ Read this before trusting any older prose in this file or in `docs/`.
   got to" side of that, never "I never went". His words live in `src/data/grandpa.js`
   (the filename and the `GRANDPA`/`NIGEL_*` identifiers are pre-rebrand and
   deliberately left alone — they are internal, and renaming them buys nothing).
-  His painted expressions live in `public/assets/shutterbug-ui/jonah/`.
+  His painted expressions live in `public/assets/shutterbug-ui/jonah2/`.
 - **Mr O** is the eager-kid foil who rides along with a fact or a double-points
   riddle. He never appears during assignment 1.
 - **Four modes:** Assignments, Grand Tour, Explore, Journeys. The standalone

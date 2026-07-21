@@ -13,7 +13,7 @@ Last updated **2026-07-18**.
 >
 > - **Grandpa Nigel is now Uncle Jonah** — a Vietnamese man who DID travel widely when
 >   young (with the camera he lends you) and is too old to travel now. Not a man who
->   never went. Art in `public/assets/shutterbug-ui/jonah/`; words still in
+>   never went. Art in `public/assets/shutterbug-ui/jonah2/`; words still in
 >   `src/data/grandpa.js` (filename and `GRANDPA`/`NIGEL_*` identifiers are
 >   pre-rebrand and intentionally left alone — internal only).
 > - **Quiz mode and Daily Expedition mode were REMOVED.** The review quiz now runs at

@@ -35,20 +35,27 @@ export const GRANDPA = {
 };
 
 // ---- His face ------------------------------------------------------------
-// A set of painted expressions lives in public/assets/shutterbug-ui/jonah/. Which
+// A set of painted expressions lives in public/assets/shutterbug-ui/jonah2/. Which
 // one he wears is CONTENT, not presentation — it's a fact about what he's saying —
 // so the mapping lives here beside the words rather than in the component.
 //
-// The keys are the ARTWORK's own reaction names (hand_over_heart, joyful_wave…),
-// and each is also the jpg filename. New names on purpose: a returning player's
-// service worker had the previous faces cached under the old filenames, and a
-// same-name swap is invisible to that cache — a fresh name always reloads.
+// The keys are the ARTWORK's own reaction names, and each is also the jpg filename.
+//
+// The painted expression set (2026-07-20 repaint — 20 faces, replacing the earlier
+// 17). They live in `jonah2/`, a NEW folder rather than new files in the old one:
+// cache-busting here is by filename, and three of these slugs (sleepy_yawn among
+// them) match a name in the previous set, so reusing the folder would leave a
+// returning player on the old art with no way to tell.
 export const NIGEL_FACES = [
-  "hand_over_heart_v2", "joyful_wave", "startled_surprise", "thumbs_up",
-  "worried_shrug", "sleepy_yawn", "thoughtful_glance", "playful_wink",
-  "cheerful_toast", "proud_contentment", "grateful_relief", "wide_eyed_astonishment",
-  "hearty_laughter", "awkward", "skeptical_side_eye", "mischievous_shush", "encouraging_cheer",
+  "warm_welcome", "affectionate_gratitude", "amused_laughter", "surprised_delight",
+  "thoughtful_reflection", "gentle_concern", "animated_storytelling", "sleepy_yawn",
+  "quiet_contentment", "inviting_hospitality", "bashful_chuckle", "proud_approval",
+  "curious_interest", "relieved_sigh", "fond_nostalgia", "playful_disbelief",
+  "earnest_explanation", "pleased_surprise", "patient_listening", "tender_encouragement",
 ];
+// Every face above is wired to at least one mood below EXCEPT `sleepy_yawn`, which is
+// shipped and ready but has no moment that wants it yet — he shouldn't yawn at a
+// child's wrong answer, and he isn't dozing at any point the game currently draws him.
 
 // Keyed by POOL rather than by line, because each pool below is written to a single
 // attitude. Where a pool is a SEQUENCE and the mood actually moves — the intro, where
@@ -57,49 +64,48 @@ export const NIGEL_FACES = [
 export const NIGEL_MOOD = {
   // Sequences: one face per beat, in order.
   // Intro: welcomes you in → reminisces → a wistful "the world I never reached" →
-  // leans in with his plan (a conspiratorial shush) → offers the camera → heartfelt.
-  // …offers the camera → introduces the pup with a fond wink → heartfelt send-off.
-  intro: ["hand_over_heart_v2", "thoughtful_glance", "hand_over_heart_v2", "mischievous_shush", "cheerful_toast", "playful_wink", "hand_over_heart_v2"],
-  sendoff: ["playful_wink", "thoughtful_glance"],
+  // leans in with his plan → offers the camera → introduces Pickles → heartfelt.
+  intro: ["warm_welcome", "fond_nostalgia", "thoughtful_reflection", "animated_storytelling", "inviting_hospitality", "bashful_chuckle", "affectionate_gratitude"],
+  sendoff: ["playful_disbelief", "thoughtful_reflection"],
   // Dream fulfilled: astonishment → gratitude → warmth → and a cheer sending you
   // back out ("don't stop on my account — there's always another horizon").
-  dream: ["wide_eyed_astonishment", "grateful_relief", "hand_over_heart_v2", "encouraging_cheer"],
+  dream: ["surprised_delight", "relieved_sigh", "affectionate_gratitude", "tender_encouragement"],
 
   // Pools: one face for the whole pool.
-  meetLine: "thoughtful_glance",     // his little bits of travel wisdom
-  meetGreat: "proud_contentment",
-  meetGood: "thumbs_up",             // "most of them came home — good work"
-  meetRough: "hand_over_heart_v2",      // comforting, never scolding
-  meetFirst: "joyful_wave",          // welcoming a first-timer in
-  meetAsk: "skeptical_side_eye",     // a knowing look — "now then, what'll it be?"
+  meetLine: "thoughtful_reflection",   // his little bits of travel wisdom
+  meetGreat: "proud_approval",
+  meetGood: "proud_approval",          // "most of them came home — good work"
+  meetRough: "gentle_concern",         // comforting, never scolding
+  meetFirst: "warm_welcome",           // welcoming a first-timer in
+  meetAsk: "curious_interest",         // a knowing look — "now then, what'll it be?"
   // The two unscored modes have no difficulty to react to, so they get a face of
   // their own rather than all sharing meetAsk: a conspiratorial "come on, let's go
   // poke about" for a free roam, and a reflective one for retracing a real journey.
-  modeExplore: "mischievous_shush",
-  modeJourney: "thoughtful_glance",
-  // The homecoming quiz runs five questions, so these are POOLS, cycled by question
-  // number (see nigelFace) rather than one fixed face — sitting through five in a row
-  // with the same two expressions made him look like a photograph of himself.
-  quizRight: ["hearty_laughter", "thumbs_up", "proud_contentment", "cheerful_toast"],
-  quizWrong: ["awkward", "playful_wink", "thoughtful_glance"],
+  modeExplore: "playful_disbelief",
+  modeJourney: "fond_nostalgia",
+  // The homecoming quiz runs one question per photo, so these are POOLS, cycled by
+  // question number (see nigelFace) rather than one fixed face — sitting through a
+  // long run with the same two expressions made him look like a photograph of himself.
+  quizRight: ["amused_laughter", "proud_approval", "quiet_contentment", "pleased_surprise"],
+  quizWrong: ["bashful_chuckle", "playful_disbelief", "gentle_concern"],
   // His face as you dial the difficulty up — more impressed / wide-eyed the harder
   // the trip you pick, from a warm "aw, a gentle one" to a wide-eyed "you're taking
   // on THAT?". Keyed by difficulty in the component (DIFFICULTY_MOOD).
-  diffScout: "hand_over_heart_v2",
-  diffEasy: "playful_wink",
-  diffMedium: "encouraging_cheer",     // "an Adventurer, are we? go on then!"
-  diffHard: "wide_eyed_astonishment",  // the peak — "you're taking on THAT?"
+  diffScout: "affectionate_gratitude",
+  diffEasy: "bashful_chuckle",
+  diffMedium: "tender_encouragement",  // "an Adventurer, are we? go on then!"
+  diffHard: "surprised_delight",       // the peak — "you're taking on THAT?"
   // His face while ASKING each question — also a pool, so the run of questions
   // doesn't hold one expression from "look who's home!" to the last answer.
-  homecoming: ["joyful_wave", "thoughtful_glance", "mischievous_shush", "skeptical_side_eye"],
-  wrongAnswer: "playful_wink",       // rueful, never harsh — he's laughing at himself
-  achievement: "startled_surprise",
-  endWin: "proud_contentment",
-  endLose: "hand_over_heart_v2",
-  unlock: "cheerful_toast",
-  rankUp: "proud_contentment",
-  outOfDays: "worried_shrug",
-  idle: "sleepy_yawn",               // the fallback, dozing by the fire
+  homecoming: ["warm_welcome", "patient_listening", "curious_interest", "earnest_explanation"],
+  wrongAnswer: "playful_disbelief",    // rueful, never harsh — he's laughing at himself
+  achievement: "surprised_delight",
+  endWin: "proud_approval",
+  endLose: "gentle_concern",
+  unlock: "pleased_surprise",
+  rankUp: "proud_approval",
+  outOfDays: "gentle_concern",
+  idle: "quiet_contentment",           // the fallback, content by the fire
 };
 
 // The face for a mood key, or for one beat of a sequence. Falls back to his
@@ -114,7 +120,7 @@ export function nigelFace(key, beat = 0) {
   const name = Array.isArray(m)
     ? (m[((beat % m.length) + m.length) % m.length] || NIGEL_MOOD.idle)
     : (m || NIGEL_MOOD.idle);
-  return `jonah/${NIGEL_FACES.includes(name) ? name : NIGEL_MOOD.idle}.jpg`;
+  return `jonah2/${NIGEL_FACES.includes(name) ? name : NIGEL_MOOD.idle}.jpg`;
 }
 
 // Shown once, the first time a traveler sets out. Each entry is one beat,

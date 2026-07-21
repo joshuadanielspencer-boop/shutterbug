@@ -663,6 +663,12 @@ const pathBBox = (d, refX, refY = null, clip = Infinity) => {
     // The UK's derived box carried ~5° of margin on every side, so the islands sat
     // small in a lot of North Sea and Atlantic. Hug them instead.
     "Europe|United Kingdom": { x: 171, y: 29.5, w: 12, h: 12 },
+    // Spain is Chile's problem again: its border path carries the CANARY ISLANDS
+    // (lon −16, lat 28), which sit just inside the ~15.8° clip its three landmarks
+    // earn it, so the derived box stretched south-west into the Atlantic and the
+    // mainland ended up small in a corner. Hand-set to the peninsula — lon −9.4…3.9,
+    // lat 35.6…44.2 — at the atlas frame's own aspect so it fills the frame.
+    "Europe|Spain": box145(177, 50.2, 13.4),
   };
   for (const [key, box] of Object.entries(OVERRIDE)) if (COUNTRY_META[key]) COUNTRY_META[key].box = box;
 })();
@@ -1828,16 +1834,8 @@ export default function ShutterbugWorld() {
   const recorded = useRef(false);
   const startRef = useRef(0); // ms timestamp the current game began
   const timer = useRef(null);
-  const flightFinalizeRef = useRef(null); // the pending "land the plane" fn, so a tap can skip the flight
-  const landingSfxRef = useRef(null);     // the queued landing sound, cancelled if the flight is skipped
-  // Tap during a flight to land early (skip the animation).
-  const skipFlight = () => {
-    if (!flying || !flightFinalizeRef.current) return;
-    if (timer.current) { clearTimeout(timer.current); timer.current = null; }
-    if (landingSfxRef.current) { clearTimeout(landingSfxRef.current); landingSfxRef.current = null; }
-    const fn = flightFinalizeRef.current; flightFinalizeRef.current = null;
-    fn();
-  };
+  const flightFinalizeRef = useRef(null); // the pending "land the plane" fn
+  const landingSfxRef = useRef(null);     // the queued landing sound
   // Send the plane. Every flight goes through here: the engines spool up as the
   // token grows out of the airport, and throttle back over the last 1.5s as it
   // shrinks onto its destination. The sound, the CSS keyframes and this timer all
@@ -3112,10 +3110,11 @@ export default function ShutterbugWorld() {
               <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 24, fontWeight: 800, letterSpacing: "0.14em", color: CORAL, marginBottom: 10 }}>{GRANDPA.name.toUpperCase()}</div>
               {/* One line at a time: the follow-up note waits for the greeting to
                   finish, and the question waits for both. It is all one man talking,
-                  so it is all one voice on the page — the note used to be smaller,
-                  faded and italic, and the question a different size again, which
-                  read as three different people. Only the closing question is bold,
-                  because it's the one he wants answered. */}
+                  so it is all one voice on the page — same face, same size, same
+                  weight, and every line TYPED at his speaking speed. The closing
+                  question used to be bold and to appear all at once, which made the
+                  card read as two different voices and gave the moment a jolt the
+                  rest of his speech doesn't have. */}
               {(() => {
                 const said = { color: INK, fontSize: 17, lineHeight: 1.5 };
                 // Each line he hasn't reached yet is laid out INVISIBLY rather than
@@ -3132,8 +3131,8 @@ export default function ShutterbugWorld() {
                     ? <TypeLine text={meetInfo.comment} cps={TALKING_CPS} reduced={prefersReduced} onDone={() => setMeetTyped((n) => n + 1)} style={{ ...said, margin: "10px 0 0" }} />
                     : ghost(meetInfo.comment, { ...said, margin: "10px 0 0" }))}
                   {meetReady
-                    ? <p style={{ ...said, margin: "12px 0 0", fontWeight: 800 }}>{MEET_ASK}</p>
-                    : ghost(MEET_ASK, { ...said, margin: "12px 0 0", fontWeight: 800 })}
+                    ? <TypeLine text={MEET_ASK} cps={TALKING_CPS} reduced={prefersReduced} style={{ ...said, margin: "12px 0 0" }} />
+                    : ghost(MEET_ASK, { ...said, margin: "12px 0 0" })}
                 </>);
               })()}
             </div>
@@ -3317,9 +3316,12 @@ export default function ShutterbugWorld() {
                 : gameMode === "journey" ? "modeJourney"
                 : "meetAsk"}
               style={{ width: "100%" }} />
+            {/* Sits well clear of the portrait above it: at a small gap the bag read as
+                part of the picture rather than as the thing to press, and its bob kept
+                knocking against the frame. */}
             <button onClick={setOff} disabled={!meetReady} aria-disabled={!meetReady}
               className={meetReady ? "sbw-bob" : undefined}
-              style={{ background: "none", border: "none", padding: 0, marginTop: 18, width: 210, maxWidth: "62%",
+              style={{ background: "none", border: "none", padding: 0, marginTop: 46, width: 210, maxWidth: "62%",
                 cursor: meetReady ? "pointer" : "default", opacity: meetReady ? 1 : 0.45,
                 filter: meetReady ? "none" : "grayscale(0.7)", transition: "opacity .2s ease, filter .2s ease" }}>
               <img src={`${UI}camera-bag.png`} alt="" aria-hidden="true"
@@ -4236,7 +4238,10 @@ export default function ShutterbugWorld() {
   const mapStretchY = naContinentView ? 1.2
     : usCountryView ? 1.22
     : saContinentView ? 1.15
-    : (inCountry && pickedContinent === "Europe") ? 1.15
+    // Europe carries the most stretch of any continent map. At 1.15 it still read
+    // squashed: it sits at the highest latitudes of any populated continent here, so
+    // equirect flattens it hardest (1/cos(55°) ≈ 1.74 would be the true correction).
+    : (inCountry && pickedContinent === "Europe") ? 1.25
     : (inCountry && pickedContinent === "Asia") ? 1.10
     : (inCountry && pickedContinent === "Africa") ? 1.10
     : (inCity && pickedCountry === "United Kingdom") ? 1.27
@@ -4917,13 +4922,10 @@ export default function ShutterbugWorld() {
               )}
               </g>
             </svg>
-            {/* Tap anywhere on the map during a flight to land early. */}
-            {flying && (
-              <button onClick={skipFlight} aria-label="Skip the flight"
-                style={{ position: "absolute", inset: 0, background: "transparent", border: "none", cursor: "pointer", zIndex: 5 }}>
-                <span style={{ position: "absolute", bottom: 8, right: 10, background: "rgba(16,38,46,0.7)", color: "#fff", fontSize: 11, fontWeight: 700, padding: "3px 9px", borderRadius: 12, fontFamily: "ui-monospace, monospace" }}>tap to skip ▸</span>
-              </button>
-            )}
+            {/* The flight used to be skippable by tapping the map. It isn't any more:
+                the flight is the beat where the travel jig plays and the plane crosses
+                the world, and a child who taps everywhere skipped it every time without
+                ever deciding to. It is five seconds. */}
 
           </div>
             {/* Decorative atlas furniture (non-interactive, over the map plate). */}
