@@ -579,7 +579,7 @@ describe("curiosity layer", () => {
   });
 });
 
-import { HUBS, TRANSPORT_MODES, TRANSPORT_BY_ID, CURRENCIES, COUNTRY_CURRENCY, currencyFor, money, transportOptionsFor, destinationContexts, countryTransport } from "../src/data/travel.js";
+import { HUBS, TRANSPORT_MODES, TRANSPORT_BY_ID, CURRENCIES, COUNTRY_CURRENCY, currencyFor, money, transportOptionsFor, destinationContexts, countryTransport, ISLAND_COUNTRIES } from "../src/data/travel.js";
 import { nextGoal } from "../src/profiles.js";
 
 // The results screen's reason to play again. It's the last thing a child reads
@@ -991,12 +991,15 @@ describe("the way into a country", () => {
     }
   });
 
-  it("keeps the gondola in Venice", () => {
-    // The one mode tied to a single city on Earth. If it turns up anywhere else the
-    // context test has come loose, and the game is teaching something false.
+  it("never puts a boat on a journey that crosses no water", () => {
+    // The hop is DRAWN across the continent map. A ferry sailing over the middle of
+    // Kazakhstan — or a gondola crossing Italy by land — is a lie about the world,
+    // and this is a teaching tool first. Boats are reserved for island destinations,
+    // where you genuinely could not arrive any other way.
+    const BOATS = new Set(["ferry", "riverboat", "canoe", "gondola"]);
     for (const [country, locs] of Object.entries(byCountry)) {
-      if (countryTransport(locs, 12).id !== "gondola") continue;
-      expect(country, "gondola offered outside Italy").toBe("Italy");
+      if (!BOATS.has(countryTransport(locs, 12).id)) continue;
+      expect(ISLAND_COUNTRIES.has(country), `${country} arrives by boat over dry land`).toBe(true);
     }
   });
 
@@ -1005,7 +1008,7 @@ describe("the way into a country", () => {
     // regression the distinctiveness ranking exists to prevent.
     expect(countryTransport(byCountry["Thailand"], 12).id).toBe("tuktuk");
     expect(countryTransport(byCountry["India"], 12).id).toBe("tuktuk");
-    expect(countryTransport(byCountry["Italy"], 12).id).toBe("gondola");
+    expect(countryTransport(byCountry["Egypt"], 12).id).toBe("camel");
   });
 });
 

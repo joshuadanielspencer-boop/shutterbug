@@ -1553,7 +1553,6 @@ export default function ShutterbugWorld() {
   // He VISITS — he isn't stationed anywhere. { find } when he's brought a story,
   // { pose } when he's just popped in to be pleased with you. null the rest of the
   // time, which is most of the time; that's what keeps him an event.
-  const [dogVisit, setDogVisit] = useState(null);
   // ---- The camera bag (Long Trip) --------------------------------------------
   // What Jonah packed, and what's left of it: { [itemId]: chargesRemaining }. The
   // offer is drawn through rng.js (never Math.random) so a seeded run deals the same
@@ -1591,30 +1590,18 @@ export default function ShutterbugWorld() {
   };
   useEffect(() => () => clearTimeout(kitNoteTimer.current), []);
   const perfectStreakRef = useRef(0);
-  const dogFoundRef = useRef([]);                 // anecdote ids already dug up this run
-  const DOG_FIND_EVERY = 3;
-  const noteShot = (perfect, id) => {
-    if (!perfect) { perfectStreakRef.current = 0; return; }
+  // Which cheer Pickles rides in with on THIS result card, or null for none. She only
+  // ever reacts to a perfect (first-try) shot, and she gets louder as the streak runs:
+  // one is a wag, two is a paw up, three is the full bouncing play-bow. Returned
+  // rather than set on a timer, because she is drawn INSIDE the result card and has
+  // to be decided before that card is built.
+  const pickForShot = (perfect) => {
+    if (!perfect) { perfectStreakRef.current = 0; return null; }
     perfectStreakRef.current += 1;
     const n = perfectStreakRef.current;
-    if (n % DOG_FIND_EVERY !== 0) {
-      // One short before a find he pops in with nothing to say — pure anticipation,
-      // so the child learns that a third clean shot in a row brings him back.
-      if (n % DOG_FIND_EVERY === DOG_FIND_EVERY - 1) {
-        sfx("hover");
-        setDogVisit({ kind: "two" });
-      }
-      return;
-    }
-    // Prefer a story about somewhere on THIS trip — the shot just taken first, then
-    // anywhere else in the album. Falls through quietly if none of them has one.
-    const pool = [id, ...album.map((p) => p.id)]
-      .filter((x) => x && ANECDOTES[x] && !dogFoundRef.current.includes(x));
-    const pick = pool[0];
-    if (!pick) { sfx("badge"); setDogVisit({ kind: "streak" }); return; }
-    dogFoundRef.current.push(pick);
-    sfx("badge");
-    setDogVisit({ find: { id: pick, text: ANECDOTES[pick], subject: BY_ID[pick]?.subject || "" } });
+    if (n % 3 === 0) return "streak";
+    if (n % 3 === 2) return "two";
+    return "perfect";
   };
   // Mr. O's double-points riddle: a blocking popup that appears at least once every
   // five shots (at a random shot within each window). { data, choices, answeredIdx }.
@@ -1866,8 +1853,6 @@ export default function ShutterbugWorld() {
       pending: (p) => { setScreen("play"); setPending(p); },
       profile: (n) => setProfileName(n),
       days: (n) => setDays(n),
-      dogFind: (id) => setDogVisit({ find: { id, text: ANECDOTES[id], subject: BY_ID[id]?.subject || "" } }),
-      dogPop: () => setDogVisit({ pose: "bow" }),
       passport: () => setPassportOpen(true),
     };
     return () => { delete window.__sbw; };
@@ -1899,6 +1884,49 @@ export default function ShutterbugWorld() {
     window.addEventListener("keydown", go);
     return off;
   }, [musicOn, screen]);
+  // ---- Enter as "the obvious next thing" --------------------------------------
+  // One key that always does whatever the screen is plainly waiting for: finish the
+  // line that's still typing, or press the main button. A child playing with one hand
+  // on the keyboard shouldn't have to hunt for the mouse to get on, and the tab order
+  // is long on screens with a map full of countries in it.
+  //
+  // Deliberately NOT advertised anywhere on screen: a visible "press Enter to skip"
+  // teaches that the words are something to get past, which is the same reason the
+  // "tap to read faster" hint came out of Jonah's story.
+  //
+  // Order matters. Typing first: if something is mid-reveal, Enter completes it and
+  // stops there, so one press never both finishes a sentence and dismisses the card
+  // it's sitting in — that would skip a fact a child never saw.
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const onKey = (e) => {
+      if (e.key !== "Enter") return;
+      // Never hijack Enter inside a text field or off a focused control — the name
+      // box, and any button the player has actually tabbed to, keep their own meaning.
+      const t = e.target;
+      const tag = t && t.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || (t && t.isContentEditable)) return;
+      if (tag === "BUTTON" || tag === "A") return;
+      const typing = document.querySelectorAll('[data-typing="1"]');
+      if (typing.length) {
+        e.preventDefault();
+        typing.forEach((el) => el.click());
+        return;
+      }
+      // Otherwise press the screen's primary action, if it has offered one — but
+      // SCOPED to the topmost dialog when one is open. Without that, Enter on Mr O's
+      // bubble would reach past him and press the button on the card underneath,
+      // dismissing a result the player hasn't looked at. A dialog with no primary of
+      // its own (Mr O's bubble) simply gets nothing from here and is left to its own
+      // Enter handler.
+      const dialogs = document.querySelectorAll('[role="dialog"]');
+      const scope = dialogs.length ? dialogs[dialogs.length - 1] : document;
+      const btn = scope.querySelector('button[data-primary]:not([disabled])');
+      if (btn) { e.preventDefault(); btn.click(); }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
   const poppedCountryRef = useRef(null); // country whose arrival popup already showed this leg
   const [dreamPending, setDreamPending] = useState(false); // Jonah's dream just fulfilled — show the win scene
   const pendingRunRef = useRef(null); // start action to run after the intro story
@@ -1919,12 +1947,13 @@ export default function ShutterbugWorld() {
   // one mechanic in the game that teaches how people actually move around a place,
   // and it reuses the twelve transport tokens that were previously only ever seen on
   // a Grand Tour's inter-continent legs (so most players never saw them at all).
-  const RIDE_MS = 2400;
+  const RIDE_MS = 4000;   // matches the flight, so both legs of a journey feel alike
   const [riding, setRiding] = useState(null);   // { fromX, fromY, toX, toY, mode }
   const rideTimer = useRef(null);
   const launchRide = (from, to, mode, finalize) => {
     if (prefersReduced || !from || !to || !mode) { finalize(); return; }
     setRiding({ fromX: from.x, fromY: from.y, toX: to.x, toY: to.y, mode });
+    music("travelJig");   // the same cue the flight uses: play, then fade past arrival
     rideTimer.current = setTimeout(() => {
       rideTimer.current = null;
       setRiding(null);
@@ -3191,13 +3220,13 @@ export default function ShutterbugWorld() {
       } else {
         setScore((s) => s + gain + pBonus);
         rewardSfx(perfect ? "perfect" : "success");
-        noteShot(perfect, clicked.id);
+        const cheer = pickForShot(perfect);
         // "Perfect shot!" is now earned — a first-try shot. A shot filed after a
         // wrong guess still counts, but it's a plainer "Nice shot!".
         setPending({ kind: "correct", tone: "good", emoji: perfect ? "🎯" : "✅",
           title: perfect ? "Perfect shot!" : "Nice shot!",
           subtitle: perfect ? `${found} +${gain}${perfectTxt}` : `${found} +${pts(gain)}.`,
-          fact: clicked.fact, photo: clicked.photo, category: clicked.category, buttonLabel: "Next assignment ✈" });
+          fact: clicked.fact, photo: clicked.photo, category: clicked.category, cheer, buttonLabel: "Next assignment ✈" });
       }
     } else {
       const wantTxt = a.type === "category" ? `a ${CATEGORIES[a.category].noun}` : target.subject;
@@ -3218,7 +3247,7 @@ export default function ShutterbugWorld() {
       if (d <= 0) outOfDays(`That's ${clicked.subject}, not ${wantTxt} — and the trip's over.`);
       else {
         sfx("fail");
-        noteShot(false, null);
+        pickForShot(false);
         missesRef.current[step] = (missesRef.current[step] || 0) + 1;
         const rightId = a.type === "specific" ? a.targetId : (cityPlan?.ids || []).find((oid) => BY_ID[oid] && BY_ID[oid].category === a.category);
         flashRight("city", rightId); // Scout: glow the right pin
@@ -3304,7 +3333,7 @@ export default function ShutterbugWorld() {
                 })}
               </div>
               <div style={{ display: "flex", gap: 12, alignItems: "center", marginTop: 16, flexWrap: "wrap" }}>
-                <button onClick={() => startLongTrip(kitPicked)} disabled={kitPicked.length !== KIT_TAKEN}
+                <button data-primary onClick={() => startLongTrip(kitPicked)} disabled={kitPicked.length !== KIT_TAKEN}
                   style={{ ...primaryBtn, marginTop: 0, opacity: kitPicked.length === KIT_TAKEN ? 1 : 0.45,
                     cursor: kitPicked.length === KIT_TAKEN ? "pointer" : "default" }}>
                   Set off ✈
@@ -3572,7 +3601,7 @@ export default function ShutterbugWorld() {
             {/* Sits well clear of the portrait above it: at a small gap the bag read as
                 part of the picture rather than as the thing to press, and its bob kept
                 knocking against the frame. */}
-            <button onClick={setOff} disabled={!meetReady} aria-disabled={!meetReady}
+            <button data-primary onClick={setOff} disabled={!meetReady} aria-disabled={!meetReady}
               className={meetReady ? "sbw-bob" : undefined}
               style={{ background: "none", border: "none", padding: 0, marginTop: 46, width: 210, maxWidth: "62%",
                 cursor: meetReady ? "pointer" : "default", opacity: meetReady ? 1 : 0.45,
@@ -3670,7 +3699,7 @@ export default function ShutterbugWorld() {
                 const returning = !!prof && (prof.metNigel || (prof.games || 0) > 0);
                 const label = returning ? "Continue your adventure ✈" : "Begin your adventure ✈";
                 return (
-                  <button onClick={() => { startMusicMaybe(); setPromptTraveler(false); setScreen("travelers"); }}
+                  <button data-primary onClick={() => { startMusicMaybe(); setPromptTraveler(false); setScreen("travelers"); }}
                     className="sbw-beckon"
                     // Sized and lettered to read as a sibling of the sign above it, not
                     // as generic chrome: the splash's one job is to be clicked.
@@ -3925,7 +3954,7 @@ export default function ShutterbugWorld() {
                     child who has just finished reading his answer doesn't have to look
                     across the page (or scroll) to find how to go on. */}
                 {answered && (
-                  <button onClick={nextQuiz} style={{ ...primaryBtn, margin: "14px 0 0", padding: "10px 22px", width: "100%" }}>
+                  <button data-primary onClick={nextQuiz} style={{ ...primaryBtn, margin: "14px 0 0", padding: "10px 22px", width: "100%" }}>
                     {quiz.i + 1 >= quiz.questions.length ? "Show him the rest →" : "Next question →"}
                   </button>
                 )}
@@ -3983,7 +4012,7 @@ export default function ShutterbugWorld() {
               {!home && (
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 16 }}>
                   <button onClick={() => { setQuiz(null); setGameMode("assignments"); setScreen("start"); }} style={{ background: "none", border: "none", color: INK, opacity: 0.6, fontSize: 13, cursor: "pointer", fontWeight: 700 }}>← Quit</button>
-                  {answered && <button onClick={nextQuiz} style={{ ...primaryBtn, margin: 0, padding: "10px 22px" }}>{quiz.i + 1 >= quiz.questions.length ? "See results" : "Next question →"}</button>}
+                  {answered && <button data-primary onClick={nextQuiz} style={{ ...primaryBtn, margin: 0, padding: "10px 22px" }}>{quiz.i + 1 >= quiz.questions.length ? "See results" : "Next question →"}</button>}
                 </div>
               )}
             </div>
@@ -4596,12 +4625,12 @@ export default function ShutterbugWorld() {
     }
     return { pos, moved };
   })();
-  const busy = !!flying || !!riding || !!pending || !!riddle || !!mrO || !!mrOBeats || !!dogVisit || (!isExplore && days <= 0);
+  const busy = !!flying || !!riding || !!pending || !!riddle || !!mrO || !!mrOBeats || (!isExplore && days <= 0);
   // Whose typewriter is it? When Mr O (or a riddle) is on screen, HIS text is the one
   // that should click; the assignment clue and the arrival fact under him fall silent,
   // so the player hears one typewriter, not two racing. Only these blocking overlays
   // count — the non-blocking dog popup has no typing sound of its own.
-  const typingElsewhere = !!mrO || !!mrOBeats || !!riddle || !!dogVisit;
+  const typingElsewhere = !!mrO || !!mrOBeats || !!riddle;
   // Journey-tracker step, derived from phase (continent → country → destination → shot).
   const stepIdx = phase === "continent" ? 0 : phase === "country" ? 1 : (revealed ? 3 : 2);
   // Cap the atlas so the whole desk (header + map + ribbon) fits one screen with NO
@@ -5153,41 +5182,7 @@ export default function ShutterbugWorld() {
                 );
               })()}
 
-              {/* The overland hop, drawn on the CONTINENT plate: a dashed track from
-                  where you're standing to the country you picked, with that country's
-                  own way of travelling running along it. Plate coordinates, not
-                  Robinson — this map is equirect, unlike the world map the plane
-                  crosses. The token is unstretched about its own centre for the same
-                  reason the pins are: Europe's plate is scaled 1.25 vertically and an
-                  un-corrected camel comes out tall and thin. */}
-              {inCountry && riding && (() => {
-                const a = { x: riding.fromX, y: riding.fromY }, b = { x: riding.toX, y: riding.toY };
-                const dx = b.x - a.x, dy = b.y - a.y;
-                const dist = Math.hypot(dx, dy) || 1;
-                // A gentle bow, a third of the arc the plane flies: this is ground
-                // travel, so it should read as following a road rather than leaping.
-                let nx = -dy / dist, ny = dx / dist;
-                if (ny > 0) { nx = -nx; ny = -ny; }
-                const lift = Math.min(0.05 * WoverS, dist * 0.08);
-                const mx = (a.x + b.x) / 2 + nx * lift, my = (a.y + b.y) / 2 + ny * lift;
-                const d = `M${a.x} ${a.y} Q${mx} ${my} ${b.x} ${b.y}`;
-                const sz = 0.085 * WoverS;
-                const art = TRANSPORT_ART[riding.mode.id];
-                return (
-                  <g style={{ pointerEvents: "none" }}>
-                    <path d={d} fill="none" stroke={INK} strokeOpacity="0.5" strokeWidth="2.6" strokeDasharray="3 3" vectorEffect="non-scaling-stroke" />
-                    <path d={d} fill="none" stroke="#FFFFFF" strokeOpacity="0.95" strokeWidth="1.2" strokeDasharray="3 3" vectorEffect="non-scaling-stroke" />
-                    <g style={{ animation: `sbw-ride ${RIDE_MS}ms ease-in-out forwards`, offsetPath: `path('${d}')`, offsetRotate: "0deg" }}>
-                      <g transform={mapStretchY === 1 ? undefined : `scale(1 ${(1 / mapStretchY).toFixed(4)})`}>
-                        {art
-                          ? <image href={`${UI}${art}`} width={sz} height={sz} x={-sz / 2} y={-sz / 2}
-                              style={{ filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.45))" }} />
-                          : <text x="0" y="0" fontSize={sz} textAnchor="middle" dominantBaseline="central">{riding.mode.emoji}</text>}
-                      </g>
-                    </g>
-                  </g>
-                );
-              })()}
+
 
               {/* Outline the country you're standing in (city step) with a bold border
                   and NO fill, so the relief inside shows through — the player sees the
@@ -5292,6 +5287,45 @@ export default function ShutterbugWorld() {
                 <OverseasInsets specs={OVERSEAS_INSETS[pickedCountry]} box={box} />
               )}
               </g>
+              {/* The overland hop is drawn OUTSIDE the map's vertical-stretch group
+                  (see the closing </g> below) and its endpoints are pre-transformed by
+                  the same stretch instead. That's what lets the token both ROTATE to
+                  face its direction of travel and stay undistorted: a counter-scale
+                  applied inside a rotated frame skews the art, and Europe's plate is
+                  scaled 1.31 vertically. Pre-transforming the two points puts the
+                  track exactly where the stretched map wants it while the vehicle on
+                  top of it is drawn in honest, unstretched screen space. */}
+              {inCountry && riding && (() => {
+                const sy = (v) => v * mapStretchY + mapPivotY * (1 - mapStretchY);
+                const a = { x: riding.fromX, y: sy(riding.fromY) };
+                const b = { x: riding.toX, y: sy(riding.toY) };
+                const dx = b.x - a.x, dy = b.y - a.y;
+                const dist = Math.hypot(dx, dy) || 1;
+                // A gentle bow, a third of the arc the plane flies: this is ground
+                // travel, so it should read as following a road rather than leaping.
+                let nx = -dy / dist, ny = dx / dist;
+                if (ny > 0) { nx = -nx; ny = -ny; }
+                const lift = Math.min(0.05 * WoverS, dist * 0.08);
+                const mx = (a.x + b.x) / 2 + nx * lift, my = (a.y + b.y) / 2 + ny * lift;
+                const d = `M${a.x} ${a.y} Q${mx} ${my} ${b.x} ${b.y}`;
+                const sz = 0.085 * WoverS;
+                const art = TRANSPORT_ART[riding.mode.id];
+                return (
+                  <g style={{ pointerEvents: "none" }}>
+                    <path d={d} fill="none" stroke={INK} strokeOpacity="0.5" strokeWidth="2.6" strokeDasharray="3 3" vectorEffect="non-scaling-stroke" />
+                    <path d={d} fill="none" stroke="#FFFFFF" strokeOpacity="0.95" strokeWidth="1.2" strokeDasharray="3 3" vectorEffect="non-scaling-stroke" />
+                    {/* "auto 90deg" turns the vehicle to face the way it's going — the
+                        art is drawn top-down with its nose UP, the same convention the
+                        aircraft token uses. */}
+                    <g style={{ animation: `sbw-ride ${RIDE_MS}ms ease-in-out forwards`, offsetPath: `path('${d}')`, offsetRotate: "auto 90deg" }}>
+                      {art
+                        ? <image href={`${UI}${art}`} width={sz} height={sz} x={-sz / 2} y={-sz / 2}
+                            style={{ filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.45))" }} />
+                        : <text x="0" y="0" fontSize={sz} textAnchor="middle" dominantBaseline="central">{riding.mode.emoji}</text>}
+                    </g>
+                  </g>
+                );
+              })()}
             </svg>
             {/* The flight used to be skippable by tapping the map. It isn't any more:
                 the flight is the beat where the travel jig plays and the plane crosses
@@ -5427,7 +5461,6 @@ export default function ShutterbugWorld() {
           {kitNote.name} — used!
         </div>
       )}
-      <DogPopup visit={dogVisit} onClose={() => setDogVisit(null)} reduced={prefersReduced} />
       {mrO && <MrOBubble fact={mrO} onClose={() => setMrO(null)} reduced={prefersReduced} />}
       {mrOBeats && <MrOBubble beats={mrOBeats} onClose={() => setMrOBeats(null)} reduced={prefersReduced} />}
       {riddle && <RiddleModal riddle={riddle} onAnswer={answerRiddle} onClose={() => setRiddle(null)}
@@ -6300,7 +6333,8 @@ function ResultModal({ data, onContinue, reduced }) {
                   <span aria-hidden="true">💡 </span>{data.hint}
                 </p>
               )}
-              <button autoFocus={ready} onClick={onContinue} disabled={!ready} aria-disabled={!ready}
+              {data.cheer && <PicklesCheer kind={data.cheer} reduced={reduced} />}
+              <button data-primary autoFocus={ready} onClick={onContinue} disabled={!ready} aria-disabled={!ready}
                 style={{ ...primaryBtn, alignSelf: "flex-start", background: accent, boxShadow: `0 4px 0 ${good ? "#2E7A55" : "#A93A28"}`,
                   opacity: ready ? 1 : 0.45, cursor: ready ? "pointer" : "default", transition: "opacity .3s" }}>
                 {data.buttonLabel}
@@ -6319,7 +6353,8 @@ function ResultModal({ data, onContinue, reduced }) {
             )}
             {/* Fact with no photo (e.g. the out-of-days screen) still shows below. */}
             {factEl && <div style={{ marginTop: 14 }}>{factEl}</div>}
-            <button autoFocus={ready} onClick={onContinue} disabled={!ready} aria-disabled={!ready}
+            {data.cheer && <div style={{ maxWidth: 420, margin: "0 auto" }}><PicklesCheer kind={data.cheer} reduced={reduced} /></div>}
+            <button data-primary autoFocus={ready} onClick={onContinue} disabled={!ready} aria-disabled={!ready}
               style={{ ...primaryBtn, marginTop: 20, background: accent, boxShadow: `0 4px 0 ${good ? "#2E7A55" : "#A93A28"}`,
                 opacity: ready ? 1 : 0.45, cursor: ready ? "pointer" : "default", transition: "opacity .3s" }}>
               {data.buttonLabel}
@@ -7174,14 +7209,14 @@ function StoryScreen({ beats, reduced, ctaLabel, onDone, onSkip, mood = "intro",
               {ready && (cta === "bag" ? (
                 // The camera bag IS the button: he holds out his old bag and a child
                 // takes it. It bobs so there's no mistaking what to do.
-                <button onClick={onDone} aria-label={ctaLabel} className="sbw-bob"
+                <button data-primary onClick={onDone} aria-label={ctaLabel} className="sbw-bob"
                   style={{ background: "none", border: "none", padding: 0, width: 246, maxWidth: "74%", cursor: "pointer" }}>
                   <img src={`${UI}camera-bag.png`} alt="" aria-hidden="true"
                     style={{ width: "100%", height: "auto", display: "block", filter: "drop-shadow(0 7px 12px rgba(16,38,46,0.42))" }} />
                   <span style={{ display: "block", marginTop: 4, fontFamily: HAND, fontWeight: 700, fontSize: 25, color: INK }}>{ctaLabel}</span>
                 </button>
               ) : (
-                <button onClick={onDone} style={{ ...primaryBtn, margin: 0 }}>{ctaLabel}</button>
+                <button data-primary onClick={onDone} style={{ ...primaryBtn, margin: 0 }}>{ctaLabel}</button>
               ))}
               {onSkip && (
                 <button onClick={onSkip} style={{ padding: "8px 16px", borderRadius: 10, border: `1.5px solid ${INK}`, background: "transparent", color: INK, fontWeight: 700, fontSize: 13, cursor: "pointer" }}>
@@ -7259,48 +7294,34 @@ const DOG_POSES = {
 // What she is feeling, in words. Her face does the work, but a child shouldn't have
 // to INFER why she turned up, and rule 4 forbids leaving meaning to the picture alone
 // — so every visit says out loud what she's excited about.
+//
+// She does NOT carry facts. That was Mr O's job as well, and two characters both
+// arriving to tell you something true made her feel like a second editor rather than
+// a dog. She reacts to the shot and nothing else; the pride IS the payload.
 const DOG_LINES = {
-  two: { pose: "sit", head: "Pickles is watching you", line: "Two perfect shots in a row! She's sat bolt upright with one paw up, waiting to see if you can make it three." },
-  streak: { pose: "bow", head: "Pickles is thrilled!", line: "Three perfect shots in a row — she's bowing and bouncing and can hardly stand it." },
-  find: { pose: "bow", head: "Pickles dug something up!", line: "She's been scratching about and come back with one of Jonah's old stories:" },
+  two: { pose: "sit", line: "Two in a row! Pickles is sat bolt upright, one paw up." },
+  streak: { pose: "bow", line: "Three perfect shots! Pickles is bowing and bouncing and can hardly stand it." },
+  perfect: { pose: "spin", line: "Pickles saw that one. Tail going like anything." },
 };
-function DogPopup({ visit, onClose, reduced }) {
-  // Pickles now works like Mr O: she dims the screen, takes it over, and goes when
-  // clicked. She used to trot into a corner and time out on her own, which made the
-  // best moment in the game — three perfect shots running — easy to miss entirely
-  // while the player was looking somewhere else on the map.
-  useEffect(() => {
-    if (!visit) return;
-    const onKey = (e) => { if (e.key === "Escape" || e.key === "Enter" || e.key === " ") { e.preventDefault(); onClose(); } };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [visit, onClose]);
-  if (!visit) return null;
-  const kind = visit.find ? "find" : (visit.kind || "streak");
-  const copy = DOG_LINES[kind] || DOG_LINES.streak;
+// Pickles, celebrating alongside the shot you just took. She rides IN the result card
+// rather than arriving as her own screen: a second full-screen popup after the
+// perfect-shot card meant two things to click through for one good moment, and the
+// celebration landed after the thing it was celebrating had already gone.
+//
+// Her line is not typed. She isn't speaking — it's a description of a dog — so
+// revealing it letter by letter would be pretending she's talking.
+function PicklesCheer({ kind, reduced }) {
+  const copy = DOG_LINES[kind] || DOG_LINES.perfect;
   return (
-    <div role="dialog" aria-modal="true" aria-label={copy.head} onClick={onClose}
-      style={{ position: "fixed", inset: 0, zIndex: 58, background: "rgba(8,20,24,0.66)",
-        display: "flex", alignItems: "flex-end", justifyContent: "center", padding: "0 20px", cursor: "pointer" }}>
-      <div className={reduced ? "" : "sbw-pop"} style={{ display: "flex", alignItems: "flex-end", gap: 8, maxWidth: 1120, width: "100%", justifyContent: "center" }}>
-        {/* Big, and standing on the floor of the frame like Mr O — the size of the
-            celebration should match the size of what was achieved. */}
-        <img src={`${UI}dog/${DOG_POSES[copy.pose]}`} alt="" aria-hidden="true"
-          style={{ height: "min(62vh, 560px)", width: "auto", maxWidth: "46vw", flex: "none",
-            objectFit: "contain", objectPosition: "bottom", filter: "drop-shadow(0 8px 16px rgba(0,0,0,0.5))" }} />
-        <div style={{ background: PAPER, border: `4px solid ${GOLD}`, borderRadius: "22px 22px 22px 6px",
-          padding: "20px 24px", boxShadow: "0 10px 30px rgba(16,38,46,0.4)", marginBottom: "16vh", maxWidth: 460 }}>
-          <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 14, letterSpacing: "0.12em", color: CORAL, fontWeight: 800, marginBottom: 10 }}>
-            🐾 {copy.head.toUpperCase()}
-          </div>
-          <TypeLine text={copy.line} reduced={reduced} style={{ color: INK, fontSize: 19, lineHeight: 1.5 }} />
-          {visit.find && (
-            <p style={{ margin: "10px 0 0", color: INK, fontSize: 17, lineHeight: 1.5 }}>
-              <b>{visit.find.subject}:</b> {visit.find.text}
-            </p>
-          )}
-          <div style={{ marginTop: 14, fontSize: 13, fontWeight: 700, color: INK, opacity: 0.55 }}>click to continue ▸</div>
-        </div>
+    <div className={reduced ? "" : "sbw-pop"}
+      style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 14,
+        background: "#FFF8E6", border: `2px solid ${GOLD}`, borderRadius: 14, padding: "10px 14px", textAlign: "left" }}>
+      <img src={`${UI}dog/${DOG_POSES[copy.pose]}`} alt="" aria-hidden="true"
+        style={{ width: "clamp(64px, 9vw, 104px)", height: "auto", flex: "none",
+          filter: "drop-shadow(0 4px 8px rgba(16,38,46,0.35))" }} />
+      <div style={{ minWidth: 0 }}>
+        <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.14em", color: CORAL, fontWeight: 800, marginBottom: 4 }}>🐾 PICKLES</div>
+        <p style={{ margin: 0, color: INK, fontSize: 15, lineHeight: 1.45 }}>{copy.line}</p>
       </div>
     </div>
   );

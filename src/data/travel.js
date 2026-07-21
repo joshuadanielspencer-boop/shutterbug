@@ -354,6 +354,24 @@ export function money(usd, country) {
 // arrives the same way, so the association can actually be learned, and a seeded
 // run stays reproducible.
 // ===========================================================================
+// Countries you can only reach across water from elsewhere on their own continent —
+// islands and archipelagos. Used to decide whether a WATER vehicle makes sense for
+// the overland hop: a ferry drawn crossing the middle of Kazakhstan is a lie about
+// the world, and this game is a teaching tool before it is a pretty one.
+//
+// Britain and Ireland are here as islands; so are Japan, Indonesia, the Philippines
+// and the Pacific and Caribbean island states. Countries that merely HAVE a coast
+// (Italy, India, Norway) are deliberately absent — you reach them overland.
+export const ISLAND_COUNTRIES = new Set([
+  "United Kingdom", "Ireland", "Iceland", "Malta", "Cyprus",
+  "Japan", "Philippines", "Indonesia", "Sri Lanka", "Taiwan", "Singapore", "Maldives",
+  "Madagascar", "Seychelles", "Mauritius",
+  "New Zealand", "Fiji", "Vanuatu", "Solomon Is.", "Papua New Guinea", "New Caledonia",
+  "French Polynesia", "Samoa", "Tonga", "Palau",
+  "Cuba", "Jamaica", "Haiti", "Dominican Republic", "Bahamas", "Trinidad and Tobago",
+  "Barbados", "Saint Lucia", "Antigua and Barbuda",
+]);
+
 export function countryTransport(locs, legDeg = 10) {
   const places = (locs || []).filter(Boolean);
   if (!places.length) return TRANSPORT_BY_ID.bus;
@@ -366,8 +384,15 @@ export function countryTransport(locs, legDeg = 10) {
   // prefer one; only fall back to the everyday modes when a country has no special
   // way in. `flight` is excluded outright — this is the hop AFTER the flight, and a
   // second aeroplane would make the two legs look like the same journey twice.
+  // A vehicle that travels on WATER is only honest if the journey crosses some. The
+  // hop is drawn across the continent map from where you're standing, so unless the
+  // destination is an island you are going overland and a boat would be drawn sailing
+  // over dry country.
+  const crossesWater = ISLAND_COUNTRIES.has(country);
+  const WATER_MODES = new Set(["ferry", "riverboat", "canoe", "gondola"]);
   const flavours = TRANSPORT_MODES.filter((m) => !m.core && m.id !== "flight"
-    && (m.contexts || []).some((k) => ctx.has(k)));
+    && (m.contexts || []).some((k) => ctx.has(k))
+    && (crossesWater || !WATER_MODES.has(m.id)));
   if (flavours.length) {
     // Prefer the most DISTINCTIVE match. Ranked by hand rather than hashed at random,
     // because "water" is satisfied by any coast and would hand a plain ferry to India

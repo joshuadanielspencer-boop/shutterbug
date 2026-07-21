@@ -107,7 +107,7 @@ export function GradualText({ text, reduced, onDone, cps = 42, style }) {
     <p onClick={busy ? finish : undefined}
       onKeyDown={busy ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); finish(); } } : undefined}
       role={busy ? "button" : undefined} tabIndex={busy ? 0 : undefined}
-      aria-label={busy ? text : undefined}
+      aria-label={busy ? text : undefined} data-typing={busy ? "1" : undefined}
       style={{ cursor: busy ? "pointer" : "default", display: "grid", ...style }}>
       <span aria-hidden="true" style={{ gridArea: "1 / 1", visibility: "hidden" }}>{text}</span>
       <span style={{ gridArea: "1 / 1" }}>
@@ -171,6 +171,7 @@ export function TypeLine({ text, reduced, style, inline = false, cps = Math.roun
   if (inline) {
     return (
       <span onClick={busy ? complete : undefined} aria-label={busy ? str : undefined}
+        data-typing={busy ? "1" : undefined}
         style={{ cursor: busy ? "pointer" : "inherit", ...style }}>
         <span aria-hidden={busy ? "true" : undefined}>{str.slice(0, n)}</span>
         {busy && <span aria-hidden="true" style={{ opacity: 0.4 }}>▌</span>}
@@ -179,6 +180,7 @@ export function TypeLine({ text, reduced, style, inline = false, cps = Math.roun
   }
   return (
     <p onClick={busy ? complete : undefined} aria-label={busy ? str : undefined}
+      data-typing={busy ? "1" : undefined}
       style={{ cursor: busy ? "pointer" : "inherit", margin: 0, display: "grid", ...style }}>
       <span aria-hidden="true" style={{ gridArea: "1 / 1", visibility: "hidden" }}>{str}</span>
       <span style={{ gridArea: "1 / 1" }}>
