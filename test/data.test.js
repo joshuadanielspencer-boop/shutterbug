@@ -14,6 +14,7 @@ import { RIVERS, LAKES, MARINE, WATER_FEATURES, WATER_KINDS } from "../src/data/
 import { TUNES, tuneKeyFor } from "../src/data/tunes.js";
 import { JOURNEYS, journeyBox, closestStops, unrolledX } from "../src/data/journeys.js";
 import { CURIOSITY_DECKS, CURIOSITY_DECK_BY_ID, ALL_CURIOSITY_IDS } from "../src/data/curiosities.js";
+import { KIT_ITEMS, KIT_OFFERED, KIT_TAKEN } from "../src/data/kit.js";
 
 const CONTINENTS = [
   "North America", "South America", "Europe", "Africa", "Asia", "Oceania", "Antarctica",
@@ -1004,5 +1005,53 @@ describe("the way into a country", () => {
     expect(countryTransport(byCountry["Thailand"], 12).id).toBe("tuktuk");
     expect(countryTransport(byCountry["India"], 12).id).toBe("tuktuk");
     expect(countryTransport(byCountry["Italy"], 12).id).toBe("gondola");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// The camera bag (The Long Trip). An item whose `effect` id has no handler in the
+// component does NOTHING — it sits in the bag, spends a charge, and changes no
+// outcome. That failure is completely silent, so the effect ids are pinned here
+// against the list the component actually implements.
+// ---------------------------------------------------------------------------
+describe("the camera bag", () => {
+  // Every effect shutterbug-world.jsx knows how to honour. Adding an item with a
+  // new effect means adding it at a cost site too — this list is the contract.
+  const IMPLEMENTED = ["forgiveCountry", "forgiveContinent", "refundPerfect", "freeResearch", "freeFlight"];
+
+  it("every item's effect is one the game actually implements", () => {
+    for (const item of KIT_ITEMS) {
+      expect(IMPLEMENTED, `${item.id} has effect "${item.effect}" with no handler`).toContain(item.effect);
+    }
+  });
+
+  it("every item is well-formed and readable", () => {
+    for (const item of KIT_ITEMS) {
+      expect(item.id).toMatch(/^[a-z]+$/);
+      expect(item.name, item.id).toBeTruthy();
+      expect(item.emoji, item.id).toBeTruthy();
+      expect(item.blurb, item.id).toBeTruthy();
+      expect(item.jonah, item.id).toBeTruthy();
+      expect(item.charges, item.id).toBeGreaterThan(0);
+      // One sentence a child can read, not a paragraph of rules.
+      expect(item.blurb.length, `${item.id} blurb is long`).toBeLessThan(120);
+    }
+  });
+
+  it("has unique ids and offers more than it lets you carry", () => {
+    const ids = KIT_ITEMS.map((i) => i.id);
+    expect(new Set(ids).size).toBe(ids.length);
+    // The choice IS the mode. If the offer ever stops exceeding the allowance there
+    // is no decision left to make.
+    expect(KIT_OFFERED).toBeGreaterThan(KIT_TAKEN);
+    expect(KIT_ITEMS.length).toBeGreaterThanOrEqual(KIT_OFFERED);
+  });
+
+  it("no item rewards a wrong answer with points", () => {
+    // Items may buy back TIME or forgive a mistake; none may hand out score. The
+    // game teaches geography, so the score has to keep tracking what the child knows.
+    for (const item of KIT_ITEMS) {
+      expect(/\bpoints?\b/i.test(item.blurb), `${item.id} promises points`).toBe(false);
+    }
   });
 });

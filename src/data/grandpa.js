@@ -78,6 +78,7 @@ export const NIGEL_MOOD = {
   meetRough: "gentle_concern",         // comforting, never scolding
   meetFirst: "warm_welcome",           // welcoming a first-timer in
   meetAsk: "curious_interest",         // a knowing look — "now then, what'll it be?"
+  packBag: "inviting_hospitality",     // holding the open bag out to you
   // The two unscored modes have no difficulty to react to, so they get a face of
   // their own rather than all sharing meetAsk: a conspiratorial "come on, let's go
   // poke about" for a free roam, and a reflective one for retracing a real journey.

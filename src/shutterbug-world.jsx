@@ -30,6 +30,7 @@ import { listProfiles, lastProfileName, getProfile, createProfile, setLastProfil
   exportPassport, passportFilename, importPassportText,
   progressByContinent, troubleSpots } from "./profiles.js";
 import { CURIOSITY_DECK_BY_ID, CURIOSITY_TOTAL } from "./data/curiosities.js";
+import { KIT_ITEMS, KIT_BY_ID, KIT_OFFERED, KIT_TAKEN } from "./data/kit.js";
 import { cityMissLesson, categoryMissLesson, continentMissLesson } from "./data/misses.js";
 import { DIFFICULTY_ART, MODE_ART, THEME_ART, CATEGORY_ART, ACHIEVEMENT_ART,
   RANK_ART, RECORD_ART, ROUNDEL_ART, TRANSPORT_ART, SEAL_UNLOCKED, MARKER_MASTERED } from "./data/art.js";
@@ -1166,6 +1167,8 @@ const MODE_CARDS = [
     blurb: "The route-planning game. You're told every target and exactly where it is — no deduction, no research, no hints. The whole challenge is the ORDER: sequence your stops up front against a par day-count, commit to the route, then fly it. Straying costs a day, and every day you bring home is worth points." },
   { id: "explore", name: "Explore", emoji: "🧭",
     blurb: "No timer, no score — roam the world, drill into any country, and read every place's story, culture card, and clues. Everywhere you visit is stamped in your passport." },
+  { id: "longtrip", name: "The Long Trip", emoji: "🎒",
+    blurb: "One trip that keeps going. There's no list to finish — assignments arrive one after another until your travel days run out, and how far you got IS the score. Before you leave, Jonah digs through his old bag and offers you three things; you can only carry two, and which two you take changes the whole trip." },
   { id: "journey", name: "Journeys", emoji: "🛶",
     blurb: "Retrace a real expedition, stop by stop, in the order it actually happened. No day budget and no score to chase — the order IS the story, and you can't skip ahead. Start with Lewis and Clark's crossing of North America." },
 ];
@@ -1541,6 +1544,42 @@ export default function ShutterbugWorld() {
   // { pose } when he's just popped in to be pleased with you. null the rest of the
   // time, which is most of the time; that's what keeps him an event.
   const [dogVisit, setDogVisit] = useState(null);
+  // ---- The camera bag (Long Trip) --------------------------------------------
+  // What Jonah packed, and what's left of it: { [itemId]: chargesRemaining }. The
+  // offer is drawn through rng.js (never Math.random) so a seeded run deals the same
+  // hand to everyone — the same rule the assignment planner follows.
+  const [kit, setKit] = useState({});            // itemId -> charges left this run
+  const [kitOffer, setKitOffer] = useState(null); // the hand Jonah is holding out
+  const [kitPicked, setKitPicked] = useState([]);  // which of the offer you've chosen
+  const [kitNote, setKitNote] = useState(null);   // "Fast film — half a day back!"
+  const kitNoteTimer = useRef(null);
+  // Does the bag hold a live charge of this effect? Spending one is a separate step,
+  // because most cost sites need to ASK before they decide what to charge.
+  const kitHas = (effect) => KIT_ITEMS.some((i) => i.effect === effect && (kit[i.id] || 0) > 0);
+  // Spend one charge of `effect`. Returns the item that paid, or null if the bag has
+  // none — so a caller can write `const paid = spendKit("freeFlight")` and branch.
+  // Say that an item just paid for something. Separate from spending it, because the
+  // moment a charge is DEDUCTED and the moment its effect is FELT aren't always the
+  // same: the bush plane is spent when you choose the continent but only saves you
+  // days when the plane lands five seconds later, and a toast shown at the click had
+  // already faded by then — the player saw a charge disappear and nothing happen.
+  const noteKit = (item) => {
+    if (!item) return;
+    sfx("stamp");
+    clearTimeout(kitNoteTimer.current);
+    setKitNote(item);
+    kitNoteTimer.current = setTimeout(() => setKitNote(null), 4200);
+  };
+  // Spend one charge of `effect`. Announces immediately unless { silent }, for the
+  // callers that need to announce later (see noteKit).
+  const spendKit = (effect, opts = {}) => {
+    const item = KIT_ITEMS.find((i) => i.effect === effect && (kit[i.id] || 0) > 0);
+    if (!item) return null;
+    setKit((k) => ({ ...k, [item.id]: (k[item.id] || 0) - 1 }));
+    if (!opts.silent) noteKit(item);
+    return item;
+  };
+  useEffect(() => () => clearTimeout(kitNoteTimer.current), []);
   const perfectStreakRef = useRef(0);
   const dogFoundRef = useRef([]);                 // anecdote ids already dug up this run
   const DOG_FIND_EVERY = 3;
@@ -1802,6 +1841,9 @@ export default function ShutterbugWorld() {
       },
       continent: (c) => { setScreen("play"); setPickedContinent(c); setPickedCountry(null); setPhase("country"); },
       mode: (m) => setGameMode(m),
+      gameMode: () => gameMode,
+      kit: () => kit,
+      kitPicked: () => kitPicked,
       // Fill the album with real places, then jump to the review or the results —
       // the two screens whose layout is hardest to reach and easiest to break.
       album: (ids) => setAlbum((ids || []).map((id) => {
@@ -2151,7 +2193,22 @@ export default function ShutterbugWorld() {
       const themed = tourTheme !== "classic" && u.expeditions;
       return themed ? startExpedition(EXPEDITIONS.find((e) => e.id === tourTheme)) : startTour();
     }
+    // The Long Trip stops at Jonah's bag first: he deals a hand of kit, you take two,
+    // and only then does the trip start. The hand is dealt through rng.js so a seeded
+    // run gives everyone the same offer.
+    if (gameMode === "longtrip") { setKitPicked([]); setKitOffer(shuffled(KIT_ITEMS).slice(0, KIT_OFFERED)); setScreen("kit"); return; }
     return startGame(); // assignments (always unlocked) — also the safe fallback
+  }
+
+  // Leaving the bag screen: remember what was taken (id -> charges) and set off.
+  function startLongTrip(chosenIds) {
+    const packed = {};
+    for (const id of chosenIds) if (KIT_BY_ID[id]) packed[id] = KIT_BY_ID[id].charges;
+    setKit(packed);
+    setKitOffer(null);
+    setKitNote(null);
+    setScreen("play");
+    startGame();
   }
 
   // `daily` (a day number) turns this into the Daily Expedition: the whole plan is
@@ -2161,7 +2218,14 @@ export default function ShutterbugWorld() {
   // what a shared daily must not do.
   function startGame(daily = null) {
     // music continues from the splash/meet screen and fades out at the map
-    const mode = daily ? { ...modePlan(difficulty), assignments: DAILY_ASSIGNMENTS } : modePlan(difficulty);
+    // The Long Trip is endless, so it queues a deep list rather than a fixed one:
+    // the run ends when the days do, and 40 assignments is far past what any day
+    // budget survives. Generating more mid-run would be the alternative, but this
+    // costs one planning pass and can never hand `assignments[step]` an undefined.
+    const LONG_TRIP_DEPTH = 40;
+    const mode = daily ? { ...modePlan(difficulty), assignments: DAILY_ASSIGNMENTS }
+      : gameMode === "longtrip" ? { ...modePlan(difficulty), assignments: LONG_TRIP_DEPTH }
+      : modePlan(difficulty);
     const profile = profileName ? getProfile(profileName) : null;
     // Weighted order surfaces the active player's missed/unmastered places more
     // often (a plain shuffle for guests). Used to fill the non-fresh anchor slots
@@ -2188,7 +2252,14 @@ export default function ShutterbugWorld() {
     // hopping hub → continent → continent) plus the difficulty's slack days.
     let cleanCost = 0, fromXY = HUB;
     for (const a of assignmentObjs) { const to = CONTINENT_PIN[a.continent]; cleanCost += flightDays(fromXY, to) + SHOT_COST; fromXY = to; }
-    setDays(Math.round((cleanCost + mode.slack) * 10) / 10);
+    // The Long Trip gets a FLAT purse instead, because its list is 40 deep and
+    // budgeting the whole list would hand out a fortune. This is the number the mode
+    // turns on: enough for roughly five or six clean legs, so a wasted flight really
+    // is felt, and the bag is what buys you the extra ones.
+    const LONG_TRIP_DAYS = { scout: 17, easy: 15, medium: 13, hard: 11 };
+    setDays(gameMode === "longtrip"
+      ? (LONG_TRIP_DAYS[difficulty] ?? 13)
+      : Math.round((cleanCost + mode.slack) * 10) / 10);
     setScore(0);
     setAlbum([]);
     setVisitedIds([]);
@@ -2213,7 +2284,12 @@ export default function ShutterbugWorld() {
     // number of chances to earn it.
     resetRiddles(daily ? dailySeed(daily, difficulty) + "|riddles" : null);
     setDailyDay(daily);
-    setGameMode(daily ? "daily" : "assignments"); setExpedition(null);
+    // startGame() is shared by Assignments, the Daily and the Long Trip, so it must
+    // not stamp the mode over the top of a caller that already set one — that reset
+    // was silently turning a Long Trip into a plain Assignments run the instant it
+    // began (the bag was packed, the days were right, and nothing else in the mode
+    // was reachable because every check on gameMode had already gone false).
+    setGameMode(daily ? "daily" : gameMode === "longtrip" ? "longtrip" : "assignments"); setExpedition(null);
     setScreen("play");
     // Coaching: every 5th run, Mr O reminds the player they can research a clue via
     // the Field Guide (only where research applies). The first run is skipped — his
@@ -2745,8 +2821,13 @@ export default function ShutterbugWorld() {
     if (cont === target.continent) {
       setFlashHint(null); // right continent — stop any Scout hint flash
       const useCountry = usesCountryLayer(MODES[difficulty], cont);
+      // Bush plane ticket: one inter-continent hop on the house. Only spent on a hop
+      // that would actually have cost something — never burned on "you're already
+      // here", which would waste the ticket on nothing.
+      const flownFree = cost > 0 ? spendKit("freeFlight", { silent: true }) : null;
       const finalize = () => {
-        const nd = Math.round((days - cost) * 10) / 10;
+        if (flownFree) noteKit(flownFree);   // announce on landing, when the saving shows
+        const nd = Math.round((days - (flownFree ? 0 : cost)) * 10) / 10;
         setDays(nd);
         setFlying(null);
         setPickedContinent(cont);
@@ -2761,7 +2842,11 @@ export default function ShutterbugWorld() {
       music("travelJig");
       launchFlight(from, to, finalize);
     } else {
-      const nd = Math.round((days - cost) * 10) / 10; // a wrong continent is a wasted flight
+      // A friend in town: the first wrong continent is free. The mistake still
+      // HAPPENS — you're told where you should have gone, and the lesson still runs —
+      // it just doesn't cost the day. Nothing in the bag makes a wrong answer pay.
+      const forgiven = !!spendKit("forgiveContinent");
+      const nd = Math.round((days - (forgiven ? 0 : cost)) * 10) / 10; // a wrong continent is a wasted flight
       setDays(nd);
       sfx("fail");
       flashRight("continent", target.continent); // Scout: glow the right continent
@@ -2769,7 +2854,9 @@ export default function ShutterbugWorld() {
       else setPending({ kind: "wrong", tone: "bad", emoji: "❌", title: sameHere ? "Still the wrong continent" : "Not that continent",
         subtitle: sameHere
           ? `Read his note again and pick the continent it points to.`
-          : `A wasted flight there and back cost you ${cost} day${cost === 1 ? "" : "s"} — read his note and try again.`,
+          : forgiven
+            ? `A wasted flight there and back — but a friend of Jonah's sorted you out, so it cost you nothing. Read his note and try again.`
+            : `A wasted flight there and back cost you ${cost} day${cost === 1 ? "" : "s"} — read his note and try again.`,
         // Named outright, on every tier: which continent it IS, and what lies between
         // the two. "West of Africa" teaches nothing on its own; "across the Atlantic"
         // is the thing worth carrying away from a wrong guess.
@@ -2916,7 +3003,10 @@ export default function ShutterbugWorld() {
       const legA = rideLegFor(country);
       if (legA) launchRide(legA.from, legA.to, legA.mode, arriveA); else arriveA();
     } else {
-      const nd = Math.round((days - 0.5) * 10) / 10; // a wrong country costs half a day
+      // Telephoto lens: the first wrong country is free — you were close enough to
+      // shoot it from where you stood.
+      const forgivenC = !!spendKit("forgiveCountry");
+      const nd = Math.round((days - (forgivenC ? 0 : 0.5)) * 10) / 10; // a wrong country costs half a day
       setDays(nd);
       sfx("fail");
       const why = a && a.type === "category"
@@ -2943,7 +3033,10 @@ export default function ShutterbugWorld() {
   function doResearch() {
     if (gameMode === "tour" || flying || pending) return;
     if (MODES[difficulty].research === "off") return;            // Hard: no Research
-    if (researched[step] || days <= researchCost) return;
+    // Press pass: research costs nothing all trip. Checked BEFORE the affordability
+    // guard, so a player down to their last half-day can still read the guide.
+    const freeRead = kitHas("freeResearch");
+    if (researched[step] || (!freeRead && days <= researchCost)) return;
     const a = assignments[step];
     if (!a) return;
     const t = a.type === "category" ? loc(a.anchorId) : loc(a.targetId);
@@ -2952,7 +3045,7 @@ export default function ShutterbugWorld() {
       ? `Jonah's guidebook suggests ${t.city}, ${t.country} ${t.flag} in ${t.continent} — its ${catNoun}, ${t.subject}, would be a perfect shot.`
       : `Jonah's after ${t.subject} — in ${t.city}, ${t.country} ${t.flag} (${t.continent}).`;
     setResearched((r) => ({ ...r, [step]: text }));
-    if (researchCost > 0) setDays((d) => Math.round((d - researchCost) * 10) / 10);
+    if (researchCost > 0 && !freeRead) setDays((d) => Math.round((d - researchCost) * 10) / 10);
     sfx("success");
     // The note pins itself under the telegram (and persists across the flight);
     // don't ALSO echo it into the message banner — that read as the hint
@@ -3058,10 +3151,18 @@ export default function ShutterbugWorld() {
       // Perfect = the correct subject on the first click here (no wrong guess).
       const perfect = !missesRef.current[step];
       const pBonus = perfect ? PERFECT_BONUS : 0;
+      // Fast film: a first-try shot hands back half a day. Only spends a charge on a
+      // shot that was actually perfect, so it rewards knowing the answer — never a
+      // lucky guess that took three tries.
+      const filmBack = perfect && spendKit("refundPerfect") ? 0.5 : 0;
+      if (filmBack) setDays((d) => Math.round((d + filmBack) * 10) / 10);
       const perfectTxt = pBonus ? ` (+${pts(pBonus)} for a perfect first-try shot!)` : "";
       setAlbum((al) => (al.some((x) => x.id === clicked.id) ? al : [...al, { id: clicked.id, subject: clicked.subject, flag: clicked.flag, city: clicked.city, country: clicked.country, continent: clicked.continent, category: clicked.category, fact: clicked.fact, icon: clicked.icon, photo: clicked.photo, greeting: clicked.greeting }]));
       const found = a.type === "category" ? `You found a ${CATEGORIES[a.category].noun} — ${clicked.subject}!` : `You photographed ${clicked.subject}.`;
-      const done = step + 1 >= assignments.length;
+      // The Long Trip never "completes" — the assignments keep coming and the trip
+      // ends only when the days do. That's the whole shape of the mode: not "did you
+      // finish the list" but "how far did you get before the clock beat you".
+      const done = !isLongTrip && step + 1 >= assignments.length;
       if (done) {
         const bonus = dayBonus(d);
         setScore((s) => s + gain + bonus + pBonus);
@@ -3122,6 +3223,10 @@ export default function ShutterbugWorld() {
   // ---------- SCREENS ----------
   const isTour = gameMode === "tour";
   const isExplore = gameMode === "explore";
+  // The Long Trip: assignments keep coming until the days run out. Same play as
+  // Assignments, but there is no target count to finish — the score IS how far you
+  // got — and you set off with a bag Jonah packed (see src/data/kit.js).
+  const isLongTrip = gameMode === "longtrip";
   // Travel modes (hubs + last-leg transport + a money budget) run on the two higher
   // Grand Tour tiers only.
   const travelModes = isTour && (difficulty === "medium" || difficulty === "hard");
@@ -3140,6 +3245,76 @@ export default function ShutterbugWorld() {
 
   // ---------- MEET GRANDPA (pre-game): he says something, nods to your last trip,
   // then asks what adventure you're after — where the mode + difficulty are chosen.
+  // ---------- THE CAMERA BAG (Long Trip loadout) ----------
+  // Jonah holds out three things and you take two. The choice is the mode's texture:
+  // the same run played with fast film and a press pass is a different run from one
+  // played with a bush plane and a long lens. Deliberately BEFORE the trip and never
+  // during it — a child choosing kit mid-assignment would be choosing under pressure,
+  // and the pressure is meant to be the map, not the menu.
+  if (screen === "kit" && kitOffer) {
+    return (
+      <Frame>
+        <DeskBoard>
+          <div style={{ display: "flex", alignItems: "flex-start", gap: 22, flexWrap: "wrap" }}>
+            <div style={{ flex: "1 1 440px", minWidth: 320 }}>
+              <Stamp>Pack the bag</Stamp>
+              <h2 style={{ fontFamily: "ui-sans-serif, system-ui", fontWeight: 900, fontSize: 26, color: INK, margin: "12px 0 6px" }}>
+                Take {NUMWORD[KIT_TAKEN] || KIT_TAKEN} things
+              </h2>
+              <p style={{ color: INK, opacity: 0.8, fontSize: 15, lineHeight: 1.5, margin: "0 0 14px" }}>
+                This trip runs until your days do — there's no list to finish, so go as far as
+                you can. Jonah's rummaged in the old bag and found three things. You can't
+                carry them all.
+              </p>
+              <div style={{ display: "grid", gap: 10 }}>
+                {kitOffer.map((item) => {
+                  const on = kitPicked.includes(item.id);
+                  const full = kitPicked.length >= KIT_TAKEN && !on;
+                  return (
+                    <button key={item.id} aria-pressed={on} disabled={full}
+                      onClick={() => setKitPicked((p) => p.includes(item.id) ? p.filter((x) => x !== item.id) : [...p, item.id])}
+                      style={{ textAlign: "left", display: "flex", gap: 12, alignItems: "flex-start",
+                        padding: "13px 15px", borderRadius: 12, cursor: full ? "default" : "pointer",
+                        border: `2.5px solid ${on ? CORAL : PAPER_LINE}`, background: on ? "#FBEAE6" : "#fff",
+                        opacity: full ? 0.5 : 1 }}>
+                      <span aria-hidden="true" style={{ fontSize: 30, lineHeight: 1 }}>{item.emoji}</span>
+                      <span style={{ minWidth: 0 }}>
+                        <span style={{ display: "block", fontWeight: 800, color: INK, fontSize: 16 }}>
+                          {item.name}{on ? " ✓" : ""}
+                        </span>
+                        <span style={{ display: "block", color: INK, opacity: 0.8, fontSize: 13.5, lineHeight: 1.45, marginTop: 2 }}>
+                          {item.blurb}
+                        </span>
+                        <span style={{ display: "block", color: OCEAN, fontSize: 13, fontStyle: "italic", marginTop: 6 }}>
+                          &ldquo;{item.jonah}&rdquo;
+                        </span>
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+              <div style={{ display: "flex", gap: 12, alignItems: "center", marginTop: 16, flexWrap: "wrap" }}>
+                <button onClick={() => startLongTrip(kitPicked)} disabled={kitPicked.length !== KIT_TAKEN}
+                  style={{ ...primaryBtn, marginTop: 0, opacity: kitPicked.length === KIT_TAKEN ? 1 : 0.45,
+                    cursor: kitPicked.length === KIT_TAKEN ? "pointer" : "default" }}>
+                  Set off ✈
+                </button>
+                <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 13, color: INK, opacity: 0.7 }}>
+                  {kitPicked.length} of {KIT_TAKEN} packed
+                </span>
+                <button onClick={() => { setKitOffer(null); setKitPicked([]); setScreen("meet"); }}
+                  style={{ background: "none", border: "none", color: INK, opacity: 0.6, fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
+                  ← Back
+                </button>
+              </div>
+            </div>
+            <NigelScene mood="packBag" style={{ flex: "1 1 380px", minWidth: 300 }} />
+          </div>
+        </DeskBoard>
+      </Frame>
+    );
+  }
+
   if (screen === "meet") {
     const prof = profileName ? getProfile(profileName) : null;
     const showRunNote = !!(prof && prof.games > 0 && meetInfo?.comment);
@@ -4091,11 +4266,17 @@ export default function ShutterbugWorld() {
     const mode = MODES[difficulty];
     const isTourEnd = gameMode === "tour";
     const isDailyEnd = gameMode === "daily";
+    const isLongEnd = gameMode === "longtrip";
     const totalTargets = isTourEnd ? tourReqs.length : assignments.length;
     const maxScore = isTourEnd ? tourMaxScore(tourReqs.length, difficulty) : maxScoreFor(assignments.length, mode);
     // Clamp at 1: distance flights vary slightly by the exact cities visited, so a
     // very efficient route can bank a shade more than the nominal max — never > 100%.
-    const pct = maxScore > 0 ? Math.min(1, score / maxScore) : 0;
+    // The Long Trip has no denominator — its list is 40 deep and nobody is meant to
+    // reach the end of it — so "% of a perfect run" is meaningless there and the rank
+    // is read off how far you actually got instead.
+    const pct = isLongEnd
+      ? Math.min(1, album.length / 12)
+      : (maxScore > 0 ? Math.min(1, score / maxScore) : 0);
     const r = rankFor(pct);
     return (
       <Frame>
@@ -4108,12 +4289,15 @@ export default function ShutterbugWorld() {
           <div style={{ display: "flex", alignItems: "baseline", justifyContent: "center", gap: "clamp(10px, 2vw, 22px)",
             flexWrap: "wrap", textAlign: "center", marginBottom: 4 }}>
             <Stamp>Roll Developed</Stamp>
-            <h2 style={{ fontFamily: "ui-sans-serif, system-ui", fontWeight: 900, letterSpacing: "0.06em", fontSize: "clamp(19px, 2.3vw, 26px)", color: INK, margin: 0 }}>{album.length} / {totalTargets} shots filed</h2>
+            <h2 style={{ fontFamily: "ui-sans-serif, system-ui", fontWeight: 900, letterSpacing: "0.06em", fontSize: "clamp(19px, 2.3vw, 26px)", color: INK, margin: 0 }}>
+              {isLongEnd ? `${album.length} place${album.length === 1 ? "" : "s"} before the days ran out` : `${album.length} / ${totalTargets} shots filed`}
+            </h2>
             <p style={{ fontFamily: "ui-monospace, monospace", fontSize: "clamp(15px, 1.7vw, 20px)", color: CORAL, fontWeight: 700, margin: 0 }}>{score} pts · ⏱ {fmtTime(elapsedMs)}</p>
             <p style={{ color: INK, fontWeight: 700, margin: 0, fontSize: 15 }}>{r.title}</p>
           </div>
           <p style={{ fontFamily: "ui-monospace, monospace", fontSize: 11.5, color: INK, opacity: 0.6, margin: "0 0 2px", letterSpacing: "0.06em", textAlign: "center" }}>
-            {isDailyEnd ? `Daily Expedition · Day ${dailyDay}` : isTourEnd ? "Grand Tour" : "Assignments"} · {mode.label} · {Math.round(pct * 100)}% of a perfect run
+            {isDailyEnd ? `Daily Expedition · Day ${dailyDay}` : isTourEnd ? "Grand Tour" : isLongEnd ? "The Long Trip" : "Assignments"} · {mode.label}
+            {isLongEnd ? "" : ` · ${Math.round(pct * 100)}% of a perfect run`}
             {quizBonus > 0 && <span style={{ color: GREEN, fontWeight: 700 }}>{"  ·  "}+{tidyScore(quizBonus)} review extra credit ✔</span>}
           </p>
 
@@ -4566,7 +4750,13 @@ export default function ShutterbugWorld() {
               style={{ position: "absolute", top: -15, left: 16, width: 34, height: "auto", filter: "drop-shadow(0 3px 3px rgba(0,0,0,0.35))" }} />
             <div style={{ textAlign: "center", marginBottom: 8, color: CORAL }}>
               <span style={{ display: "block", fontFamily: HAND, fontWeight: 700, fontSize: 33, lineHeight: 1.05 }}>A Note from Jonah</span>
-              <span style={{ display: "block", fontFamily: "ui-monospace, monospace", fontSize: 18, letterSpacing: "0.1em", fontWeight: 800, whiteSpace: "nowrap" }}>ASSIGNMENT {step + 1} / {assignments.length}</span>
+              <span style={{ display: "block", fontFamily: "ui-monospace, monospace", fontSize: 18, letterSpacing: "0.1em", fontWeight: 800, whiteSpace: "nowrap" }}>
+                {/* The Long Trip has no denominator to show. Its list is 40 deep only so
+                    the run can't run out of assignments before it runs out of days, and
+                    printing "1 / 40" both spoils that plumbing and sets a target nobody
+                    is meant to reach. */}
+                ASSIGNMENT {step + 1}{isLongTrip ? "" : ` / ${assignments.length}`}
+              </span>
             </div>
             <div style={{ borderTop: `1px dashed ${INK}`, opacity: 0.35, margin: "0 0 12px" }} />
             {(isCatAsg || namesSubject) ? (
@@ -4653,6 +4843,35 @@ export default function ShutterbugWorld() {
               )}
             </div>
           )}
+          {/* The bag, on the panel, all trip. A charge you've forgotten about is a
+              charge you won't plan around, and the whole mode is planning around
+              them. Spent items stay listed but greyed — seeing "0 left" is what
+              teaches that it was a limited thing, where quietly vanishing would just
+              look like a bug. */}
+          {isLongTrip && Object.keys(kit).length > 0 && (
+            <div style={{ marginTop: 12, background: PAPER, border: `1px solid ${PAPER_LINE}`, borderRadius: 10, padding: "10px 12px" }}>
+              <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 10, letterSpacing: "0.16em", color: CORAL, fontWeight: 800, marginBottom: 7 }}>🎒 IN YOUR BAG</div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                {Object.keys(kit).map((id) => {
+                  const item = KIT_BY_ID[id]; if (!item) return null;
+                  const left = kit[id] || 0;
+                  const spent = left <= 0;
+                  return (
+                    <div key={id} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12.5,
+                      opacity: spent ? 0.45 : 1, color: INK }}>
+                      <span aria-hidden="true" style={{ fontSize: 17, filter: spent ? "grayscale(1)" : "none" }}>{item.emoji}</span>
+                      <span style={{ fontWeight: 700, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.name}</span>
+                      <span style={{ marginLeft: "auto", fontFamily: "ui-monospace, monospace", fontSize: 11,
+                        color: spent ? INK : GREEN, fontWeight: 800, whiteSpace: "nowrap" }}>
+                        {item.charges >= 99 ? (spent ? "spent" : "all trip") : `${left} left`}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           {/* Grand Tour, standing on a continent and choosing a country: it has no
               single target, so leaving again has to be possible from HERE too. Without
               this the only way back to the world map was to enter a country first,
@@ -5175,6 +5394,18 @@ export default function ShutterbugWorld() {
         <CuriosityCard deck={CURIOSITY_DECK_BY_ID[curioDeck]}
           seen={profileName ? curiositiesSeen(getProfile(profileName)) : {}}
           onSeen={onCurioSeen} onClose={() => setCurioDeck(null)} reduced={prefersReduced} />
+      )}
+      {/* Something in the bag just paid for you. A silent saving is invisible — the
+          day cost simply doesn't appear — so it has to SAY so, or the item feels like
+          it did nothing. Non-blocking; it fades on its own. */}
+      {kitNote && (
+        <div role="status" style={{ position: "fixed", top: 18, left: "50%", transform: "translateX(-50%)",
+          zIndex: 60, background: INK, color: PAPER, borderRadius: 999, padding: "9px 18px",
+          display: "flex", alignItems: "center", gap: 9, boxShadow: "0 6px 20px rgba(0,0,0,0.35)",
+          fontWeight: 800, fontSize: 14, pointerEvents: "none" }}>
+          <span aria-hidden="true" style={{ fontSize: 19 }}>{kitNote.emoji}</span>
+          {kitNote.name} — used!
+        </div>
       )}
       <DogPopup visit={dogVisit} onClose={() => setDogVisit(null)} reduced={prefersReduced} />
       {mrO && <MrOBubble fact={mrO} onClose={() => setMrO(null)} reduced={prefersReduced} />}

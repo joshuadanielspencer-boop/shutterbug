@@ -494,6 +494,9 @@ export const UNLOCK_REQ = {
   tour: "Photograph 15 places",
   hard: "Earn stamps on 3 continents",
   expeditions: "Photograph 25 places",
+  // The Long Trip is the endurance mode; it wants a player who already knows the
+  // map well enough that running out of days is a fair fight rather than a mystery.
+  longtrip: "Photograph 20 places",
 };
 export function unlocks(profile) {
   if (!profile) return { assignments: true, daily: true, journey: true, explore: true, quiz: true, tour: true, scout: true, easy: true, medium: true, hard: true, expeditions: true };
@@ -512,6 +515,7 @@ export function unlocks(profile) {
     tour: mastered >= 15,
     hard: contTouched >= 3,
     expeditions: mastered >= 25,
+    longtrip: mastered >= 20,
   };
 }
 
