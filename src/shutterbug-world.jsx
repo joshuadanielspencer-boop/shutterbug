@@ -6763,33 +6763,40 @@ function StoryScreen({ beats, reduced, ctaLabel, onDone, onSkip, mood = "intro",
               })}
             </div>
 
-            {/* One slot of fixed height, holding the read-faster hint while he talks
-                and the bag once he's done. Reserving the room means the bag can
-                APPEAR — rather than sit there greyed out, telegraphing the end of a
-                story a child hasn't heard yet — without the arrival shoving the page. */}
-            <div style={{ marginTop: 14, minHeight: cta === "bag" ? 244 : 74, display: "flex",
-              flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 8 }}>
+            {/* Only the read-faster hint lives under the words now. The bag moved to
+                sit under HIM (right column) — he is the one holding it out, so that is
+                where a child looks for it, and the left column stays short enough that
+                a long speech doesn't push the button off the bottom of the screen. */}
+            <div style={{ marginTop: 14, minHeight: 26, display: "flex",
+              alignItems: "center", justifyContent: "center" }}>
               {!ready && (
                 <p role="status" style={{ fontSize: 12, color: INK, opacity: 0.5, margin: 0, textAlign: "center" }}>
                   (tap the text to read faster)
                 </p>
               )}
-              {ready && (
-                <div style={{ display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap", alignItems: "center" }}>
-                  {/* The camera bag IS the button: he holds out his old bag and a child
-                      takes it. It bobs so there's no mistaking what to do. */}
-                  {cta === "bag" ? (
-                    <button onClick={onDone} aria-label={ctaLabel} className="sbw-bob"
-                      style={{ background: "none", border: "none", padding: 0, margin: "0 auto", width: 246, maxWidth: "74%", cursor: "pointer" }}>
-                      <img src={`${UI}camera-bag.png`} alt="" aria-hidden="true"
-                        style={{ width: "100%", height: "auto", display: "block", filter: "drop-shadow(0 7px 12px rgba(16,38,46,0.42))" }} />
-                      <span style={{ display: "block", marginTop: 4, fontFamily: HAND, fontWeight: 700, fontSize: 25, color: INK }}>{ctaLabel}</span>
-                    </button>
-                  ) : (
-                    <button onClick={onDone} style={{ ...primaryBtn, margin: 0 }}>{ctaLabel}</button>
-                  )}
-                </div>
-              )}
+            </div>
+          </div>
+          {/* RIGHT: his face, tracking the beat he's on, and directly beneath it the
+              bag he's offering. The slot below him is reserved at full height from the
+              first paint, so the bag can APPEAR when he's finished — rather than sit
+              there greyed out telegraphing the end of a story a child hasn't heard yet
+              — without its arrival changing the height of the page. */}
+          <div style={{ flex: "1.35 1 420px", minWidth: 300, display: "flex", flexDirection: "column", alignItems: "center" }}>
+            <NigelScene mood={mood} beat={Math.min(revealed, beats.length - 1)} style={{ width: "100%" }} />
+            <div style={{ marginTop: 20, minHeight: cta === "bag" ? 250 : 76, display: "flex",
+              flexDirection: "column", alignItems: "center", justifyContent: "flex-start", gap: 8 }}>
+              {ready && (cta === "bag" ? (
+                // The camera bag IS the button: he holds out his old bag and a child
+                // takes it. It bobs so there's no mistaking what to do.
+                <button onClick={onDone} aria-label={ctaLabel} className="sbw-bob"
+                  style={{ background: "none", border: "none", padding: 0, width: 246, maxWidth: "74%", cursor: "pointer" }}>
+                  <img src={`${UI}camera-bag.png`} alt="" aria-hidden="true"
+                    style={{ width: "100%", height: "auto", display: "block", filter: "drop-shadow(0 7px 12px rgba(16,38,46,0.42))" }} />
+                  <span style={{ display: "block", marginTop: 4, fontFamily: HAND, fontWeight: 700, fontSize: 25, color: INK }}>{ctaLabel}</span>
+                </button>
+              ) : (
+                <button onClick={onDone} style={{ ...primaryBtn, margin: 0 }}>{ctaLabel}</button>
+              ))}
               {onSkip && (
                 <button onClick={onSkip} style={{ padding: "8px 16px", borderRadius: 10, border: `1.5px solid ${INK}`, background: "transparent", color: INK, fontWeight: 700, fontSize: 13, cursor: "pointer" }}>
                   Skip
@@ -6797,9 +6804,6 @@ function StoryScreen({ beats, reduced, ctaLabel, onDone, onSkip, mood = "intro",
               )}
             </div>
           </div>
-          {/* His face tracks the beat he's on — the mood map for this sequence. */}
-          <NigelScene mood={mood} beat={Math.min(revealed, beats.length - 1)}
-            style={{ flex: "1.35 1 420px", minWidth: 300 }} />
         </div>
       </DeskBoard>
     </Frame>
