@@ -1535,7 +1535,7 @@ export default function ShutterbugWorld() {
       // so the child learns that a third clean shot in a row brings him back.
       if (n % DOG_FIND_EVERY === DOG_FIND_EVERY - 1) {
         sfx("hover");
-        setDogVisit({ pose: "bow" });
+        setDogVisit({ kind: "two" });
       }
       return;
     }
@@ -1544,7 +1544,7 @@ export default function ShutterbugWorld() {
     const pool = [id, ...album.map((p) => p.id)]
       .filter((x) => x && ANECDOTES[x] && !dogFoundRef.current.includes(x));
     const pick = pool[0];
-    if (!pick) { setDogVisit({ pose: "bow" }); return; }
+    if (!pick) { sfx("badge"); setDogVisit({ kind: "streak" }); return; }
     dogFoundRef.current.push(pick);
     sfx("badge");
     setDogVisit({ find: { id: pick, text: ANECDOTES[pick], subject: BY_ID[pick]?.subject || "" } });
@@ -4325,12 +4325,12 @@ export default function ShutterbugWorld() {
     }
     return { pos, moved };
   })();
-  const busy = !!flying || !!pending || !!riddle || !!mrO || !!mrOBeats || (!isExplore && days <= 0);
+  const busy = !!flying || !!pending || !!riddle || !!mrO || !!mrOBeats || !!dogVisit || (!isExplore && days <= 0);
   // Whose typewriter is it? When Mr O (or a riddle) is on screen, HIS text is the one
   // that should click; the assignment clue and the arrival fact under him fall silent,
   // so the player hears one typewriter, not two racing. Only these blocking overlays
   // count — the non-blocking dog popup has no typing sound of its own.
-  const typingElsewhere = !!mrO || !!mrOBeats || !!riddle;
+  const typingElsewhere = !!mrO || !!mrOBeats || !!riddle || !!dogVisit;
   // Journey-tracker step, derived from phase (continent → country → destination → shot).
   const stepIdx = phase === "continent" ? 0 : phase === "country" ? 1 : (revealed ? 3 : 2);
   // Cap the atlas so the whole desk (header + map + ribbon) fits one screen with NO
@@ -6855,62 +6855,63 @@ function polaroidWidth(n) {
   if (n <= 12) return 98;
   return 86;
 }
-// ---- Jonah's dog, along for the trip -----------------------------------------
-// Six poses, chosen by what just happened. She never blocks anything, never takes a
-// click, and says nothing — she is tone, not information, so every state she reacts
-// to is also stated in words elsewhere on the screen (rule 4: nothing meaningful is
-// carried by the picture alone).
+// ---- Pickles, Uncle Jonah's dog ----------------------------------------------
+// Six poses. She is a REWARD, not furniture: she turns up when the player has done
+// something worth celebrating, fills the screen, and leaves when they click.
 const DOG_POSES = {
-  bow: "dog_pose_03_play_bow.png",       // you got one right
-  tilt: "dog_pose_05_head_tilt_sit.png", // you got one wrong
-  walk: "dog_pose_04_walking.png",       // in the air
-  lying: "dog_pose_06_lying_down.png",   // the days have nearly run out
-  sit: "dog_pose_02_sitting_paw_up.png", // waiting on you
-  stand: "dog_pose_01_standing.png",     // roaming, no clock
+  bow: "dog_pose_03_play_bow.png",       // the big celebration — a play bow
+  spin: "dog_pose_01_standing.png",      // pleased and bouncing
+  tilt: "dog_pose_05_head_tilt_sit.png", // a curious head tilt
+  walk: "dog_pose_04_walking.png",
+  lying: "dog_pose_06_lying_down.png",
+  sit: "dog_pose_02_sitting_paw_up.png", // a paw up — "well done, you"
+};
+// What she is feeling, in words. Her face does the work, but a child shouldn't have
+// to INFER why she turned up, and rule 4 forbids leaving meaning to the picture alone
+// — so every visit says out loud what she's excited about.
+const DOG_LINES = {
+  two: { pose: "sit", head: "Pickles is watching you", line: "Two perfect shots in a row! She's sat bolt upright with one paw up, waiting to see if you can make it three." },
+  streak: { pose: "bow", head: "Pickles is thrilled!", line: "Three perfect shots in a row — she's bowing and bouncing and can hardly stand it." },
+  find: { pose: "bow", head: "Pickles dug something up!", line: "She's been scratching about and come back with one of Jonah's old stories:" },
 };
 function DogPopup({ visit, onClose, reduced }) {
-  // Jonah's dog is an INTERRUPTION, not furniture. He used to sit permanently at the
-  // bottom of the itinerary column, which made him wallpaper — after ten minutes you
-  // stop seeing a thing that is always in the same place. Now he trots in, does his
-  // bit and leaves, so every appearance registers.
-  //
-  // Unlike Mr O this does NOT dim the screen or block play. Mr O's riddles need an
-  // answer, so stopping the game is right for him. What the dog brings is optional
-  // reading — a story you can enjoy or ignore — and freezing a child mid-thought to
-  // deliver something optional is how an interruption stops being charming.
+  // Pickles now works like Mr O: she dims the screen, takes it over, and goes when
+  // clicked. She used to trot into a corner and time out on her own, which made the
+  // best moment in the game — three perfect shots running — easy to miss entirely
+  // while the player was looking somewhere else on the map.
   useEffect(() => {
     if (!visit) return;
-    const t = setTimeout(onClose, visit.find ? 22000 : 4200);
-    const onKey = (e) => { if (e.key === "Escape") onClose(); };
+    const onKey = (e) => { if (e.key === "Escape" || e.key === "Enter" || e.key === " ") { e.preventDefault(); onClose(); } };
     window.addEventListener("keydown", onKey);
-    return () => { clearTimeout(t); window.removeEventListener("keydown", onKey); };
+    return () => window.removeEventListener("keydown", onKey);
   }, [visit, onClose]);
   if (!visit) return null;
-  const pose = visit.find ? "bow" : visit.pose || "bow";
+  const kind = visit.find ? "find" : (visit.kind || "streak");
+  const copy = DOG_LINES[kind] || DOG_LINES.streak;
   return (
-    <div style={{ position: "fixed", left: "clamp(12px, 2vw, 34px)", bottom: "clamp(12px, 2.5vh, 34px)",
-      zIndex: 57, display: "flex", alignItems: "flex-end", gap: 8, maxWidth: "min(520px, 46vw)",
-      pointerEvents: "none" }}>
-      <img src={`${UI}dog/${DOG_POSES[pose]}`} alt="" aria-hidden="true"
-        className={reduced ? "" : "sbw-trot"}
-        style={{ width: "clamp(96px, 13vh, 150px)", height: "auto", flex: "none",
-          filter: "drop-shadow(0 8px 14px rgba(16,38,46,0.45))" }} />
-      {visit.find && (
-        <div role="status" className={reduced ? "" : "sbw-pop"}
-          style={{ background: PAPER, border: `3px solid ${GOLD}`, borderRadius: "18px 18px 18px 4px",
-            padding: "13px 15px", boxShadow: "0 10px 26px rgba(16,38,46,0.4)", marginBottom: 14,
-            pointerEvents: "auto", position: "relative" }}>
-          <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 10, letterSpacing: "0.14em", color: CORAL, fontWeight: 800, marginBottom: 5 }}>
-            🦴 HE DUG SOMETHING UP
+    <div role="dialog" aria-modal="true" aria-label={copy.head} onClick={onClose}
+      style={{ position: "fixed", inset: 0, zIndex: 58, background: "rgba(8,20,24,0.66)",
+        display: "flex", alignItems: "flex-end", justifyContent: "center", padding: "0 20px", cursor: "pointer" }}>
+      <div className={reduced ? "" : "sbw-pop"} style={{ display: "flex", alignItems: "flex-end", gap: 8, maxWidth: 1120, width: "100%", justifyContent: "center" }}>
+        {/* Big, and standing on the floor of the frame like Mr O — the size of the
+            celebration should match the size of what was achieved. */}
+        <img src={`${UI}dog/${DOG_POSES[copy.pose]}`} alt="" aria-hidden="true"
+          style={{ height: "min(62vh, 560px)", width: "auto", maxWidth: "46vw", flex: "none",
+            objectFit: "contain", objectPosition: "bottom", filter: "drop-shadow(0 8px 16px rgba(0,0,0,0.5))" }} />
+        <div style={{ background: PAPER, border: `4px solid ${GOLD}`, borderRadius: "22px 22px 22px 6px",
+          padding: "20px 24px", boxShadow: "0 10px 30px rgba(16,38,46,0.4)", marginBottom: "16vh", maxWidth: 460 }}>
+          <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 14, letterSpacing: "0.12em", color: CORAL, fontWeight: 800, marginBottom: 10 }}>
+            🐾 {copy.head.toUpperCase()}
           </div>
-          <p style={{ margin: 0, color: INK, fontSize: 14, lineHeight: 1.45, maxWidth: 380 }}>
-            <b>{visit.find.subject}:</b> {visit.find.text}
-          </p>
-          <button onClick={onClose} aria-label="Put it back in the bag"
-            style={{ position: "absolute", top: 3, right: 6, background: "none", border: "none",
-              color: INK, opacity: 0.5, fontSize: 16, lineHeight: 1, cursor: "pointer", padding: 3 }}>×</button>
+          <TypeLine text={copy.line} reduced={reduced} style={{ color: INK, fontSize: 19, lineHeight: 1.5 }} />
+          {visit.find && (
+            <p style={{ margin: "10px 0 0", color: INK, fontSize: 17, lineHeight: 1.5 }}>
+              <b>{visit.find.subject}:</b> {visit.find.text}
+            </p>
+          )}
+          <div style={{ marginTop: 14, fontSize: 13, fontWeight: 700, color: INK, opacity: 0.55 }}>click to continue ▸</div>
         </div>
-      )}
+      </div>
     </div>
   );
 }
