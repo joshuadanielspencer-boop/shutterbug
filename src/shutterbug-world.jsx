@@ -5,7 +5,7 @@ import { WORLD_COUNTRIES, COUNTRY_CONTINENT } from "./data/worldmap.js";
 // only used by the world map, so it's loaded lazily (see the effect below) to
 // keep it out of the first paint. worldmap.js stays eager — its outlines feed the
 // sepia background on every screen and the quiz's shape questions.
-import { COUNTRY_INFO, COUNTRY_LAYER_CONTINENTS, COUNTRY_NATIVE } from "./data/countries.js";
+import { COUNTRY_INFO, COUNTRY_LAYER_CONTINENTS, COUNTRY_NATIVE, displayCountry } from "./data/countries.js";
 import { RIVERS, LAKES, MARINE } from "./data/geography.js";
 import { JOURNEYS, JOURNEY_BY_ID, journeyBox, unrolledX, closestStops } from "./data/journeys.js";
 import { HUBS, transportOptionsFor, countryTransport, money as fmtMoney, currencyFor } from "./data/travel.js";
@@ -753,6 +753,25 @@ const optionsFitCountry = (ids, continent, country) => {
 // learns "France reaches all the way over here too". lon/lat in degrees; the
 // equirectangular plate is x = lon+180, y = 90−lat.
 const OVERSEAS_INSETS = {
+  // Rule 5's far-territory case. A country map fills its frame with the landmass
+  // that reads as the country; anything thousands of miles offshore gets a locator
+  // window instead of dragging the whole map out to sea to include it.
+  //
+  // These are LOCATORS, not playable maps — they show a child where the territory
+  // sits, and they don't take clicks. An assignment whose target falls outside the
+  // country box still routes to the continent view (see optionsFitCountry).
+  "United States": [
+    { name: "Alaska", cLon: -152, cLat: 63,   w: 44, dots: [[-151, 63.1]] },
+    { name: "Hawaiʻi", cLon: -157, cLat: 20.2, w: 16, dots: [[-155.3, 19.4]] },
+  ],
+  // Rapa Nui is 2,200 miles off the Chilean coast — the one pin that used to drag
+  // Chile's map into the open Pacific (and Oceania's with it, before the move).
+  // A wide window on purpose: the island is a speck at any scale that fits it, so
+  // what the inset can usefully show is the SPACE — the mainland coast at one edge
+  // and the marker alone in the middle of it. The remoteness is the fact.
+  Chile: [
+    { name: "Easter Island", cLon: -95, cLat: -27.1, w: 62, dots: [[-109.4, -27.1]] },
+  ],
   France: [
     { name: "French Guiana",           cLon: -53,   cLat: 3.5,   w: 26, dots: [[-53, 4]] },
     { name: "Guadeloupe & Martinique", cLon: -61.4, cLat: 15.4,  w: 13, dots: [[-61.5, 16.2], [-61, 14.6]] },
@@ -1256,11 +1275,29 @@ function ShapeView({ d }) {
 function OverseasInsets({ specs, box }) {
   const n = specs.length;
   const gap = 0.012 * box.w;
-  const rowW = box.w * 0.96;
-  const iw = (rowW - gap * (n - 1)) / n;
+  // Cap the width per inset. This used to divide 96% of the map between however
+  // many insets there were, which was fine for France's four and absurd for one:
+  // Chile's single Easter Island window covered most of the country map. An inset
+  // is a locator in the corner of the page, never the page.
+  const iw = Math.min((box.w * 0.96 - gap * (n - 1)) / n, box.w * 0.26);
   const ih = iw * 0.72;
-  const x0 = box.x + (box.w - rowW) / 2;
-  const y0 = box.y + box.h - ih - 0.055 * box.h;     // above the bottom edge, clear of the brass corner art
+  const rowW = iw * n + gap * (n - 1);
+  // Rule 5: put the row on the side of the frame the territory actually lies
+  // towards, so the inset points the right way — Hawaiʻi and Alaska off the USA's
+  // west, Rapa Nui off Chile's west, France's Caribbean and Indian Ocean holdings
+  // spread along the bottom as before.
+  const meanX = specs.reduce((a, s) => a + (s.cLon + 180), 0) / n;
+  const westward = meanX < box.x + box.w / 2;
+  const inset = 0.02 * box.w;
+  // The compass rose is pinned to the map's bottom-LEFT (it's a DOM element over
+  // the frame, not part of this svg), so a westward row has to start clear of it
+  // or Alaska lands under the compass — which is exactly what it did.
+  const compassGutter = westward ? 0.17 * box.w : 0;
+  const x0 = westward ? box.x + inset + compassGutter : box.x + box.w - inset - rowW;
+  // Clear of the bottom edge AND of the brass corner art. Measured, not guessed:
+  // at 0.055 the name banner rendered 11px below the svg's visible bottom and the
+  // labels were simply gone — an inset whose caption you can't read is decoration.
+  const y0 = box.y + box.h - ih - 0.12 * box.h;
   const bandH = 0.03 * box.h;
   return (
     <g style={{ pointerEvents: "none" }}>
@@ -3011,7 +3048,7 @@ export default function ShutterbugWorld() {
         setPhase("city"); setCurrent(null); setRevealed(false);
         music("countryTune", country, pickedContinent); // a few seconds of local music on arrival
         sayCountry(country); // spoken arrival: the country, a beat, then hello in its language
-        setMsg({ type: "info", text: `${country} — click any place to learn about it.` });
+        setMsg({ type: "info", text: `${displayCountry(country)} — click any place to learn about it.` });
       };
       const legE = rideLegFor(country);
       if (legE) launchRide(legE.from, legE.to, legE.mode, arrive); else arrive();
@@ -3033,7 +3070,7 @@ export default function ShutterbugWorld() {
         music("countryTune", country, pickedContinent); // a few seconds of local music on arrival
         sayCountry(country); // spoken arrival: the country, a beat, then hello in its language
         const targetHere = tourReqs.some((r) => !r.done && (COUNTRY_LOCS[pickedContinent]?.[country] || []).some((id) => r.kind === "category" ? BY_ID[id].category === r.category : r.targetId === id));
-        setMsg({ type: targetHere ? "info" : "warn", text: targetHere ? `Arrived in ${country}. Photograph your target here!` : `Arrived in ${country} — but no target on your list is here. Pick another country, or fly on.` });
+        setMsg({ type: targetHere ? "info" : "warn", text: targetHere ? `Arrived in ${displayCountry(country)}. Photograph your target here!` : `Arrived in ${displayCountry(country)} — but no target on your list is here. Pick another country, or fly on.` });
       };
       const legT = rideLegFor(country);
       if (legT) launchRide(legT.from, legT.to, legT.mode, arriveT); else arriveT();
@@ -3082,7 +3119,7 @@ export default function ShutterbugWorld() {
         if (COUNTRY_INFO[country] && poppedCountryRef.current !== country) { poppedCountryRef.current = country; setCountryPopup(country); }
         music("countryTune", country, pickedContinent); // a few seconds of local music on arrival
         sayCountry(country); // spoken arrival: the country, a beat, then hello in its language
-        setMsg({ type: "info", text: `Arrived in ${country}. Now photograph Jonah's subject.` });
+        setMsg({ type: "info", text: `Arrived in ${displayCountry(country)}. Now photograph Jonah's subject.` });
       };
       const legA = rideLegFor(country);
       if (legA) launchRide(legA.from, legA.to, legA.mode, arriveA); else arriveA();
@@ -3094,9 +3131,9 @@ export default function ShutterbugWorld() {
       setDays(nd);
       sfx("fail");
       const why = a && a.type === "category"
-        ? `We don't have a ${CATEGORIES[a.category].noun} on file to photograph in ${country} — try another country.`
-        : `Jonah's subject isn't in ${country}.`;
-      if (nd <= 0) outOfDays(`${country} wasn't right, and that was your last day.`);
+        ? `We don't have a ${CATEGORIES[a.category].noun} on file to photograph in ${displayCountry(country)} — try another country.`
+        : `Jonah's subject isn't in ${displayCountry(country)}.`;
+      if (nd <= 0) outOfDays(`${displayCountry(country)} wasn't right, and that was your last day.`);
       else {
         // Gentle nudge: the first letter of a country that IS right.
         const goal = a && a.type === "category" ? (a.countries || [])[0] : (countriesOf(target)[0]);
@@ -5207,7 +5244,7 @@ export default function ShutterbugWorld() {
                   const d = wcPath(country);
                   return (
                     <g key={country} className={`sbw-country${flashHint && flashHint.type === "country" && flashHint.key === country ? " sbw-flash-hint" : ""}`} role="button" tabIndex={busy ? -1 : 0}
-                       aria-label={`Choose ${country}`} onClick={() => pickCountry(country)}
+                       aria-label={`Choose ${displayCountry(country)}`} onClick={() => pickCountry(country)}
                        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); pickCountry(country); } }}
                        onMouseEnter={() => { setHoverCountry(country); sayOnHover(country); }} onMouseLeave={() => setHoverCountry((c) => (c === country ? null : c))}
                        onFocus={() => setHoverCountry(country)} onBlur={() => setHoverCountry((c) => (c === country ? null : c))}
@@ -5303,7 +5340,7 @@ export default function ShutterbugWorld() {
                     width={(String(ctxCountry || pickedCountry).length * 0.025 + 0.06) * box.w} height={0.075 * box.h} rx={0.02 * box.h}
                     fill="rgba(16,38,46,0.82)" />
                   <text x={box.x + box.w * 0.5} y={box.y + 0.073 * box.h} fontSize={0.045 * box.h} fontFamily="ui-sans-serif, system-ui" fontWeight="900"
-                    fill="#fff" textAnchor="middle">{ctxCountry || pickedCountry}</text>
+                    fill="#fff" textAnchor="middle">{displayCountry(ctxCountry || pickedCountry)}</text>
                 </g>
               )}
 
@@ -7077,7 +7114,7 @@ function CountryCard({ country }) {
       <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
         <span aria-hidden="true" style={{ fontSize: 92, lineHeight: 1 }}>{COUNTRY_FLAG[country] || "🏳️"}</span>
         <span>
-          <span style={{ display: "block", fontWeight: 900, color: INK, fontSize: 19 }}>{country}</span>
+          <span style={{ display: "block", fontWeight: 900, color: INK, fontSize: 19 }}>{displayCountry(country)}</span>
           {/* The endonym — what the country calls itself (see COUNTRY_NATIVE). */}
           {COUNTRY_NATIVE[country] && (
             <span style={{ display: "block", color: OCEAN, fontSize: 14, fontWeight: 700, marginTop: 1 }}>
@@ -7146,7 +7183,7 @@ function CountryPopup({ country, onClose, reduced }) {
   useModalFocus(ref, onClose, { escape: canGo });
   if (!country) return null;
   return (
-    <div ref={ref} role="dialog" aria-modal="true" aria-label={`You've arrived in ${country}`}
+    <div ref={ref} role="dialog" aria-modal="true" aria-label={`You've arrived in ${displayCountry(country)}`}
       // The backdrop only dismisses once the button does. Leaving it live would hand
       // back the very skip the dwell exists to prevent, to anyone who taps the edge.
       onClick={canGo ? onClose : undefined}

@@ -1230,10 +1230,17 @@ export const LOCATIONS = [
       credit: "Eric Beresford de Lacy", license: "CC BY 2.0", licenseUrl: "https://creativecommons.org/licenses/by/2.0/",
       source: "https://commons.wikimedia.org/wiki/File:Pohutu_Geyser.jpg" },
     greeting: { text: "Kia ora", language: "Māori", pronunciation: "KEE-ah OR-ah" } },
-  { id: "easterisland", city: "Easter Island", country: "Chile", flag: "🇨🇱", continent: "Oceania",
+  // Filed under SOUTH AMERICA, not Oceania. Rapa Nui sits in Polynesia
+  // geographically, but it is a territory of Chile — you reach it from Santiago,
+  // and it is Chilean in every way a child would meet it. Two things follow from
+  // the move: Oceania's continent map no longer has to stretch 2,200 miles east
+  // to hold one pin (it was reaching almost to South America), and Chile gains a
+  // sixth place. The clue says "belonging to Chile, in South America" — which is
+  // true of the COUNTRY — and never claims the island itself is South American.
+  { id: "easterisland", city: "Easter Island", country: "Chile", flag: "🇨🇱", continent: "South America",
     x: 70.7, y: 117.1,
     subject: "the Moai statues", icon: "", category: "ruins", tags: ["ancient", "unesco"],
-    easy: "On Easter Island (Rapa Nui), a Chilean island in Oceania and one of the most remote inhabited places on Earth — where islanders carved nearly 900 giant stone figures, the tallest about 33 feet (10 m).",
+    easy: "On Easter Island (Rapa Nui), a remote island belonging to Chile, in South America — one of the most remote inhabited places on Earth, where islanders carved nearly 900 giant stone figures, the tallest about 33 feet (10 m).",
     medium: "Word from Chile: on one of the loneliest islands in the Pacific, long ago its people carved nearly 900 giant stone figures with brooding faces, the tallest thirty feet (ten meters) high. Photograph the statues.",
     hard: "On one of the most isolated inhabited islands on Earth, vanished carvers raised nearly 900 huge stone figures with heavy brows and long faces, staring inland. Find the statues.",
     fact: "Easter Island (Rapa Nui) is one of the most remote inhabited islands on Earth; its people carved nearly 900 giant stone statues called moai, the tallest raised about 33 feet (10 meters) high.",

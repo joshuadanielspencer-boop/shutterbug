@@ -153,6 +153,20 @@ export const COUNTRY_INFO = {
 // (polar, no countries) stays continent-only.
 export const COUNTRY_LAYER_CONTINENTS = new Set(["North America", "South America", "Europe", "Africa", "Asia", "Oceania"]);
 
+// ---- What a country is CALLED on screen -------------------------------------
+// The keys used throughout the game are Natural Earth's, because that is what the
+// map vectors, the borders and the continent lookup are all keyed by — and
+// renaming a key means renaming it in six files at once and hoping none was
+// missed. But Natural Earth abbreviates for cartographic fit, and "Solomon Is."
+// is not how you say a country's name to a child learning it.
+//
+// So the key stays and the LABEL changes. Anything not listed here reads as-is.
+export const COUNTRY_DISPLAY = {
+  "Solomon Is.": "Solomon Islands",
+  "Dem. Rep. Congo": "Democratic Republic of the Congo",
+};
+export const displayCountry = (name) => COUNTRY_DISPLAY[name] || name;
+
 // Native country names (endonyms) — the name a country uses for itself.
 // Shown alongside the English name, e.g. "Germany (Deutschland)".
 //
