@@ -15,6 +15,7 @@ import { TUNES, tuneKeyFor } from "../src/data/tunes.js";
 import { JOURNEYS, journeyBox, closestStops, unrolledX } from "../src/data/journeys.js";
 import { CURIOSITY_DECKS, CURIOSITY_DECK_BY_ID, ALL_CURIOSITY_IDS } from "../src/data/curiosities.js";
 import { KIT_ITEMS, KIT_OFFERED, KIT_TAKEN } from "../src/data/kit.js";
+import { eqToRobinson } from "../src/robinson.js";
 
 const CONTINENTS = [
   "North America", "South America", "Europe", "Africa", "Asia", "Oceania", "Antarctica",
@@ -1052,6 +1053,50 @@ describe("the camera bag", () => {
     // game teaches geography, so the score has to keep tracking what the child knows.
     for (const item of KIT_ITEMS) {
       expect(/\bpoints?\b/i.test(item.blurb), `${item.id} promises points`).toBe(false);
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// The world map is a TRIMMED Robinson box — it cuts empty ocean off both edges —
+// and a handful of Pacific places fall outside it. That matters because flights are
+// drawn between Robinson coordinates: a departure point beyond the frame draws the
+// plane off-screen, which reads in play as "the flight didn't happen". The renderer
+// clamps flight endpoints into the box; this records WHICH places need it, so the
+// list can't quietly grow without someone noticing.
+// ---------------------------------------------------------------------------
+describe("world map coverage", () => {
+  // Kept in step with _LEFT_X / _RIGHT_X / _WORLD_TOP / _ANT_SOUTH.
+  const LEFT = eqToRobinson(24.5, 70.1).x + 14;
+  const RIGHT = eqToRobinson(357, 127).x + 3;
+
+  it("only the far-Pacific places sit outside the drawn world box", () => {
+    const outside = LOCATIONS
+      .filter((l) => { const x = eqToRobinson(l.x, l.y).x; return x < LEFT || x > RIGHT; })
+      .map((l) => l.id).sort();
+    // West of the left edge: French Polynesia (Bora Bora, Moorea, Rangiroa) and —
+    // the one that isn't Oceania at all — Kīlauea, in Hawaii, filed under North
+    // America. East of the right edge: three places in Fiji. Every one is a real,
+    // reachable landmark on its own continent map; they are only off the WORLD map's
+    // trimmed frame, which is why flights leaving them are clamped.
+    expect(outside).toEqual([
+      "borabora", "boumafalls", "kilauea", "mamanuca", "mountrotui", "rangiroa", "sigatokadunes",
+    ]);
+  });
+
+  it("every continent's flight pin is INSIDE the box", () => {
+    // A continent pin outside the frame would break every flight to that continent,
+    // not just one departing from an island.
+    const PINS = {
+      "North America": { x: 72, y: 46 }, "South America": { x: 122, y: 116 },
+      "Europe": { x: 191, y: 38 }, "Africa": { x: 199, y: 92 },
+      "Asia": { x: 291, y: 55 }, "Oceania": { x: 326, y: 122 },
+      "Antarctica": { x: 180, y: 171 },
+    };
+    for (const [cont, p] of Object.entries(PINS)) {
+      const x = eqToRobinson(p.x, p.y).x;
+      expect(x, `${cont} pin is off the world map`).toBeGreaterThan(LEFT);
+      expect(x, `${cont} pin is off the world map`).toBeLessThan(RIGHT);
     }
   });
 });

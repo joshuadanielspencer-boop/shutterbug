@@ -501,7 +501,17 @@ const CONTINENT_META = (() => {
       // the Sahara and the Middle East, which look like clickable continents and
       // aren't. Bias the whole view north and the surplus lands where nothing is.
       const northBias = 1.5;
-      meta[c] = { mode: "equirect", box: { x: cx - w / 2, y: cy - h / 2 - northBias, w, h }, cx, cy, pad: 0.02 };
+      // And the same trick east-west. Padding WEST costs open Atlantic; padding EAST
+      // costs the Caucasus, Kazakhstan and the top of the Middle East, which read as
+      // clickable continents and aren't. Biasing west puts the right edge just past
+      // the Turkish border and the surplus out over empty ocean.
+      //
+      // This does push Kazan (lon 49) off the frame — but nothing breaks, because the
+      // continent map is where you pick a COUNTRY, not a city, and Russia still fills
+      // the whole north-east corner. Kazan's own pin lives on Russia's country map,
+      // which is a different box entirely.
+      const westBias = 5.5;
+      meta[c] = { mode: "equirect", box: { x: cx - w / 2 - westBias, y: cy - h / 2 - northBias, w, h }, cx, cy, pad: 0.02 };
       continue;
     }
     if (c === "South America") {
@@ -4495,7 +4505,7 @@ export default function ShutterbugWorld() {
     // Europe carries the most stretch of any continent map. At 1.15 it still read
     // squashed: it sits at the highest latitudes of any populated continent here, so
     // equirect flattens it hardest (1/cos(55°) ≈ 1.74 would be the true correction).
-    : (inCountry && pickedContinent === "Europe") ? 1.25
+    : (inCountry && pickedContinent === "Europe") ? 1.31
     : (inCountry && pickedContinent === "Asia") ? 1.10
     : (inCountry && pickedContinent === "Africa") ? 1.10
     : (inCity && pickedCountry === "United Kingdom") ? 1.27
@@ -5104,7 +5114,22 @@ export default function ShutterbugWorld() {
                   arc — the route bows toward the pole like a real flight path, and the
                   plane banks along it (offset-rotate defaults to auto). */}
               {flying && (() => {
-                const a = eqToRobinson(flying.fromX, flying.fromY), b = eqToRobinson(flying.toX, flying.toY);
+                // The world map is a TRIMMED Robinson box (WORLD_BOX cuts the empty
+                // ocean off both edges), and five Oceania places fall outside it:
+                // Bora Bora, Moorea and Rangiroa sit west of the left edge, Taveuni
+                // east of the right one. A flight departing one of them therefore
+                // began off-screen — the plane was drawn beyond the frame and only
+                // appeared once it had crossed onto the map, which is exactly the
+                // "flight from Oceania happens off map" this fixes. Clamp both ends
+                // into the visible box: the arc then starts at the edge nearest where
+                // the place really is, which reads as flying in from off the map
+                // rather than as nothing happening.
+                const inset = 6;
+                const clampX = (v) => Math.min(Math.max(v, WORLD_BOX.x + inset), WORLD_BOX.x + WORLD_BOX.w - inset);
+                const clampY = (v) => Math.min(Math.max(v, WORLD_BOX.y + inset), WORLD_BOX.y + WORLD_BOX.h - inset);
+                const raw0 = eqToRobinson(flying.fromX, flying.fromY), raw1 = eqToRobinson(flying.toX, flying.toY);
+                const a = { x: clampX(raw0.x), y: clampY(raw0.y) };
+                const b = { x: clampX(raw1.x), y: clampY(raw1.y) };
                 const dx = b.x - a.x, dy = b.y - a.y;
                 const dist = Math.hypot(dx, dy) || 1;
                 // Perpendicular that points map-north, scaled to the hop length.
@@ -5118,12 +5143,7 @@ export default function ShutterbugWorld() {
                   <path d={d} fill="none" stroke="#D8DEE3" strokeWidth="1" strokeDasharray="3 3" opacity="0.85" />
                   <g style={{ animation: `sbw-fly ${FLIGHT_MS}ms ease-in-out forwards`, offsetPath: `path('${d}')`, offsetRotate: "auto 90deg" }}>
                     {/* The illustrated 777 token. offset-rotate "auto 90deg" turns the
-                        nose (which points up in the art) to follow the flight path. The
-                        frame now matches the map aspect, so no squish-compensation. */}
-                    {/* The scale lives on its own nested group: this element's transform
-                        is already spoken for by the motion path, and the image is centred
-                        on the group's origin, so scaling here reads as the plane climbing
-                        away from the airport and settling onto the far one. */}
+                        nose (which points up in the art) to follow the flight path. */}
                     <g style={{ animation: `sbw-hop ${FLIGHT_MS}ms ease-in-out forwards` }}>
                       <image href={`${UI}passenger-aircraft-777-token.png`} width="26" height="26" x="-13" y="-13"
                         style={{ filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.45))" }} />
@@ -5295,7 +5315,7 @@ export default function ShutterbugWorld() {
                 It's also off during a flight, so it can never steal a continent tap. */}
             <button onClick={() => openCurio("compass")} title="About the compass" aria-label="About the compass"
               disabled={flying}
-              style={{ position: "absolute", left: 16, bottom: 14, width: "clamp(40px, 6vw, 72px)", height: "clamp(40px, 6vw, 72px)",
+              style={{ position: "absolute", left: 40, bottom: 36, width: "clamp(78px, 11vw, 132px)", height: "clamp(78px, 11vw, 132px)",
                 padding: 0, border: "none", background: "transparent", cursor: flying ? "default" : "help", zIndex: 4 }}>
               <img src={`${UI}compass-rose.png`} alt="" aria-hidden="true"
                 style={{ width: "100%", height: "100%", objectFit: "contain", opacity: 0.92, filter: "drop-shadow(0 2px 3px rgba(0,0,0,0.35))" }} />
@@ -7112,14 +7132,19 @@ function StoryScreen({ beats, reduced, ctaLabel, onDone, onSkip, mood = "intro",
               pinned to the top of the row rather than centred in it — centring means
               he slides every time anything on the left resizes. */}
           <div style={{ flex: "1 1 340px", minWidth: 280, textAlign: "left" }}>
-            <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 22, fontWeight: 700, letterSpacing: "0.14em", color: CORAL, marginBottom: 12 }}>{GRANDPA.name.toUpperCase()}</div>
-
             {/* EVERY beat is laid out from the first paint — the ones he hasn't got
                 to yet are just invisible. They used to be mounted one at a time, so
                 the card grew with each line and shoved everything under it down the
                 page while a child was still reading. The box is the size of his whole
-                speech before he says a word of it. */}
+                speech before he says a word of it.
+
+                His name sits INSIDE the card, exactly as it does on the mode-select
+                screen — one card with his name at the top of it, the same object on
+                both screens. It used to float above the card, which pushed the card's
+                top edge below the top of his portrait and left the two columns
+                visibly out of step. */}
             <div style={{ ...CARD_SURFACE, border: `1px solid ${PAPER_LINE}`, borderRadius: 12, padding: "18px 20px", textAlign: "left" }}>
+              <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 24, fontWeight: 800, letterSpacing: "0.14em", color: CORAL, marginBottom: 10 }}>{GRANDPA.name.toUpperCase()}</div>
               {beats.map((b, i) => {
                 const line = { margin: i ? "12px 0 0" : 0, color: INK, fontSize: 16, lineHeight: 1.55 };
                 if (i < revealed) return <p key={i} style={line}>{b}</p>;
@@ -7144,7 +7169,7 @@ function StoryScreen({ beats, reduced, ctaLabel, onDone, onSkip, mood = "intro",
               — without its arrival changing the height of the page. */}
           <div style={{ flex: "1.35 1 420px", minWidth: 300, display: "flex", flexDirection: "column", alignItems: "center" }}>
             <NigelScene mood={mood} beat={Math.min(revealed, beats.length - 1)} style={{ width: "100%" }} />
-            <div style={{ marginTop: 20, minHeight: cta === "bag" ? 250 : 76, display: "flex",
+            <div style={{ marginTop: 52, minHeight: cta === "bag" ? 250 : 76, display: "flex",
               flexDirection: "column", alignItems: "center", justifyContent: "flex-start", gap: 8 }}>
               {ready && (cta === "bag" ? (
                 // The camera bag IS the button: he holds out his old bag and a child
