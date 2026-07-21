@@ -8,7 +8,7 @@ import { WORLD_COUNTRIES, COUNTRY_CONTINENT } from "./data/worldmap.js";
 import { COUNTRY_INFO, COUNTRY_LAYER_CONTINENTS, COUNTRY_NATIVE, displayCountry } from "./data/countries.js";
 import { RIVERS, LAKES, MARINE } from "./data/geography.js";
 import { JOURNEYS, JOURNEY_BY_ID, journeyBox, unrolledX, closestStops } from "./data/journeys.js";
-import { HUBS, transportOptionsFor, countryTransport, money as fmtMoney, currencyFor } from "./data/travel.js";
+import { HUBS, TRANSPORT_BY_ID, transportOptionsFor, countryTransport, money as fmtMoney, currencyFor } from "./data/travel.js";
 import { COUNTRY_PEOPLE, peopleCards, greetingMeaning } from "./data/culture.js";
 import { categoryCountries, categoryMissionOK as missionOK } from "./missions.js";
 import { robinson, eqToRobinson, robinsonToEq, ROBINSON_W, ROBINSON_H } from "./robinson.js";
@@ -1993,6 +1993,10 @@ export default function ShutterbugWorld() {
       profile: (n) => setProfileName(n),
       days: (n) => setDays(n),
       passport: () => setPassportOpen(true),
+      // The country arrival card, with an optional local-transport still on it:
+      //   __sbw.card("Thailand", "tuktuk")
+      // Reaching this through the UI needs a live assignment and a 4s flight.
+      card: (country, modeId) => { setArrivalRide(modeId ? TRANSPORT_BY_ID[modeId] : null); setCountryPopup(country); },
     };
     return () => { delete window.__sbw; };
     // No dep array on purpose: re-registering every render keeps these bound to the
@@ -2086,20 +2090,18 @@ export default function ShutterbugWorld() {
   // one mechanic in the game that teaches how people actually move around a place,
   // and it reuses the twelve transport tokens that were previously only ever seen on
   // a Grand Tour's inter-continent legs (so most players never saw them at all).
-  const RIDE_MS = 4000;   // matches the flight, so both legs of a journey feel alike
-  const [riding, setRiding] = useState(null);   // { fromX, fromY, toX, toY, mode }
-  const rideTimer = useRef(null);
-  const launchRide = (from, to, mode, finalize) => {
-    if (prefersReduced || !from || !to || !mode) { finalize(); return; }
-    setRiding({ fromX: from.x, fromY: from.y, toX: to.x, toY: to.y, mode });
-    music("travelJig");   // the same cue the flight uses: play, then fade past arrival
-    rideTimer.current = setTimeout(() => {
-      rideTimer.current = null;
-      setRiding(null);
-      finalize();
-    }, RIDE_MS);
-  };
-  useEffect(() => () => { if (rideTimer.current) clearTimeout(rideTimer.current); }, []);
+  // ---- Every leg flies -------------------------------------------------------
+  // The overland vehicles used to drive themselves across the continent map — a
+  // tuk-tuk into Thailand, a camel across Morocco. Joshua's call, and it's the right
+  // one: at the distances this game actually covers you would fly, and a camel
+  // crossing a country border claimed a journey nobody takes.
+  //
+  // The teaching survives without the animation. `rideLegFor` still works out which
+  // way people get about in that country; it now rides on the ARRIVAL CARD as a
+  // still, where it reads as "this is how you'd get around here" rather than "this
+  // is how you crossed a continent". One plane, one 4s flight, one music cue,
+  // everywhere.
+  const [arrivalRide, setArrivalRide] = useState(null);   // the local way-of-getting-about to show on the country card
   const launchFlight = (from, to, finalize) => {
     sfx("takeoff", PLANE_SCALE_SEC);
     landingSfxRef.current = setTimeout(() => { landingSfxRef.current = null; sfx("landing", PLANE_SCALE_SEC); }, FLIGHT_MS - PLANE_SCALE_MS);
@@ -3116,7 +3118,7 @@ export default function ShutterbugWorld() {
     return { from, to, mode };
   };
   function pickCountry(country) {
-    if (phase !== "country" || flying || riding || pending) return;
+    if (phase !== "country" || flying || pending) return;
     if (gameMode === "explore") {
       const exploreIds = pickCountryCityIds(pickedContinent, country, [], 7);
       // `wide` was hardcoded false here, alone among the three modes — so any pin
@@ -3136,7 +3138,8 @@ export default function ShutterbugWorld() {
         setMsg({ type: "info", text: `${displayCountry(country)} — click any place to learn about it.` });
       };
       const legE = rideLegFor(country);
-      if (legE) launchRide(legE.from, legE.to, legE.mode, arrive); else arrive();
+      setArrivalRide(legE ? legE.mode : null);
+      if (legE) launchFlight(legE.from, legE.to, arrive); else arrive();
       return;
     }
     if (gameMode === "tour") {
@@ -3158,7 +3161,8 @@ export default function ShutterbugWorld() {
         setMsg({ type: targetHere ? "info" : "warn", text: targetHere ? `Arrived in ${displayCountry(country)}. Photograph your target here!` : `Arrived in ${displayCountry(country)} — but no target on your list is here. Pick another country, or fly on.` });
       };
       const legT = rideLegFor(country);
-      if (legT) launchRide(legT.from, legT.to, legT.mode, arriveT); else arriveT();
+      setArrivalRide(legT ? legT.mode : null);
+      if (legT) launchFlight(legT.from, legT.to, arriveT); else arriveT();
       return;
     }
     if (days <= 0 || !target) return;
@@ -3207,7 +3211,8 @@ export default function ShutterbugWorld() {
         setMsg({ type: "info", text: `Arrived in ${displayCountry(country)}. Now photograph Jonah's subject.` });
       };
       const legA = rideLegFor(country);
-      if (legA) launchRide(legA.from, legA.to, legA.mode, arriveA); else arriveA();
+      setArrivalRide(legA ? legA.mode : null);
+      if (legA) launchFlight(legA.from, legA.to, arriveA); else arriveA();
     } else {
       // Telephoto lens: the first wrong country is free — you were close enough to
       // shoot it from where you stood.
@@ -4840,7 +4845,7 @@ export default function ShutterbugWorld() {
     }
     return { pos, moved };
   })();
-  const busy = !!flying || !!riding || !!pending || !!riddle || !!mrO || !!mrOBeats || (!isExplore && days <= 0);
+  const busy = !!flying || !!pending || !!riddle || !!mrO || !!mrOBeats || (!isExplore && days <= 0);
   // Whose typewriter is it? When Mr O (or a riddle) is on screen, HIS text is the one
   // that should click; the assignment clue and the arrival fact under him fall silent,
   // so the player hears one typewriter, not two racing. Only these blocking overlays
@@ -4853,13 +4858,10 @@ export default function ShutterbugWorld() {
   // scroll. The 560px cap holds on tall screens; on shorter ones the map shrinks.
   const MAP_CAP = "min(calc(100vh - 262px), 560px)";
   // A short live instruction for the bottom ribbon, matched to the current phase.
-  // While the overland hop is running the ribbon names the vehicle. This is where
-  // the teaching actually lands: the picture alone says "something is moving", the
-  // sentence says "this is how you get around here" — and rule 4 means the meaning
-  // can't live in the picture alone anyway.
-  const ribbonText = riding
-    ? `${riding.mode.name} — ${riding.mode.blurb}`
-    : inCity
+  // It used to name the vehicle while an overland hop was running; that hop is gone
+  // and the naming moved to the arrival card, where the same sentence does the same
+  // job without a camel crossing a border to introduce it.
+  const ribbonText = inCity
     ? (isExplore ? "Click any pin to read a place's story." : "Click the right city on the map to take Jonah's photo.")
     : inCountry ? "Which country does the clue point to? Click it on the map."
     : (isTour ? "Follow your route. Going out of order costs a day."
@@ -5559,37 +5561,6 @@ export default function ShutterbugWorld() {
                   scaled 1.31 vertically. Pre-transforming the two points puts the
                   track exactly where the stretched map wants it while the vehicle on
                   top of it is drawn in honest, unstretched screen space. */}
-              {inCountry && riding && (() => {
-                const sy = (v) => v * mapStretchY + mapPivotY * (1 - mapStretchY);
-                const a = { x: riding.fromX, y: sy(riding.fromY) };
-                const b = { x: riding.toX, y: sy(riding.toY) };
-                const dx = b.x - a.x, dy = b.y - a.y;
-                const dist = Math.hypot(dx, dy) || 1;
-                // A gentle bow, a third of the arc the plane flies: this is ground
-                // travel, so it should read as following a road rather than leaping.
-                let nx = -dy / dist, ny = dx / dist;
-                if (ny > 0) { nx = -nx; ny = -ny; }
-                const lift = Math.min(0.05 * WoverS, dist * 0.08);
-                const mx = (a.x + b.x) / 2 + nx * lift, my = (a.y + b.y) / 2 + ny * lift;
-                const d = `M${a.x} ${a.y} Q${mx} ${my} ${b.x} ${b.y}`;
-                const sz = 0.085 * WoverS;
-                const art = TRANSPORT_ART[riding.mode.id];
-                return (
-                  <g style={{ pointerEvents: "none" }}>
-                    <path d={d} fill="none" stroke={INK} strokeOpacity="0.5" strokeWidth="2.6" strokeDasharray="3 3" vectorEffect="non-scaling-stroke" />
-                    <path d={d} fill="none" stroke="#FFFFFF" strokeOpacity="0.95" strokeWidth="1.2" strokeDasharray="3 3" vectorEffect="non-scaling-stroke" />
-                    {/* "auto 90deg" turns the vehicle to face the way it's going — the
-                        art is drawn top-down with its nose UP, the same convention the
-                        aircraft token uses. */}
-                    <g style={{ animation: `sbw-ride ${RIDE_MS}ms ease-in-out forwards`, offsetPath: `path('${d}')`, offsetRotate: "auto 90deg" }}>
-                      {art
-                        ? <image href={`${UI}${art}`} width={sz} height={sz} x={-sz / 2} y={-sz / 2}
-                            style={{ filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.45))" }} />
-                        : <text x="0" y="0" fontSize={sz} textAnchor="middle" dominantBaseline="central">{riding.mode.emoji}</text>}
-                    </g>
-                  </g>
-                );
-              })()}
             </svg>
             {/* The flight used to be skippable by tapping the map. It isn't any more:
                 the flight is the beat where the travel jig plays and the plane crosses
@@ -5683,7 +5654,7 @@ export default function ShutterbugWorld() {
       {/* A photo is only ever opened FROM the album, so closing it returns there
           (not to the map behind it). */}
       {albumView && <LandmarkModal p={albumView} onClose={() => { setAlbumView(null); setAlbumOpen(true); }} reduced={prefersReduced} />}
-      {countryPopup && <CountryPopup country={countryPopup} onClose={() => setCountryPopup(null)} reduced={prefersReduced} />}
+      {countryPopup && <CountryPopup country={countryPopup} ride={arrivalRide} onClose={() => setCountryPopup(null)} reduced={prefersReduced} />}
       {travelChoice && <TravelChooser choice={travelChoice} money={money} onConfirm={confirmTravel} onCancel={() => setTravelChoice(null)} />}
       {/* Customize Traveler, reachable mid-trip by tapping the header avatar. No
           remove option here (deleting the traveler you're playing as would end the
@@ -6711,6 +6682,7 @@ function ResultModal({ data, onContinue, reduced }) {
   return (
     <div ref={ref} role="dialog" aria-modal="true" aria-label={data.title}
       style={{ position: "fixed", inset: 0, background: "rgba(16,38,46,0.62)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16, zIndex: 50 }}>
+      {data.cheer && <PicklesCheer kind={data.cheer} reduced={reduced} />}
       <div className={reduced ? "" : "sbw-pop"}
         style={{ background: PAPER, borderRadius: 16, border: `3px solid ${accent}`, boxShadow: "0 14px 44px rgba(0,0,0,0.35)", maxWidth: sideBySide ? 840 : 620, width: "100%", maxHeight: "92vh", overflowY: "auto", padding: "34px 40px", textAlign: "center" }}>
         <div style={{ fontSize: 56, lineHeight: 1 }} aria-hidden="true">{data.emoji}</div>
@@ -6733,7 +6705,6 @@ function ResultModal({ data, onContinue, reduced }) {
                   <span aria-hidden="true">💡 </span>{data.hint}
                 </p>
               )}
-              {data.cheer && <PicklesCheer kind={data.cheer} reduced={reduced} />}
               <button data-primary autoFocus={ready} onClick={onContinue} disabled={!ready} aria-disabled={!ready}
                 style={{ ...primaryBtn, alignSelf: "flex-start", background: accent, boxShadow: `0 4px 0 ${good ? "#2E7A55" : "#A93A28"}`,
                   opacity: ready ? 1 : 0.45, cursor: ready ? "pointer" : "default", transition: "opacity .3s" }}>
@@ -6753,7 +6724,6 @@ function ResultModal({ data, onContinue, reduced }) {
             )}
             {/* Fact with no photo (e.g. the out-of-days screen) still shows below. */}
             {factEl && <div style={{ marginTop: 14 }}>{factEl}</div>}
-            {data.cheer && <div style={{ maxWidth: 420, margin: "0 auto" }}><PicklesCheer kind={data.cheer} reduced={reduced} /></div>}
             <button data-primary autoFocus={ready} onClick={onContinue} disabled={!ready} aria-disabled={!ready}
               style={{ ...primaryBtn, marginTop: 20, background: accent, boxShadow: `0 4px 0 ${good ? "#2E7A55" : "#A93A28"}`,
                 opacity: ready ? 1 : 0.45, cursor: ready ? "pointer" : "default", transition: "opacity .3s" }}>
@@ -7233,6 +7203,34 @@ const routeBtn = { background: "transparent", border: `1.5px solid ${OCEAN}`, co
 // The country card — the game's cultural centerpiece, shown the moment you're
 // in a country in ANY mode: the country and its flag, a photo of its people in
 // traditional dress, how they say hello, then the capital and a short story.
+// How people actually get about in this country, as a STILL on the arrival card.
+//
+// This is what's left of the overland-vehicle mechanic, and deliberately so: the
+// twelve transport tokens taught something real, but animating one across a
+// continent claimed a journey nobody takes. Here the tuk-tuk sits on Thailand's
+// card as a picture with a sentence, which is the honest version of the same
+// lesson — and rule 4 means the meaning has to be in the sentence anyway, never in
+// the picture alone.
+function LocalTransport({ mode }) {
+  if (!mode) return null;
+  const art = TRANSPORT_ART[mode.id];
+  return (
+    <div style={{ marginTop: 10, display: "flex", alignItems: "center", gap: 12,
+      background: "#FFF8E6", border: `1px solid ${GOLD}`, borderLeft: `4px solid ${GOLD}`,
+      borderRadius: 8, padding: "10px 12px", textAlign: "left" }}>
+      {art
+        ? <img src={`${UI}${art}`} alt="" aria-hidden="true" style={{ width: 58, height: 58, objectFit: "contain", flex: "none" }} />
+        : <span aria-hidden="true" style={{ fontSize: 40, lineHeight: 1, flex: "none" }}>{mode.emoji}</span>}
+      <div style={{ minWidth: 0 }}>
+        <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.14em", color: CORAL, fontWeight: 800, marginBottom: 3 }}>GETTING ABOUT</div>
+        <p style={{ margin: 0, color: INK, fontSize: 14.5, lineHeight: 1.45 }}>
+          <b>{mode.name}.</b> {mode.blurb}
+        </p>
+      </div>
+    </div>
+  );
+}
+
 function CountryCard({ country }) {
   if (!country || country === "Antarctica") return null;
   const info = COUNTRY_INFO[country], g = COUNTRY_GREETING[country];
@@ -7298,7 +7296,7 @@ function CountryCard({ country }) {
 // often before the photo has even painted. Three seconds is enough to look up.
 const COUNTRY_CARD_DWELL_MS = 3000;
 
-function CountryPopup({ country, onClose, reduced }) {
+function CountryPopup({ country, ride, onClose, reduced }) {
   // Deliberately NOT keyed off `country`: the timer belongs to this popup opening,
   // and the popup is mounted fresh per arrival.
   const [canGo, setCanGo] = useState(false);
@@ -7322,6 +7320,7 @@ function CountryPopup({ country, onClose, reduced }) {
         style={{ background: PAPER, borderRadius: 16, border: `3px solid ${CORAL}`, boxShadow: "0 14px 44px rgba(0,0,0,0.35)", maxWidth: 420, width: "100%", padding: "16px 18px", maxHeight: "88vh", overflowY: "auto" }}>
         <div style={{ textAlign: "center", fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.18em", color: CORAL }}>✈ YOU'VE ARRIVED IN…</div>
         <CountryCard country={country} />
+        {ride && <LocalTransport mode={ride} />}
         {/* Greyed rather than absent, and it keeps its size and its words the whole
             time: a button that appears late moves the layout under a thumb already on
             its way down, and a child who can see where it will be waits for it. */}
@@ -7731,19 +7730,26 @@ const DOG_LINES = {
 //
 // Her line is not typed. She isn't speaking — it's a description of a dog — so
 // revealing it letter by letter would be pretending she's talking.
+// She FLOATS beside the result card rather than sitting in a bordered box inside
+// it — a box inside the perfect-shot box read as a widget, not a dog. Same staging
+// idea as Mr O: the figure stands over the dimmed desk at a size you can actually
+// see her at, and her line sits under her as plain text on the dim.
+//
+// pointerEvents: none throughout, because she is celebration, not a control: she
+// must never intercept a click meant for the card behind her.
 function PicklesCheer({ kind, reduced }) {
   const copy = DOG_LINES[kind] || DOG_LINES.perfect;
   return (
-    <div className={reduced ? "" : "sbw-pop"}
-      style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 14,
-        background: "#FFF8E6", border: `2px solid ${GOLD}`, borderRadius: 14, padding: "10px 14px", textAlign: "left" }}>
-      <img src={`${UI}dog/${DOG_POSES[copy.pose]}`} alt="" aria-hidden="true"
-        style={{ width: "clamp(64px, 9vw, 104px)", height: "auto", flex: "none",
-          filter: "drop-shadow(0 4px 8px rgba(16,38,46,0.35))" }} />
-      <div style={{ minWidth: 0 }}>
-        <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.14em", color: CORAL, fontWeight: 800, marginBottom: 4 }}>🐾 PICKLES</div>
-        <p style={{ margin: 0, color: INK, fontSize: 15, lineHeight: 1.45 }}>{copy.line}</p>
-      </div>
+    <div className={reduced ? "" : "sbw-pop"} aria-hidden="true"
+      style={{ position: "absolute", left: "2.5vw", bottom: "4vh", zIndex: 2, pointerEvents: "none",
+        width: "min(24vw, 300px)", display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
+      <img src={`${UI}dog/${DOG_POSES[copy.pose]}`} alt=""
+        style={{ width: "100%", height: "auto", filter: "drop-shadow(0 10px 18px rgba(0,0,0,0.55))" }} />
+      <p style={{ margin: 0, color: "#FFF3D6", fontSize: 15, lineHeight: 1.4, textAlign: "center", fontWeight: 600,
+        textShadow: "0 2px 6px rgba(0,0,0,0.85), 0 0 2px rgba(0,0,0,0.9)" }}>
+        <span style={{ display: "block", fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.14em", color: GOLD, fontWeight: 800, marginBottom: 3 }}>🐾 PICKLES</span>
+        {copy.line}
+      </p>
     </div>
   );
 }
