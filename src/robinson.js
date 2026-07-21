@@ -47,3 +47,37 @@ export function robinson(lonRaw, lat) {
 
 // The game's equirectangular map coords (x = lon+180, y = 90−lat) → Robinson.
 export const eqToRobinson = (x, y) => robinson(x - 180, 90 - y);
+
+// Robinson {x, y} → (lon°, lat°). Needed so a click on the world map can be turned
+// back into a place: the plane flies to where the player actually pointed, rather
+// than snapping to the continent's canonical pin.
+//
+// Robinson has no closed-form inverse, but it doesn't need one. The forward map's y
+// depends ONLY on latitude and decreases monotonically as latitude rises, so a
+// bisection on latitude converges on it exactly; longitude is then linear in x for
+// that latitude. 40 iterations puts latitude well inside floating-point noise.
+export function robinsonInverse(px, py) {
+  let lo = -90, hi = 90;
+  for (let i = 0; i < 40; i++) {
+    const mid = (lo + hi) / 2;
+    if (robinson(LON0, mid).y > py) lo = mid; else hi = mid;
+  }
+  const lat = (lo + hi) / 2;
+  const a = Math.min(90, Math.abs(lat));
+  const i = Math.min(17, Math.floor(a / 5));
+  const f = (a - i * 5) / 5;
+  const X = AA[i] + (AA[i + 1] - AA[i]) * f;
+  // X collapses towards the poles; guard so a click on the ice cap can't divide by
+  // ~0 and hand back a longitude of several thousand degrees.
+  let lon = X > 1e-6
+    ? ((px - RX0) / (RS * 0.8487 * X)) * 180 / Math.PI + LON0
+    : LON0;
+  if (lon > 180) lon -= 360; else if (lon < -180) lon += 360;
+  return { lon, lat: Math.max(-90, Math.min(90, lat)) };
+}
+
+// Robinson {x, y} → the game's equirectangular coords. The inverse of eqToRobinson.
+export const robinsonToEq = (px, py) => {
+  const { lon, lat } = robinsonInverse(px, py);
+  return { x: lon + 180, y: 90 - lat };
+};

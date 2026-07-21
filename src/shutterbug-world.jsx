@@ -11,7 +11,7 @@ import { JOURNEYS, JOURNEY_BY_ID, journeyBox, unrolledX, closestStops } from "./
 import { HUBS, transportOptionsFor, countryTransport, money as fmtMoney, currencyFor } from "./data/travel.js";
 import { COUNTRY_PEOPLE, peopleCards, greetingMeaning } from "./data/culture.js";
 import { categoryCountries, categoryMissionOK as missionOK } from "./missions.js";
-import { robinson, eqToRobinson, ROBINSON_W, ROBINSON_H } from "./robinson.js";
+import { robinson, eqToRobinson, robinsonToEq, ROBINSON_W, ROBINSON_H } from "./robinson.js";
 import { rnd, shuffled, withSeed, randInt } from "./rng.js";
 import { flightDays, kmBetween, tourPar as par, routeCost as legCost } from "./routes.js";
 import { dayNumber, dailySeed, dailyKey, shareText, DAILY_ASSIGNMENTS } from "./daily.js";
@@ -583,6 +583,24 @@ const WC_BY_NAME = Object.fromEntries(WORLD_COUNTRIES.map((c) => [c.name, c.d]))
 // tiny island — so it simply shows a marker with no border, which is fine.)
 const WC_ALIAS = { "United States": "United States of America" };
 const wcPath = (country) => WC_BY_NAME[country] || WC_BY_NAME[WC_ALIAS[country]];
+// Where on the world map a pointer event actually landed, in the game's
+// equirectangular coords. getScreenCTM is the browser's own answer to "how is this
+// svg currently laid out", so it survives the frame being any size and the viewBox
+// being letterboxed — which hand-rolled ratio arithmetic would not.
+//
+// Returns null rather than a guess if anything is missing (no owning svg, no CTM
+// because the element isn't rendered yet); callers fall back to a fixed pin.
+const eqPointFromEvent = (e) => {
+  const el = e.currentTarget;
+  const svg = el && (el.ownerSVGElement || (el.tagName === "svg" ? el : null));
+  if (!svg || !svg.createSVGPoint || !svg.getScreenCTM) return null;
+  const m = svg.getScreenCTM();
+  if (!m) return null;
+  const pt = svg.createSVGPoint();
+  pt.x = e.clientX; pt.y = e.clientY;
+  const p = pt.matrixTransform(m.inverse());
+  return robinsonToEq(p.x, p.y);
+};
 // pathBBox walks every coordinate in a path string, and the country layer re-renders
 // on every hover. Memoized by the path itself — the strings are module constants, so
 // the cache is bounded by the number of countries and never goes stale.
@@ -2889,13 +2907,24 @@ export default function ShutterbugWorld() {
   };
 
   // ---- Continent phase: pick a continent on the world map ----
-  function pickContinent(cont) {
+  // `at` is where on the map the player actually pointed, in the game's
+  // equirectangular coords — see eqPointFromEvent. It changes ONLY where the plane
+  // lands, never which continent was chosen or whether that was right: a click
+  // anywhere in Africa is the same answer, and lands in the same place it was
+  // clicked. Knowing roughly where a country sits is rewarded with a plane that
+  // goes there, and a vague guess still costs nothing extra.
+  //
+  // Undefined from the keyboard (Enter on a focused continent has no point), and
+  // the flight falls back to the continent's canonical pin — which is right: a
+  // keyboard player picked the continent, not a spot.
+  function pickContinent(cont, at) {
     if (phase !== "continent" || flying || pending || (gameMode !== "explore" && days <= 0)) return;
+    const landAt = at || CONTINENT_PIN[cont];
     if (gameMode === "explore") {
       // Free flight; drill into countries where the layer exists, else straight to
       // the places. No wrong answers.
       const from = current ? loc(current) : (pickedContinent ? CONTINENT_PIN[pickedContinent] : HUB);
-      const to = CONTINENT_PIN[cont];
+      const to = landAt;
       const useCountry = COUNTRY_LAYER_CONTINENTS.has(cont);
       const sameHere = !!current && loc(current).continent === cont; // already here — no flight
       const finalize = () => {
@@ -2916,7 +2945,7 @@ export default function ShutterbugWorld() {
       // continent on your plan that still has an unphotographed target, so finishing
       // a continent early and moving on is never punished; skipping ahead is.
       const from = current ? loc(current) : (pickedContinent ? CONTINENT_PIN[pickedContinent] : HUB);
-      const to = CONTINENT_PIN[cont];
+      const to = landAt;
       // Already on this continent? No real flight — skip animation/music/cost.
       const sameHere = !!current && loc(current).continent === cont;
       const nextStop = tourPlan && tourPlan.order.find((c) => tourReqs.some((r) => !r.done && r.continent === c));
@@ -2958,7 +2987,7 @@ export default function ShutterbugWorld() {
     }
     if (!target) return;
     const from = current ? loc(current) : HUB; // first flight departs from the home hub
-    const to = CONTINENT_PIN[cont];
+    const to = landAt;
     // Already standing on this continent (e.g. the next assignment is here too)?
     // Then there's no real flight — skip the animation, music and day cost, and
     // just drop back onto its map.
@@ -5210,7 +5239,7 @@ export default function ShutterbugWorld() {
                 </g>
                 {robinsonCountries ? CONTINENTS.map((cont) => (
                   <g key={cont} className={`sbw-cont${flashHint && flashHint.type === "continent" && flashHint.key === cont ? " sbw-flash-hint" : ""}`} role="button" tabIndex={busy ? -1 : 0}
-                     aria-label={`Choose ${cont}`} onClick={() => pickContinent(cont)}
+                     aria-label={`Choose ${cont}`} onClick={(e) => pickContinent(cont, eqPointFromEvent(e))}
                      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); pickContinent(cont); } }}
                      onMouseEnter={() => sayOnHover(cont)}
                      style={{ cursor: busy ? "default" : "pointer" }}>
