@@ -494,7 +494,25 @@ const CONTINENT_META = (() => {
       // aspect ratio, so nothing distorts.
       const w = Math.max(40, (maxX - minX) * 1.04);
       const h = Math.max(40, (maxY - minY) * 1.28); // some headroom for the country labels
-      meta[c] = { mode: "equirect", box: { x: cx - w / 2, y: cy - h / 2, w, h }, cx, cy };
+      // Europe is the one continent whose surplus is not symmetrical in VALUE: the
+      // frame is wider than the content, so latitude gets padded either way — but
+      // padding NORTH costs empty Arctic ocean while padding SOUTH costs a band of
+      // the Sahara and the Middle East, which look like clickable continents and
+      // aren't. Bias the whole view north and the surplus lands where nothing is.
+      const northBias = 1.5;
+      meta[c] = { mode: "equirect", box: { x: cx - w / 2, y: cy - h / 2 - northBias, w, h }, cx, cy, pad: 0.02 };
+      continue;
+    }
+    if (c === "South America") {
+      // Tall and narrow: 47° of longitude against 62° of latitude. The default
+      // square box padded that to 84° and then the viewBox pad widened it again, so
+      // the continent floated in a third of a hemisphere of empty ocean. Hug the
+      // latitude (the constrained axis) and let the width fall where it likes — the
+      // frame is wider than any tall continent, so the flanking ocean is inherent;
+      // what was fixable was the room above Colombia and below Patagonia.
+      const w = Math.max(40, (maxX - minX) * 1.06);
+      const h = Math.max(40, (maxY - minY) * 1.28);
+      meta[c] = { mode: "equirect", box: { x: cx - w / 2, y: cy - h / 2, w, h }, cx, cy, pad: 0.03 };
       continue;
     }
     if (c === "Africa") {
@@ -3952,13 +3970,15 @@ export default function ShutterbugWorld() {
       <Frame>
         <div style={{ maxWidth: 620, margin: "0 auto" }}>
           <Stamp>Plan the Route</Stamp>
+          {/* "Sequence your stops" was a verb no nine-year-old uses and a noun that
+              could mean anything. What the screen actually asks is: which continent
+              first? Say that. */}
           <h2 style={{ fontFamily: "ui-sans-serif, system-ui", fontWeight: 900, letterSpacing: "0.06em", fontSize: 26, color: INK, margin: "12px 0 4px", textAlign: "center" }}>
-            Sequence your stops
+            What order will you visit them in?
           </h2>
           <p style={{ color: INK, opacity: 0.75, fontSize: 14.5, lineHeight: 1.5, textAlign: "center", margin: "0 0 4px" }}>
-            You already know what to photograph and where. All that's left is the order —
-            and flying it badly costs days you don't have. Shuffle the stops until the
-            route is cheap, then commit to it.
+            You know where you're going — now pick the order. A zig-zag route burns
+            travel days, so drag the stops around until the trip is short, then lock it in.
           </p>
           <div style={{ background: PAPER, border: `2px solid ${OCEAN}`, borderRadius: 14, padding: "14px 16px", marginTop: 14 }}>
             <ol style={{ listStyle: "none", margin: 0, padding: 0 }}>
@@ -4258,11 +4278,18 @@ export default function ShutterbugWorld() {
   // Robinson globe); every continent/country zoom instead FITS inside it,
   // undistorted, with ~10% margin (letterboxed over blue ocean).
   const FRAME_AR = 1.45;                // fixed atlas window (a touch taller than 8:5)
-  const VB_PAD = 0.1;                   // 10% margin around a fitted zoom
+  const VB_PAD = 0.1;                   // default margin around a fitted zoom
+  // A continent may ask for a TIGHTER margin than the default. 10% of the box on every
+  // side is a lot once the box is 75° wide — on Europe it was ~9° of extra map in each
+  // direction, which is the whole of the Sahara coast at the bottom and a slab of the
+  // Middle East at the right. A country zoom keeps the roomier default; those boxes are
+  // small enough that the pad is a few degrees, and it is what keeps a coastline off
+  // the frame edge. Only applies to a CONTINENT view (a country box overrides it).
+  const vbPad = (zoomed && !countryBox && contMeta && contMeta.pad != null) ? contMeta.pad : VB_PAD;
   const frameAspect = String(FRAME_AR);
   const par = zoomed ? "xMidYMid meet" : "none";
   const viewBox = zoomed
-    ? `${box.x - VB_PAD * box.w} ${box.y - VB_PAD * box.h} ${box.w * (1 + 2 * VB_PAD)} ${box.h * (1 + 2 * VB_PAD)}`
+    ? `${box.x - vbPad * box.w} ${box.y - vbPad * box.h} ${box.w * (1 + 2 * vbPad)} ${box.h * (1 + 2 * vbPad)}`
     : `${box.x} ${box.y} ${box.w} ${box.h}`;
   // How many plate units the frame's WIDTH spans. Under `meet` the fit is uniform and
   // limited by whichever dimension is proportionally larger, so this is the one honest
@@ -4272,8 +4299,8 @@ export default function ShutterbugWorld() {
   // half as wide in Chile as in the USA. Under `none` (the world map) the frame width
   // simply spans box.w.
   const WoverS = !zoomed ? box.w
-    : (box.w / box.h) > FRAME_AR ? (1 + 2 * VB_PAD) * box.w
-    : FRAME_AR * (1 + 2 * VB_PAD) * box.h;
+    : (box.w / box.h) > FRAME_AR ? (1 + 2 * vbPad) * box.w
+    : FRAME_AR * (1 + 2 * vbPad) * box.h;
   // Pins render as perfect CIRCLES of a steady on-screen size at every zoom. A fitted
   // zoom scales uniformly, so equal user-unit radii ARE a circle. The world map fills
   // the frame non-uniformly (par="none"), so there ry must be scaled by the frame
@@ -4341,7 +4368,7 @@ export default function ShutterbugWorld() {
   const ribbonText = inCity
     ? (isExplore ? "Click any pin to read a place's story." : "Click the right city on the map to take Jonah's photo.")
     : inCountry ? "Which country does the clue point to? Click it on the map."
-    : (isTour ? "Fly your route — straying from the order you committed to costs a day."
+    : (isTour ? "Follow your route. Going out of order costs a day."
               : "Choose the continent that matches Jonah's clue.");
   const gearItem = { textAlign: "left", background: "transparent", border: "none", borderRadius: 6, padding: "7px 9px", fontSize: 13, fontWeight: 700, color: INK, cursor: "pointer", whiteSpace: "nowrap" };
   return (
@@ -4662,8 +4689,8 @@ export default function ShutterbugWorld() {
                         each copy culled against the box shifted back into its own space. */}
                     {(plateMode === "wrap" ? [0, 360] : [0]).map((off) => (
                       <g key={"w" + off} transform={off ? `translate(${off} 0)` : undefined}>
-                        <WaterFeatures box={{ ...box, x: box.x - off }} vbW={box.w * (1 + 2 * VB_PAD)}
-                          vbH={box.h * (1 + 2 * VB_PAD)} zoomed frameAR={FRAME_AR} labels={!inCountry} />
+                        <WaterFeatures box={{ ...box, x: box.x - off }} vbW={box.w * (1 + 2 * vbPad)}
+                          vbH={box.h * (1 + 2 * vbPad)} zoomed frameAR={FRAME_AR} labels={!inCountry} />
                       </g>
                     ))}
                   </g>
@@ -6763,18 +6790,12 @@ function StoryScreen({ beats, reduced, ctaLabel, onDone, onSkip, mood = "intro",
               })}
             </div>
 
-            {/* Only the read-faster hint lives under the words now. The bag moved to
-                sit under HIM (right column) — he is the one holding it out, so that is
-                where a child looks for it, and the left column stays short enough that
-                a long speech doesn't push the button off the bottom of the screen. */}
-            <div style={{ marginTop: 14, minHeight: 26, display: "flex",
-              alignItems: "center", justifyContent: "center" }}>
-              {!ready && (
-                <p role="status" style={{ fontSize: 12, color: INK, opacity: 0.5, margin: 0, textAlign: "center" }}>
-                  (tap the text to read faster)
-                </p>
-              )}
-            </div>
+            {/* No "tap to read faster" prompt. Tapping still completes a line — that
+                stays, for a child who has read it and is waiting — but ADVERTISING it
+                turns Jonah's story into something to click past, and his story is
+                where the whole game is explained. The bag moved to sit under HIM
+                (right column) for the same reason: nothing under the words invites
+                skipping them. */}
           </div>
           {/* RIGHT: his face, tracking the beat he's on, and directly beneath it the
               bag he's offering. The slot below him is reserved at full height from the
