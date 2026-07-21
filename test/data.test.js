@@ -11,6 +11,7 @@ import { COUNTRY_INFO } from "../src/data/countries.js";
 import { categoryCountries, categoryMissionOK } from "../src/missions.js";
 import { COUNTRY_PEOPLE, GREETING_MEANING, peopleCards } from "../src/data/culture.js";
 import { RIVERS, LAKES, MARINE, WATER_FEATURES, WATER_KINDS } from "../src/data/geography.js";
+import { TUNES, tuneKeyFor } from "../src/data/tunes.js";
 import { JOURNEYS, journeyBox, closestStops, unrolledX } from "../src/data/journeys.js";
 import { CURIOSITY_DECKS, CURIOSITY_DECK_BY_ID, ALL_CURIOSITY_IDS } from "../src/data/curiosities.js";
 
@@ -892,5 +893,66 @@ describe("world-map country names line up with the tinting", () => {
     for (const [from, to] of Object.entries(ALIAS)) {
       expect(names.has(to), `alias ${from} -> ${to} points at no map path`).toBe(true);
     }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Country arrival music. Two failure modes here are SILENT — the game plays on and
+// nothing errors — so they get pinned:
+//
+//   1. A malformed pitch name. This file writes pitches as STRINGS ("F#4"), while
+//      src/audio.js writes them as JS identifiers (N.Fs4). Typing "Fs4" here parses
+//      to nothing and noteFreq returns 0, so the note is dropped from the melody
+//      with no warning. Two got in the first time these beds were written.
+//   2. One bed doing too much work. A single "africa" motif once covered nineteen
+//      countries and one "mideast" covered twelve, so a child flying Cairo →
+//      Tashkent → Marrakesh heard the same eight bars three times and learned that
+//      "over there" all sounds alike — the opposite of the point.
+// ---------------------------------------------------------------------------
+describe("country arrival tunes", () => {
+  const PITCH = /^(?:[A-G](?:#|b)?-?\d|r)$/;
+
+  it("every note is a parseable pitch or a rest", () => {
+    const bad = [];
+    for (const [key, t] of Object.entries(TUNES))
+      for (const [n] of t.seq) if (!PITCH.test(n)) bad.push(`${key}: "${n}"`);
+    expect(bad).toEqual([]);
+  });
+
+  it("every tune is a phrase that can stand alone (tunes play once, not twice)", () => {
+    for (const [key, t] of Object.entries(TUNES)) {
+      const secs = t.seq.reduce((s, [, beats]) => s + beats * t.spb, 0);
+      expect(secs, `${key} is ${secs.toFixed(1)}s`).toBeGreaterThanOrEqual(4);
+      expect(secs, `${key} is ${secs.toFixed(1)}s`).toBeLessThanOrEqual(12);
+    }
+  });
+
+  it("every tune names a timbre the synth actually has", () => {
+    // A wrong timbre falls back to "music" silently, so a bed meant to be an oud
+    // would just be a music box and nobody would see an error.
+    const TIMBRES = new Set(["reed", "brass", "flute", "koto", "guitar", "oud", "sitar",
+      "steel", "kalimba", "pluck", "uke", "bell", "music"]);
+    for (const [key, t] of Object.entries(TUNES))
+      expect(TIMBRES.has(t.timbre), `${key} uses unknown timbre "${t.timbre}"`).toBe(true);
+  });
+
+  it("every country resolves to a tune that exists", () => {
+    for (const l of LOCATIONS) {
+      const key = tuneKeyFor(l.country, l.continent);
+      expect(TUNES[key], `${l.country} -> "${key}" has no tune`).toBeTruthy();
+    }
+  });
+
+  it("no single bed covers more than a tenth of the world's countries", () => {
+    const countries = [...new Set(LOCATIONS.map((l) => l.country))];
+    const byKey = {};
+    for (const c of countries) {
+      const cont = LOCATIONS.find((l) => l.country === c).continent;
+      const k = tuneKeyFor(c, cont);
+      byKey[k] = (byKey[k] || 0) + 1;
+    }
+    const cap = Math.ceil(countries.length / 10);
+    const overloaded = Object.entries(byKey).filter(([, n]) => n > cap);
+    expect(overloaded, `beds covering more than ${cap} countries: ${JSON.stringify(overloaded)}`).toEqual([]);
   });
 });

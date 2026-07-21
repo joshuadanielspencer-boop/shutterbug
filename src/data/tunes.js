@@ -146,6 +146,103 @@ export const TUNES = {
     ["C4",0.5],["E4",0.5],["G4",1],["A4",1],["G4",1],["E4",1],["F4",0.5],["A4",0.5],["G4",1.5],["C4",1],["E4",2],["r",1],
     ["G4",0.5],["A4",0.5],["C5",1],["A4",1],["G4",1],["E4",1],["D4",0.5],["F4",0.5],["E4",1.5],["G4",1],["C4",2.5],
   ] },
+  // ---- Finer regional beds (added 2026-07-20) --------------------------------
+  // Four buckets were doing far too much work: one "africa" bed covered nineteen
+  // countries from Senegal to Madagascar, one "mideast" bed covered twelve from
+  // Morocco to Kazakhstan, and "generic" covered eighteen including all of
+  // Scandinavia and Central America. A child flying Cairo → Tashkent → Marrakesh
+  // heard the same eight bars three times and learned that "over there" all sounds
+  // alike, which is the opposite of what this game is for.
+  //
+  // Every one of these is an ORIGINAL phrase evoking a region's scale and its
+  // characteristic instrument. None claims to be a real tune — that distinction is
+  // what lets them be written freely, where a national melody would need notation
+  // off a score (rule 2).
+
+  // West Africa — balafon/kora, bright major pentatonic with an off-beat lilt.
+  westafrica: { timbre: "kalimba", spb: 0.24, seq: [
+    ["C5",0.5],["G4",0.5],["A4",0.5],["C5",0.5],["D5",1],["C5",0.5],["A4",0.5],["G4",1],
+    ["A4",0.5],["C5",0.5],["D5",0.5],["E5",0.5],["D5",1],["C5",0.5],["A4",0.5],["G4",1.5],["r",0.5],
+    ["G5",0.5],["E5",0.5],["D5",0.5],["C5",0.5],["A4",1],["G4",0.5],["A4",0.5],["C5",1],
+    ["D5",0.5],["C5",0.5],["A4",0.5],["G4",0.5],["E4",1],["G4",0.5],["A4",0.5],["C5",2],
+  ] },
+  // East Africa — the wistful pentatonic colour of an Ethiopian tizita, on a lyre-
+  // like pluck. Minor-leaning, unhurried.
+  eastafrica: { timbre: "pluck", spb: 0.3, seq: [
+    ["D4",1],["F4",0.5],["G4",1.5],["A4",1],["G4",0.5],["F4",1.5],["D4",2],
+    ["F4",1],["G4",0.5],["A4",1.5],["C5",1],["A4",1],["G4",2],["r",0.5],
+    ["A4",1],["C5",0.5],["D5",1.5],["C5",1],["A4",1],["G4",1],["F4",1],
+    ["G4",0.5],["F4",0.5],["D4",1],["F4",1],["D4",2.5],
+  ] },
+  // Southern Africa — warm, hymn-like major thirds, the mbira's ringing overtones.
+  southernafrica: { timbre: "bell", spb: 0.28, seq: [
+    ["G4",1],["B4",1],["D5",1],["B4",1],["G4",1],["A4",1],["B4",2],
+    ["C5",1],["B4",1],["A4",1],["G4",1],["E4",1],["G4",1],["A4",2],["r",0.5],
+    ["D5",1],["B4",1],["G4",1],["A4",1],["B4",1],["G4",1],["E4",2],
+    ["G4",1],["A4",1],["B4",1],["A4",1],["G4",3],
+  ] },
+  // Nordic — a modal fiddle air, minor with a raised sixth; open and cold.
+  nordic: { timbre: "reed", spb: 0.26, seq: [
+    ["D4",1],["E4",0.5],["F4",1.5],["A4",1],["G4",0.5],["F4",0.5],["E4",1],
+    ["D4",1],["F4",1],["A4",1],["Bb4",1],["A4",1],["G4",1],["F4",1.5],["r",0.5],
+    ["A4",1],["Bb4",0.5],["C5",1.5],["Bb4",1],["A4",1],["G4",2],
+    ["F4",1],["E4",1],["D4",1],["E4",1],["D4",2.5],
+  ] },
+  // Alpine — a lilting three-four waltz, major and open, with a horn-ish reed.
+  alpine: { timbre: "brass", spb: 0.3, seq: [
+    ["G4",1],["B4",1],["D5",1],["G5",1.5],["D5",0.5],["B4",1],
+    ["C5",1],["E5",1],["C5",1],["A4",1.5],["F#4",0.5],["A4",1],
+    ["B4",1],["D5",1],["G5",1],["F#5",1.5],["E5",0.5],["D5",1],["r",0.5],
+    ["E5",1],["D5",1],["C5",1],["B4",1],["A4",1],["G4",2.5],
+  ] },
+  // Ireland — a REEL, even-time and driving, deliberately unlike the 6/8 Scottish
+  // jigs the rest of the game is scored to, so Ireland doesn't sound like the menu.
+  celtic: { timbre: "reed", spb: 0.19, seq: [
+    ["D4",1],["E4",1],["F#4",1],["G4",1],["A4",1],["B4",1],["A4",1],["F#4",1],
+    ["G4",1],["E4",1],["D4",1],["E4",1],["F#4",1],["G4",1],["A4",2],
+    ["B4",1],["C#5",1],["D5",1],["E5",1],["D5",1],["B4",1],["A4",1],["F#4",1],
+    ["G4",1],["A4",1],["B4",1],["A4",1],["F#4",1],["E4",1],["D4",2],
+  ] },
+  // Central America — marimba, bright and rolling in parallel thirds.
+  centralamerica: { timbre: "kalimba", spb: 0.26, seq: [
+    ["C5",0.5],["E5",0.5],["G5",1],["E5",0.5],["C5",0.5],["D5",1],
+    ["F5",0.5],["A5",0.5],["G5",1],["E5",0.5],["C5",0.5],["D5",1],
+    ["E5",0.5],["D5",0.5],["C5",1],["A4",0.5],["G4",0.5],["A4",1],["r",0.5],
+    ["G4",0.5],["C5",0.5],["E5",1],["G5",0.5],["E5",0.5],["C5",1],
+    ["D5",0.5],["F5",0.5],["A5",1],["G5",1],["E5",0.5],["C5",0.5],["G4",1],["C5",2],
+  ] },
+  // Japan — koto in a hirajoshi-flavoured scale (the semitone steps are the whole
+  // character of it), sparse and deliberate.
+  japan: { timbre: "koto", spb: 0.34, seq: [
+    ["D4",1.5],["Eb4",0.5],["G4",2],["A4",1],["Bb4",1.5],["A4",0.5],["G4",2],
+    ["A4",1],["Bb4",1],["D5",2],["Bb4",1],["A4",1],["G4",1.5],["r",0.5],
+    ["D5",1.5],["Bb4",0.5],["A4",2],["G4",1],["Eb4",1],["D4",3],
+  ] },
+  // South-East Asia — the bell-metal shimmer of a gamelan; a slendro-ish spacing.
+  southeastasia: { timbre: "bell", spb: 0.3, seq: [
+    ["D4",1],["E4",1],["G4",1.5],["A4",0.5],["C5",2],["A4",1],["G4",1],["E4",1.5],["r",0.5],
+    ["G4",1],["A4",1],["C5",1.5],["D5",0.5],["E5",2],["D5",1],["C5",1],["A4",1.5],["r",0.5],
+    ["C5",1],["A4",1],["G4",1],["E4",1],["D4",2.5],
+  ] },
+  // Central Asia — a dombra's open fifths under a stepping modal line.
+  centralasia: { timbre: "pluck", spb: 0.22, seq: [
+    ["D4",0.5],["A4",0.5],["D4",0.5],["A4",0.5],["G4",1],["F4",1],["E4",1],["D4",1],
+    ["F4",0.5],["A4",0.5],["F4",0.5],["A4",0.5],["Bb4",1],["A4",1],["G4",1],["F4",1],
+    ["A4",0.5],["D5",0.5],["A4",0.5],["D5",0.5],["C5",1],["Bb4",1],["A4",1],["G4",1],["r",0.5],
+    ["F4",1],["E4",1],["D4",1],["E4",1],["D4",2.5],
+  ] },
+  // Persia — the shimmer of a santur, with the augmented step that colours the mode.
+  persian: { timbre: "sitar", spb: 0.26, seq: [
+    ["D4",1],["Eb4",0.5],["F#4",1],["G4",1],["A4",1.5],["G4",0.5],["F#4",1],["Eb4",1],
+    ["D4",1.5],["r",0.5],["A4",1],["Bb4",0.5],["C5",1],["D5",1.5],["C5",0.5],["Bb4",1],
+    ["A4",1],["G4",1],["F#4",1],["Eb4",1],["D4",2.5],
+  ] },
+  // The polar bed — Antarctica and Greenland. Almost nothing: three slow bell tones
+  // and a lot of air. There is no folk music of the ice, and inventing one would be
+  // a lie about a place nobody is from; emptiness is the honest evocation.
+  polar: { timbre: "bell", spb: 0.5, seq: [
+    ["D5",3],["A4",2],["r",1],["F5",3],["D5",2],["r",1],["A4",2],["D5",4],
+  ] },
   // Fallback — a gentle music-box major.
   generic: { timbre: "music", spb: 0.3, seq: [
     ["C4",1],["E4",1],["G4",1],["C5",1],["B4",1],["G4",1],["A4",1],["F4",1],["G4",2],["r",1],
@@ -167,28 +264,54 @@ export const COUNTRY_TUNE = {
 // has no specific tune. (Only countries whose *region* differs from a plain
 // continent default need listing; everything else falls back to CONTINENT_MOTIF.)
 export const COUNTRY_MOTIF = {
-  // East Asia
-  "China": "eastasia", "Japan": "eastasia", "South Korea": "eastasia", "Taiwan": "eastasia",
-  "Mongolia": "eastasia", "Vietnam": "eastasia", "Thailand": "eastasia", "Cambodia": "eastasia",
-  "Myanmar": "eastasia", "Malaysia": "eastasia", "Singapore": "eastasia", "Indonesia": "tropical",
-  "Philippines": "tropical",
+  // East Asia — split apart in 2026-07. One "eastasia" koto bed used to cover
+  // eleven countries from Japan to Myanmar; Japan, China and mainland South-East
+  // Asia don't sound remotely alike and shouldn't here either.
+  "Japan": "japan",
+  "China": "eastasia", "Taiwan": "eastasia", "South Korea": "eastasia",
+  "Vietnam": "southeastasia", "Thailand": "southeastasia", "Cambodia": "southeastasia",
+  "Myanmar": "southeastasia", "Malaysia": "southeastasia", "Singapore": "southeastasia",
+  "Indonesia": "southeastasia", "Philippines": "southeastasia",
+  "Mongolia": "centralasia",
   // South Asia
   "India": "southasia", "Nepal": "southasia", "Pakistan": "southasia", "Sri Lanka": "southasia",
   "Bangladesh": "southasia",
-  // Middle East / North Africa
-  "Saudi Arabia": "mideast", "United Arab Emirates": "mideast", "Iran": "mideast", "Jordan": "mideast",
-  "Turkey": "mideast", "Uzbekistan": "mideast", "Kazakhstan": "mideast",
-  "Egypt": "mideast", "Morocco": "mideast", "Tunisia": "mideast", "Algeria": "mideast", "Sudan": "mideast",
+  // Arabic-speaking North Africa and the Gulf keep the hijaz oud bed. Turkey, Iran
+  // and the Central Asian republics get their own: lumping a Kazakh dombra in with a
+  // Moroccan oud was the clearest case of "everything over there sounds the same".
+  "Saudi Arabia": "mideast", "United Arab Emirates": "mideast", "Jordan": "mideast",
+  "Egypt": "mideast", "Morocco": "mideast", "Tunisia": "mideast", "Algeria": "mideast",
+  "Sudan": "mideast",
+  "Iran": "persian", "Turkey": "persian",
+  "Uzbekistan": "centralasia", "Kazakhstan": "centralasia",
   // Mediterranean Europe
   "Greece": "mediterranean", "Italy": "mediterranean", "Spain": "mediterranean", "Portugal": "mediterranean",
   "Croatia": "mediterranean",
   // Slavic / Eastern Europe
   "Russia": "slavic", "Poland": "slavic", "Czechia": "slavic", "Hungary": "slavic", "Romania": "slavic",
+  // Northern and Alpine Europe — these were all falling through to "generic".
+  "Norway": "nordic", "Sweden": "nordic", "Denmark": "nordic", "Finland": "nordic", "Iceland": "nordic",
+  "Austria": "alpine", "Switzerland": "alpine",
+  "Ireland": "celtic",
+  "Netherlands": "alpine", "Belgium": "alpine",
+  // Africa — one bed for nineteen countries became four. Madagascar and DR Congo
+  // keep the original central/Indian-Ocean bed.
+  "Senegal": "westafrica", "Mali": "westafrica", "Ghana": "westafrica", "Nigeria": "westafrica",
+  "Benin": "westafrica", "Côte d'Ivoire": "westafrica", "Cameroon": "westafrica",
+  "Ethiopia": "eastafrica", "Kenya": "eastafrica", "Tanzania": "eastafrica",
+  "Uganda": "eastafrica", "Rwanda": "eastafrica",
+  "South Africa": "southernafrica", "Namibia": "southernafrica", "Botswana": "southernafrica",
+  "Zimbabwe": "southernafrica", "Zambia": "southernafrica",
   // Andes
   "Peru": "andes", "Bolivia": "andes", "Ecuador": "andes", "Chile": "andes",
   // Caribbean
   "Cuba": "caribbean", "Jamaica": "caribbean", "Haiti": "caribbean", "Trinidad and Tobago": "caribbean",
   "Belize": "caribbean",
+  // Central America — marimba country, and nothing like the Caribbean steel drum.
+  "Guatemala": "centralamerica", "Honduras": "centralamerica", "Nicaragua": "centralamerica",
+  "Costa Rica": "centralamerica", "Panama": "centralamerica",
+  // The ice. See the note on the `polar` bed.
+  "Antarctica": "polar", "Greenland": "polar",
 };
 
 // Broad fallback by continent.
