@@ -446,6 +446,13 @@ const ROBINSON_GRATICULE = (() => {
   return lines;
 })();
 
+// The atlas window's aspect. Every zoom box is built to it so a map FILLS the
+// frame instead of letterboxing (rule 5). Module scope, and declared up here
+// because the continent boxes below are computed at module load: it was three
+// separate `1.45` literals, which is the kind of thing that drifts the first
+// time one of them is tuned.
+const FRAME_AR = 1.45;
+
 const CONTINENT_ORDER = ["North America", "South America", "Europe", "Africa", "Asia", "Oceania", "Antarctica"];
 // Only offer continents that actually have locations, so a continent added to the
 // data later (e.g. Antarctica) lights up automatically once it has content.
@@ -479,7 +486,7 @@ const CONTINENT_META = (() => {
       // North America) so the box fills the frame with no letterbox and no spill; the
       // vertical stretch (mapStretchY) then un-smushes the high-latitude squish.
       const w = Math.max(40, (maxX - minX) * 1.0);
-      const h = w / 1.45; // 1.45 = the atlas frame's aspect (FRAME_AR in the component)
+      const h = w / FRAME_AR;
       // The frame-aspect box is taller than Asia's content, so anchor its SOUTH edge
       // just below the southernmost landmark (Indonesia): the surplus height then
       // falls into the empty Arctic to the north instead of dragging Australia and the
@@ -544,7 +551,7 @@ const CONTINENT_META = (() => {
       // letterboxed band. Hawaiʻi (a US state, filed here with North America) sits
       // just inside the western edge, so it stays on-map and clickable.
       const w = Math.max(40, (maxX - minX) * 1.06);
-      const h = w / 1.45; // 1.45 = the atlas frame's aspect (FRAME_AR in the component)
+      const h = w / FRAME_AR;
       meta[c] = { mode: "equirect", box: { x: cx - w / 2, y: cy - h / 2, w, h }, cx, cy };
       continue;
     }
@@ -664,8 +671,33 @@ const pathBBox = (d, refX, refY = null, clip = Infinity) => {
       const bb = bpath && pathBBox(bpath, cx, cy, clip);
       if (bb) { bx0 = Math.min(bx0, bb.minX); bx1 = Math.max(bx1, bb.maxX); by0 = Math.min(by0, bb.minY); by1 = Math.max(by1, bb.maxY); }
       const bcx = (bx0 + bx1) / 2, bcy = (by0 + by1) / 2; // center on the country itself
-      const side = Math.min(120, Math.max(4.5, Math.max(bx1 - bx0, by1 - by0) * 1.5)); // 50% breathing room, tight floor
-      COUNTRY_META[countryKey(cont, country)] = { box: { x: bcx - side / 2, y: bcy - side / 2, w: side, h: side }, cx, cy };
+      // ---- Fill the frame (rule 5) ------------------------------------------
+      // This box used to be a SQUARE of side = extent * 1.5. Two things were
+      // wrong with that, and they compounded:
+      //
+      //   1. The atlas frame is 1.45:1 landscape and the fit is `meet`, so a
+      //      square box is fitted by HEIGHT and ~31% of the frame's width is
+      //      dead before any margin exists. Every country in the game — Russia,
+      //      Italy, Peru, all of them — occupied exactly 38% of the frame width,
+      //      because the shape of the country never entered into it.
+      //   2. The * 1.5 then added 50% margin on top, and VB_PAD another 10% a
+      //      side after that.
+      //
+      // Net: a country map showed the country at about a fifth of the frame,
+      // which is why it read as barely more informative than the continent map.
+      // Build the box at the FRAME'S OWN ASPECT instead, sized to whichever
+      // dimension is binding, with a small honest margin. A country shaped like
+      // the frame now nearly fills it; a tall country like Chile still can't
+      // fill a wide frame, but it fills the height instead of a fifth of it.
+      const bw = bx1 - bx0, bh = by1 - by0;
+      const MARGIN = 1.08;                          // 4% of the country's extent a side
+      let w = Math.max(bw, bh * FRAME_AR) * MARGIN; // widen to the frame's aspect...
+      let h = w / FRAME_AR;                         // ...and the height follows from it
+      // Floor for microstates (Singapore, Monaco): below this the relief plate has
+      // no detail left to show and the map is just blur.
+      if (w < 4.5 * FRAME_AR) { w = 4.5 * FRAME_AR; h = 4.5; }
+      if (w > 120 * FRAME_AR) { w = 120 * FRAME_AR; h = 120; }
+      COUNTRY_META[countryKey(cont, country)] = { box: { x: bcx - w / 2, y: bcy - h / 2, w, h }, cx, cy };
     }
   }
   // A few countries are so far-flung that a box holding ALL their landmarks spans a
@@ -676,7 +708,7 @@ const pathBBox = (d, refX, refY = null, clip = Infinity) => {
   // that fall OUTSIDE the override (Denali, Kīlauea) still work: when a run's options
   // include one, optionsFitCountry() below sends that run to the continent view.
   //   USA: contiguous 48, lon −125…−66 (x 55…114), lat 24…50 (y 40…66).
-  const box145 = (cx, cy, w) => ({ x: cx - w / 2, y: cy - (w / 1.45) / 2, w, h: w / 1.45 });
+  const box145 = (cx, cy, w) => ({ x: cx - w / 2, y: cy - (w / FRAME_AR) / 2, w, h: w / FRAME_AR });
   const OVERRIDE = {
     // Trimmed east to the real Atlantic coast (lon −66, x 114) and re-centred a
     // degree south: the old 64°-wide box ran to lon −52.5, so a third of the frame
@@ -4602,7 +4634,9 @@ export default function ShutterbugWorld() {
   // The world map FILLS it (stretched, straight grid — deliberately not a true
   // Robinson globe); every continent/country zoom instead FITS inside it,
   // undistorted, with ~10% margin (letterboxed over blue ocean).
-  const FRAME_AR = 1.45;                // fixed atlas window (a touch taller than 8:5)
+  // FRAME_AR is module-scope now (see its declaration) — the country boxes are
+  // built against the same number at module load, and a local copy here is how
+  // the two would silently drift apart.
   const VB_PAD = 0.1;                   // default margin around a fitted zoom
   // A continent may ask for a TIGHTER margin than the default. 10% of the box on every
   // side is a lot once the box is 75° wide — on Europe it was ~9° of extra map in each
@@ -4610,7 +4644,14 @@ export default function ShutterbugWorld() {
   // Middle East at the right. A country zoom keeps the roomier default; those boxes are
   // small enough that the pad is a few degrees, and it is what keeps a coastline off
   // the frame edge. Only applies to a CONTINENT view (a country box overrides it).
-  const vbPad = (zoomed && !countryBox && contMeta && contMeta.pad != null) ? contMeta.pad : VB_PAD;
+  // A COUNTRY box already carries its own margin, built in at the frame's aspect
+  // (rule 5). Adding VB_PAD's 10% a side on top of it is what turned a tight box
+  // back into a loose one — so country views take almost none, and the continent
+  // views keep the behaviour they were tuned with.
+  const vbPad = !zoomed ? VB_PAD
+    : countryBox ? 0.01
+    : (contMeta && contMeta.pad != null) ? contMeta.pad
+    : VB_PAD;
   const frameAspect = String(FRAME_AR);
   const par = zoomed ? "xMidYMid meet" : "none";
   const viewBox = zoomed
