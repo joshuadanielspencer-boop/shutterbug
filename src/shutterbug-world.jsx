@@ -8,7 +8,7 @@ import { WORLD_COUNTRIES, COUNTRY_CONTINENT } from "./data/worldmap.js";
 import { COUNTRY_INFO, COUNTRY_LAYER_CONTINENTS, COUNTRY_NATIVE } from "./data/countries.js";
 import { RIVERS, LAKES, MARINE } from "./data/geography.js";
 import { JOURNEYS, JOURNEY_BY_ID, journeyBox, unrolledX, closestStops } from "./data/journeys.js";
-import { HUBS, transportOptionsFor, money as fmtMoney, currencyFor } from "./data/travel.js";
+import { HUBS, transportOptionsFor, countryTransport, money as fmtMoney, currencyFor } from "./data/travel.js";
 import { COUNTRY_PEOPLE, peopleCards, greetingMeaning } from "./data/culture.js";
 import { categoryCountries, categoryMissionOK as missionOK } from "./missions.js";
 import { robinson, eqToRobinson, ROBINSON_W, ROBINSON_H } from "./robinson.js";
@@ -1801,6 +1801,7 @@ export default function ShutterbugWorld() {
         setPhase("city");
       },
       continent: (c) => { setScreen("play"); setPickedContinent(c); setPickedCountry(null); setPhase("country"); },
+      mode: (m) => setGameMode(m),
       // Fill the album with real places, then jump to the review or the results —
       // the two screens whose layout is hardest to reach and easiest to break.
       album: (ids) => setAlbum((ids || []).map((id) => {
@@ -1859,6 +1860,26 @@ export default function ShutterbugWorld() {
   // shrinks onto its destination. The sound, the CSS keyframes and this timer all
   // read FLIGHT_MS — they were three separate 4s literals before, which is the
   // kind of thing that silently drifts the first time one of them is tuned.
+  // ---- The overland hop -------------------------------------------------------
+  // Picking a country used to teleport you into it. Now the country's own way of
+  // getting about carries you there across the continent map first — a tuk-tuk into
+  // Thailand, a camel across Morocco, the cog railway up into Switzerland. It is the
+  // one mechanic in the game that teaches how people actually move around a place,
+  // and it reuses the twelve transport tokens that were previously only ever seen on
+  // a Grand Tour's inter-continent legs (so most players never saw them at all).
+  const RIDE_MS = 2400;
+  const [riding, setRiding] = useState(null);   // { fromX, fromY, toX, toY, mode }
+  const rideTimer = useRef(null);
+  const launchRide = (from, to, mode, finalize) => {
+    if (prefersReduced || !from || !to || !mode) { finalize(); return; }
+    setRiding({ fromX: from.x, fromY: from.y, toX: to.x, toY: to.y, mode });
+    rideTimer.current = setTimeout(() => {
+      rideTimer.current = null;
+      setRiding(null);
+      finalize();
+    }, RIDE_MS);
+  };
+  useEffect(() => () => { if (rideTimer.current) clearTimeout(rideTimer.current); }, []);
   const launchFlight = (from, to, finalize) => {
     sfx("takeoff", PLANE_SCALE_SEC);
     landingSfxRef.current = setTimeout(() => { landingSfxRef.current = null; sfx("landing", PLANE_SCALE_SEC); }, FLIGHT_MS - PLANE_SCALE_MS);
@@ -2793,15 +2814,36 @@ export default function ShutterbugWorld() {
   }
 
   // ---- Country phase (Medium/Hard): pick the target's country on the continent ----
+  // Where the overland hop starts and ends on the continent plate, and what carries
+  // you. Start: wherever you're standing (the last place photographed), or the
+  // continent's own arrival pin on your first hop here. End: the country's landmark
+  // centre — the same point its label sits on.
+  const rideLegFor = (country) => {
+    const cm = COUNTRY_META[countryKey(pickedContinent, country)];
+    if (!cm) return null;
+    const here = current ? loc(current) : null;
+    const from = here && here.continent === pickedContinent
+      ? { x: here.x, y: here.y }
+      : (CONTINENT_PIN[pickedContinent] || { x: cm.cx, y: cm.cy });
+    const to = { x: cm.cx, y: cm.cy };
+    const legDeg = Math.hypot(to.x - from.x, to.y - from.y);
+    const ownIds = (COUNTRY_LOCS[pickedContinent] && COUNTRY_LOCS[pickedContinent][country]) || [];
+    const mode = countryTransport(ownIds.map((id) => BY_ID[id]).filter(Boolean), legDeg);
+    return { from, to, mode };
+  };
   function pickCountry(country) {
-    if (phase !== "country" || flying || pending) return;
+    if (phase !== "country" || flying || riding || pending) return;
     if (gameMode === "explore") {
-      setPickedCountry(country);
-      setCityPlan({ ids: pickCountryCityIds(pickedContinent, country, [], 7), wide: false });
-      setPhase("city"); setCurrent(null); setRevealed(false);
-      music("countryTune", country, pickedContinent); // a few seconds of local music on arrival
-      sayCountry(country); // spoken arrival: the country, a beat, then hello in its language
-      setMsg({ type: "info", text: `${country} — click any place to learn about it.` });
+      const arrive = () => {
+        setPickedCountry(country);
+        setCityPlan({ ids: pickCountryCityIds(pickedContinent, country, [], 7), wide: false });
+        setPhase("city"); setCurrent(null); setRevealed(false);
+        music("countryTune", country, pickedContinent); // a few seconds of local music on arrival
+        sayCountry(country); // spoken arrival: the country, a beat, then hello in its language
+        setMsg({ type: "info", text: `${country} — click any place to learn about it.` });
+      };
+      const legE = rideLegFor(country);
+      if (legE) launchRide(legE.from, legE.to, legE.mode, arrive); else arrive();
       return;
     }
     if (gameMode === "tour") {
@@ -2812,14 +2854,18 @@ export default function ShutterbugWorld() {
       const ownIds = (COUNTRY_LOCS[pickedContinent] && COUNTRY_LOCS[pickedContinent][country]) || [];
       const tourMust = tourReqs.filter((r) => !r.done && ownIds.includes(r.anchorId)).map((r) => r.anchorId);
       const tourIds = pickCountryCityIds(pickedContinent, country, tourMust, 5);
-      setCityPlan({ ids: tourIds, wide: !hasBox || !optionsFitCountry(tourIds, pickedContinent, country) });
-      setPickedCountry(country);
-      setPhase("city"); setCurrent(null); setRevealed(false);
-      if (COUNTRY_INFO[country] && poppedCountryRef.current !== country) { poppedCountryRef.current = country; setCountryPopup(country); }
-      music("countryTune", country, pickedContinent); // a few seconds of local music on arrival
-      sayCountry(country); // spoken arrival: the country, a beat, then hello in its language
-      const targetHere = tourReqs.some((r) => !r.done && (COUNTRY_LOCS[pickedContinent]?.[country] || []).some((id) => r.kind === "category" ? BY_ID[id].category === r.category : r.targetId === id));
-      setMsg({ type: targetHere ? "info" : "warn", text: targetHere ? `Arrived in ${country}. Photograph your target here!` : `Arrived in ${country} — but no target on your list is here. Pick another country, or fly on.` });
+      const arriveT = () => {
+        setCityPlan({ ids: tourIds, wide: !hasBox || !optionsFitCountry(tourIds, pickedContinent, country) });
+        setPickedCountry(country);
+        setPhase("city"); setCurrent(null); setRevealed(false);
+        if (COUNTRY_INFO[country] && poppedCountryRef.current !== country) { poppedCountryRef.current = country; setCountryPopup(country); }
+        music("countryTune", country, pickedContinent); // a few seconds of local music on arrival
+        sayCountry(country); // spoken arrival: the country, a beat, then hello in its language
+        const targetHere = tourReqs.some((r) => !r.done && (COUNTRY_LOCS[pickedContinent]?.[country] || []).some((id) => r.kind === "category" ? BY_ID[id].category === r.category : r.targetId === id));
+        setMsg({ type: targetHere ? "info" : "warn", text: targetHere ? `Arrived in ${country}. Photograph your target here!` : `Arrived in ${country} — but no target on your list is here. Pick another country, or fly on.` });
+      };
+      const legT = rideLegFor(country);
+      if (legT) launchRide(legT.from, legT.to, legT.mode, arriveT); else arriveT();
       return;
     }
     if (days <= 0 || !target) return;
@@ -2855,16 +2901,20 @@ export default function ShutterbugWorld() {
         ? withSeed(dailySeed(dailyDay, difficulty) + "|pins|" + pickedContinent + "|" + country, pins)
         : pins();
       const plan = { ids: planIds, wide: !hasBox || !optionsFitCountry(planIds, pickedContinent, country) };
-      setCityPlan(plan);
-      setPickedCountry(country);
-      setPhase("city");
-      setCurrent(null);
-      setRevealed(false);
-      // Pop the culture card the moment you land in the country.
-      if (COUNTRY_INFO[country] && poppedCountryRef.current !== country) { poppedCountryRef.current = country; setCountryPopup(country); }
-      music("countryTune", country, pickedContinent); // a few seconds of local music on arrival
-      sayCountry(country); // spoken arrival: the country, a beat, then hello in its language
-      setMsg({ type: "info", text: `Arrived in ${country}. Now photograph Jonah's subject.` });
+      const arriveA = () => {
+        setCityPlan(plan);
+        setPickedCountry(country);
+        setPhase("city");
+        setCurrent(null);
+        setRevealed(false);
+        // Pop the culture card the moment you land in the country.
+        if (COUNTRY_INFO[country] && poppedCountryRef.current !== country) { poppedCountryRef.current = country; setCountryPopup(country); }
+        music("countryTune", country, pickedContinent); // a few seconds of local music on arrival
+        sayCountry(country); // spoken arrival: the country, a beat, then hello in its language
+        setMsg({ type: "info", text: `Arrived in ${country}. Now photograph Jonah's subject.` });
+      };
+      const legA = rideLegFor(country);
+      if (legA) launchRide(legA.from, legA.to, legA.mode, arriveA); else arriveA();
     } else {
       const nd = Math.round((days - 0.5) * 10) / 10; // a wrong country costs half a day
       setDays(nd);
@@ -4352,7 +4402,7 @@ export default function ShutterbugWorld() {
     }
     return { pos, moved };
   })();
-  const busy = !!flying || !!pending || !!riddle || !!mrO || !!mrOBeats || !!dogVisit || (!isExplore && days <= 0);
+  const busy = !!flying || !!riding || !!pending || !!riddle || !!mrO || !!mrOBeats || !!dogVisit || (!isExplore && days <= 0);
   // Whose typewriter is it? When Mr O (or a riddle) is on screen, HIS text is the one
   // that should click; the assignment clue and the arrival fact under him fall silent,
   // so the player hears one typewriter, not two racing. Only these blocking overlays
@@ -4365,7 +4415,13 @@ export default function ShutterbugWorld() {
   // scroll. The 560px cap holds on tall screens; on shorter ones the map shrinks.
   const MAP_CAP = "min(calc(100vh - 262px), 560px)";
   // A short live instruction for the bottom ribbon, matched to the current phase.
-  const ribbonText = inCity
+  // While the overland hop is running the ribbon names the vehicle. This is where
+  // the teaching actually lands: the picture alone says "something is moving", the
+  // sentence says "this is how you get around here" — and rule 4 means the meaning
+  // can't live in the picture alone anyway.
+  const ribbonText = riding
+    ? `${riding.mode.name} — ${riding.mode.blurb}`
+    : inCity
     ? (isExplore ? "Click any pin to read a place's story." : "Click the right city on the map to take Jonah's photo.")
     : inCountry ? "Which country does the clue point to? Click it on the map."
     : (isTour ? "Follow your route. Going out of order costs a day."
@@ -4597,6 +4653,19 @@ export default function ShutterbugWorld() {
               )}
             </div>
           )}
+          {/* Grand Tour, standing on a continent and choosing a country: it has no
+              single target, so leaving again has to be possible from HERE too. Without
+              this the only way back to the world map was to enter a country first,
+              which meant a wasted hop every time you changed your mind. */}
+          {isTour && inCountry && (
+            <div style={{ marginTop: 12, display: "flex", justifyContent: "center" }}>
+              <button onClick={() => { if (!busy) { setPickedCountry(null); setCityPlan(null); setPhase("continent"); setRevealed(false); setMsg({ type: "info", text: "Pick the next continent to fly to." }); } }} disabled={busy}
+                style={{ padding: "8px 16px", borderRadius: 8, border: `1.5px solid ${OCEAN}`, background: "transparent", color: OCEAN, fontWeight: 700, fontSize: 13, cursor: busy ? "default" : "pointer" }}>
+                ✈ Fly to another continent
+              </button>
+            </div>
+          )}
+
           {/* Grand Tour keeps its arrival controls (fly on / pick another country)
               — it has no single target, so it needs on-panel navigation. */}
           {isTour && inCity && !revealed && (
@@ -4842,6 +4911,42 @@ export default function ShutterbugWorld() {
                     </g>
                   </g>
                 </g>
+                );
+              })()}
+
+              {/* The overland hop, drawn on the CONTINENT plate: a dashed track from
+                  where you're standing to the country you picked, with that country's
+                  own way of travelling running along it. Plate coordinates, not
+                  Robinson — this map is equirect, unlike the world map the plane
+                  crosses. The token is unstretched about its own centre for the same
+                  reason the pins are: Europe's plate is scaled 1.25 vertically and an
+                  un-corrected camel comes out tall and thin. */}
+              {inCountry && riding && (() => {
+                const a = { x: riding.fromX, y: riding.fromY }, b = { x: riding.toX, y: riding.toY };
+                const dx = b.x - a.x, dy = b.y - a.y;
+                const dist = Math.hypot(dx, dy) || 1;
+                // A gentle bow, a third of the arc the plane flies: this is ground
+                // travel, so it should read as following a road rather than leaping.
+                let nx = -dy / dist, ny = dx / dist;
+                if (ny > 0) { nx = -nx; ny = -ny; }
+                const lift = Math.min(0.05 * WoverS, dist * 0.08);
+                const mx = (a.x + b.x) / 2 + nx * lift, my = (a.y + b.y) / 2 + ny * lift;
+                const d = `M${a.x} ${a.y} Q${mx} ${my} ${b.x} ${b.y}`;
+                const sz = 0.085 * WoverS;
+                const art = TRANSPORT_ART[riding.mode.id];
+                return (
+                  <g style={{ pointerEvents: "none" }}>
+                    <path d={d} fill="none" stroke={INK} strokeOpacity="0.5" strokeWidth="2.6" strokeDasharray="3 3" vectorEffect="non-scaling-stroke" />
+                    <path d={d} fill="none" stroke="#FFFFFF" strokeOpacity="0.95" strokeWidth="1.2" strokeDasharray="3 3" vectorEffect="non-scaling-stroke" />
+                    <g style={{ animation: `sbw-ride ${RIDE_MS}ms ease-in-out forwards`, offsetPath: `path('${d}')`, offsetRotate: "0deg" }}>
+                      <g transform={mapStretchY === 1 ? undefined : `scale(1 ${(1 / mapStretchY).toFixed(4)})`}>
+                        {art
+                          ? <image href={`${UI}${art}`} width={sz} height={sz} x={-sz / 2} y={-sz / 2}
+                              style={{ filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.45))" }} />
+                          : <text x="0" y="0" fontSize={sz} textAnchor="middle" dominantBaseline="central">{riding.mode.emoji}</text>}
+                      </g>
+                    </g>
+                  </g>
                 );
               })()}
 
@@ -5169,6 +5274,10 @@ function Frame({ children, desk = false }) {
         .sbw-ping{ transform-box: fill-box; transform-origin: center; animation: sbw-ping 1.6s ease-out infinite; }
         @keyframes sbw-ping{ 0%{ transform: scale(0.6); opacity:.9 } 100%{ transform: scale(1.9); opacity:0 } }
         @keyframes sbw-fly{ 0%{ offset-distance: 0% } 100%{ offset-distance: 100% } }
+        /* The overland hop. Same motion-path trick as the flight, but it starts and
+           ends at a standstill — a bus pulls away and pulls in; it doesn't cruise
+           past the destination. */
+        @keyframes sbw-ride{ 0%{ offset-distance: 0% } 100%{ offset-distance: 100% } }
         /* Takeoff and landing, sold with scale: the token grows out of the airport
            over the first PLANE_SCALE_MS and shrinks onto the far one over the last.
            These percentages are COMPUTED from FLIGHT_MS / PLANE_SCALE_MS rather

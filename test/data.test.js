@@ -577,7 +577,7 @@ describe("curiosity layer", () => {
   });
 });
 
-import { HUBS, TRANSPORT_MODES, TRANSPORT_BY_ID, CURRENCIES, COUNTRY_CURRENCY, currencyFor, money, transportOptionsFor, destinationContexts } from "../src/data/travel.js";
+import { HUBS, TRANSPORT_MODES, TRANSPORT_BY_ID, CURRENCIES, COUNTRY_CURRENCY, currencyFor, money, transportOptionsFor, destinationContexts, countryTransport } from "../src/data/travel.js";
 import { nextGoal } from "../src/profiles.js";
 
 // The results screen's reason to play again. It's the last thing a child reads
@@ -954,5 +954,55 @@ describe("country arrival tunes", () => {
     const cap = Math.ceil(countries.length / 10);
     const overloaded = Object.entries(byKey).filter(([, n]) => n > cap);
     expect(overloaded, `beds covering more than ${cap} countries: ${JSON.stringify(overloaded)}`).toEqual([]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// The overland hop's transport. This teaches ("this is how you get around here"),
+// so the failure that matters isn't a crash — it's a plausible-looking wrong answer,
+// or a gondola quietly appearing outside Venice. It must also be DETERMINISTIC:
+// the association is only learnable if Thailand is always a tuk-tuk.
+// ---------------------------------------------------------------------------
+describe("the way into a country", () => {
+  const byCountry = {};
+  for (const l of LOCATIONS) (byCountry[l.country] ||= []).push(l);
+
+  it("gives every country in the game some way in", () => {
+    for (const [country, locs] of Object.entries(byCountry)) {
+      const m = countryTransport(locs, 12);
+      expect(m, `no transport for ${country}`).toBeTruthy();
+      expect(m.name, `unnamed transport for ${country}`).toBeTruthy();
+    }
+  });
+
+  it("is the same every time for the same country", () => {
+    for (const country of ["Thailand", "Morocco", "Italy", "Switzerland", "Japan"]) {
+      const a = countryTransport(byCountry[country], 12);
+      const b = countryTransport(byCountry[country], 12);
+      expect(a.id, country).toBe(b.id);
+    }
+  });
+
+  it("never flies — this is the leg AFTER the flight", () => {
+    for (const [country, locs] of Object.entries(byCountry)) {
+      expect(countryTransport(locs, 40).id, `${country} arrives by air twice`).not.toBe("flight");
+    }
+  });
+
+  it("keeps the gondola in Venice", () => {
+    // The one mode tied to a single city on Earth. If it turns up anywhere else the
+    // context test has come loose, and the game is teaching something false.
+    for (const [country, locs] of Object.entries(byCountry)) {
+      if (countryTransport(locs, 12).id !== "gondola") continue;
+      expect(country, "gondola offered outside Italy").toBe("Italy");
+    }
+  });
+
+  it("picks the distinctive way in where a country has one", () => {
+    // A plain ferry for India (it has a coast) instead of the tuk-tuk is the exact
+    // regression the distinctiveness ranking exists to prevent.
+    expect(countryTransport(byCountry["Thailand"], 12).id).toBe("tuktuk");
+    expect(countryTransport(byCountry["India"], 12).id).toBe("tuktuk");
+    expect(countryTransport(byCountry["Italy"], 12).id).toBe("gondola");
   });
 });

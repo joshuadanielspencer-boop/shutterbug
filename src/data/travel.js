@@ -335,3 +335,57 @@ export function money(usd, country) {
   const gap = /[A-Za-z]$/.test(c.symbol) ? " " : "";
   return `${dollars} (${c.symbol}${gap}${localTxt.toLocaleString("en-US")} ${c.name})`;
 }
+
+// ===========================================================================
+// The signature way to get around a COUNTRY.
+//
+// Used for the short hop shown on the continent map after you pick a country and
+// before you arrive: you don't teleport into Thailand, you take a tuk-tuk there.
+// It exists to teach — "this is how people actually travel here" is a real fact
+// about a place, and a picture of it lands harder than a sentence would.
+//
+// Deliberately keyed to the COUNTRY, never to the assignment's target. Picking the
+// transport from the target would leak the answer: a gondola on the way into Italy
+// tells a child the city is Venice before they have looked at a single pin. A
+// country-level signature is just as true and gives nothing away — Italy's canals
+// are a fact about Italy, not a pointer to one landmark.
+//
+// Deterministic (hashed on the country name, no RNG): the same country always
+// arrives the same way, so the association can actually be learned, and a seeded
+// run stays reproducible.
+// ===========================================================================
+export function countryTransport(locs, legDeg = 10) {
+  const places = (locs || []).filter(Boolean);
+  if (!places.length) return TRANSPORT_BY_ID.bus;
+  const country = places[0].country || "";
+  // Every context any place in this country satisfies.
+  const ctx = new Set();
+  for (const l of places) for (const k of destinationContexts(l)) ctx.add(k);
+  if (legDeg > 22) ctx.add("far"); else if (legDeg < 6) ctx.add("near");
+  // A FLAVOUR mode (gondola, camel, tuk-tuk, cog railway…) is the whole point, so
+  // prefer one; only fall back to the everyday modes when a country has no special
+  // way in. `flight` is excluded outright — this is the hop AFTER the flight, and a
+  // second aeroplane would make the two legs look like the same journey twice.
+  const flavours = TRANSPORT_MODES.filter((m) => !m.core && m.id !== "flight"
+    && (m.contexts || []).some((k) => ctx.has(k)));
+  if (flavours.length) {
+    // Prefer the most DISTINCTIVE match. Ranked by hand rather than hashed at random,
+    // because "water" is satisfied by any coast and would hand a plain ferry to India
+    // and Italy — both of which have something far more worth showing a child. A
+    // country only reaches the bottom of this list if it has nothing special.
+    const RANK = ["gondola", "cograil", "cablecar", "camel", "canoe", "tuktuk", "riverboat", "ferry"];
+    const best = flavours.slice().sort((a, b) => {
+      const ra = RANK.indexOf(a.id), rb = RANK.indexOf(b.id);
+      return (ra < 0 ? 99 : ra) - (rb < 0 ? 99 : rb);
+    });
+    // Ties (a country matching two equally distinctive modes) break on the country
+    // name, so it is still fixed per country rather than order-of-declaration.
+    const top = best.filter((m) => m.id === best[0].id || RANK.indexOf(m.id) === RANK.indexOf(best[0].id));
+    return top[idHash(country) % top.length];
+  }
+  // No signature mode: the ordinary ways of covering ground, by how far it is.
+  const core = TRANSPORT_MODES.filter((m) => m.core);
+  return legDeg < 6
+    ? (TRANSPORT_BY_ID.taxi || core[core.length - 1])
+    : (core[idHash(country) % core.length] || TRANSPORT_BY_ID.bus);
+}
