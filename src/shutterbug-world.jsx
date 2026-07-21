@@ -3104,9 +3104,18 @@ export default function ShutterbugWorld() {
   function pickCountry(country) {
     if (phase !== "country" || flying || riding || pending) return;
     if (gameMode === "explore") {
+      const exploreIds = pickCountryCityIds(pickedContinent, country, [], 7);
+      // `wide` was hardcoded false here, alone among the three modes — so any pin
+      // outside the country's zoom box was simply drawn off-frame and the map showed
+      // fewer places than it had chosen. That is the "only 2 landmarks showed up in
+      // the USA" report: Explore can pick Alaska or Hawai'i, and the USA's box is the
+      // contiguous 48. Tightening every country's framing made it easier to hit.
+      // Same rule as Tour and Assignments now: if the chosen places don't all fit,
+      // show the wider continent view where they honestly do.
+      const exploreHasBox = !!COUNTRY_META[countryKey(pickedContinent, country)];
       const arrive = () => {
         setPickedCountry(country);
-        setCityPlan({ ids: pickCountryCityIds(pickedContinent, country, [], 7), wide: false });
+        setCityPlan({ ids: exploreIds, wide: !exploreHasBox || !optionsFitCountry(exploreIds, pickedContinent, country) });
         setPhase("city"); setCurrent(null); setRevealed(false);
         music("countryTune", country, pickedContinent); // a few seconds of local music on arrival
         sayCountry(country); // spoken arrival: the country, a beat, then hello in its language
@@ -5249,17 +5258,24 @@ export default function ShutterbugWorld() {
                       return (
                         <g key={c.name}>
                           <path d={d} fill={CONTINENT_COLOR[cont]} fillRule="evenodd" stroke={INK} strokeWidth="0.3" vectorEffect="non-scaling-stroke" />
-                          {/* A country you've photographed reads as a LIGHTER patch of
-                              its own continent's colour — the same hue, washed with
-                              white, so it plainly stands out while still belonging to
-                              the continent around it. Lightness (not hue) is what
-                              carries "been there", which keeps it legible to a
-                              colour-blind child (rule 4): a value difference survives
-                              every kind of colour vision, and a soft white outline
-                              gives the patch an edge that doesn't depend on colour at
-                              all. This replaces the gold diagonal hatch, which read as
-                              a separate orange thing stuck on top of the map. */}
-                          {got && <path d={d} fill="#FFFFFF" fillOpacity="0.5" fillRule="evenodd" stroke="#FFFFFF" strokeOpacity="0.85" strokeWidth="0.7" vectorEffect="non-scaling-stroke" style={{ pointerEvents: "none" }} />}
+                          {/* The map fills IN as you travel. A country you haven't
+                              reached is washed out; photographing it restores its
+                              continent's full colour, so a long trip is something you
+                              can watch happen to the map. (This is the inverse of the
+                              first version, where arriving BLEACHED a country — the
+                              same information, but it read as taking colour away from
+                              the places you'd been.)
+                              Lightness, not hue, still carries "been there", which is
+                              what keeps it legible to a colour-blind child (rule 4): a
+                              value difference survives every kind of colour vision. The
+                              white edge moves to the VISITED country for the same
+                              reason it existed before — an outline is a cue that
+                              doesn't depend on colour at all.
+                              The wash is deliberately lighter than a half-white: at 0.5
+                              the untouched world looked bleached and the sea read as
+                              the livelier thing on the page. */}
+                          {!got && <path d={d} fill="#FFFFFF" fillOpacity="0.34" fillRule="evenodd" style={{ pointerEvents: "none" }} />}
+                          {got && <path d={d} fill="none" fillRule="evenodd" stroke="#FFFFFF" strokeOpacity="0.9" strokeWidth="0.7" vectorEffect="non-scaling-stroke" style={{ pointerEvents: "none" }} />}
                         </g>
                       );
                     })}

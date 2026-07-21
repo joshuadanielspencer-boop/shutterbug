@@ -248,6 +248,11 @@ export const MUSIC = (() => {
   let ctx = null, master = null, jigBus = null, countryBus = null, timer = null, nextBeat = 0, running = false;
   let drone = []; // sustained bagpipe drone oscillators, torn down on stop()
   let countryActive = false; // is a country-arrival tune currently sounding?
+  // The travel jig's own fade bus, kept so an ARRIVAL can cut it short. Its normal
+  // life is 6s full + 3s fade, which is right when you land on a continent and
+  // nothing else is playing — and wrong when you land on a COUNTRY, where the
+  // local tune starts at once and the two would talk over each other for seconds.
+  let travelFade = null;
   let fadeStopT = null;       // stops the jig scheduler once its fade-out has run its course
   const ac = () => {
     try {
@@ -645,6 +650,22 @@ export const MUSIC = (() => {
         }, MUSIC_FADE_SECS * 1000 + 150);
       } catch { /* ignore */ }
     },
+    // Cut the travel jig short. Its scheduled ramp holds full for six seconds past
+    // touchdown, which is the right shape for arriving on a CONTINENT — the journey
+    // eases out and nothing else is competing. Arriving in a COUNTRY is different:
+    // its local tune starts immediately, and Joshua's note was that the two overlap.
+    // Cancelling the scheduled ramp is the load-bearing part; without it the old
+    // automation keeps running and puts the gain back up under the new ramp.
+    fadeTravel(secs = 1.0) {
+      try {
+        const c = ac(); if (!c || !travelFade) return;
+        const g = travelFade.gain;
+        g.cancelScheduledValues(c.currentTime);
+        g.setValueAtTime(g.value, c.currentTime);
+        g.linearRampToValueAtTime(0.0001, c.currentTime + secs);
+        travelFade = null;   // one cut per flight; the notes still scheduled play out silent
+      } catch { /* ignore */ }
+    },
     // Returning to the splash: drop the looping title jig but keep the quiet drone
     // going underneath, so the menu holds the "piper stood ready" bed rather than
     // either silence or the full jig still blaring over it. The ~0.6s of melody notes
@@ -714,6 +735,7 @@ export const MUSIC = (() => {
         fade.gain.setValueAtTime(1, t0 + HOLD);                      // hold full past touchdown
         fade.gain.linearRampToValueAtTime(0.0001, t0 + TOTAL);       // then fade out over 3s
         fade.connect(master);
+        travelFade = fade;   // so fadeTravel() can cut this short on a country arrival
         const n = Math.ceil(TOTAL / EIGHTH);
         // THIS playthrough's travel tune — chosen once per trip in chooseRunTunes and
         // guaranteed different from the title jig, so setting off never sounds like the
@@ -734,6 +756,7 @@ export const MUSIC = (() => {
     countryTune(country, continent) {
       try {
         const c = ac(); if (!c) return;   // before stopCountry: it needs ctx to fade
+        this.fadeTravel(1.0);             // the jig is out of the way in a second, not four
         this.stopCountry();               // fade out anything still sounding, and let its bus go
         wake(c);
         countryBus = c.createGain();      // a clean knob of our own for this arrival
