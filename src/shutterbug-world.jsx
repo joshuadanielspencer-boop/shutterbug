@@ -3345,13 +3345,19 @@ export default function ShutterbugWorld() {
                   </div>
                 </div>
               )}
-              <div style={{ display: "grid", gap: 10 }}>
+              <div role="group" aria-label={`Choose ${KIT_TAKEN} of ${kitOffer.length} things to pack`} style={{ display: "grid", gap: 10 }}>
                 {kitOffer.map((item) => {
                   const on = kitPicked.includes(item.id);
                   const full = kitPicked.length >= KIT_TAKEN && !on;
                   return (
-                    <button key={item.id} aria-pressed={on} disabled={full}
-                      onClick={() => setKitPicked((p) => p.includes(item.id) ? p.filter((x) => x !== item.id) : [...p, item.id])}
+                    // aria-disabled rather than `disabled`: a disabled button drops
+                    // out of the tab order entirely, so the moment the bag filled,
+                    // the item you DIDN'T take silently vanished for a keyboard
+                    // player — no way to tab to it and find out why it greyed out.
+                    // This way it stays reachable and announces itself as
+                    // unavailable, and the click is guarded instead.
+                    <button key={item.id} aria-pressed={on} aria-disabled={full}
+                      onClick={() => { if (full) return; setKitPicked((p) => p.includes(item.id) ? p.filter((x) => x !== item.id) : [...p, item.id]); }}
                       style={{ textAlign: "left", display: "flex", gap: 12, alignItems: "flex-start",
                         padding: "13px 15px", borderRadius: 12, cursor: full ? "default" : "pointer",
                         border: `2.5px solid ${on ? CORAL : PAPER_LINE}`, background: on ? "#FBEAE6" : "#fff",
@@ -3378,8 +3384,14 @@ export default function ShutterbugWorld() {
                     cursor: kitPicked.length === KIT_TAKEN ? "pointer" : "default" }}>
                   Set off ✈
                 </button>
-                <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 13, color: INK, opacity: 0.7 }}>
+                {/* role="status" — picking the second item changes three things at
+                    once (the counter, "Set off" going live, the third item greying
+                    out) and none of them were announced. This is the one line that
+                    says what just happened, and it reads as a sentence rather than
+                    a bare tally so it's worth hearing. */}
+                <span role="status" style={{ fontFamily: "ui-monospace, monospace", fontSize: 13, color: INK, opacity: 0.7 }}>
                   {kitPicked.length} of {KIT_TAKEN} packed
+                  {kitPicked.length === KIT_TAKEN ? " — the rest stays behind" : ""}
                 </span>
                 <button onClick={() => { setKitOffer(null); setKitPicked([]); setScreen("meet"); }}
                   style={{ background: "none", border: "none", color: INK, opacity: 0.6, fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
@@ -4698,7 +4710,9 @@ export default function ShutterbugWorld() {
           gone with it. */}
       <div style={{ display: "flex", flexDirection: "column", minHeight: "calc(100vh - 40px)", boxSizing: "border-box" }}>
       {/* ===== Desk header bar (teal leather chrome) ===== */}
-      <header style={{ position: "relative", display: "flex", alignItems: "center", gap: 14, flexWrap: "nowrap",
+      {/* sbw-dark: the focus ring's ink band is invisible on this teal, so the
+          class swaps that band for white for everything inside the bar. */}
+      <header className="sbw-dark" style={{ position: "relative", display: "flex", alignItems: "center", gap: 14, flexWrap: "nowrap",
         background: `linear-gradient(${OCEAN}, ${OCEAN_DEEP})`, border: `2px solid ${INK}`, borderRadius: 12,
         padding: "6px 20px", marginBottom: 14, boxShadow: "0 6px 0 rgba(16,38,46,0.28)", color: "#F4ECD8",
         minHeight: 60, overflow: "visible" }}>
@@ -5462,17 +5476,7 @@ export default function ShutterbugWorld() {
 
       </div>{/* /full-height column */}
 
-      {toolNote && (
-        <div role="dialog" aria-modal="true" aria-label={`${toolNote.tool} — not used in this mode`} onClick={() => setToolNote(null)}
-          style={{ position: "fixed", inset: 0, background: "rgba(16,38,46,0.55)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16, zIndex: 60 }}>
-          <div onClick={(e) => e.stopPropagation()}
-            style={{ background: PAPER, borderRadius: 16, border: `3px solid ${GOLD}`, boxShadow: "0 14px 44px rgba(0,0,0,0.35)", maxWidth: 380, width: "100%", padding: "20px 22px", textAlign: "center" }}>
-            <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.18em", color: CORAL, marginBottom: 8 }}>{toolNote.tool.toUpperCase()}</div>
-            <p style={{ color: INK, fontSize: 14.5, lineHeight: 1.5, margin: "0 0 16px" }}>{toolNote.why}</p>
-            <button autoFocus onClick={() => setToolNote(null)} style={{ ...primaryBtn, margin: 0, background: GOLD, color: INK, boxShadow: "0 4px 0 #B87C00" }}>Got it ✈</button>
-          </div>
-        </div>
-      )}
+      {toolNote && <ToolNoteModal note={toolNote} onClose={() => setToolNote(null)} />}
       {passportOpen && <PassportModal profile={profileName ? getProfile(profileName) : null} onClose={() => setPassportOpen(false)} />}
       {albumOpen && <AlbumModal album={album} onPick={(p) => { setAlbumOpen(false); setAlbumView(p); }} onClose={() => setAlbumOpen(false)} />}
       {guideOpen && <FieldGuideModal note={researched[step]} spent={guideFresh && researchCost > 0} onClose={() => setGuideOpen(false)} />}
@@ -5562,21 +5566,46 @@ function Frame({ children, desk = false }) {
         /* ---- Keyboard focus, everywhere ------------------------------------
            A visible focus state is a hard requirement (rule 4), and the browser
            default is a 1px hairline that vanishes against this game's painted
-           backgrounds. This gives every focusable thing the same 3px gold ring the
-           tool rail already uses.
+           backgrounds.
+
+           This ring is TWO bands, and it has to be. The gold ring this used to be
+           was picked against the dark chrome, where it's excellent — but most of
+           this game's buttons sit on cream paper, and gold on cream measures
+           1.77:1 where WCAG 2.2 SC 1.4.11 wants 3:1 for a focus indicator. Ink is
+           the exact mirror: 13:1 on paper, 1.3:1 on the wood. No single colour
+           clears 3:1 on both, so the ring carries one of each and whichever band
+           the background swallows, the other one shows.
+
+             gold inner band  — 5.7:1 on wood, 4.4:1 on the teal header
+             ink outer band   — 13:1 on cream paper, 15:1 on white
+
+           box-shadow draws the inner band and outline the outer one, so the pair
+           needs no extra element and can't be clipped apart.
 
            :where() so it carries ZERO specificity: the map's own, louder focus
            treatments (.sbw-pin, .sbw-cont, .sbw-country each set outline:none and
            light the shape itself instead) still win, and any future control that
            styles its own focus wins too. This is a floor, not a ceiling. */
         :where(button, a[href], input, select, textarea, summary, [role="button"]):focus-visible{
-          outline: 3px solid ${GOLD}; outline-offset: 2px; border-radius: 6px;
+          outline: 3px solid var(--sbw-focus-outer, ${INK}); outline-offset: 3px;
+          box-shadow: 0 0 0 3px var(--sbw-focus-inner, ${GOLD});
+          border-radius: 6px;
         }
+        /* On the dark chrome the ink band is the one that disappears, so swap it
+           for white there. Both orderings clear 3:1 on their own — this is about
+           the ring looking deliberate rather than muddy. The variable inherits, so
+           marking the container is enough. */
+        .sbw-dark{ --sbw-focus-outer: #FFFFFF; }
         /* Whole-continent highlight when hovering or keyboard-focusing a region. */
         /* Right-rail tool props lift on hover / keyboard focus. */
         .sbw-tool img{ transition: transform .14s ease, filter .14s ease; }
         .sbw-tool:hover img, .sbw-tool:focus-visible img{ transform: translateY(-3px) rotate(-1.5deg); filter: drop-shadow(0 9px 11px rgba(0,0,0,0.5)); }
-        .sbw-tool:focus-visible{ outline: 3px solid ${GOLD}; outline-offset: 3px; border-radius: 10px; }
+        /* The tool rail props sit on the dark wood desk, so their ring takes the
+           white outer band rather than the ink one (see the two-tone note above). */
+        .sbw-tool:focus-visible{
+          outline: 3px solid #FFFFFF; outline-offset: 3px;
+          box-shadow: 0 0 0 3px ${GOLD}; border-radius: 10px;
+        }
         /* Scout hint: pulse a bright white glow around the correct answer. */
         .sbw-flash-hint{ animation: sbw-hint 0.9s ease-in-out infinite; }
         @keyframes sbw-hint{ 0%,100%{ filter: drop-shadow(0 0 0.5px #fff) } 50%{ filter: drop-shadow(0 0 2.5px #fff) drop-shadow(0 0 2.5px #fff) brightness(1.25) } }
@@ -5877,15 +5906,120 @@ function PhaseTracker({ stepIdx, onCurio, continentName, countryName, onCountryI
     </ol>
   );
 }
+// ---- What `aria-modal="true"` is supposed to mean ----------------------------
+// Every popup in this game already claimed to be a modal. None of them behaved
+// like one: with the passport open, Tab walked through all seven controls on the
+// screen BEHIND it before ever reaching the passport's own Close button, and
+// closing it dropped focus back to <body> instead of the button you opened it
+// from. aria-modal is a promise to assistive tech that the rest of the page is
+// inert — making that promise and not keeping it is worse than not making it.
+//
+// This hook keeps it. Three jobs, which are the same three jobs at all thirteen
+// call sites, which is why it's a hook and not thirteen bits of copied code:
+//   1. move focus into the dialog on open (unless an autoFocus already did),
+//   2. cycle Tab / Shift-Tab within it and never out of it,
+//   3. put focus back on whatever opened it when it closes.
+//
+// `escape: false` is for the popups a child is meant to READ, not dismiss — a
+// result card and Mr O's riddle. Escaping past those skips a fact nobody saw,
+// which is the same reason Enter completes a typing line before it presses
+// anything (see the Enter handler up top).
+function useModalFocus(ref, onClose, { escape = true } = {}) {
+  // onClose is usually an inline arrow, so it's a new function every render.
+  // Depending on it directly would re-run the effect constantly and yank focus
+  // back to the first control while the player was tabbing.
+  // Both of these go through refs for the same reason: the effect must run ONCE
+  // per open. If `escape` were a dependency, a popup that flips it mid-life (the
+  // arrival card, which refuses Escape until its dwell timer is up) would tear the
+  // effect down and rebuild it — and the teardown restores focus to the opener,
+  // yanking the player out of a dialog that's still on screen.
+  const closeRef = useRef(onClose);
+  closeRef.current = onClose;
+  const escapeRef = useRef(escape);
+  escapeRef.current = escape;
+  useEffect(() => {
+    const node = ref.current;
+    if (!node) return;
+    const opener = document.activeElement;
+    // `:not([tabindex="-1"])` on EVERY branch, not just the last one. Without it
+    // this matched the passport's deliberately-untabbable 1×1 file input, decided
+    // that was the last focusable thing in the dialog, and so never intercepted
+    // the Tab off the real last button — focus escaped to the screen behind on
+    // every lap. A selector that disagrees with the browser about what's tabbable
+    // is a trap with a hole in it.
+    const T = ':not([tabindex="-1"])';
+    const SEL = `button:not([disabled])${T}, a[href]${T}, input:not([disabled])${T}, select:not([disabled])${T}, textarea:not([disabled])${T}, [tabindex]${T}`;
+    // Recomputed on every Tab rather than cached: these dialogs enable and
+    // disable controls as you use them (the bag fills, a quiz answer locks), and
+    // a stale list would trap focus on a button that no longer takes it.
+    const items = () => [...node.querySelectorAll(SEL)]
+      .filter((el) => el.offsetWidth || el.offsetHeight || el.getClientRects().length);
+    if (!node.contains(document.activeElement)) {
+      const first = items()[0];
+      if (first) first.focus();
+      else { node.setAttribute("tabindex", "-1"); node.focus(); }
+    }
+    const onKey = (e) => {
+      if (e.key === "Escape" && escapeRef.current) { e.stopPropagation(); closeRef.current?.(); return; }
+      if (e.key !== "Tab") return;
+      const list = items();
+      if (!list.length) { e.preventDefault(); return; }
+      const first = list[0];
+      const last = list[list.length - 1];
+      const active = document.activeElement;
+      if (!node.contains(active)) { e.preventDefault(); (e.shiftKey ? last : first).focus(); return; }
+      if (e.shiftKey && active === first) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && active === last) { e.preventDefault(); first.focus(); }
+    };
+    // A second, reactive guard: if focus lands outside the dialog by any route,
+    // put it back. The keydown handler above predicts the boundary and makes the
+    // cycle feel natural; this one holds the invariant even when the prediction is
+    // wrong — which it was, until the selector above learned to agree with the
+    // browser about what counts as tabbable.
+    const onFocusIn = (e) => {
+      if (node.contains(e.target)) return;
+      const list = items();
+      if (list.length) list[0].focus();
+    };
+    // Capture phase so the trap sees Tab before anything downstream can act on it.
+    document.addEventListener("keydown", onKey, true);
+    document.addEventListener("focusin", onFocusIn, true);
+    return () => {
+      document.removeEventListener("keydown", onKey, true);
+      document.removeEventListener("focusin", onFocusIn, true);
+      // isConnected: the thing that opened this may have unmounted while it was
+      // open (a mode button that got replaced), and focusing a detached node
+      // silently sends focus to <body> — the very bug this is here to fix.
+      if (opener && opener.isConnected && typeof opener.focus === "function") opener.focus();
+    };
+  }, [ref]);
+}
+
+// "That tool isn't used in this mode." Lifted out of the main component's JSX so
+// it mounts and unmounts as a unit — useModalFocus runs on mount, and a hook can't
+// be called from inside a `{cond && ...}` branch.
+function ToolNoteModal({ note, onClose }) {
+  const ref = useRef(null);
+  useModalFocus(ref, onClose);
+  return (
+    <div ref={ref} role="dialog" aria-modal="true" aria-label={`${note.tool} — not used in this mode`} onClick={onClose}
+      style={{ position: "fixed", inset: 0, background: "rgba(16,38,46,0.55)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16, zIndex: 60 }}>
+      <div onClick={(e) => e.stopPropagation()}
+        style={{ background: PAPER, borderRadius: 16, border: `3px solid ${GOLD}`, boxShadow: "0 14px 44px rgba(0,0,0,0.35)", maxWidth: 380, width: "100%", padding: "20px 22px", textAlign: "center" }}>
+        <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.18em", color: CORAL, marginBottom: 8 }}>{note.tool.toUpperCase()}</div>
+        <p style={{ color: INK, fontSize: 14.5, lineHeight: 1.5, margin: "0 0 16px" }}>{note.why}</p>
+        <button onClick={onClose} style={{ ...primaryBtn, margin: 0, background: GOLD, color: INK, boxShadow: "0 4px 0 #B87C00" }}>Got it ✈</button>
+      </div>
+    </div>
+  );
+}
+
 // A dim backdrop shared by the two tool popups; closes on Escape or backdrop click.
 function ModalShell({ label, onClose, maxWidth, accent = OCEAN, children }) {
-  useEffect(() => {
-    const onKey = (e) => { if (e.key === "Escape") onClose(); };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
+  const ref = useRef(null);
+  useModalFocus(ref, onClose);
   return (
-    <div role="dialog" aria-modal="true" aria-label={label} onClick={onClose}
+    <div ref={ref} role="dialog" aria-modal="true" aria-label={label} onClick={onClose}
       style={{ position: "fixed", inset: 0, background: "rgba(16,38,46,0.62)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16, zIndex: 50 }}>
       <div onClick={(e) => e.stopPropagation()}
         style={{ position: "relative", background: PAPER, borderRadius: 16, border: `3px solid ${accent}`, boxShadow: "0 14px 44px rgba(0,0,0,0.35)", maxWidth: maxWidth || 620, width: "100%", maxHeight: "90vh", overflowY: "auto", padding: "22px 22px 24px" }}>
@@ -5899,15 +6033,12 @@ function ModalShell({ label, onClose, maxWidth, accent = OCEAN, children }) {
 // A shared open-book popup: the book art fills a 3:2 frame and content is laid
 // on the left and right cream pages. Closes on Escape / backdrop click.
 function OpenBook({ img, label, onClose, left, right, footer }) {
-  useEffect(() => {
-    const onKey = (e) => { if (e.key === "Escape") onClose(); };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
+  const ref = useRef(null);
+  useModalFocus(ref, onClose);
   // Content is inset well clear of the printed page edges (was hugging them).
   const pageBase = { position: "absolute", top: "17%", height: "64%", display: "flex", flexDirection: "column" };
   return (
-    <div role="dialog" aria-modal="true" aria-label={label} onClick={onClose}
+    <div ref={ref} role="dialog" aria-modal="true" aria-label={label} onClick={onClose}
       style={{ position: "fixed", inset: 0, background: "rgba(16,38,46,0.66)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 10, padding: 16, zIndex: 56 }}>
       <div onClick={(e) => e.stopPropagation()}
         style={{ position: "relative", width: "min(900px, 95vw)", aspectRatio: "3 / 2",
@@ -5969,8 +6100,10 @@ function HowToPlayModal({ onClose }) {
     ["itinerary-photograph.png", "Take the photograph", "Find the right subject and shoot it. Every correct shot teaches you something true about a real place."],
     ["passport.png", "Fill your passport", "Stamps, badges and keepsakes pile up across every trip. The more you travel, the more of the world you keep."],
   ];
+  const ref = useRef(null);
+  useModalFocus(ref, onClose);
   return (
-    <div role="dialog" aria-modal="true" aria-label="How to play" onClick={onClose}
+    <div ref={ref} role="dialog" aria-modal="true" aria-label="How to play" onClick={onClose}
       style={{ position: "fixed", inset: 0, background: "rgba(16,38,46,0.62)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16, zIndex: 70 }}>
       <div onClick={(e) => e.stopPropagation()}
         style={{ ...CARD_SURFACE, borderRadius: 16, border: `3px solid ${OCEAN}`, boxShadow: "0 14px 44px rgba(0,0,0,0.35)",
@@ -6018,11 +6151,13 @@ function FieldGuideModal({ note, spent, onClose }) {
 // accomplishment spreads (country stamps + keepsakes), paged with arrows.
 function PassportModal({ profile, onClose }) {
   const [page, setPage] = useState(0);
+  const ref = useRef(null);
+  useModalFocus(ref, onClose);   // Escape now lives in the hook, with the trap
   useEffect(() => {
-    const onKey = (e) => { if (e.key === "Escape") onClose(); if (e.key === "ArrowRight") setPage((p) => p + 1); if (e.key === "ArrowLeft") setPage((p) => Math.max(0, p - 1)); };
+    const onKey = (e) => { if (e.key === "ArrowRight") setPage((p) => p + 1); if (e.key === "ArrowLeft") setPage((p) => Math.max(0, p - 1)); };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
+  }, []);
   const pp = profile ? passportData(profile) : null;
   const rank = profile ? careerRank(profile) : null;
   const earned = profile ? achievements(profile).filter((b) => b.earned) : [];
@@ -6060,7 +6195,7 @@ function PassportModal({ profile, onClose }) {
     </div>
   );
   return (
-    <div role="dialog" aria-modal="true" aria-label="Passport" onClick={onClose}
+    <div ref={ref} role="dialog" aria-modal="true" aria-label="Passport" onClick={onClose}
       style={{ position: "fixed", inset: 0, background: "rgba(16,38,46,0.66)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 10, padding: 16, zIndex: 56 }}>
       <div onClick={(e) => e.stopPropagation()}
         style={{ position: "relative", width: "min(880px, 94vw)", aspectRatio: "3 / 2",
@@ -6259,6 +6394,8 @@ function TravelChooser({ choice, money, onConfirm, onCancel }) {
     .sort((a, b) => a.d - b.d);
   const [hub, setHub] = useState(hubList[0]);
   const [tid, setTid] = useState(null);
+  const ref = useRef(null);
+  useModalFocus(ref, onCancel);   // Escape == Cancel: this is a choice, not a gate
   const destCountry = target ? target.country : hub.country;
   const legDeg = target ? dist(hub, target) : 8;
   const options = transportOptionsFor(target || { category: "cityscape", country: hub.country, tags: [] }, legDeg);
@@ -6268,7 +6405,7 @@ function TravelChooser({ choice, money, onConfirm, onCancel }) {
   const broke = totalUsd > money;
   const pill = (on) => ({ textAlign: "left", padding: "9px 12px", borderRadius: 10, border: `2px solid ${on ? CORAL : PAPER_LINE}`, background: on ? "#FBE7DF" : "#fff", color: INK, cursor: "pointer", width: "100%", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, fontSize: 13.5 });
   return (
-    <div role="dialog" aria-modal="true" aria-label={`Getting to ${cont}`}
+    <div ref={ref} role="dialog" aria-modal="true" aria-label={`Getting to ${cont}`}
       style={{ position: "fixed", inset: 0, background: "rgba(16,38,46,0.62)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16, zIndex: 55 }}>
       <div style={{ background: PAPER, borderRadius: 16, border: `3px solid ${OCEAN}`, boxShadow: "0 14px 44px rgba(0,0,0,0.35)", maxWidth: 560, width: "100%", maxHeight: "92vh", overflowY: "auto", padding: "20px 22px" }}>
         <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.16em", color: OCEAN, fontWeight: 700 }}>✈ GETTING TO {cont.toUpperCase()}</div>
@@ -6332,6 +6469,10 @@ function ResultModal({ data, onContinue, reduced }) {
   // and onDone fires at once, so the button is live immediately.
   const [factDone, setFactDone] = useState(false);
   useEffect(() => { setFactDone(false); }, [data]);
+  // escape:false — the whole point of this card is the fact on it. Letting Escape
+  // dismiss it hands back the skip that `factDone` above exists to prevent.
+  const ref = useRef(null);
+  useModalFocus(ref, null, { escape: false });
   const ready = !data.fact || factDone;
   // With both a photo and a fact, they sit side by side (the fact reads as a
   // caption next to the shot); they stack on narrow screens via flex-wrap.
@@ -6360,7 +6501,7 @@ function ResultModal({ data, onContinue, reduced }) {
     </div>
   );
   return (
-    <div role="dialog" aria-modal="true" aria-label={data.title}
+    <div ref={ref} role="dialog" aria-modal="true" aria-label={data.title}
       style={{ position: "fixed", inset: 0, background: "rgba(16,38,46,0.62)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16, zIndex: 50 }}>
       <div className={reduced ? "" : "sbw-pop"}
         style={{ background: PAPER, borderRadius: 16, border: `3px solid ${accent}`, boxShadow: "0 14px 44px rgba(0,0,0,0.35)", maxWidth: sideBySide ? 840 : 620, width: "100%", maxHeight: "92vh", overflowY: "auto", padding: "34px 40px", textAlign: "center" }}>
@@ -6419,13 +6560,10 @@ function ResultModal({ data, onContinue, reduced }) {
 // Big popup for an album photo: the full-size shot plus everything the player
 // learned about that landmark. Opened by tapping a thumbnail in the album strip.
 function LandmarkModal({ p, onClose, reduced }) {
-  useEffect(() => {
-    const onKey = (e) => { if (e.key === "Escape") onClose(); };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
+  const ref = useRef(null);
+  useModalFocus(ref, onClose);
   return (
-    <div role="dialog" aria-modal="true" aria-label={p.subject} onClick={onClose}
+    <div ref={ref} role="dialog" aria-modal="true" aria-label={p.subject} onClick={onClose}
       style={{ position: "fixed", inset: 0, background: "rgba(16,38,46,0.62)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16, zIndex: 60 }}>
       {/* Photo on the LEFT, everything learned about the place stacked to its RIGHT,
           so the whole card fits without a vertical scroll — the details used to run
@@ -6643,6 +6781,8 @@ function AvatarEditor({ name, initial, onSave, onClose, onRename, onRemove }) {
   const [renameTo, setRenameTo] = useState(name);
   const [renameErr, setRenameErr] = useState("");
   const [confirmRemove, setConfirmRemove] = useState(false);
+  const ref = useRef(null);
+  useModalFocus(ref, onClose);
   const doRename = () => {
     const want = renameTo.trim();
     setRenameErr("");
@@ -6666,7 +6806,7 @@ function AvatarEditor({ name, initial, onSave, onClose, onRename, onRemove }) {
     </button>
   );
   return (
-    <div role="dialog" aria-modal="true" aria-label={`Customize ${name}'s traveler`}
+    <div ref={ref} role="dialog" aria-modal="true" aria-label={`Customize ${name}'s traveler`}
       style={{ position: "fixed", inset: 0, background: "rgba(16,38,46,0.62)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 70, padding: 16 }}>
       <div className="sbw-pop" style={{ background: PAPER, borderRadius: 12, padding: 20, width: "min(92vw, 380px)", maxHeight: "90vh", overflowY: "auto", textAlign: "center", border: `1px solid ${PAPER_LINE}` }}>
         <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.2em", color: CORAL }}>🧳 CUSTOMIZE TRAVELER</div>
@@ -6736,6 +6876,8 @@ function AvatarEditor({ name, initial, onSave, onClose, onRename, onRemove }) {
 function CreateTravelerModal({ onSubmit, onClose }) {
   const [name, setName] = useState("");
   const [err, setErr] = useState("");
+  const ref = useRef(null);
+  useModalFocus(ref, onClose);
   const [spec, setSpec] = useState(() => defaultAvatar(String(Math.random())));
   const bump = (key, n, dir) => setSpec((sp) => ({ ...sp, [key]: (((sp[key] || 0) + dir) % n + n) % n }));
   const roll = () => setSpec({
@@ -6755,7 +6897,7 @@ function CreateTravelerModal({ onSubmit, onClose }) {
     if (!ok) { setErr("That name is taken — pick another."); return; }
   };
   return (
-    <div role="dialog" aria-modal="true" aria-label="Create a new traveler"
+    <div ref={ref} role="dialog" aria-modal="true" aria-label="Create a new traveler"
       style={{ position: "fixed", inset: 0, background: "rgba(16,38,46,0.62)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 70, padding: 16 }}>
       <div className="sbw-pop" style={{ background: PAPER, borderRadius: 12, padding: 20, width: "min(92vw, 380px)", maxHeight: "92vh", overflowY: "auto", textAlign: "center", border: `1px solid ${PAPER_LINE}` }}>
         <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.2em", color: CORAL }}>🧳 CREATE NEW TRAVELER</div>
@@ -6957,9 +7099,13 @@ function CountryPopup({ country, onClose, reduced }) {
     const id = setTimeout(() => setCanGo(true), COUNTRY_CARD_DWELL_MS);
     return () => clearTimeout(id);
   }, [country]);
+  // Escape stays shut until the dwell is over, for the same reason the backdrop
+  // does: it would hand back the very skip the dwell exists to prevent.
+  const ref = useRef(null);
+  useModalFocus(ref, onClose, { escape: canGo });
   if (!country) return null;
   return (
-    <div role="dialog" aria-modal="true" aria-label={`You've arrived in ${country}`}
+    <div ref={ref} role="dialog" aria-modal="true" aria-label={`You've arrived in ${country}`}
       // The backdrop only dismisses once the button does. Leaving it live would hand
       // back the very skip the dwell exists to prevent, to anyone who taps the edge.
       onClick={canGo ? onClose : undefined}
@@ -7010,8 +7156,14 @@ function MrOBubble({ fact, beats, onClose, reduced }) {
     return () => window.removeEventListener("keydown", onKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [beat, lines.length]);
+  // escape:false because the handler above already maps Escape onto advance —
+  // the hook is here for the trap and for putting focus back afterwards. He has
+  // no focusable children, so the trap makes the dialog itself the focus holder,
+  // which is what lets those key presses land while he's up.
+  const ref = useRef(null);
+  useModalFocus(ref, null, { escape: false });
   return (
-    <div role="dialog" aria-modal="true" aria-label={`${MR_O.name} says`} onClick={advance}
+    <div ref={ref} role="dialog" aria-modal="true" aria-label={`${MR_O.name} says`} onClick={advance}
       style={{ position: "fixed", inset: 0, zIndex: 58, background: "rgba(8,20,24,0.66)",
         display: "flex", alignItems: "flex-end", justifyContent: "center", gap: 0, padding: "0 20px", cursor: "pointer" }}>
       <div className={reduced ? "" : "sbw-pop"} key={beat} style={{ display: "flex", alignItems: "flex-end", gap: 6, maxWidth: 1120, width: "100%", justifyContent: "center" }}>
@@ -7115,8 +7267,11 @@ function RiddleModal({ riddle, onAnswer, onClose, gain, reduced }) {
   const { data, choices, answeredIdx } = riddle;
   const answered = answeredIdx !== null;
   const wasCorrect = answered && choices[answeredIdx] === data.correct;
+  // escape:false — a riddle is a question to answer, not a card to dismiss.
+  const ref = useRef(null);
+  useModalFocus(ref, onClose, { escape: false });
   return (
-    <div role="dialog" aria-modal="true" aria-label="Mr. O's riddle"
+    <div ref={ref} role="dialog" aria-modal="true" aria-label="Mr. O's riddle"
       style={{ position: "fixed", inset: 0, background: "rgba(16,38,46,0.62)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16, zIndex: 58 }}>
       <div className={reduced ? "" : "sbw-pop"}
         style={{ background: PAPER, borderRadius: 16, border: `3px solid ${OCEAN}`, boxShadow: "0 14px 44px rgba(0,0,0,0.35)", maxWidth: 560, width: "100%", padding: "22px 22px 24px", textAlign: "center" }}>

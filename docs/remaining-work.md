@@ -64,6 +64,25 @@ Last updated **2026-07-18**.
 > 5. **The dog** — art is in `public/assets/shutterbug-ui/dog/` (6 poses) and already
 >    appears beside Jonah in his scenes. No gameplay role yet; see §10.
 
+> ### ⚠ 2026-07-21 — two new lists live in their own files
+>
+> This session produced two documents that supersede the priorities below:
+>
+> - **[`playtest-2026-07-21.md`](playtest-2026-07-21.md)** — Joshua's playtest pass.
+>   Fifteen items, triaged and sized: map crops, the airplane-only travel decision,
+>   the Long Trip rail, and the ancient-ruins content gaps. **Item A in that file
+>   (returning players are served a stale build) should go first — it means every
+>   other playtester may be reporting bugs against days-old code.**
+> - **[`keyboard-audit.md`](keyboard-audit.md)** — the rule-4 keyboard pass, finally
+>   done, and *measured* in the running game rather than assumed. The core loop is
+>   keyboard-operable and every control has a focus ring; the two real findings are
+>   that the gold ring fails contrast on every light surface (1.7–2.1:1 against a
+>   3:1 requirement) and that none of the 13 `aria-modal` dialogs traps or restores
+>   focus. Order to fix is at the bottom of that file.
+>
+> Also corrected there: this repo now holds **447 locations across 106 countries**,
+> not the 144 `CLAUDE.md` still claims.
+
 ### Contents
 
 This document is long enough that things get lost in it. Every section, in order:

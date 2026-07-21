@@ -42,6 +42,27 @@ class ErrorBoundary extends React.Component {
   }
 }
 
+// ---- Take a new build the FIRST time, not the second ------------------------
+// vite.config.js already ships `registerType: "autoUpdate"` with skipWaiting +
+// clientsClaim, so a new service worker installs and takes over the open page
+// straight away. What it CANNOT do is change the HTML and JS the page already
+// loaded — those came from the old precache. So a returning player sees the
+// previous build until they happen to reload, which is exactly the "the subtitle
+// is still the old blue one until I force a refresh" report.
+//
+// `controllerchange` fires at the moment the fresh worker claims this page. One
+// reload there and the player is on the new build without knowing anything
+// happened. The guard matters: without it, a reload that itself triggers another
+// controllerchange would loop the page forever.
+if ("serviceWorker" in navigator) {
+  let reloading = false;
+  navigator.serviceWorker.addEventListener("controllerchange", () => {
+    if (reloading) return;
+    reloading = true;
+    window.location.reload();
+  });
+}
+
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
     <ErrorBoundary>
