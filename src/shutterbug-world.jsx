@@ -4454,7 +4454,7 @@ export default function ShutterbugWorld() {
                   circumnavigation it is what lets the trail keep sailing west. */}
               {tiles.map((k) => (
                 <g key={k} transform={`translate(${k * 360} 0)`}>
-                  <image href={`${BASE}relief-world.jpg`} xlinkHref={`${BASE}relief-world.jpg`}
+                  <image href={`${BASE}relief-world-hyp.jpg`} xlinkHref={`${BASE}relief-world-hyp.jpg`}
                     x="0" y="0" width="360.4" height="180" preserveAspectRatio="none" />
                   {WORLD_COUNTRIES.map((c) => (
                     <path key={c.name} d={c.d} fill="none" stroke={INK} strokeOpacity="0.45" strokeWidth="0.5" vectorEffect="non-scaling-stroke" />
@@ -5363,7 +5363,7 @@ export default function ShutterbugWorld() {
                     {(plateMode === "wrap" ? [0, 360] : [0]).map((off) => (
                       // width is a hair over 360 so the two plates overlap and the
                       // antimeridian join doesn't show as a seam
-                      <image key={"relief" + off} href={`${BASE}relief-world.jpg`} xlinkHref={`${BASE}relief-world.jpg`}
+                      <image key={"relief" + off} href={`${BASE}relief-world-hyp.jpg`} xlinkHref={`${BASE}relief-world-hyp.jpg`}
                         x={off} y="0" width="360.4" height="180" preserveAspectRatio="none" />
                     ))}
                     {/* country borders over the relief */}

@@ -61,7 +61,7 @@ export default defineConfig({
     VitePWA({
       registerType: "autoUpdate",
       injectRegister: "auto", // injects the service-worker registration for us
-      includeAssets: ["favicon-32x32.png", "apple-touch-icon.png", "relief-world.jpg", "relief-antarctica.jpg"],
+      includeAssets: ["favicon-32x32.png", "apple-touch-icon.png", "relief-world-hyp.jpg", "relief-antarctica.jpg"],
       manifest: {
         name: "Shutterbug — A World Photo Safari",
         short_name: "Shutterbug",
