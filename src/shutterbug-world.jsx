@@ -2042,6 +2042,11 @@ export default function ShutterbugWorld() {
       profile: (n) => setProfileName(n),
       days: (n) => setDays(n),
       passport: () => setPassportOpen(true),
+      // A snapshot of the run's bookkeeping. Added while chasing "clicking a
+      // landmark does nothing": the answer was in the relationship between `step`
+      // and `assignments.length`, which nothing on screen shows.
+      state: () => ({ screen, phase, gameMode, difficulty, step, assignments: assignments.length,
+        options: optionsByStep.length, days, album: album.length, current, pickedContinent, pickedCountry }),
       // The country arrival card, with an optional local-transport still on it:
       //   __sbw.card("Thailand", "tuktuk")
       // Reaching this through the UI needs a live assignment and a 4s flight.
@@ -2156,7 +2161,20 @@ export default function ShutterbugWorld() {
     landingSfxRef.current = setTimeout(() => { landingSfxRef.current = null; sfx("landing", PLANE_SCALE_SEC); }, FLIGHT_MS - PLANE_SCALE_MS);
     flightFinalizeRef.current = finalize;
     setFlying({ fromX: from.x, fromY: from.y, toX: to.x, toY: to.y });
-    timer.current = setTimeout(() => { flightFinalizeRef.current = null; finalize(); }, FLIGHT_MS);
+    // Land the plane HERE, not in the caller's finalize. The continent finalizers
+    // each cleared `flying` themselves, which was fine while they were the only
+    // callers — then the country hop started flying too (it used to drive an
+    // overland vehicle, which cleared its own state), and its arrival callbacks
+    // had no reason to know about `flying`. It stayed set for the rest of the run,
+    // `busy` stayed true, and every click afterwards was silently swallowed: the
+    // player could still see the map and hover the pins, but photographing did
+    // nothing at all. Clearing it in the one place every flight goes through means
+    // a future caller cannot forget.
+    timer.current = setTimeout(() => {
+      flightFinalizeRef.current = null;
+      setFlying(null);
+      finalize();
+    }, FLIGHT_MS);
   };
   useEffect(() => () => { if (landingSfxRef.current) clearTimeout(landingSfxRef.current); }, []);
   const refreshProfiles = () => setProfiles(listProfiles());
@@ -3394,6 +3412,19 @@ export default function ShutterbugWorld() {
     }
 
     const a = assignments[step];
+    // A click that reaches here with no assignment behind it used to throw on
+    // `a.type` — and a throw inside an onClick is INVISIBLE to a player: the shot
+    // is charged, nothing opens, and the game looks like it ignored them. Whatever
+    // put the run in that state is a bug worth fixing on its own, but the shutter
+    // must never be the thing that swallows it. Fail loudly in dev, and hand the
+    // player an honest card instead of a dead click.
+    if (!a) {
+      if (import.meta.env.DEV) console.error("photographCity: no assignment at step", step, "of", assignments.length);
+      setPending({ kind: "wrong", tone: "bad", emoji: "🤔", title: "Let's start a fresh assignment",
+        subtitle: "Something went adrift with that one — Jonah's sending a new note.",
+        buttonLabel: "Read the new note 📩" });
+      return;
+    }
     // Win by category for a category mission; by exact subject for a specific one.
     const win = a.type === "category" ? clicked.category === a.category : id === a.targetId;
     // Never file the same place twice in one trip. A category mission lets the
