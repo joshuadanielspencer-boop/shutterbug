@@ -796,6 +796,55 @@ const optionsFitCountry = (ids, continent, country) => {
   const b = m.box, mx = 0.03 * b.w;
   return (ids || []).every((id) => { const l = BY_ID[id]; return l && l.x >= b.x - mx && l.x <= b.x + b.w + mx && l.y >= b.y - mx && l.y <= b.y + b.h + mx; });
 };
+// ---- Scale bar -------------------------------------------------------------
+// A distance legend for the zoomed maps, so "how big is this country actually?"
+// has an answer on the page rather than in a caption somewhere.
+//
+// The honest caveat, and why the bar carries a latitude: these plates are
+// equirectangular, so a degree of LONGITUDE shrinks as you go north or south while
+// a degree of latitude doesn't. One bar cannot be right for a whole map of Canada.
+// So it is measured across the middle of the frame — where most of the country the
+// map is about actually sits — and says so. That's a real thing to teach: a flat
+// map cannot keep every distance true at once.
+//
+// Rule 3: miles first, kilometres in brackets.
+function ScaleBar({ box, wOverS }) {
+  const midLat = 90 - (box.y + box.h / 2);
+  const cos = Math.cos((midLat * Math.PI) / 180);
+  // Miles per degree of longitude at this latitude (great-circle at the equator is
+  // 69.09 statute miles per degree).
+  const miPerDeg = 69.09 * Math.max(0.08, cos);
+  // Pick a round number of miles that lands the bar somewhere near a fifth of the
+  // frame, so it reads as a ruler and not a stripe across the map.
+  const targetDeg = box.w * 0.2;
+  const targetMi = targetDeg * miPerDeg;
+  const NICE = [10, 25, 50, 100, 200, 250, 500, 1000, 2000, 2500, 5000];
+  const miles = NICE.reduce((best, n) => (Math.abs(n - targetMi) < Math.abs(best - targetMi) ? n : best), NICE[0]);
+  const km = Math.round(miles * 1.609344);
+  const barDeg = miles / miPerDeg;
+  const h = 0.014 * box.h;
+  const fs = 0.028 * box.h;
+  // Sits above the bottom-left brass corner, and the label clears the bar rather
+  // than printing across it (it was reading as "200 m(322 km)" with the ruler
+  // straight through the text).
+  // Clear of the compass rose, which is pinned to the map's bottom-left as a DOM
+  // element over the frame — the same gutter the locator insets have to leave.
+  const x0 = box.x + box.w * 0.19;
+  const y0 = box.y + box.h * 0.915;
+  return (
+    <g style={{ pointerEvents: "none" }} aria-hidden="true">
+      {/* Two segments, the way a real map ruler is drawn — it reads as a scale even
+          before you read the number. */}
+      <rect x={x0} y={y0} width={barDeg / 2} height={h} fill="#FFFFFF" stroke={INK} strokeWidth="0.8" vectorEffect="non-scaling-stroke" />
+      <rect x={x0 + barDeg / 2} y={y0} width={barDeg / 2} height={h} fill={INK} stroke={INK} strokeWidth="0.8" vectorEffect="non-scaling-stroke" />
+      <text x={x0} y={y0 - h * 1.15} fontSize={fs} fontFamily="ui-monospace, monospace" fontWeight="800"
+        fill={INK} style={{ paintOrder: "stroke", stroke: PAPER, strokeWidth: fs * 0.42 }}>
+        {miles.toLocaleString("en-US")} mi ({km.toLocaleString("en-US")} km)
+      </text>
+    </g>
+  );
+}
+
 // ---- Overseas-territory locator insets ------------------------------------
 // A country's zoom box hugs its mainland (France's would otherwise have to span
 // the whole globe to include French Guiana AND Réunion), so its far-flung
@@ -5549,6 +5598,7 @@ export default function ShutterbugWorld() {
               {/* Overseas-territory locator insets — only on a country plate that has
                   far-flung territories off-frame (France: Guiana, the Antilles, Réunion,
                   Mayotte). */}
+              {zoomed && <ScaleBar box={box} wOverS={WoverS} />}
               {countryBox && pickedCountry && OVERSEAS_INSETS[pickedCountry] && (
                 <OverseasInsets specs={OVERSEAS_INSETS[pickedCountry]} box={box} />
               )}
