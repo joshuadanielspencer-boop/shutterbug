@@ -5,7 +5,7 @@ import { WORLD_COUNTRIES, COUNTRY_CONTINENT } from "./data/worldmap.js";
 // only used by the world map, so it's loaded lazily (see the effect below) to
 // keep it out of the first paint. worldmap.js stays eager — its outlines feed the
 // sepia background on every screen and the quiz's shape questions.
-import { COUNTRY_INFO, COUNTRY_LAYER_CONTINENTS, COUNTRY_NATIVE, displayCountry } from "./data/countries.js";
+import { COUNTRY_INFO, COUNTRY_LAYER_CONTINENTS, COUNTRY_NATIVE, ALWAYS_RING, displayCountry } from "./data/countries.js";
 import { RIVERS, LAKES, MARINE } from "./data/geography.js";
 import { JOURNEYS, JOURNEY_BY_ID, journeyBox, unrolledX, closestStops } from "./data/journeys.js";
 import { HUBS, TRANSPORT_BY_ID, transportOptionsFor, countryTransport, money as fmtMoney, currencyFor } from "./data/travel.js";
@@ -783,7 +783,24 @@ const pathBBox = (d, refX, refY = null, clip = Infinity) => {
     // lat 35.6…44.2 — at the atlas frame's own aspect so it fills the frame.
     "Europe|Spain": box145(177, 50.2, 13.4),
   };
-  for (const [key, box] of Object.entries(OVERRIDE)) if (COUNTRY_META[key]) COUNTRY_META[key].box = box;
+  // Every hand-set box goes through the same frame-aspect normalisation the derived
+  // ones do (rule 5). These predate that change and several were square or portrait —
+  // and a box narrower than the frame is not just "a bit letterboxed": under
+  // preserveAspectRatio="meet" the map is fitted by the BINDING axis, so the plate
+  // spills sideways well beyond the declared box. The UK's 12x12 showed 45% more map
+  // than it declared and Chile's 26x44 showed 145% more.
+  //
+  // Nothing about what you SEE changes much — the spill was already on screen. What
+  // changes is that everything positioned from `box` (the scale bar, the locator
+  // insets, the label) is now placed against the area actually being drawn instead of
+  // a rectangle two-thirds its size, which is what put the scale bar off in the
+  // margin and the insets somewhere odd.
+  const toFrameAspect = (b) => {
+    const w = Math.max(b.w, b.h * FRAME_AR);
+    const h = w / FRAME_AR;
+    return { x: b.x + b.w / 2 - w / 2, y: b.y + b.h / 2 - h / 2, w, h };
+  };
+  for (const [key, box] of Object.entries(OVERRIDE)) if (COUNTRY_META[key]) COUNTRY_META[key].box = toFrameAspect(box);
 })();
 // True when every one of this run's city options sits inside the country's zoom box.
 // A country with a tight override box (the USA) returns false for a run whose options
@@ -796,6 +813,42 @@ const optionsFitCountry = (ids, continent, country) => {
   const b = m.box, mx = 0.03 * b.w;
   return (ids || []).every((id) => { const l = BY_ID[id]; return l && l.x >= b.x - mx && l.x <= b.x + b.w + mx && l.y >= b.y - mx && l.y <= b.y + b.h + mx; });
 };
+// Drop the parts of a country outline that sit a long way from where the country
+// actually is, measured from its own landmark centre.
+//
+// This is for the two countries whose outlines wrap the planet on an ordinary
+// plate: the USA reaches past 180 with the Aleutians, Russia with Chukotka. Their
+// raw paths span the full 360, so the clickable region became the whole map —
+// measured, the USA's was 270% of the frame, meaning almost any click on the North
+// America map selected it.
+//
+// trimWrappedSubpaths (used on the Robinson world map) cuts against a fixed seam,
+// which is the right tool there and the wrong one here. This cuts against the
+// country's OWN position, so it needs no seam and works for either country.
+const trimFarSubpaths = (() => {
+  const cache = new Map();
+  return (d, refX, maxDeg = 90) => {
+    const key = d + "|" + Math.round(refX);
+    if (cache.has(key)) return cache.get(key);
+    const kept = d.split("M").filter(Boolean).filter((sub) => {
+      const nums = sub.match(/-?\d+(?:\.\d+)?/g);
+      if (!nums) return false;
+      // PLAIN distance, deliberately not seam-aware. The whole problem is that the
+      // Aleutians sit at plate x ~355 while the USA sits at ~69: as real-world
+      // geography they're close across the date line, and on this plate they are a
+      // whole map apart, which is exactly what blew the bounding box up. Measuring
+      // "the short way round" here would keep them and change nothing.
+      for (let i = 0; i + 1 < nums.length; i += 2) {
+        if (Math.abs(+nums[i] - refX) <= maxDeg) return true;
+      }
+      return false;
+    });
+    const out = kept.length ? "M" + kept.join("M") : d;
+    cache.set(key, out);
+    return out;
+  };
+})();
+
 // ---- Scale bar -------------------------------------------------------------
 // A distance legend for the zoomed maps, so "how big is this country actually?"
 // has an answer on the page rather than in a caption somewhere.
@@ -5422,15 +5475,45 @@ export default function ShutterbugWorld() {
                   // Australia is Australia again, and an island nation is its own
                   // scatter of islands rather than a counter parked on top of them.
                   const raw = wcPath(country);
-                  const d = raw && wrapPlate ? wrapPathPacific(raw) : raw;
+                  // Two different antimeridian problems, two different fixes. On a
+                  // PACIFIC-centred plate every outline has to move onto the plate. On
+                  // an ordinary plate only the countries that cross the line are wrong
+                  // — the USA reaches past 180 with the Aleutians, Russia with
+                  // Chukotka — and their raw outlines span the whole world. Measured,
+                  // the USA's clickable region was 270% of the frame, so almost any
+                  // click on the North America map selected it.
+                  let d = raw;
+                  if (raw) {
+                    d = wrapPlate ? wrapPathPacific(raw) : raw;
+                    const span = PATH_BBOX_CACHE(d);
+                    if (!wrapPlate && span && span.maxX - span.minX > 180) d = trimFarSubpaths(d, cm.cx);
+                  }
                   const pb = d ? PATH_BBOX_CACHE(d) : null;
                   // How much of the frame does this country actually cover? AREA, not
                   // span: the Solomon Islands are 5° wide and almost nothing, and a span
                   // test calls them big while a child still can't hit one. Below ~1% of
                   // the frame there is nothing to aim at, so those get a generous
                   // invisible target and a pulse that says "there IS something here".
-                  const areaFrac = pb ? ((pb.maxX - pb.minX) * (pb.maxY - pb.minY)) / (box.w * box.h) : 0;
-                  const tiny = !d || areaFrac < 0.010;
+                  // Which countries get the "there IS something here" ring.
+                  //
+                  // The first pass used 1% of the frame's AREA, which was far too
+                  // generous — it caught Jamaica, Uruguay and Guyana, which Joshua
+                  // rightly says are perfectly clickable. His rule is about countries
+                  // that are "basically invisible", so the test is now a LINEAR floor:
+                  // the country's longer side against the frame's, which is what "can
+                  // I see it / can I hit it" actually depends on.
+                  //
+                  // 1.2% of the frame width is roughly nine screen pixels in a desktop
+                  // window — genuinely too small to aim at. Jamaica sits around 1.5%
+                  // and keeps its own shape as the target; Vatican City, Monaco, San
+                  // Marino, Liechtenstein and Singapore fall well under it.
+                  //
+                  // ALWAYS_RING covers the judgement a measurement can't make:
+                  // Montenegro is no smaller than Jamaica but sits shoulder to shoulder
+                  // with its neighbours, where an island has clear water round it. That
+                  // is a content decision, so it lives in data (rule 1).
+                  const spanFrac = pb ? Math.max((pb.maxX - pb.minX) / box.w, (pb.maxY - pb.minY) / box.h) : 0;
+                  const tiny = !d || spanFrac < 0.012 || ALWAYS_RING.has(country);
                   return (
                     <g key={country} className={`sbw-country${tiny ? " sbw-country--tiny" : ""}${flashHint && flashHint.type === "country" && flashHint.key === country ? " sbw-flash-hint" : ""}`} role="button" tabIndex={busy ? -1 : 0}
                        aria-label={`Choose ${displayCountry(country)}`} onClick={() => pickCountry(country)}

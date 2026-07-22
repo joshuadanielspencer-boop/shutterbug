@@ -153,6 +153,47 @@ export const COUNTRY_INFO = {
 // (polar, no countries) stays continent-only.
 export const COUNTRY_LAYER_CONTINENTS = new Set(["North America", "South America", "Europe", "Africa", "Asia", "Oceania"]);
 
+
+// Countries that get the pulsing locator ring on a continent map even though a
+// size measurement wouldn't flag them.
+//
+// The automatic test is a linear floor — a country whose longer side is under
+// ~1.2% of the frame is too small to aim at. That catches the microstates, but it
+// can't catch the OTHER reason a country is hard to find: sitting shoulder to
+// shoulder with neighbours the same colour. Montenegro is no smaller than Jamaica,
+// but Jamaica has clear blue water round it and Montenegro is one notch on a
+// crowded Balkan coast.
+//
+// Keep this SHORT. A ring on everything is a ring on nothing, and the point is to
+// rescue the handful a child would otherwise never find.
+export const ALWAYS_RING = new Set([
+  // Scattered archipelagos. A bounding box is the wrong measure for these: Fiji's
+  // spans nearly 5% of the Oceania frame while the LAND inside it is a scatter of
+  // specks, so the automatic floor calls them findable and a child still can't hit
+  // one. Joshua named Fiji directly; the others are the same shape of problem.
+  "Fiji",
+  "Vanuatu",
+  "New Caledonia",
+  "Solomon Is.",
+  // Small countries wedged among same-coloured neighbours (see the note above).
+  "Montenegro",
+  "Slovenia",
+  "North Macedonia",
+  "Kosovo",
+  "Luxembourg",
+  "Lebanon",
+  "Israel",
+  "Kuwait",
+  "Qatar",
+  "Bahrain",
+  "Brunei",
+  "Eswatini",
+  "Djibouti",
+  "Gambia",
+  "Rwanda",
+  "Burundi",
+]);
+
 // ---- What a country is CALLED on screen -------------------------------------
 // The keys used throughout the game are Natural Earth's, because that is what the
 // map vectors, the borders and the continent lookup are all keyed by — and
