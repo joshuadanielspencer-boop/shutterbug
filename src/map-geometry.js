@@ -200,3 +200,42 @@ export const niceScaleMiles = (boxW, midLat, frac = 0.2) => {
   const target = boxW * frac * milesPerLonDegree(midLat);
   return NICE_MILES.reduce((best, n) => (Math.abs(n - target) < Math.abs(best - target) ? n : best), NICE_MILES[0]);
 };
+
+// Total land area of a path, in square plate-degrees (shoelace over every ring).
+//
+// This exists because a bounding box lies about archipelagos, and the lie matters:
+// French Polynesia's islands are scattered across its whole frame, so its bbox
+// fills the frame while the LAND inside it is about 1% of it. New Caledonia is one
+// island filling two-thirds of its frame. Both look identical to a bbox test and
+// need opposite treatment — FP's specks have to be painted in because the relief
+// raster has nothing to show at that scale, NC's shouldn't be, because flat-filling
+// it would hide the very relief its map is for.
+//
+// Memoised: the paths are module constants and this walks every coordinate.
+export const pathArea = (() => {
+  const cache = new Map();
+  return (d) => {
+    if (cache.has(d)) return cache.get(d);
+    let total = 0;
+    for (const sub of d.split("M").filter(Boolean)) {
+      const nums = sub.match(/-?\d+(?:\.\d+)?/g);
+      if (!nums || nums.length < 6) continue;
+      let a = 0;
+      const n = Math.floor(nums.length / 2);
+      for (let i = 0, j = n - 1; i < n; j = i++) {
+        const xi = +nums[i * 2], yi = +nums[i * 2 + 1];
+        const xj = +nums[j * 2], yj = +nums[j * 2 + 1];
+        a += (xj + xi) * (yj - yi);
+      }
+      total += Math.abs(a / 2);
+    }
+    cache.set(d, total);
+    return total;
+  };
+})();
+
+// Is this country's land too small, in THIS frame, for the relief raster to show
+// it? Below roughly 2% of the frame the plate has essentially nothing at that
+// scale and an unfilled outline is a few hairlines on open blue.
+export const isSpeckIn = (d, box, threshold = 0.02) =>
+  !!d && !!box && pathArea(d) / (box.w * box.h) < threshold;

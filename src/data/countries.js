@@ -172,6 +172,7 @@ export const ALWAYS_RING = new Set([
   // specks, so the automatic floor calls them findable and a child still can't hit
   // one. Joshua named Fiji directly; the others are the same shape of problem.
   "Fiji",
+  "French Polynesia",
   "Vanuatu",
   "New Caledonia",
   "Solomon Is.",

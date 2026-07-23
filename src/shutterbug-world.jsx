@@ -15,7 +15,7 @@ import { robinson, eqToRobinson, robinsonToEq, ROBINSON_W, ROBINSON_H } from "./
 // The pure map geometry — bounding boxes, the two antimeridian cutters, frame-aspect
 // fitting, the scale-bar arithmetic. Extracted from this file (it was ~7,900 lines and
 // this layer had three untested bugs in one session); tested in test/map-geometry.test.js.
-import { FRAME_AR, countryKey, pathBBox, pathBBoxCached as PATH_BBOX_CACHE,
+import { FRAME_AR, countryKey, pathBBox, pathBBoxCached as PATH_BBOX_CACHE, isSpeckIn,
   wrapPathPacific, trimWrappedSubpaths, trimFarSubpaths, toFrameAspect, fitBox,
   eqPointFromEvent, milesPerLonDegree, niceScaleMiles } from "./map-geometry.js";
 import { rnd, shuffled, withSeed, randInt } from "./rng.js";
@@ -5469,12 +5469,38 @@ export default function ShutterbugWorld() {
 
 
               {/* Outline the country you're standing in (city step) with a bold border
-                  and NO fill, so the relief inside shows through — the player sees the
-                  country's real mountains, rivers and coasts. Its name rides in a
-                  banner across the top. */}
-              {inCity && pickedCountry && plateMode !== "wrap" && wcPath(pickedCountry) && (
-                <path d={wcPath(pickedCountry)} fillRule="evenodd" fill="none" stroke={CORAL} strokeWidth="3.4" strokeLinejoin="round" vectorEffect="non-scaling-stroke" style={{ pointerEvents: "none" }} />
-              )}
+                  and normally NO fill, so the relief inside shows through — the player
+                  sees the country's real mountains, rivers and coasts. Its name rides
+                  in a banner across the top. */}
+              {inCity && pickedCountry && wcPath(pickedCountry) && (() => {
+                // `plateMode !== "wrap"` used to gate this, so no Oceania country ever
+                // got a border on its own map at all — the same Pacific-plate gap that
+                // made the continent layer draw discs. wrapPathPacific is the fix here
+                // too: shift the outline onto the plate and the border comes back.
+                const d = plateMode === "wrap" ? wrapPathPacific(wcPath(pickedCountry)) : wcPath(pickedCountry);
+                // Is there enough LAND in this frame for the relief to show? Measured,
+                // not listed — and it has to be area, because a bounding box gets this
+                // exactly backwards. French Polynesia's islands are scattered across
+                // its whole frame, so its bbox fills it while the land is about 1%;
+                // New Caledonia is one island filling two thirds of its frame. A bbox
+                // test calls them the same and they need opposite treatment.
+                //
+                // Under ~2% the plate has essentially nothing at that scale and an
+                // unfilled outline is a few hairlines on open blue, so the vector gets
+                // painted in — it is the only thing that can show the land. Above it,
+                // no fill: the relief is the whole point of a country map.
+                const speck = isSpeckIn(d, box);
+                return (
+                  <path d={d} fillRule="evenodd"
+                    fill={speck ? LAND : "none"} fillOpacity={speck ? 0.95 : 0}
+                    // A speck gets a THIN edge, because a 3.4px non-scaling stroke on an
+                    // island a few pixels across is wider than the island — it swallowed
+                    // the land tint whole and the atolls came out as red dots. Here the
+                    // fill carries "this is land" and the edge only defines it.
+                    stroke={speck ? LAND_EDGE : CORAL} strokeWidth={speck ? 0.9 : 3.4} strokeLinejoin="round"
+                    vectorEffect="non-scaling-stroke" style={{ pointerEvents: "none" }} />
+                );
+              })()}
               {inCity && (ctxCountry || pickedCountry) && (
                 <g style={{ pointerEvents: "none" }}>
                   <rect x={box.x + box.w * 0.5 - (String(ctxCountry || pickedCountry).length * 0.0125 + 0.03) * box.w} y={box.y + 0.02 * box.h}

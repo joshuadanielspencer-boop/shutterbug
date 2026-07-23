@@ -19,6 +19,7 @@ import { describe, it, expect } from "vitest";
 import {
   FRAME_AR, pathBBox, pathBBoxCached, wrapPathPacific, trimWrappedSubpaths,
   trimFarSubpaths, toFrameAspect, fitBox, milesPerLonDegree, niceScaleMiles,
+  pathArea, isSpeckIn,
 } from "../src/map-geometry.js";
 
 const width = (bb) => bb.maxX - bb.minX;
@@ -215,5 +216,35 @@ describe("scale bar", () => {
       const m = niceScaleMiles(w, 20);
       expect([10, 25, 50, 100, 200, 250, 500, 1000, 2000, 2500, 5000]).toContain(m);
     }
+  });
+});
+
+describe("pathArea / isSpeckIn", () => {
+  it("measures a unit square", () => {
+    expect(pathArea("M0 0L1 0L1 1L0 1")).toBeCloseTo(1, 6);
+  });
+
+  it("sums every ring of a multi-island path", () => {
+    expect(pathArea("M0 0L1 0L1 1L0 1M10 10L12 10L12 12L10 12")).toBeCloseTo(5, 6);
+  });
+
+  it("is orientation-independent", () => {
+    expect(pathArea("M0 0L1 0L1 1L0 1")).toBeCloseTo(pathArea("M0 0L0 1L1 1L1 0"), 6);
+  });
+
+  // The case a bounding box gets wrong: scattered specks whose bbox fills the
+  // frame while the land in it is ~1%.
+  it("calls a scattered archipelago a speck", () => {
+    const atolls = "M0 0L0.1 0L0.1 0.1L0 0.1M6 4L6.1 4L6.1 4.1L6 4.1M3 2L3.1 2L3.1 2.1L3 2.1";
+    const frame = { x: 0, y: 0, w: 6.7, h: 4.6 };
+    expect(isSpeckIn(atolls, frame)).toBe(true);
+  });
+
+  // ...and the case it must NOT catch: one island filling its frame, where a flat
+  // fill would hide the relief the map exists to show.
+  it("does not call a real landmass a speck", () => {
+    const island = "M1 1L5 1L5 3.5L1 3.5";
+    const frame = { x: 0, y: 0, w: 6.7, h: 4.6 };
+    expect(isSpeckIn(island, frame)).toBe(false);
   });
 });
