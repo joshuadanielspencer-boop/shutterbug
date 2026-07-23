@@ -7905,8 +7905,21 @@ function PicklesCheer({ kind, reduced }) {
   const copy = DOG_LINES[kind] || DOG_LINES.perfect;
   return (
     <div className={reduced ? "" : "sbw-pop"} aria-hidden="true"
-      style={{ position: "absolute", left: "2.5vw", bottom: "4vh", zIndex: 2, pointerEvents: "none",
-        width: "min(24vw, 300px)", display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
+      // Anchored to the CARD's edge, not the viewport's. Positioning her from the
+      // left meant her overlap depended entirely on window width: measured against
+      // the 840px photo card she cleared it at 1920 and buried 112px of it at 1280
+      // — and the photo sits on that card's left, so she was covering the picture
+      // the player just earned.
+      //
+      // `right` measured from the centre line fixes that: the card is centred and
+      // at most 840 wide, so 50% + 420 is exactly its left edge and the 60px back
+      // off that is a deliberate, CONSTANT lean at every window size. Joshua asked
+      // for a little overlap, not none. On the narrower 620px card (no photo) she
+      // clears it entirely, which is right — there's more gutter to sit in.
+      //
+      // The width cap keeps her on screen when the gutter runs out.
+      style={{ position: "absolute", right: "calc(50% + 360px)", bottom: "2vh", zIndex: 2, pointerEvents: "none",
+        width: "min(260px, calc(50vw - 360px))", display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
       <img src={`${UI}dog/${DOG_POSES[copy.pose]}`} alt=""
         style={{ width: "100%", height: "auto", filter: "drop-shadow(0 10px 18px rgba(0,0,0,0.55))" }} />
       <p style={{ margin: 0, color: "#FFF3D6", fontSize: 15, lineHeight: 1.4, textAlign: "center", fontWeight: 600,
