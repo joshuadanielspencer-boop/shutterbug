@@ -5394,7 +5394,7 @@ export default function ShutterbugWorld() {
                           Europe, red Asia…) so they read at a glance as part of it,
                           not a generic green blob. */}
                       {d
-                        ? <path d={d} fillRule="evenodd" fill={CONTINENT_COLOR[pickedContinent]} fillOpacity="0.62" stroke={INK} strokeWidth="0.6" vectorEffect="non-scaling-stroke" />
+                        ? <path d={d} fillRule="evenodd" fill={CONTINENT_COLOR[pickedContinent]} fillOpacity="0.30" stroke={INK} strokeWidth="1.1" vectorEffect="non-scaling-stroke" />
                         : <g transform={unstretchAt(cm.cy)}><ellipse cx={cm.cx} cy={cm.cy} {...pinR(0.022)} fill={CONTINENT_COLOR[pickedContinent]} fillOpacity="0.9" stroke={PAPER} strokeWidth="1" vectorEffect="non-scaling-stroke" /></g>}
                     </g>
                   );
@@ -5806,6 +5806,14 @@ function Frame({ children, desk = false }) {
         /* Thick white halo around the whole continent's OUTER edge on hover/focus. */
         .sbw-cont:hover,
         .sbw-cont:focus-visible{ filter: drop-shadow(0 0 1.4px #fff) drop-shadow(0 0 1.4px #fff) drop-shadow(0 0 1px #fff); }
+        /* The selectable-country wash was 0.62, which was the right number over the
+           old flat relief and the wrong one now: the hypsometric plate carries real
+           information — green lowlands, brown highlands — and a 62% coral wash was
+           painting over the very thing the map upgrade was for. It is 0.30 now, with
+           a heavier border doing the work the fill used to.
+           Colour is still never the only signal (rule 4): the border, the hover and
+           focus highlights, and the country's name on hover all say "clickable"
+           without depending on the wash. */
         .sbw-country{ outline: none; }
         /* Island nations that come out a pixel wide. The ring breathes so a child can
            SEE there's something to aim at, and it's a big invisible target so they
