@@ -12,6 +12,12 @@ import { HUBS, TRANSPORT_BY_ID, transportOptionsFor, countryTransport, money as 
 import { COUNTRY_PEOPLE, peopleCards, greetingMeaning } from "./data/culture.js";
 import { categoryCountries, categoryMissionOK as missionOK } from "./missions.js";
 import { robinson, eqToRobinson, robinsonToEq, ROBINSON_W, ROBINSON_H } from "./robinson.js";
+// The pure map geometry — bounding boxes, the two antimeridian cutters, frame-aspect
+// fitting, the scale-bar arithmetic. Extracted from this file (it was ~7,900 lines and
+// this layer had three untested bugs in one session); tested in test/map-geometry.test.js.
+import { FRAME_AR, countryKey, pathBBox, pathBBoxCached as PATH_BBOX_CACHE,
+  wrapPathPacific, trimWrappedSubpaths, trimFarSubpaths, toFrameAspect, fitBox,
+  eqPointFromEvent, milesPerLonDegree, niceScaleMiles } from "./map-geometry.js";
 import { rnd, shuffled, withSeed, randInt } from "./rng.js";
 import { flightDays, kmBetween, tourPar as par, routeCost as legCost } from "./routes.js";
 import { dayNumber, dailySeed, dailyKey, shareText, DAILY_ASSIGNMENTS } from "./daily.js";
@@ -407,23 +413,6 @@ const _WORLD_TOP = (_NORTH_LAND_Y - 0.05 * _ANT_SOUTH) / 0.95; // 5% ocean margi
 const _RIGHT_X = eqToRobinson(357, 127).x + 3;
 const WORLD_BOX = { x: _LEFT_X, y: _WORLD_TOP, w: _RIGHT_X - _LEFT_X, h: _ANT_SOUTH - _WORLD_TOP };
 
-// The USA's Aleutian Islands cross the antimeridian; in this re-centerd Robinson
-// projection their western tail wraps to the FAR RIGHT of the map (out by Russia),
-// where it would light up as "North America" on mouseover. Every legitimate North
-// American point projects to x < ~230, while the wrapped Aleutian slivers all land
-// at x > 300 — so dropping any subpath that lies entirely in the far-right zone
-// removes the artifact and leaves the rest of the map exactly as it is.
-const WORLD_WRAP_CUT = 250;
-const trimWrappedSubpaths = (d) => {
-  if (!d || d.indexOf("M") < 0) return d;
-  const kept = d.split("M").filter(Boolean).filter((s) => {
-    const nums = s.match(/-?\d+(?:\.\d+)?/g);
-    if (!nums) return false;
-    for (let i = 0; i + 1 < nums.length; i += 2) if (+nums[i] <= WORLD_WRAP_CUT) return true; // keep: has a non-wrapped point
-    return false; // whole subpath sits in the far-right wrap zone → drop it
-  });
-  return kept.length ? "M" + kept.join("M") : d;
-};
 
 // The Robinson map outline (filled as ocean) and a light graticule, both static.
 const ROBINSON_OUTLINE = (() => {
@@ -446,12 +435,6 @@ const ROBINSON_GRATICULE = (() => {
   return lines;
 })();
 
-// The atlas window's aspect. Every zoom box is built to it so a map FILLS the
-// frame instead of letterboxing (rule 5). Module scope, and declared up here
-// because the continent boxes below are computed at module load: it was three
-// separate `1.45` literals, which is the kind of thing that drifts the first
-// time one of them is tuned.
-const FRAME_AR = 1.45;
 
 const CONTINENT_ORDER = ["North America", "South America", "Europe", "Africa", "Asia", "Oceania", "Antarctica"];
 // Only offer continents that actually have locations, so a continent added to the
@@ -583,57 +566,9 @@ const WC_BY_NAME = Object.fromEntries(WORLD_COUNTRIES.map((c) => [c.name, c.d]))
 // tiny island — so it simply shows a marker with no border, which is fine.)
 const WC_ALIAS = { "United States": "United States of America" };
 const wcPath = (country) => WC_BY_NAME[country] || WC_BY_NAME[WC_ALIAS[country]];
-// Where on the world map a pointer event actually landed, in the game's
-// equirectangular coords. getScreenCTM is the browser's own answer to "how is this
-// svg currently laid out", so it survives the frame being any size and the viewBox
-// being letterboxed — which hand-rolled ratio arithmetic would not.
-//
-// Returns null rather than a guess if anything is missing (no owning svg, no CTM
-// because the element isn't rendered yet); callers fall back to a fixed pin.
-const eqPointFromEvent = (e) => {
-  const el = e.currentTarget;
-  const svg = el && (el.ownerSVGElement || (el.tagName === "svg" ? el : null));
-  if (!svg || !svg.createSVGPoint || !svg.getScreenCTM) return null;
-  const m = svg.getScreenCTM();
-  if (!m) return null;
-  const pt = svg.createSVGPoint();
-  pt.x = e.clientX; pt.y = e.clientY;
-  const p = pt.matrixTransform(m.inverse());
-  return robinsonToEq(p.x, p.y);
-};
-// pathBBox walks every coordinate in a path string, and the country layer re-renders
-// on every hover. Memoized by the path itself — the strings are module constants, so
-// the cache is bounded by the number of countries and never goes stale.
-const PATH_BBOX_CACHE = (() => {
-  const cache = new Map();
-  return (d) => {
-    if (!cache.has(d)) cache.set(d, pathBBox(d, null));
-    return cache.get(d);
-  };
-})();
-// Rewrite a country outline onto a PACIFIC-CENTRED plate (Oceania), where x runs
-// past 180 instead of wrapping to 0.
-//
-// Shifting the whole path by a multiple of 360 is not enough, because the countries
-// that need this most are the ones that straddle the antimeridian: Fiji has islands
-// at lon 177 and lon -178, New Zealand has the Chathams past the line. Left alone
-// their outlines span the entire plate — measured, New Zealand and Fiji each had a
-// hit area 2,053 pixels wide, so pointing anywhere along that band picked them.
-//
-// Per-POINT is the fix, using the same convention COUNTRY_META already uses for the
-// landmarks: anything west of x=180 belongs a turn to the east. The paths are
-// absolute M/L only (no curves), so every number pairs up as an (x, y) and this is a
-// safe rewrite rather than a parse.
-const wrapPathPacific = (() => {
-  const cache = new Map();
-  return (d) => {
-    if (!cache.has(d)) {
-      cache.set(d, d.replace(/(-?\d+(?:\.\d+)?)(\s+)(-?\d+(?:\.\d+)?)/g,
-        (_, xs, sp, ys) => `${(+xs < 180 ? +xs + 360 : +xs).toFixed(2)}${sp}${ys}`));
-    }
-    return cache.get(d);
-  };
-})();
+
+
+
 // The sticker book's fixed page layout: every country in the game, grouped by
 // continent — including countries the traveler hasn't touched yet, so the empty
 // slots show what's left to collect.
@@ -660,40 +595,13 @@ const COUNTRY_LOCS = {};       // continent -> { country -> [location ids] }
 const COUNTRY_META = {};       // "continent|country" -> { box, cx, cy }  (keyed per
 // continent so a transcontinental country — e.g. Russia, with landmarks in both
 // Europe and Asia — zooms to the right region for whichever continent you're on).
-const countryKey = (continent, country) => `${continent}|${country}`;
+
 // A landmark usually sits in one country, but a few straddle a border (e.g.
 // Niagara Falls on the Canada–US line). `countries` lists every country it can be
 // reached from; `country` stays the primary (for its flag/greeting). Picking ANY
 // of its countries in the country layer counts as correct.
 const countriesOf = (l) => (l.countries && l.countries.length ? l.countries : [l.country]);
-// Bounding box of a country outline. The worldmap paths are absolute M/L coords
-// (no curves), so every number pairs up as an (x, y) point — enough to size a
-// zoom box to the country's real shape rather than just its landmark spread.
-//
-// `refX` is a longitude the country is known to sit near (its landmarks' center).
-// Every point is measured in the wrap-around nearest that reference, because a
-// country whose outline crosses the antimeridian would otherwise measure as if it
-// spanned the entire planet: the USA's Aleutians run past 180°E, so a raw box put
-// its "center" on the prime meridian and the United States map opened on AFRICA.
-// `clip` (optional): ignore points more than this many degrees from (refX, refY),
-// so a country's FAR-FLUNG overseas territories — French Guiana, Réunion, the
-// Azores — don't blow the zoom box out to span the whole planet. The mainland (near
-// the landmarks) is kept; the distant enclaves are dropped from the box.
-const pathBBox = (d, refX, refY = null, clip = Infinity) => {
-  const nums = d && d.match(/-?\d+(?:\.\d+)?/g);
-  if (!nums || nums.length < 4) return null;
-  const near = (x) => (refX == null ? x : x + 360 * Math.round((refX - x) / 360));
-  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-  for (let i = 0; i + 1 < nums.length; i += 2) {
-    const x = near(+nums[i]), y = +nums[i + 1];
-    if (Math.abs(x - refX) > clip) continue;
-    if (refY != null && Math.abs(y - refY) > clip) continue;
-    if (x < minX) minX = x; if (x > maxX) maxX = x;
-    if (y < minY) minY = y; if (y > maxY) maxY = y;
-  }
-  if (minX === Infinity) return null;
-  return { minX, minY, maxX, maxY };
-};
+
 (() => {
   for (const cont of COUNTRY_LAYER_CONTINENTS) {
     const wrap = CONTINENT_META[cont] && CONTINENT_META[cont].mode === "wrap"; // Oceania: Pacific-centerd
@@ -740,15 +648,10 @@ const pathBBox = (d, refX, refY = null, clip = Infinity) => {
       // dimension is binding, with a small honest margin. A country shaped like
       // the frame now nearly fills it; a tall country like Chile still can't
       // fill a wide frame, but it fills the height instead of a fifth of it.
-      const bw = bx1 - bx0, bh = by1 - by0;
-      const MARGIN = 1.08;                          // 4% of the country's extent a side
-      let w = Math.max(bw, bh * FRAME_AR) * MARGIN; // widen to the frame's aspect...
-      let h = w / FRAME_AR;                         // ...and the height follows from it
-      // Floor for microstates (Singapore, Monaco): below this the relief plate has
-      // no detail left to show and the map is just blur.
-      if (w < 4.5 * FRAME_AR) { w = 4.5 * FRAME_AR; h = 4.5; }
-      if (w > 120 * FRAME_AR) { w = 120 * FRAME_AR; h = 120; }
-      COUNTRY_META[countryKey(cont, country)] = { box: { x: bcx - w / 2, y: bcy - h / 2, w, h }, cx, cy };
+      // fitBox carries the margin, the microstate floor (below which the relief has
+      // no detail left to show) and the cap. See src/map-geometry.js.
+      const box = fitBox(bcx, bcy, bx1 - bx0, by1 - by0);
+      COUNTRY_META[countryKey(cont, country)] = { box, cx, cy };
     }
   }
   // A few countries are so far-flung that a box holding ALL their landmarks spans a
@@ -795,11 +698,6 @@ const pathBBox = (d, refX, refY = null, clip = Infinity) => {
   // insets, the label) is now placed against the area actually being drawn instead of
   // a rectangle two-thirds its size, which is what put the scale bar off in the
   // margin and the insets somewhere odd.
-  const toFrameAspect = (b) => {
-    const w = Math.max(b.w, b.h * FRAME_AR);
-    const h = w / FRAME_AR;
-    return { x: b.x + b.w / 2 - w / 2, y: b.y + b.h / 2 - h / 2, w, h };
-  };
   for (const [key, box] of Object.entries(OVERRIDE)) if (COUNTRY_META[key]) COUNTRY_META[key].box = toFrameAspect(box);
 })();
 // True when every one of this run's city options sits inside the country's zoom box.
@@ -813,41 +711,6 @@ const optionsFitCountry = (ids, continent, country) => {
   const b = m.box, mx = 0.03 * b.w;
   return (ids || []).every((id) => { const l = BY_ID[id]; return l && l.x >= b.x - mx && l.x <= b.x + b.w + mx && l.y >= b.y - mx && l.y <= b.y + b.h + mx; });
 };
-// Drop the parts of a country outline that sit a long way from where the country
-// actually is, measured from its own landmark centre.
-//
-// This is for the two countries whose outlines wrap the planet on an ordinary
-// plate: the USA reaches past 180 with the Aleutians, Russia with Chukotka. Their
-// raw paths span the full 360, so the clickable region became the whole map —
-// measured, the USA's was 270% of the frame, meaning almost any click on the North
-// America map selected it.
-//
-// trimWrappedSubpaths (used on the Robinson world map) cuts against a fixed seam,
-// which is the right tool there and the wrong one here. This cuts against the
-// country's OWN position, so it needs no seam and works for either country.
-const trimFarSubpaths = (() => {
-  const cache = new Map();
-  return (d, refX, maxDeg = 90) => {
-    const key = d + "|" + Math.round(refX);
-    if (cache.has(key)) return cache.get(key);
-    const kept = d.split("M").filter(Boolean).filter((sub) => {
-      const nums = sub.match(/-?\d+(?:\.\d+)?/g);
-      if (!nums) return false;
-      // PLAIN distance, deliberately not seam-aware. The whole problem is that the
-      // Aleutians sit at plate x ~355 while the USA sits at ~69: as real-world
-      // geography they're close across the date line, and on this plate they are a
-      // whole map apart, which is exactly what blew the bounding box up. Measuring
-      // "the short way round" here would keep them and change nothing.
-      for (let i = 0; i + 1 < nums.length; i += 2) {
-        if (Math.abs(+nums[i] - refX) <= maxDeg) return true;
-      }
-      return false;
-    });
-    const out = kept.length ? "M" + kept.join("M") : d;
-    cache.set(key, out);
-    return out;
-  };
-})();
 
 // ---- Scale bar -------------------------------------------------------------
 // A distance legend for the zoomed maps, so "how big is this country actually?"
@@ -863,16 +726,8 @@ const trimFarSubpaths = (() => {
 // Rule 3: miles first, kilometres in brackets.
 function ScaleBar({ box, wOverS }) {
   const midLat = 90 - (box.y + box.h / 2);
-  const cos = Math.cos((midLat * Math.PI) / 180);
-  // Miles per degree of longitude at this latitude (great-circle at the equator is
-  // 69.09 statute miles per degree).
-  const miPerDeg = 69.09 * Math.max(0.08, cos);
-  // Pick a round number of miles that lands the bar somewhere near a fifth of the
-  // frame, so it reads as a ruler and not a stripe across the map.
-  const targetDeg = box.w * 0.2;
-  const targetMi = targetDeg * miPerDeg;
-  const NICE = [10, 25, 50, 100, 200, 250, 500, 1000, 2000, 2500, 5000];
-  const miles = NICE.reduce((best, n) => (Math.abs(n - targetMi) < Math.abs(best - targetMi) ? n : best), NICE[0]);
+  const miPerDeg = milesPerLonDegree(midLat);
+  const miles = niceScaleMiles(box.w, midLat);
   const km = Math.round(miles * 1.609344);
   const barDeg = miles / miPerDeg;
   const h = 0.014 * box.h;
