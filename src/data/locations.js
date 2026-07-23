@@ -5092,4 +5092,117 @@ export const LOCATIONS = [
       credit: "Hugh Llewelyn", license: "CC BY-SA 2.0", licenseUrl: "https://creativecommons.org/licenses/by-sa/2.0/",
       source: "https://commons.wikimedia.org/wiki/File:Qutang Gorge (43588474294).jpg" },
     greeting: { text: "你好 (Nǐ hǎo)", language: "Mandarin Chinese", pronunciation: "nee-HOW" } },
+
+  // =========================================================================
+  // ANCIENT RUINS EXPANSION (2026-07-23) — filling curricular gaps in the
+  // `ruins` category. Every fact checked against Wikipedia/Britannica/UNESCO;
+  // every photo verified through the Commons API (license + author) AND opened
+  // and looked at, which is how "Caral Peru.JPG" was caught being a welcome
+  // signboard rather than the ruins. Coordinates: x = lon+180, y = 90-lat.
+  // =========================================================================
+
+  // The Indus Valley Civilization — a whole civilisation the game had no entry
+  // for. Photo: the Great Bath with the later Buddhist stupa behind it.
+  { id: "mohenjodaro", city: "Mohenjo-daro", country: "Pakistan", flag: "🇵🇰", continent: "Asia",
+    x: 248.14, y: 62.68,
+    subject: "the ruins of Mohenjo-daro", icon: "", category: "ruins", tags: ["ancient", "unesco"],
+    easy: "In the Indus River valley of Pakistan, in Asia, stand the brick ruins of Mohenjo-daro — one of the world's oldest planned cities, laid out on a grid about 4,500 years ago.",
+    medium: "Word from Pakistan: more than four thousand years ago a people built a great city of baked brick, with straight streets and covered drains — then it was lost for centuries. Photograph the ruins.",
+    hard: "A city of the deep past, laid out in neat blocks with covered drains beneath its streets, was swallowed by time until diggers found it again. Bring me its brick ruins.",
+    fact: "Mohenjo-daro in Pakistan is one of the world's oldest planned cities, built about 4,500 years ago by the Indus Valley Civilization — with straight streets, brick houses, and covered drains.",
+    photo: { src: "https://commons.wikimedia.org/wiki/Special:FilePath/Mohenjo-daro.jpg?width=800",
+      credit: "Saqib Qayyum", license: "CC BY-SA 3.0", licenseUrl: "https://creativecommons.org/licenses/by-sa/3.0/",
+      source: "https://commons.wikimedia.org/wiki/File:Mohenjo-daro.jpg" },
+    greeting: { text: "السلام علیکم (Assalam-o-Alaikum)", language: "Urdu", pronunciation: "uh-suh-LAAM-oh-uh-LEH-koom" } },
+
+  // The oldest known monumental site — it resets what "ancient" means.
+  { id: "gobeklitepe", city: "Göbekli Tepe", country: "Turkey", flag: "🇹🇷", continent: "Asia",
+    x: 218.92, y: 52.78,
+    subject: "the stone pillars of Göbekli Tepe", icon: "", category: "ruins", tags: ["ancient", "unesco"],
+    easy: "On a hilltop in southern Turkey, in Asia, huge carved stone pillars were raised at Göbekli Tepe about 11,000 years ago — thousands of years before Stonehenge or the pyramids.",
+    medium: "Word from Turkey: on a bare hill, people who had not yet learned to farm or write raised rings of giant carved pillars — the oldest monument of its kind on Earth. Photograph the stones.",
+    hard: "Long before writing, before farming, before the first pyramid, hunters carved great T-shaped pillars and stood them in rings on a hill. Find the oldest of all such monuments.",
+    fact: "Göbekli Tepe in southern Turkey has massive T-shaped carved stone pillars raised about 11,000 years ago — thousands of years before Stonehenge or the Egyptian pyramids, making it the oldest known monumental site.",
+    photo: { src: "https://commons.wikimedia.org/wiki/Special:FilePath/Göbekli Tepe, Urfa.jpg?width=800",
+      credit: "Teomancimit", license: "CC BY-SA 3.0", licenseUrl: "https://creativecommons.org/licenses/by-sa/3.0/",
+      source: "https://commons.wikimedia.org/wiki/File:Göbekli Tepe, Urfa.jpg" },
+    greeting: { text: "Merhaba", language: "Turkish", pronunciation: "MER-ha-ba" } },
+
+  // The Library of Celsus — one of the most photographable ruins anywhere.
+  { id: "ephesus", city: "Ephesus", country: "Turkey", flag: "🇹🇷", continent: "Asia",
+    x: 207.34, y: 52.06,
+    subject: "the Library of Celsus at Ephesus", icon: "", category: "ruins", tags: ["ancient", "unesco"],
+    easy: "At Ephesus, an ancient Greek and Roman city on Turkey's Aegean coast in Asia, the two-storey marble face of the Library of Celsus still stands after about 1,900 years.",
+    medium: "Word from Turkey: in a marble city by the sea, a grand two-storey library front still rises, its columns and statues facing the old main street. Photograph the library.",
+    hard: "In a ruined marble city, one building's ornate two-storey front still stands where thousands of scrolls were once kept. Bring me the library.",
+    fact: "The Library of Celsus at Ephesus, in what is now Turkey, was a grand Roman library built about 1,900 years ago; its restored two-storey marble front is one of the most striking ruins of the ancient world.",
+    photo: { src: "https://commons.wikimedia.org/wiki/Special:FilePath/Celsus Library, Ephesus, Turkey.jpg?width=800",
+      credit: "Julien LOZELLI", license: "CC BY 2.0", licenseUrl: "https://creativecommons.org/licenses/by/2.0/",
+      source: "https://commons.wikimedia.org/wiki/File:Celsus Library, Ephesus, Turkey.jpg" },
+    greeting: { text: "Merhaba", language: "Turkish", pronunciation: "MER-ha-ba" } },
+
+  // Among the oldest cities in the Americas — contemporary with the pyramids.
+  { id: "caral", city: "Caral", country: "Peru", flag: "🇵🇪", continent: "South America",
+    x: 102.48, y: 100.89,
+    subject: "the ancient city of Caral", icon: "", category: "ruins", tags: ["ancient", "unesco"],
+    easy: "In a desert valley north of Lima, Peru, in South America, stand the earthen pyramids of Caral — among the oldest cities in the Americas, built about 5,000 years ago.",
+    medium: "Word from Peru: in a dry valley near the coast, a people raised flat-topped pyramids and sunken round plazas at the same time Egypt was building its own — long before the Inca. Photograph the ruins.",
+    hard: "In a desert valley, one of the very first cities of an entire hemisphere raised earthen pyramids and round sunken courts, ages before any empire you could name. Find it.",
+    fact: "Caral, in the Supe Valley of Peru, is among the oldest cities in the Americas — built about 5,000 years ago, around the same time as Egypt's first pyramids, with its own flat-topped pyramids and sunken circular plazas.",
+    photo: { src: "https://commons.wikimedia.org/wiki/Special:FilePath/Caral-Supe in Peru.jpg?width=800",
+      credit: "Petty Officer 3rd Class Daniel Barker, U.S. Navy", license: "Public domain", licenseUrl: "https://en.wikipedia.org/wiki/Public_domain",
+      source: "https://commons.wikimedia.org/wiki/File:Caral-Supe in Peru.jpg" },
+    greeting: { text: "Hola", language: "Spanish", pronunciation: "OH-lah" } },
+
+  // The largest pre-Columbian city north of Mexico — almost never taught.
+  { id: "cahokia", city: "Cahokia Mounds", country: "United States", flag: "🇺🇸", continent: "North America",
+    x: 89.94, y: 51.34,
+    subject: "the great mounds of Cahokia", icon: "", category: "ruins", tags: ["ancient", "unesco"],
+    easy: "Near the Mississippi River in Illinois, in the United States, rise the earthen mounds of Cahokia — the largest ancient city north of Mexico, home to thousands of people about 1,000 years ago.",
+    medium: "Word from the United States: long before Europeans arrived, a great city stood by the Mississippi, its people raising a mound of earth taller than a ten-storey building. Photograph the mounds.",
+    hard: "By a great river, a vanished people built a city of flat-topped earthen mounds, the biggest rising higher than a ten-storey building — and almost no one is taught its name. Bring me the mounds.",
+    fact: "Cahokia, by the Mississippi River in Illinois, was the largest city in North America north of Mexico about 1,000 years ago; its biggest earthen mound, Monks Mound, rises around 100 feet (30 meters).",
+    photo: { src: "https://commons.wikimedia.org/wiki/Special:FilePath/Cahokia monks mound HRoe 2008.jpg?width=800",
+      credit: "Herb Roe", license: "CC BY-SA 3.0", licenseUrl: "https://creativecommons.org/licenses/by-sa/3.0/",
+      source: "https://commons.wikimedia.org/wiki/File:Cahokia monks mound HRoe 2008.jpg" },
+    greeting: { text: "Hello", language: "English", pronunciation: null } },
+
+  // A Neolithic VILLAGE, not a monument — a different kind of ruin entirely.
+  { id: "skarabrae", city: "Skara Brae", country: "United Kingdom", flag: "🇬🇧", continent: "Europe",
+    x: 176.66, y: 30.95,
+    subject: "the stone village of Skara Brae", icon: "", category: "ruins", tags: ["ancient", "unesco"],
+    easy: "On the Orkney Islands off northern Scotland, in the United Kingdom, sits Skara Brae — a village of stone houses about 5,000 years old, older than Stonehenge or the pyramids.",
+    medium: "Word from the United Kingdom: on a windswept northern shore, a cluster of snug stone houses survives with beds and shelves still built into their walls — a home from five thousand years ago. Photograph the village.",
+    hard: "A whole village of the deep past, its little stone houses still holding the beds and shelves their people built into the walls, lay buried in a dune until a storm laid it bare. Find it.",
+    fact: "Skara Brae, on Scotland's Orkney Islands, is a stone-built village about 5,000 years old — older than Stonehenge — with stone beds, shelves and hearths still built into its houses.",
+    photo: { src: "https://commons.wikimedia.org/wiki/Special:FilePath/Orkney Skara Brae.jpg?width=800",
+      credit: "Dr. John F. Burka", license: "CC BY-SA 3.0", licenseUrl: "https://creativecommons.org/licenses/by-sa/3.0/",
+      source: "https://commons.wikimedia.org/wiki/File:Orkney Skara Brae.jpg" },
+    greeting: { text: "Hello", language: "English", pronunciation: null } },
+
+  // Roman Africa beyond Tunisia.
+  { id: "volubilis", city: "Volubilis", country: "Morocco", flag: "🇲🇦", continent: "Africa",
+    x: 174.45, y: 55.93,
+    subject: "the Roman ruins of Volubilis", icon: "", category: "ruins", tags: ["ancient", "unesco"],
+    easy: "On a hillside in northern Morocco, in Africa, stand the ruins of Volubilis — a Roman city near the empire's southern edge, with a triumphal arch and floor mosaics lasting about 1,800 years.",
+    medium: "Word from Morocco: near the edge of a vast empire, a stone arch and pictures made of tiny coloured tiles have survived out in the open for nearly two thousand years. Photograph the ruins.",
+    hard: "At the far southern reach of a great empire, a triumphal arch still stands over floors patterned in tiny coloured tiles, out under the African sun. Bring me the ruined city.",
+    fact: "Volubilis in Morocco is a ruined Roman city near the empire's southern frontier, with a triumphal arch and detailed floor mosaics that have survived in the open for about 1,800 years.",
+    photo: { src: "https://commons.wikimedia.org/wiki/Special:FilePath/Triumphal Arch in Volubilis 03.jpg?width=800",
+      credit: "Dorieo", license: "CC BY-SA 4.0", licenseUrl: "https://creativecommons.org/licenses/by-sa/4.0/",
+      source: "https://commons.wikimedia.org/wiki/File:Triumphal Arch in Volubilis 03.jpg" },
+    greeting: { text: "السلام عليكم (As-salamu alaykum)", language: "Arabic", pronunciation: "as-sa-LAAM a-LAY-kum" } },
+
+  // India had nothing under `ruins`. Hampi's Vitthala Temple: the stone chariot.
+  { id: "hampi", city: "Hampi", country: "India", flag: "🇮🇳", continent: "Asia",
+    x: 256.46, y: 74.67,
+    subject: "the temple ruins of Hampi", icon: "", category: "ruins", tags: ["ancient", "unesco"],
+    easy: "Among giant boulders in southern India, in Asia, lie the ruins of Hampi — capital of the mighty Vijayanagara Empire and once one of the largest cities in the world, about 500 years ago.",
+    medium: "Word from India: in a landscape of huge rounded boulders, the temples of a lost empire's capital still stand — one holding a chariot carved whole from stone. Photograph the ruins.",
+    hard: "Scattered among great rounded boulders are the temples of a vanished empire's capital, one of them sheltering a full-size chariot cut from solid rock. Find the ruined city.",
+    fact: "Hampi, in southern India, was the capital of the mighty Vijayanagara Empire about 500 years ago — once one of the largest cities in the world, its temples carved among giant granite boulders.",
+    photo: { src: "https://commons.wikimedia.org/wiki/Special:FilePath/Architecture of Vitthala Temple, Hampi.jpg?width=800",
+      credit: "Sid Mohanty", license: "CC BY-SA 4.0", licenseUrl: "https://creativecommons.org/licenses/by-sa/4.0/",
+      source: "https://commons.wikimedia.org/wiki/File:Architecture of Vitthala Temple, Hampi.jpg" },
+    greeting: { text: "नमस्ते (Namaste)", language: "Hindi", pronunciation: "nuh-muh-STAY" } },
 ];
