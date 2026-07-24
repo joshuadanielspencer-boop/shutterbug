@@ -2771,11 +2771,23 @@ export default function ShutterbugWorld() {
     if (kind === "correct") {
       setStep((n) => n + 1);
       setRevealed(false);          // clear the photo just taken...
-      setPhase("continent");       // ...back to the world map for the next continent
-      setPickedContinent(null);    // current stays = the city just shot, so the next flight departs from there
       setPickedCountry(null);
       poppedCountryRef.current = null; // let the next leg's country pop its card
-      setMsg({ type: "info", text: "New assignment! Read the clue and pick the continent." });
+      // Stay on the CONTINENT you're standing on rather than snapping back to the
+      // world map (Joshua's call — it keeps the trip continuous). `current` stays the
+      // place just photographed, so picking the next country flies you there FROM
+      // here (rideLegFor reads current). If the next clue points to another
+      // continent, the 🌍 button on the map takes you back to pick one. Continents
+      // with no country layer (none in play today, but a guard is cheap) fall back
+      // to the world map, since there is no country map to stay on.
+      if (pickedContinent && COUNTRY_LAYER_CONTINENTS.has(pickedContinent)) {
+        setPhase("country");
+        setMsg({ type: "info", text: "New assignment! Read the clue — pick the country here, or tap 🌍 to fly to another continent." });
+      } else {
+        setPhase("continent");
+        setPickedContinent(null);
+        setMsg({ type: "info", text: "New assignment! Read the clue and pick the continent." });
+      }
     } else if (kind === "win" || kind === "lose" || kind === "tour-win" || kind === "tour-lose") {
       startHomecoming();   // visit Uncle first; the homecoming hands off to the results
     } else if (kind === "wrong" && phase === "city") {
@@ -5717,6 +5729,23 @@ export default function ShutterbugWorld() {
                 the flight is the beat where the travel jig plays and the plane crosses
                 the world, and a child who taps everywhere skipped it every time without
                 ever deciding to. It is five seconds. */}
+
+            {/* Back to the world map. Since a photo now leaves you ON the continent
+                (see continueFromResult), this is the obvious way to go somewhere else
+                when the next clue points to a different one. Only on a zoomed map with
+                a continent chosen, and not in Explore/Journeys, which own their own
+                navigation. Sits inside the frame's overflow:hidden so it clips to the
+                atlas page. */}
+            {zoomed && pickedContinent && !isExplore && gameMode !== "journey" && (
+              <button onClick={() => { if (busy) return; setPickedContinent(null); setPickedCountry(null); setCityPlan(null); setPhase("continent"); setRevealed(false); setMsg({ type: "info", text: "Pick the continent your next target is in." }); }}
+                disabled={busy} aria-label="Back to the world map"
+                style={{ position: "absolute", top: 8, left: 8, zIndex: 4, display: "flex", alignItems: "center", gap: 6,
+                  padding: "6px 11px", borderRadius: 9, border: `1.5px solid ${OCEAN_DEEP}`,
+                  background: "rgba(244,236,216,0.94)", color: INK, fontWeight: 800, fontSize: 12.5,
+                  cursor: busy ? "default" : "pointer", opacity: busy ? 0.5 : 1, boxShadow: "0 2px 5px rgba(0,0,0,0.25)" }}>
+                <span aria-hidden="true">🌍</span> World map
+              </button>
+            )}
 
           </div>
             {/* Decorative atlas furniture (non-interactive, over the map plate). */}
