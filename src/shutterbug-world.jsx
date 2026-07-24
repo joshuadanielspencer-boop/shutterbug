@@ -4053,7 +4053,14 @@ export default function ShutterbugWorld() {
                 lifts it off the paper's edge. Without that it sat half on the printed
                 border and over the camera and compass in the art, which is what made
                 it read as falling off the page rather than sitting on it. */}
-            <button onClick={goToMeet} style={{ ...primaryBtn, marginTop: "auto", marginBottom: "clamp(26px, 10vh, 96px)", fontSize: 17, padding: "13px 34px" }}>
+            {/* The container fills min(90vh, 820px), but the parchment in the flat-lay
+                photo only reaches ~92% of it and the camera intrudes bottom-right. So
+                the button must land around 80% of the container at ANY window size —
+                and because the container is ~0.9x the viewport, a 16vh bottom margin
+                resolves to ~18% of the container everywhere, putting the button in the
+                parchment and clear of the camera. The old 10vh was enough on a tall
+                window and let it straddle the printed border on a short one. */}
+            <button onClick={goToMeet} style={{ ...primaryBtn, marginTop: "auto", marginBottom: "clamp(70px, 16vh, 155px)", fontSize: 17, padding: "13px 34px" }}>
               Continue ✈
             </button>
           </div>
