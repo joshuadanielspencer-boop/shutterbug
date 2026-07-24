@@ -33,7 +33,7 @@
 // equirectangular world is water, and flat colour costs a JPEG almost nothing.
 //
 // Usage:
-//   node scripts/make-relief.mjs <source.tif> --width 12288 --out public/relief-world-hyp.jpg
+//   node scripts/make-relief.mjs <source.tif> --width 12288 --out public/relief-world-hyp2.jpg
 //   node scripts/make-relief.mjs --antarctica            (recolour the polar plate's ocean)
 // ===========================================================================
 import sharp from "sharp";
@@ -60,20 +60,30 @@ const SEA = [0x1e, 0x4e, 0x82];
 // and creates a new problem: polar ICE is the same pale blue-white, and would key
 // as ocean.
 //
-// Colour cannot separate those two. Latitude can, and the caller knows it — so
-// `polar` softens the key back towards the old conservative ramp above 62°, where
-// there is ice to protect and (on this plate) very little sea that matters. The
-// Antarctic map is a separate polar plate anyway, so the world plate's ice only
-// ever appears at world-map scale.
-const waterness = (r, g, b, polar = false) => {
-  if (polar) {
-    const a = Math.min(1, Math.max(0, (b - r - 34) / 14));
-    const c = Math.min(1, Math.max(0, (b - g - 18) / 8));
-    return a * c;
-  }
+// Colour cannot separate those two. Latitude can — so the conservative "polar" key
+// (which protects ice) is BLENDED into the normal key over a latitude BAND rather
+// than switched on at a single line.
+//
+// The switch version had a hard threshold at 62 degrees, and it showed: a pale
+// haze of un-keyed marginal sea cut straight across southern Norway on the Europe
+// map, exactly where the two keys met. `polarness` ramps 0..1 across 56..72 degrees,
+// so the two curves cross-fade and there is no seam — open Arctic sea still goes
+// blue, the permanent ice at the very top still stays pale, and the middle is a
+// gradient instead of a cliff.
+const keyNormal = (r, g, b) => {
   const a = Math.min(1, Math.max(0, (b - r - 14) / 14));
   const c = Math.min(1, Math.max(0, (b - g - 4) / 6));
   return a * c;
+};
+const keyPolar = (r, g, b) => {
+  const a = Math.min(1, Math.max(0, (b - r - 34) / 14));
+  const c = Math.min(1, Math.max(0, (b - g - 18) / 8));
+  return a * c;
+};
+const waterness = (r, g, b, polarness = 0) => {
+  if (polarness <= 0) return keyNormal(r, g, b);
+  if (polarness >= 1) return keyPolar(r, g, b);
+  return keyNormal(r, g, b) * (1 - polarness) + keyPolar(r, g, b) * polarness;
 };
 
 // `land`: NE1 shipped washed out and wanted a 1.32 saturation lift. The
@@ -93,9 +103,11 @@ async function build(src, width, out, { quality = 82, land = 1.06 } = {}) {
   const ch = info.channels;
   for (let i = 0; i < data.length; i += ch) {
     const r = data[i], g = data[i + 1], b = data[i + 2];
-    // Row -> latitude, so the polar guard above knows where it is.
+    // Row -> latitude, then a smooth 0..1 polar ramp across 56..72 degrees (either
+    // hemisphere), so the ice-protecting key fades in instead of switching on.
     const lat = 90 - ((i / ch / width) | 0) / height * 180;
-    const w = waterness(r, g, b, Math.abs(lat) > 62);
+    const polarness = Math.min(1, Math.max(0, (Math.abs(lat) - 56) / 16));
+    const w = waterness(r, g, b, polarness);
     if (w > 0) {
       data[i] = Math.round(r + (SEA[0] - r) * w);
       data[i + 1] = Math.round(g + (SEA[1] - g) * w);
@@ -153,7 +165,7 @@ if (args.includes("--antarctica")) {
 } else {
   const src = args.find((a) => !a.startsWith("--") && args[args.indexOf(a) - 1] !== "--width"
     && args[args.indexOf(a) - 1] !== "--out" && args[args.indexOf(a) - 1] !== "--quality");
-  if (!src) { console.error("usage: node scripts/make-relief.mjs <NE1_HR_LC_SR_W.tif> --width 12288 --out public/relief-world-hyp.jpg"); process.exit(1); }
-  const r = await build(src, Number(flag("width", 12288)), flag("out", "public/relief-world-hyp.jpg"), { quality: Number(flag("quality", 82)) });
+  if (!src) { console.error("usage: node scripts/make-relief.mjs <NE1_HR_LC_SR_W.tif> --width 12288 --out public/relief-world-hyp2.jpg"); process.exit(1); }
+  const r = await build(src, Number(flag("width", 12288)), flag("out", "public/relief-world-hyp2.jpg"), { quality: Number(flag("quality", 82)) });
   console.log(`${r.out}  ${r.width}×${r.height}  ${kb(r.bytes)}  (${(r.width / 360).toFixed(1)} px/degree)`);
 }

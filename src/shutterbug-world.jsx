@@ -4313,8 +4313,8 @@ export default function ShutterbugWorld() {
                   circumnavigation it is what lets the trail keep sailing west. */}
               {tiles.map((k) => (
                 <g key={k} transform={`translate(${k * 360} 0)`}>
-                  <image href={`${BASE}relief-world-hyp.jpg`} xlinkHref={`${BASE}relief-world-hyp.jpg`}
-                    x="0" y="0" width="360.4" height="180" preserveAspectRatio="none" />
+                  <image href={`${BASE}relief-world-hyp2.jpg`} xlinkHref={`${BASE}relief-world-hyp2.jpg`}
+                    x="0" y="0" width="360" height="180" preserveAspectRatio="none" />
                   {WORLD_COUNTRIES.map((c) => (
                     <path key={c.name} d={c.d} fill="none" stroke={INK} strokeOpacity="0.45" strokeWidth="0.5" vectorEffect="non-scaling-stroke" />
                   ))}
@@ -5220,10 +5220,21 @@ export default function ShutterbugWorld() {
                     {/* the relief plate (drawn a second time, shifted +360°, for the
                         Pacific-centerd Oceania view that crosses the antimeridian) */}
                     {(plateMode === "wrap" ? [0, 360] : [0]).map((off) => (
-                      // width is a hair over 360 so the two plates overlap and the
-                      // antimeridian join doesn't show as a seam
-                      <image key={"relief" + off} href={`${BASE}relief-world-hyp.jpg`} xlinkHref={`${BASE}relief-world-hyp.jpg`}
-                        x={off} y="0" width="360.4" height="180" preserveAspectRatio="none" />
+                      // Width is EXACTLY 360, and that matters — the plate covers the
+                      // whole globe (lon -180..180 = 360°), so at width 360 a point at
+                      // longitude L lands at plate-x = L+180, which is exactly where the
+                      // country outlines, the pins and the rivers are drawn.
+                      //
+                      // It was 360.4 (a seam hack for the Pacific plate's join), and
+                      // that 0.11% stretch is what pushed the RELIEF ~0.2° east of the
+                      // outlines — bigger the further east you go, which is why the
+                      // offset showed on the UK, Germany, Tunisia and Japan and worse
+                      // on Japan. On a country zoom, 0.2° is ~13px of slip between the
+                      // coastline in the raster and the coral outline over it. The
+                      // seam this risks on Oceania is sub-pixel and covered by the
+                      // second plate abutting at x=360.
+                      <image key={"relief" + off} href={`${BASE}relief-world-hyp2.jpg`} xlinkHref={`${BASE}relief-world-hyp2.jpg`}
+                        x={off} y="0" width="360" height="180" preserveAspectRatio="none" />
                     ))}
                     {/* country borders over the relief */}
                     {(plateMode === "wrap" ? [0, 360] : [0]).map((off) => (
@@ -5408,7 +5419,12 @@ export default function ShutterbugWorld() {
                 const hov = showLabels && hoverCountry && list.includes(hoverCountry)
                   ? COUNTRY_META[countryKey(pickedContinent, hoverCountry)] : null;
                 const labels = hov ? [(
-                  <g key={"lbl" + hoverCountry} style={{ pointerEvents: "none" }}>
+                  // unstretchAt: this text lives inside the vertically-stretched map
+                  // group, and without the counter-scale its letters came out
+                  // 31% too tall on the Europe map (that plate is stretched 1.31).
+                  // Same fix the pins use. Pivoted about the label's own y so it
+                  // stays put while un-squashing.
+                  <g key={"lbl" + hoverCountry} transform={unstretchAt(baseY(hov))} style={{ pointerEvents: "none" }}>
                     <text x={hov.cx} y={baseY(hov)} fontSize={0.055 * box.h} fontFamily="ui-monospace, monospace" fontWeight="800" fill={INK} textAnchor="middle"
                       style={{ paintOrder: "stroke", stroke: PAPER, strokeWidth: 0.02 * box.h }}>{hoverCountry}</text>
                   </g>
@@ -5444,10 +5460,17 @@ export default function ShutterbugWorld() {
                 // token as a fraction of the frame the way every pin already is, and
                 // undo the stretch about the token so it stays square.
                 if (zoomed) {
-                  const sy = (v) => v * mapStretchY + mapPivotY * (1 - mapStretchY);
+                  // NO pre-stretch of the y-coords here. This block is drawn INSIDE
+                  // the map's vertical-stretch group (the <g transform={mapTransform}>
+                  // that closes far below), so the group already applies mapStretchY.
+                  // My first pass at this pre-applied it too, double-stretching the
+                  // arc — which is why a plane sent to Tunisia landed in the
+                  // Mediterranean and one sent to Hungary overshot into a neighbour.
+                  // Plain plate coords: the group puts the arc exactly where the
+                  // stretched countries are.
                   const px = (v) => (plateMode === "wrap" && v < 180 ? v + 360 : v);
-                  const a = { x: px(flying.fromX), y: sy(flying.fromY) };
-                  const b = { x: px(flying.toX), y: sy(flying.toY) };
+                  const a = { x: px(flying.fromX), y: flying.fromY };
+                  const b = { x: px(flying.toX), y: flying.toY };
                   const dx = b.x - a.x, dy = b.y - a.y;
                   const dist = Math.hypot(dx, dy) || 1;
                   let nx = -dy / dist, ny = dx / dist;
@@ -5554,7 +5577,10 @@ export default function ShutterbugWorld() {
                 );
               })()}
               {inCity && (ctxCountry || pickedCountry) && (
-                <g style={{ pointerEvents: "none" }}>
+                // unstretchAt so the banner pill and its text don't stretch with the
+                // plate (the UK's city map is scaled 1.27). Pivoted about the banner's
+                // own y, near the top of the frame.
+                <g transform={unstretchAt(box.y + 0.05 * box.h)} style={{ pointerEvents: "none" }}>
                   <rect x={box.x + box.w * 0.5 - (String(ctxCountry || pickedCountry).length * 0.0125 + 0.03) * box.w} y={box.y + 0.02 * box.h}
                     width={(String(ctxCountry || pickedCountry).length * 0.025 + 0.06) * box.w} height={0.075 * box.h} rx={0.02 * box.h}
                     fill="rgba(16,38,46,0.82)" />
@@ -5645,7 +5671,15 @@ export default function ShutterbugWorld() {
               {/* Overseas-territory locator insets — only on a country plate that has
                   far-flung territories off-frame (France: Guiana, the Antilles, Réunion,
                   Mayotte). */}
-              {zoomed && <ScaleBar box={box} wOverS={WoverS} />}
+              {/* unstretchAt: the scale bar's "100 mi (161 km)" label would stretch
+                  with the plate otherwise. Pivoted about the bar's own y (low in the
+                  frame). The bar segments un-squash with it, which is correct — a
+                  distance ruler must read true in both directions. */}
+              {zoomed && (
+                <g transform={unstretchAt(box.y + 0.915 * box.h)}>
+                  <ScaleBar box={box} wOverS={WoverS} />
+                </g>
+              )}
               {countryBox && pickedCountry && OVERSEAS_INSETS[pickedCountry] && (
                 <OverseasInsets specs={OVERSEAS_INSETS[pickedCountry]} box={box} />
               )}
