@@ -4731,6 +4731,18 @@ export default function ShutterbugWorld() {
   // 1/cos(lat) at the map's centre. USA ≈ 39°N → 1.29; UK ≈ 55°N → 1.74. Both are
   // set below the true figure deliberately — a full correction reads as a caricature
   // — but nearer it than they were.
+  // Equirect squashes a map vertically by cos(latitude), so the stretch that
+  // restores true proportion is 1/cos(lat) at the map's centre. Damped to 0.6 of
+  // the full figure (a full correction reads as a caricature) and capped at 1.33.
+  //
+  // This is why Poland looked "too wide": it sits at ~52 degrees and had NO city-map
+  // stretch, so it kept the full equirect squash. Only the UK used to be corrected,
+  // by a hand-set 1.27; now every country's own map is corrected from its latitude,
+  // which is the same thing done once instead of country by country.
+  const cityStretch = (lat) => {
+    const full = 1 / Math.cos((Math.abs(lat) * Math.PI) / 180);
+    return Math.min(1.33, Math.max(1, 1 + (full - 1) * 0.6));
+  };
   const mapStretchY = naContinentView ? 1.2
     : usCountryView ? 1.22
     : saContinentView ? 1.15
@@ -4740,7 +4752,8 @@ export default function ShutterbugWorld() {
     : (inCountry && pickedContinent === "Europe") ? 1.31
     : (inCountry && pickedContinent === "Asia") ? 1.10
     : (inCountry && pickedContinent === "Africa") ? 1.10
-    : (inCity && pickedCountry === "United Kingdom") ? 1.27
+    // Every country's OWN (city) map, corrected from its centre latitude.
+    : (inCity && countryBox) ? cityStretch(90 - (countryBox.y + countryBox.h / 2))
     : 1;
   const mapPivotY = topCrop ? box.y : box.y + box.h / 2;
   const mapTransform = mapStretchY === 1 ? undefined
@@ -5931,11 +5944,13 @@ function Frame({ children, desk = false }) {
            SEE there's something to aim at, and it's a big invisible target so they
            don't have to hit the pixel. Colour is never the only signal (rule 4) — the
            motion is what says "here", and the name still appears on hover/focus. */
-        .sbw-country--tiny .sbw-halo{ animation: sbw-isle 2s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
-        @keyframes sbw-isle{ 0%,100%{ transform: scale(0.82); stroke-opacity: 0.9 } 50%{ transform: scale(1.06); stroke-opacity: 0.45 } }
-        body.sbw-no-anim .sbw-country--tiny .sbw-halo{ animation: none; stroke-opacity: 0.85; }
+        /* Tiny-nation ring: STATIC, not pulsing (Joshua's call — the pulse read as
+           distracting rather than helpful). A steady ring still shows a child there
+           IS something to aim at, and the generous invisible fill behind it means
+           they don't have to hit the pixel; hover/focus firms it up. */
+        .sbw-country--tiny .sbw-halo{ transform-box: fill-box; transform-origin: center; stroke-opacity: 0.8; }
         .sbw-country--tiny:hover .sbw-halo,
-        .sbw-country--tiny:focus-visible .sbw-halo{ animation: none; stroke-opacity: 1; stroke-width: 2.6px; fill-opacity: 0.28; }
+        .sbw-country--tiny:focus-visible .sbw-halo{ stroke-opacity: 1; stroke-width: 2.6px; fill-opacity: 0.28; }
         .sbw-country path, .sbw-country ellipse{ transition: fill .12s ease; }
         .sbw-country:hover path,
         .sbw-country:focus-visible path{ fill: rgba(240,165,0,0.42); }
