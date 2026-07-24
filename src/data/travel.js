@@ -372,6 +372,51 @@ export const ISLAND_COUNTRIES = new Set([
   "Barbados", "Saint Lucia", "Antigua and Barbuda",
 ]);
 
+
+// The everyday way of getting about, for countries where an arbitrary hash between
+// bus/train/taxi would be a poor answer to "how do people get around here?".
+//
+// Only for countries with no signature flavour mode (a gondola or a camel wins over
+// anything here). Kept SHORT and only where the answer is genuinely well known —
+// Japan is the country of the Shinkansen and was being handed a bus by a hash of its
+// name, which is the kind of thing a child would notice and an adult would wince at.
+//
+// Rule 1: this is content, so it lives in data rather than in the picker's logic.
+export const COUNTRY_EVERYDAY = {
+  "Japan": "train",
+  "South Korea": "train",
+  "China": "train",
+  "Germany": "train",
+  "France": "train",
+  "Switzerland": "train",
+  "Austria": "train",
+  "United Kingdom": "train",
+  "Netherlands": "train",
+  "Belgium": "train",
+  "Czechia": "train",
+  "Russia": "train",
+  "India": "train",
+  "Kenya": "bus",
+  "Tanzania": "bus",
+};
+
+// WHAT THIS ANSWERS CHANGED (2026-07-23), and the gates below changed with it.
+//
+// It used to pick the vehicle you would RIDE on the hop into a country, and it was
+// gated accordingly: no boat unless the journey actually crossed water, and the
+// leg's length pushed it toward a taxi or a domestic flight. Overland hops are gone
+// — every leg flies now — and this feeds the arrival card instead, which answers a
+// different question: "how do people get about HERE?"
+//
+// So both gates are wrong now and are gone. A gondola in Venice, a riverboat on the
+// Nile and a dugout canoe on the Amazon are all true answers to the new question and
+// all were being suppressed by the old one — Italy could not be a gondola because
+// Italy is not an island, which was right for a journey and silly for a fact about
+// Italy. (Joshua: "should feature a common way to get around that area, not
+// necessarily 'this is how you arrived'.")
+//
+// `legDeg` is kept in the signature and ignored, so an old caller can't silently
+// change behaviour by passing it.
 export function countryTransport(locs, legDeg = 10) {
   const places = (locs || []).filter(Boolean);
   if (!places.length) return TRANSPORT_BY_ID.bus;
@@ -379,20 +424,14 @@ export function countryTransport(locs, legDeg = 10) {
   // Every context any place in this country satisfies.
   const ctx = new Set();
   for (const l of places) for (const k of destinationContexts(l)) ctx.add(k);
-  if (legDeg > 22) ctx.add("far"); else if (legDeg < 6) ctx.add("near");
   // A FLAVOUR mode (gondola, camel, tuk-tuk, cog railway…) is the whole point, so
   // prefer one; only fall back to the everyday modes when a country has no special
   // way in. `flight` is excluded outright — this is the hop AFTER the flight, and a
   // second aeroplane would make the two legs look like the same journey twice.
-  // A vehicle that travels on WATER is only honest if the journey crosses some. The
-  // hop is drawn across the continent map from where you're standing, so unless the
-  // destination is an island you are going overland and a boat would be drawn sailing
-  // over dry country.
-  const crossesWater = ISLAND_COUNTRIES.has(country);
-  const WATER_MODES = new Set(["ferry", "riverboat", "canoe", "gondola"]);
+  // No water gate any more (see the note above): nothing is being drawn sailing
+  // across dry land, because nothing is being drawn travelling at all.
   const flavours = TRANSPORT_MODES.filter((m) => !m.core && m.id !== "flight"
-    && (m.contexts || []).some((k) => ctx.has(k))
-    && (crossesWater || !WATER_MODES.has(m.id)));
+    && (m.contexts || []).some((k) => ctx.has(k)));
   if (flavours.length) {
     // Prefer the most DISTINCTIVE match. Ranked by hand rather than hashed at random,
     // because "water" is satisfied by any coast and would hand a plain ferry to India
@@ -408,9 +447,11 @@ export function countryTransport(locs, legDeg = 10) {
     const top = best.filter((m) => m.id === best[0].id || RANK.indexOf(m.id) === RANK.indexOf(best[0].id));
     return top[idHash(country) % top.length];
   }
-  // No signature mode: the ordinary ways of covering ground, by how far it is.
+  // No signature mode: a curated everyday answer where there is an obvious one,
+  // else a hash — fixed per country either way, so the card says the same thing
+  // every time you land there.
+  const named = COUNTRY_EVERYDAY[country] && TRANSPORT_BY_ID[COUNTRY_EVERYDAY[country]];
+  if (named) return named;
   const core = TRANSPORT_MODES.filter((m) => m.core);
-  return legDeg < 6
-    ? (TRANSPORT_BY_ID.taxi || core[core.length - 1])
-    : (core[idHash(country) % core.length] || TRANSPORT_BY_ID.bus);
+  return core[idHash(country) % core.length] || TRANSPORT_BY_ID.bus;
 }

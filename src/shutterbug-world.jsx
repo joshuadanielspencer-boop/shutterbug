@@ -4049,7 +4049,11 @@ export default function ShutterbugWorld() {
             </div>
 
             {/* On to meet Uncle. goToMeet nudges to pick a traveler first if none is chosen. */}
-            <button onClick={goToMeet} style={{ ...primaryBtn, marginTop: "auto", fontSize: 17, padding: "13px 34px" }}>
+            {/* marginTop:auto pushes it past the traveler list; the bottom margin then
+                lifts it off the paper's edge. Without that it sat half on the printed
+                border and over the camera and compass in the art, which is what made
+                it read as falling off the page rather than sitting on it. */}
+            <button onClick={goToMeet} style={{ ...primaryBtn, marginTop: "auto", marginBottom: "clamp(26px, 10vh, 96px)", fontSize: 17, padding: "13px 34px" }}>
               Continue ✈
             </button>
           </div>
@@ -5427,6 +5431,54 @@ export default function ShutterbugWorld() {
                   arc — the route bows toward the pole like a real flight path, and the
                   plane banks along it (offset-rotate defaults to auto). */}
               {flying && (() => {
+                // ---- Two different maps, two different coordinate systems -------
+                // This block used to run only on the world map, where Robinson coords
+                // and a fixed 26-unit token are both right. Then country hops started
+                // flying too (they used to drive an overland vehicle, which drew
+                // itself correctly), and this began rendering on the CONTINENT plate
+                // as well — where Robinson coords are wrong, 26 units is a third of a
+                // ~78-wide frame, and the group is vertically stretched. That is
+                // exactly Joshua's "the airplane becomes huge, and is distorted".
+                //
+                // On a zoomed plate: use the plate's own equirect coords, size the
+                // token as a fraction of the frame the way every pin already is, and
+                // undo the stretch about the token so it stays square.
+                if (zoomed) {
+                  const sy = (v) => v * mapStretchY + mapPivotY * (1 - mapStretchY);
+                  const px = (v) => (plateMode === "wrap" && v < 180 ? v + 360 : v);
+                  const a = { x: px(flying.fromX), y: sy(flying.fromY) };
+                  const b = { x: px(flying.toX), y: sy(flying.toY) };
+                  const dx = b.x - a.x, dy = b.y - a.y;
+                  const dist = Math.hypot(dx, dy) || 1;
+                  let nx = -dy / dist, ny = dx / dist;
+                  if (ny > 0) { nx = -nx; ny = -ny; }
+                  const lift = Math.min(0.06 * WoverS, dist * 0.18);
+                  const mx = (a.x + b.x) / 2 + nx * lift, my = (a.y + b.y) / 2 + ny * lift;
+                  const d = `M${a.x} ${a.y} Q${mx} ${my} ${b.x} ${b.y}`;
+                  // Exactly the world map's on-screen size, derived rather than guessed.
+                  // The atlas frame is the same rectangle in both views, so matching
+                  // means matching the FRACTION of the frame the token covers. The
+                  // world map draws 26 units into a WORLD_BOX 307.6 units wide — 8.45%
+                  // — and on a zoomed map WoverS is by definition how many units the
+                  // frame's width spans, so 0.0845 * WoverS is the same size on screen.
+                  const sz = 0.0845 * WoverS;
+                  return (
+                    <g className="sbw-plane-group" style={{ pointerEvents: "none" }}>
+                      <path d={d} fill="none" stroke={INK} strokeOpacity="0.45" strokeWidth="2.4" strokeDasharray="3 3" vectorEffect="non-scaling-stroke" />
+                      <path d={d} fill="none" stroke="#FFFFFF" strokeOpacity="0.9" strokeWidth="1.1" strokeDasharray="3 3" vectorEffect="non-scaling-stroke" />
+                      <g style={{ animation: `sbw-fly ${FLIGHT_MS}ms ease-in-out forwards`, offsetPath: `path('${d}')`, offsetRotate: "auto 90deg" }}>
+                        <g style={{ animation: `sbw-hop ${FLIGHT_MS}ms ease-in-out forwards` }}>
+                          {/* transform-box/origin so the un-stretch pivots about the
+                              token itself, not the plate's origin. */}
+                          <g style={{ transform: `scaleY(${(1 / mapStretchY).toFixed(4)})`, transformBox: "fill-box", transformOrigin: "center" }}>
+                            <image href={`${UI}passenger-aircraft-777-token.png`} width={sz} height={sz} x={-sz / 2} y={-sz / 2}
+                              style={{ filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.45))" }} />
+                          </g>
+                        </g>
+                      </g>
+                    </g>
+                  );
+                }
                 // The world map is a TRIMMED Robinson box (WORLD_BOX cuts the empty
                 // ocean off both edges), and five Oceania places fall outside it:
                 // Bora Bora, Moorea and Rangiroa sit west of the left edge, Taveuni

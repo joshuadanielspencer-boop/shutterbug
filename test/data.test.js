@@ -992,16 +992,35 @@ describe("the way into a country", () => {
     }
   });
 
-  it("never puts a boat on a journey that crosses no water", () => {
-    // The hop is DRAWN across the continent map. A ferry sailing over the middle of
-    // Kazakhstan — or a gondola crossing Italy by land — is a lie about the world,
-    // and this is a teaching tool first. Boats are reserved for island destinations,
-    // where you genuinely could not arrive any other way.
-    const BOATS = new Set(["ferry", "riverboat", "canoe", "gondola"]);
+  // This replaced "never puts a boat on a journey that crosses no water"
+  // (2026-07-23). That rule existed because the vehicle was ANIMATED across the
+  // continent map, where a gondola crossing Italy by land was a lie about the
+  // world. Overland hops are gone — every leg flies — and this now feeds the
+  // arrival card, which answers "how do people get about HERE?". A gondola in
+  // Venice is a true answer to that question; the old rule was suppressing it.
+  it("never offers a plane as the local way of getting about", () => {
+    // This is the rule that survived the change, and it is the one that matters:
+    // you ARRIVED by plane. Showing a plane as local flavour teaches nothing and
+    // makes the card a description of the journey the player just took.
     for (const [country, locs] of Object.entries(byCountry)) {
-      if (!BOATS.has(countryTransport(locs, 12).id)) continue;
-      expect(ISLAND_COUNTRIES.has(country), `${country} arrives by boat over dry land`).toBe(true);
+      expect(countryTransport(locs).id, `${country} offers a plane as local transport`).not.toBe("flight");
     }
+  });
+
+  it("says the same thing every time you land in a country", () => {
+    // The card is a fact about the place, so it must not shuffle between visits.
+    for (const [country, locs] of Object.entries(byCountry)) {
+      const a = countryTransport(locs).id;
+      expect(countryTransport(locs).id, country).toBe(a);
+      expect(countryTransport(locs).id, country).toBe(a);
+    }
+  });
+
+  it("now allows a country its signature boat without needing to be an island", () => {
+    // Venice is the case the old water gate got wrong: Italy is not an island, so
+    // the gondola — the single most distinctive way of getting about in the game —
+    // could never be shown for it.
+    expect(countryTransport(byCountry["Italy"]).id).toBe("gondola");
   });
 
   it("picks the distinctive way in where a country has one", () => {
