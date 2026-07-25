@@ -880,7 +880,9 @@ describe("world-map country names line up with the tinting", () => {
   // Countries with no polygon in the Robinson dataset at all: a city-state and an
   // overseas island group, both far too small to render at world scale. They can
   // never be tinted, and that's a property of the map, not a naming bug.
-  const NO_WORLD_PATH = new Set(["Singapore", "French Polynesia"]);
+  // Too small to carry a world-map path (they show on their OWN country map, from the
+  // equirect outline in worldmap.js). Malta and Micronesia are island specks.
+  const NO_WORLD_PATH = new Set(["Singapore", "French Polynesia", "Malta", "Micronesia"]);
 
   it("every country in the game either matches a map path or is knowingly too small", async () => {
     const { WORLD_COUNTRIES_ROBINSON } = await import("../src/data/worldmap-robinson.js");

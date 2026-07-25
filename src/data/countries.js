@@ -34,6 +34,8 @@ export const COUNTRY_INFO = {
   "Italy": { capital: "Rome", region: "Southern Europe", blurb: "Italy, in Southern Europe, is a long boot-shaped peninsula kicking out into the Mediterranean Sea, ruled from its capital Rome. It's the birthplace of pizza and pasta and the heart of the ancient Roman Empire." },
   "France": { capital: "Paris", region: "Western Europe", blurb: "France, in Western Europe, is famous for art, food, and fashion; from its capital of Paris to lavender fields and snowy Alps, it's one of the most-visited countries on Earth." },
   "Greece": { capital: "Athens", region: "Southern Europe", blurb: "Greece, in Southern Europe at the tip of the Balkan Peninsula, is ruled from Athens and sprinkled with thousands of sunny islands. It gave the world the first Olympic Games and many ancient myths." },
+  "Malta": { capital: "Valletta", region: "Southern Europe", blurb: "Malta is a tiny island country in the Mediterranean Sea south of Italy, ruled from its capital Valletta. Its sunny, honey-coloured islands hold some of the oldest stone temples on Earth." },
+  "Micronesia": { capital: "Palikir", region: "Micronesia", blurb: "The Federated States of Micronesia is a nation of hundreds of tropical islands scattered across the western Pacific Ocean, governed from Palikir on the island of Pohnpei." },
   "Russia": { capital: "Moscow", region: "Eastern Europe", blurb: "Russia stretches from Eastern Europe all the way across northern Asia, making it the largest country on Earth. Its capital, Moscow, lies on the European side, a land of long, snowy winters." },
   "Saudi Arabia": { capital: "Riyadh", region: "Middle East", blurb: "Saudi Arabia is the largest country in the Middle East, covering most of the Arabian Peninsula, and is ruled from its capital, Riyadh. Much of it is desert, including the Rub' al Khali, or 'Empty Quarter,' the largest continuous sand desert on Earth." },
   "Germany": { capital: "Berlin", region: "Central Europe", blurb: "Germany, in Central Europe, is governed from Berlin and sits at the crossroads of the continent. It's known for deep forests, the Rhine River, sausages and pretzels, and building lots of cars." },
@@ -173,10 +175,12 @@ export const ALWAYS_RING = new Set([
   // one. Joshua named Fiji directly; the others are the same shape of problem.
   "Fiji",
   "French Polynesia",
+  "Micronesia",
   "Vanuatu",
   "New Caledonia",
   "Solomon Is.",
   // Small countries wedged among same-coloured neighbours (see the note above).
+  "Malta",
   "Montenegro",
   "Slovenia",
   "North Macedonia",

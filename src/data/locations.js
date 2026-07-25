@@ -5205,4 +5205,35 @@ export const LOCATIONS = [
       credit: "Sid Mohanty", license: "CC BY-SA 4.0", licenseUrl: "https://creativecommons.org/licenses/by-sa/4.0/",
       source: "https://commons.wikimedia.org/wiki/File:Architecture of Vitthala Temple, Hampi.jpg" },
     greeting: { text: "नमस्ते (Namaste)", language: "Hindi", pronunciation: "nuh-muh-STAY" } },
+
+  // ---- Two new countries (2026-07-25): Malta and Micronesia, each onboarded with
+  //      an outline, continent, capital/blurb, greeting and a verified culture card,
+  //      so the game reaches two more corners of the world. Photos Commons-verified
+  //      (licence + author) AND opened and looked at (rule 2). x = lon+180, y = 90-lat.
+
+  // Malta's Ġgantija — older than the pyramids. Photo: Diego Delso's temple wall.
+  { id: "ggantija", city: "Ġgantija", country: "Malta", flag: "🇲🇹", continent: "Europe",
+    x: 194.27, y: 53.95,
+    subject: "the megalithic temples of Ġgantija", icon: "", category: "ruins", tags: ["ancient", "unesco"],
+    easy: "On the little Maltese island of Gozo, in the Mediterranean Sea south of Italy, stand the giant stone temples of Ġgantija — built about 5,600 years ago, older than the Egyptian pyramids.",
+    medium: "Word from Malta: on a small Mediterranean island, people raised two temples from stones so huge that later islanders swore only giants could have lifted them. Photograph the temples.",
+    hard: "Older than the pyramids, two temples of colossal stone stand on a small Mediterranean island — so massive that legend credited a race of giants with building them. Find the temples.",
+    fact: "Ġgantija, on the Maltese island of Gozo, is a pair of megalithic temples built about 5,600 years ago — older than Egypt's pyramids or Stonehenge, and among the oldest free-standing buildings on Earth. Its name means 'giantess.'",
+    photo: { src: "https://commons.wikimedia.org/wiki/Special:FilePath/Templo de Ġgantija, isla de Gozo, Malta, 2021-08-23, DD 37.jpg?width=800",
+      credit: "Diego Delso", license: "CC BY-SA 4.0", licenseUrl: "https://creativecommons.org/licenses/by-sa/4.0/",
+      source: "https://commons.wikimedia.org/wiki/File:Templo de Ġgantija, isla de Gozo, Malta, 2021-08-23, DD 37.jpg" },
+    greeting: { text: "Merħba", language: "Maltese", pronunciation: "MER-hba" } },
+
+  // Micronesia's Nan Madol — a stone city on a reef. Helps the thin Oceania layer.
+  { id: "nanmadol", city: "Nan Madol", country: "Micronesia", flag: "🇫🇲", continent: "Oceania",
+    x: 338.34, y: 83.16,
+    subject: "the ruined city of Nan Madol", icon: "", category: "ruins", tags: ["ancient", "unesco"],
+    easy: "Off the island of Pohnpei, in Micronesia in the western Pacific Ocean, lies Nan Madol — an ancient city of nearly 100 small islands built on a coral reef from huge basalt stones.",
+    medium: "Word from Micronesia: on a shallow reef, a vanished people stacked long black stones into a whole city of islets threaded by water channels — sometimes called the Venice of the Pacific. Photograph the ruins.",
+    hard: "On a Pacific reef, a lost people raised a city of nearly a hundred man-made islets from great columns of black stone, canals for streets between them. Bring me the ruined city.",
+    fact: "Nan Madol, off the island of Pohnpei in Micronesia, is an ancient city of nearly 100 artificial islets built on a coral reef from massive basalt stones — sometimes called the Venice of the Pacific.",
+    photo: { src: "https://commons.wikimedia.org/wiki/Special:FilePath/Nan Madol, Pohnpei.jpg?width=800",
+      credit: "Uhooep", license: "CC BY-SA 4.0", licenseUrl: "https://creativecommons.org/licenses/by-sa/4.0/",
+      source: "https://commons.wikimedia.org/wiki/File:Nan Madol, Pohnpei.jpg" },
+    greeting: { text: "Kaselehlie", language: "Pohnpeian", pronunciation: "kah-seh-LEH-lee-eh" } },
 ];

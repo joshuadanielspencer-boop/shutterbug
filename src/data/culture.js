@@ -21,6 +21,8 @@
 // English gloss for each greeting, keyed by the exact `greeting.text` used in
 // src/data/locations.js. Shared greetings (e.g. "Hola") need only one entry.
 export const GREETING_MEANING = {
+  "Merħba": "Welcome / Hello",
+  "Kaselehlie": "Hello",
   "Hallo": "Hello",
   "Maakye": "Good morning",
   "ሰላም (Selam)": "Hello (literally “peace”)",
@@ -122,6 +124,17 @@ export const GREETING_MEANING = {
 // Read entries through peopleCards() below, never directly — it normalises both
 // shapes to an array so callers don't have to care which they got.
 export const COUNTRY_PEOPLE = {
+  "Malta": {
+    src: "https://commons.wikimedia.org/wiki/Special:FilePath/Maltese lady in vintage Ghonnella.jpg?width=800",
+    source: "https://commons.wikimedia.org/wiki/File:Maltese lady in vintage Ghonnella.jpg",
+    credit: "Renata Apan", license: "CC BY-SA 4.0",
+    caption: "A Maltese woman in the traditional għonnella, a hooded cloak once worn across Malta" },
+  "Micronesia": {
+    src: "https://commons.wikimedia.org/wiki/Special:FilePath/Folk Micronesian dance.png?width=800",
+    source: "https://commons.wikimedia.org/wiki/File:Folk Micronesian dance.png",
+    credit: "Bruce Elias Robert", license: "CC BY 4.0",
+    caption: "Dancers in traditional dress at a folk celebration in Micronesia" },
+
   "Japan": {
     src: "https://commons.wikimedia.org/wiki/Special:FilePath/NagoyaFestival.jpg?width=800",
     source: "https://commons.wikimedia.org/wiki/File:NagoyaFestival.jpg",
