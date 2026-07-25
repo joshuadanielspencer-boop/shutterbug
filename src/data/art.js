@@ -119,19 +119,24 @@ export const ROUNDEL_ART = {
 // it — so they read as pieces on the board rather than logos. That orientation is
 // the reason they render at 34px and not the 16px the emoji used: from above, a
 // bus and a train are both small rectangles until you give them room.
+// Illustrated side-view vehicles (chroma-keyed off green screens). They replaced
+// the flat top-down icons once the overland-ride ANIMATION was retired — these now
+// only sit as a still on the arrival card's "getting about" line, where a
+// recognisable three-quarter view reads far better than a top-down silhouette.
+// Cable car keeps its top-down for now: the green-screen set had no cable-car art.
 export const TRANSPORT_ART = {
-  flight:    "transport/transport-flight-topdown.png",
-  train:     "transport/transport-train-topdown.png",
-  bus:       "transport/transport-bus-topdown.png",
-  taxi:      "transport/transport-taxi-topdown.png",
-  ferry:     "transport/transport-ferry-topdown.png",
-  riverboat: "transport/transport-riverboat-topdown.png",
-  canoe:     "transport/transport-canoe-topdown.png",
-  gondola:   "transport/transport-gondola-topdown.png",
+  flight:    "transport/transport-flight-green.png",
+  train:     "transport/transport-train-green.png",
+  bus:       "transport/transport-bus-green.png",
+  taxi:      "transport/transport-taxi-green.png",
+  ferry:     "transport/transport-ferry-green.png",
+  riverboat: "transport/transport-riverboat-green.png",
+  canoe:     "transport/transport-canoe-green.png",
+  gondola:   "transport/transport-gondola-green.png",
   cablecar:  "transport/transport-cablecar-topdown.png",
-  cograil:   "transport/transport-cograil-topdown.png",
-  tuktuk:    "transport/transport-tuktuk-topdown.png",
-  camel:     "transport/transport-camel-topdown.png",
+  cograil:   "transport/transport-cograil-green.png",
+  tuktuk:    "transport/transport-tuktuk-green.png",
+  camel:     "transport/transport-camel-green.png",
 };
 
 // One-off ornaments. `bestScore`/`bestTime`/`quiz` mark the records board;

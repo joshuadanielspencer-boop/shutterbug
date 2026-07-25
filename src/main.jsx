@@ -17,9 +17,9 @@ function BootSplash() {
   const [lift, setLift] = useState(false);     // the white overlay lifts to reveal the splash
   useEffect(() => {
     const raf = requestAnimationFrame(() => setLogoIn(true));       // 0s: start the fade-in
-    const tOut = setTimeout(() => setLogoIn(false), 2000);          // 2s: fade the logo out
-    const tLift = setTimeout(() => setLift(true), 3000);            // 3s: lift the white
-    const tGone = setTimeout(() => setGone(true), 3750);            // remove once revealed
+    const tOut = setTimeout(() => setLogoIn(false), 4000);          // 4s: fade the logo out
+    const tLift = setTimeout(() => setLift(true), 5000);            // 5s: lift the white
+    const tGone = setTimeout(() => setGone(true), 5750);            // remove once revealed
     const skip = () => setGone(true);
     window.addEventListener("keydown", skip);
     return () => {
