@@ -5492,17 +5492,25 @@ export default function ShutterbugWorld() {
                 // token as a fraction of the frame the way every pin already is, and
                 // undo the stretch about the token so it stays square.
                 if (zoomed) {
-                  // NO pre-stretch of the y-coords here. This block is drawn INSIDE
-                  // the map's vertical-stretch group (the <g transform={mapTransform}>
-                  // that closes far below), so the group already applies mapStretchY.
-                  // My first pass at this pre-applied it too, double-stretching the
-                  // arc — which is why a plane sent to Tunisia landed in the
-                  // Mediterranean and one sent to Hungary overshot into a neighbour.
-                  // Plain plate coords: the group puts the arc exactly where the
-                  // stretched countries are.
+                  // The plane rides an offset-path AND rotates to face its heading, and
+                  // that rotation is why the earlier "counter-scale the token" fix kept
+                  // it distorted: a scaleY inside a rotated frame stretches along the
+                  // wrong axis, so a plane flying sideways came out squashed. (The old
+                  // overland-vehicle code hit this exact wall and left a note about it.)
+                  //
+                  // The honest fix is to draw the plane in UNSTRETCHED screen space. It
+                  // lives inside the map's vertical-stretch group, so this wraps it in
+                  // that group's INVERSE — which is identical to drawing it outside the
+                  // group — and pre-transforms the path's y by the stretch (sy) so the
+                  // arc still lands exactly where the stretched countries are. Net: the
+                  // track sits on the right countries, the token stays square and
+                  // rotates cleanly, at any plate stretch.
+                  const s = mapStretchY;
+                  const k = mapPivotY * (1 - s);
+                  const sy = (v) => v * s + k;               // plate y -> stretched screen y
                   const px = (v) => (plateMode === "wrap" && v < 180 ? v + 360 : v);
-                  const a = { x: px(flying.fromX), y: flying.fromY };
-                  const b = { x: px(flying.toX), y: flying.toY };
+                  const a = { x: px(flying.fromX), y: sy(flying.fromY) };
+                  const b = { x: px(flying.toX), y: sy(flying.toY) };
                   const dx = b.x - a.x, dy = b.y - a.y;
                   const dist = Math.hypot(dx, dy) || 1;
                   let nx = -dy / dist, ny = dx / dist;
@@ -5510,25 +5518,21 @@ export default function ShutterbugWorld() {
                   const lift = Math.min(0.06 * WoverS, dist * 0.18);
                   const mx = (a.x + b.x) / 2 + nx * lift, my = (a.y + b.y) / 2 + ny * lift;
                   const d = `M${a.x} ${a.y} Q${mx} ${my} ${b.x} ${b.y}`;
-                  // Exactly the world map's on-screen size, derived rather than guessed.
-                  // The atlas frame is the same rectangle in both views, so matching
-                  // means matching the FRACTION of the frame the token covers. The
-                  // world map draws 26 units into a WORLD_BOX 307.6 units wide — 8.45%
-                  // — and on a zoomed map WoverS is by definition how many units the
-                  // frame's width spans, so 0.0845 * WoverS is the same size on screen.
+                  // 8.45% of the frame width — exactly the world map's token size (26
+                  // units of a 307.6-wide WORLD_BOX), and WoverS is the frame width in
+                  // plate units, so the plane is the same size on screen everywhere.
                   const sz = 0.0845 * WoverS;
+                  // The group applies translate(0 k) scale(1 s); this is its inverse,
+                  // scale(1 1/s) translate(0 -k), so the plane renders in screen space.
+                  const undo = `scale(1 ${(1 / s).toFixed(5)}) translate(0 ${(-k).toFixed(3)})`;
                   return (
-                    <g className="sbw-plane-group" style={{ pointerEvents: "none" }}>
+                    <g className="sbw-plane-group" transform={undo} style={{ pointerEvents: "none" }}>
                       <path d={d} fill="none" stroke={INK} strokeOpacity="0.45" strokeWidth="2.4" strokeDasharray="3 3" vectorEffect="non-scaling-stroke" />
                       <path d={d} fill="none" stroke="#FFFFFF" strokeOpacity="0.9" strokeWidth="1.1" strokeDasharray="3 3" vectorEffect="non-scaling-stroke" />
                       <g style={{ animation: `sbw-fly ${FLIGHT_MS}ms ease-in-out forwards`, offsetPath: `path('${d}')`, offsetRotate: "auto 90deg" }}>
                         <g style={{ animation: `sbw-hop ${FLIGHT_MS}ms ease-in-out forwards` }}>
-                          {/* transform-box/origin so the un-stretch pivots about the
-                              token itself, not the plate's origin. */}
-                          <g style={{ transform: `scaleY(${(1 / mapStretchY).toFixed(4)})`, transformBox: "fill-box", transformOrigin: "center" }}>
-                            <image href={`${UI}passenger-aircraft-777-token.png`} width={sz} height={sz} x={-sz / 2} y={-sz / 2}
-                              style={{ filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.45))" }} />
-                          </g>
+                          <image href={`${UI}passenger-aircraft-777-token.png`} width={sz} height={sz} x={-sz / 2} y={-sz / 2}
+                            style={{ filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.45))" }} />
                         </g>
                       </g>
                     </g>
