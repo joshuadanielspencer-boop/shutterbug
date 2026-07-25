@@ -101,22 +101,33 @@ const HAND = '"Caveat", "Patrick Hand", "Bradley Hand", "Segoe Print", "Comic Sa
 // it ships on macOS and iPadOS, which is where this is actually played; Rockwell
 // covers Windows; the Courier/monospace tail is the honest fallback everywhere else.
 const TYPEWRITER = '"American Typewriter", "Rockwell", "Courier New", ui-monospace, monospace';
-// Mr. O has five looks; hand them out in a reshuffled cycle so he never repeats
-// until all five have appeared, and looks different each time he pops up.
-const MR_O_IMAGES = ["mr-o-1.png", "mr-o-2.png", "mr-o-3.png", "mr-o-4.png", "mr-o-5.png"];
+// Mr. O's painted expressions, sorted by what he's DOING (the files are named for
+// his attitude, so we use them accordingly): a fact is him sharing/teaching, a
+// riddle is him thinking or unsure, his first hello is him just hanging out. Within
+// each pool a reshuffled cycle hands them out so he never repeats until the pool is
+// exhausted, and looks different each time he pops up. `idea` fits both a bright
+// fact and the spark of a riddle, so it appears in both.
+const MR_O_POSES = {
+  fact: ["mr-o-sharing.png", "mr-o-explaining.png", "mr-o-teaching.png", "mr-o-demonstrating.png", "mr-o-excited.png", "mr-o-idea.png"],
+  riddle: ["mr-o-considering.png", "mr-o-unsure.png", "mr-o-surveying.png", "mr-o-idea.png"],
+  intro: ["mr-o-hangingout.png", "mr-o-excited.png", "mr-o-explaining.png"],
+};
 // The fewest arrivals between two Mr O appearances — his "no more than once every
 // five stops" speed limit. See maybeMrO.
 const MRO_MIN_GAP = 5;
 // Shown on the first run and every 5th after: how to research a clue.
 // Worded so it reads naturally after Mr O's "Oh! Did you know…" lead.
 const MR_O_FIELDGUIDE_TIP = "if a clue's got you stumped, you can tap the Field Guide on the right and I'll research it for you? It costs half a travel day (free on a Scout trip!).";
-let _mrOQueue = [];
-function nextMrOImage() {
-  if (_mrOQueue.length === 0) {
-    _mrOQueue = [...MR_O_IMAGES];
-    for (let i = _mrOQueue.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [_mrOQueue[i], _mrOQueue[j]] = [_mrOQueue[j], _mrOQueue[i]]; }
+const _mrOQueues = {};
+function nextMrOImage(kind = "fact") {
+  const pool = MR_O_POSES[kind] || MR_O_POSES.fact;
+  let q = _mrOQueues[kind];
+  if (!q || q.length === 0) {
+    q = [...pool];
+    for (let i = q.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [q[i], q[j]] = [q[j], q[i]]; }
+    _mrOQueues[kind] = q;
   }
-  return _mrOQueue.pop();
+  return q.pop();
 }
 
 
@@ -7657,14 +7668,17 @@ function CountryPopup({ country, ride, onClose, reduced }) {
 // picture on each beat. A plain `fact` is just the one-beat case.
 function MrOBubble({ fact, beats, onClose, reduced }) {
   const lines = beats && beats.length ? beats : [`${MR_O.lead} ${fact}`];
+  // A multi-beat run is his introduction (hanging out, easing in); a single line is
+  // him sharing a fact. Pick his expression from the matching pool.
+  const poseKind = beats && beats.length ? "intro" : "fact";
   const [beat, setBeat] = useState(0);
-  const [img, setImg] = useState(nextMrOImage);
+  const [img, setImg] = useState(() => nextMrOImage(poseKind));
   const [imgOk, setImgOk] = useState(true);
   const last = beat >= lines.length - 1;
   const advance = () => {
     if (last) { onClose(); return; }
     setBeat((b) => b + 1);
-    setImg(nextMrOImage());       // a new pose for the next thing he says
+    setImg(nextMrOImage(poseKind));  // a new pose for the next thing he says
     setImgOk(true);
   };
   useEffect(() => {
@@ -7783,7 +7797,7 @@ function CuriosityCard({ deck, seen, onSeen, onClose, reduced }) {
 // right answer and a short explanation show, then a Continue button dismisses it.
 function RiddleModal({ riddle, onAnswer, onClose, gain, reduced }) {
   const [imgOk, setImgOk] = useState(true);
-  const [img] = useState(nextMrOImage);
+  const [img] = useState(() => nextMrOImage("riddle"));
   const { data, choices, answeredIdx } = riddle;
   const answered = answeredIdx !== null;
   const wasCorrect = answered && choices[answeredIdx] === data.correct;
