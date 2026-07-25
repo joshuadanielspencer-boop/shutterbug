@@ -3116,20 +3116,23 @@ export default function ShutterbugWorld() {
   // you. Start: wherever you're standing (the last place photographed), or the
   // continent's own arrival pin on your first hop here. End: the country's landmark
   // centre — the same point its label sits on.
-  const rideLegFor = (country) => {
+  const rideLegFor = (country, at = null) => {
     const cm = COUNTRY_META[countryKey(pickedContinent, country)];
     if (!cm) return null;
     const here = current ? loc(current) : null;
     const from = here && here.continent === pickedContinent
       ? { x: here.x, y: here.y }
       : (CONTINENT_PIN[pickedContinent] || { x: cm.cx, y: cm.cy });
-    const to = { x: cm.cx, y: cm.cy };
+    // Fly to the exact spot clicked inside the country when we have it; else its
+    // centre. `at` comes from the country click (plate coords), so a child who
+    // points near their target is flown near it.
+    const to = at || { x: cm.cx, y: cm.cy };
     const legDeg = Math.hypot(to.x - from.x, to.y - from.y);
     const ownIds = (COUNTRY_LOCS[pickedContinent] && COUNTRY_LOCS[pickedContinent][country]) || [];
     const mode = countryTransport(ownIds.map((id) => BY_ID[id]).filter(Boolean), legDeg);
     return { from, to, mode };
   };
-  function pickCountry(country) {
+  function pickCountry(country, at = null) {
     if (phase !== "country" || flying || pending) return;
     if (gameMode === "explore") {
       const exploreIds = pickCountryCityIds(pickedContinent, country, [], 7);
@@ -3149,7 +3152,7 @@ export default function ShutterbugWorld() {
         sayCountry(country); // spoken arrival: the country, a beat, then hello in its language
         setMsg({ type: "info", text: `${displayCountry(country)} — click any place to learn about it.` });
       };
-      const legE = rideLegFor(country);
+      const legE = rideLegFor(country, at);
       setArrivalRide(legE ? legE.mode : null);
       if (legE) launchFlight(legE.from, legE.to, arrive); else arrive();
       return;
@@ -3172,7 +3175,7 @@ export default function ShutterbugWorld() {
         const targetHere = tourReqs.some((r) => !r.done && (COUNTRY_LOCS[pickedContinent]?.[country] || []).some((id) => r.kind === "category" ? BY_ID[id].category === r.category : r.targetId === id));
         setMsg({ type: targetHere ? "info" : "warn", text: targetHere ? `Arrived in ${displayCountry(country)}. Photograph your target here!` : `Arrived in ${displayCountry(country)} — but no target on your list is here. Pick another country, or fly on.` });
       };
-      const legT = rideLegFor(country);
+      const legT = rideLegFor(country, at);
       setArrivalRide(legT ? legT.mode : null);
       if (legT) launchFlight(legT.from, legT.to, arriveT); else arriveT();
       return;
@@ -3222,7 +3225,7 @@ export default function ShutterbugWorld() {
         sayCountry(country); // spoken arrival: the country, a beat, then hello in its language
         setMsg({ type: "info", text: `Arrived in ${displayCountry(country)}. Now photograph Jonah's subject.` });
       };
-      const legA = rideLegFor(country);
+      const legA = rideLegFor(country, at);
       setArrivalRide(legA ? legA.mode : null);
       if (legA) launchFlight(legA.from, legA.to, arriveA); else arriveA();
     } else {
@@ -4821,6 +4824,23 @@ export default function ShutterbugWorld() {
     : (inCity && countryBox) ? cityStretch(90 - (countryBox.y + countryBox.h / 2))
     : 1;
   const mapPivotY = topCrop ? box.y : box.y + box.h / 2;
+  // Where a click landed on the current ZOOMED plate, in true (unstretched) plate
+  // coords. getScreenCTM gives the viewBox point; the country paths live inside the
+  // vertical-stretch group, so a click on one reads as (x, sy(y)) — un-stretch the y
+  // back to plate space. Used to fly the plane to the exact spot you clicked in a
+  // country, not just its centre (Joshua: reward getting close). x is untouched by
+  // the stretch, and is already plate-space (wrap plates keep their shifted x).
+  const platePointFromEvent = (e) => {
+    const svg = e.currentTarget && e.currentTarget.ownerSVGElement;
+    if (!svg || !svg.getScreenCTM) return null;
+    const m = svg.getScreenCTM();
+    if (!m) return null;
+    const pt = svg.createSVGPoint();
+    pt.x = e.clientX; pt.y = e.clientY;
+    const p = pt.matrixTransform(m.inverse());
+    const k = mapPivotY * (1 - mapStretchY);
+    return { x: p.x, y: (p.y - k) / mapStretchY };
+  };
   const mapTransform = mapStretchY === 1 ? undefined
     : `translate(0 ${(mapPivotY * (1 - mapStretchY)).toFixed(3)}) scale(1 ${mapStretchY})`;
   // Where a location's pin sits on the current plate (polar for Antarctica, shifted
@@ -5429,7 +5449,7 @@ export default function ShutterbugWorld() {
                   const tiny = !d || spanFrac < 0.012 || ALWAYS_RING.has(country);
                   return (
                     <g key={country} className={`sbw-country${tiny ? " sbw-country--tiny" : ""}${flashHint && flashHint.type === "country" && flashHint.key === country ? " sbw-flash-hint" : ""}`} role="button" tabIndex={busy ? -1 : 0}
-                       aria-label={`Choose ${displayCountry(country)}`} onClick={() => pickCountry(country)}
+                       aria-label={`Choose ${displayCountry(country)}`} onClick={(e) => pickCountry(country, platePointFromEvent(e))}
                        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); pickCountry(country); } }}
                        onMouseEnter={() => { setHoverCountry(country); sayOnHover(country); }} onMouseLeave={() => setHoverCountry((c) => (c === country ? null : c))}
                        onFocus={() => setHoverCountry(country)} onBlur={() => setHoverCountry((c) => (c === country ? null : c))}
