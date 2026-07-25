@@ -877,10 +877,29 @@ export function speakEn(text) {
     window.speechSynthesis.speak(utter(text, { pitch: 1.05 }));
   } catch { /* speech is optional */ }
 }
+// Does the browser actually have a voice for this language? Returns null when the
+// voice list hasn't loaded yet (it populates async in some browsers), so callers can
+// tell "no voice" apart from "don't know yet".
+function hasVoiceFor(code) {
+  try {
+    const voices = window.speechSynthesis.getVoices() || [];
+    if (!voices.length) return null;
+    const base = String(code).split("-")[0].toLowerCase();
+    return voices.some((v) => (v.lang || "").toLowerCase().startsWith(base));
+  } catch { return null; }
+}
 function greetingUtterance(g) {
-  // Speak the native-script form (before any "(romanization)"), a touch slowly.
   const native = String(g.text).split(" (")[0].trim();
+  // The romanization: the "(Salaam)" part, then the pronunciation hint, then native.
+  const roman = (String(g.text).match(/\(([^)]+)\)/) || [])[1] || g.pronunciation || native;
   const code = SPEECH_LANG[g.language];
+  // If the browser has NO voice for this language, speaking the native script hands
+  // it to a default (usually English) voice, which mangles a foreign script — Iran's
+  // سلام came out wrong for exactly this reason (few browsers ship a Persian voice).
+  // Speak the romanization in English instead: "Salaam" read by an English voice is
+  // close and clear, and far better than a garbled non-sound. When the voice DOES
+  // exist, or the list simply hasn't loaded yet, speak the real native form.
+  if (code && hasVoiceFor(code) === false) return utter(roman, { lang: "en-US", rate: 0.9 });
   return utter(native, { lang: code || "en-US", rate: 0.85 });
 }
 export function speakGreeting(g) {

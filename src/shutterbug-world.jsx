@@ -4372,7 +4372,7 @@ export default function ShutterbugWorld() {
                   {WORLD_COUNTRIES.map((c) => (
                     <path key={c.name} d={c.d} fill="none" stroke={INK} strokeOpacity="0.45" strokeWidth="0.5" vectorEffect="non-scaling-stroke" />
                   ))}
-                  <WaterFeatures box={{ ...box, x: box.x - k * 360 }} vbW={box.w} vbH={box.h} zoomed frameAR={1} />
+                  <WaterFeatures box={{ ...box, x: box.x - k * 360 }} vbW={box.w} vbH={box.h} zoomed frameAR={1} labels={false} />
                 </g>
               ))}
               {/* the trail so far */}
@@ -5282,7 +5282,7 @@ export default function ShutterbugWorld() {
                     {(plateMode === "wrap" ? [0, 360] : [0]).map((off) => (
                       <g key={"w" + off} transform={off ? `translate(${off} 0)` : undefined}>
                         <WaterFeatures box={{ ...box, x: box.x - off }} vbW={box.w * (1 + 2 * vbPad)}
-                          vbH={box.h * (1 + 2 * vbPad)} zoomed frameAR={FRAME_AR} labels={!inCountry} mapStretchY={mapStretchY} />
+                          vbH={box.h * (1 + 2 * vbPad)} zoomed frameAR={FRAME_AR} labels={false} mapStretchY={mapStretchY} />
                       </g>
                     ))}
                   </g>
@@ -6934,7 +6934,9 @@ function ResultModal({ data, onContinue, reduced }) {
   );
   return (
     <div ref={ref} role="dialog" aria-modal="true" aria-label={data.title}
-      style={{ position: "fixed", inset: 0, background: "rgba(16,38,46,0.62)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16, zIndex: 50 }}>
+      // Dim a touch more when Pickles is here, so she reads clearly against a
+      // quieter desk (Joshua: "darken it just a bit more" when a character pops up).
+      style={{ position: "fixed", inset: 0, background: data.cheer ? "rgba(16,38,46,0.76)" : "rgba(16,38,46,0.62)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16, zIndex: 50 }}>
       {data.cheer && <PicklesCheer kind={data.cheer} reduced={reduced} />}
       <div className={reduced ? "" : "sbw-pop"}
         style={{ background: PAPER, borderRadius: 16, border: `3px solid ${accent}`, boxShadow: "0 14px 44px rgba(0,0,0,0.35)", maxWidth: sideBySide ? 840 : 620, width: "100%", maxHeight: "92vh", overflowY: "auto", padding: "34px 40px", textAlign: "center" }}>
@@ -7624,7 +7626,7 @@ function MrOBubble({ fact, beats, onClose, reduced }) {
   useModalFocus(ref, null, { escape: false });
   return (
     <div ref={ref} role="dialog" aria-modal="true" aria-label={`${MR_O.name} says`} onClick={advance}
-      style={{ position: "fixed", inset: 0, zIndex: 58, background: "rgba(8,20,24,0.66)",
+      style={{ position: "fixed", inset: 0, zIndex: 58, background: "rgba(8,20,24,0.8)",
         display: "flex", alignItems: "flex-end", justifyContent: "center", gap: 0, padding: "0 20px", cursor: "pointer" }}>
       <div className={reduced ? "" : "sbw-pop"} key={beat} style={{ display: "flex", alignItems: "flex-end", gap: 6, maxWidth: 1120, width: "100%", justifyContent: "center" }}>
         {imgOk ? (
@@ -7735,7 +7737,7 @@ function RiddleModal({ riddle, onAnswer, onClose, gain, reduced }) {
   useModalFocus(ref, onClose, { escape: false });
   return (
     <div ref={ref} role="dialog" aria-modal="true" aria-label="Mr. O's riddle"
-      style={{ position: "fixed", inset: 0, background: "rgba(8,20,24,0.66)", display: "flex", alignItems: "flex-end", justifyContent: "center", gap: 6, padding: "0 20px", zIndex: 58 }}>
+      style={{ position: "fixed", inset: 0, background: "rgba(8,20,24,0.8)", display: "flex", alignItems: "flex-end", justifyContent: "center", gap: 6, padding: "0 20px", zIndex: 58 }}>
       {/* Mr O stands OUTSIDE the card, at the size he introduces himself at. He used
           to be a 180px thumbnail tucked into the corner of a box, which made the
           riddle read as a form to fill in rather than a boy leaning in to ask you
