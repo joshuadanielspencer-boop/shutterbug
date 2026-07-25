@@ -1368,7 +1368,7 @@ const inView = (b, box) => b[0] <= box.x + box.w && b[2] >= box.x && b[1] <= box
 // A label whose anchor is only just off the edge is nudged back in (the Pacific's
 // anchor sits near the antimeridian, which IS the world map's edge). Anything
 // anchored further out than that is not drawn at all — never dragged into frame.
-function WaterLabel({ f, size, stretch, upper, box, avoid }) {
+function WaterLabel({ f, size, stretch, vStretch = 1, upper, box, avoid }) {
   const text = upper ? f.name.toUpperCase() : f.name;
   // Rough half-width of the rendered string, in user units. A serif italic runs a
   // bit over half the font size per glyph; ocean names are also letter-spaced, and
@@ -1387,7 +1387,7 @@ function WaterLabel({ f, size, stretch, upper, box, avoid }) {
     lx = shifted;
   }
   return (
-    <text x={0} y={0} transform={`translate(${lx} ${ly}) scale(${stretch} 1)`}
+    <text x={0} y={0} transform={`translate(${lx} ${ly}) scale(${stretch} ${vStretch})`}
       textAnchor="middle" dominantBaseline="middle" fontSize={size}
       fontFamily="Georgia, 'Times New Roman', serif" fontStyle="italic"
       letterSpacing={upper ? size * 0.12 : 0}
@@ -1404,7 +1404,7 @@ function WaterLabel({ f, size, stretch, upper, box, avoid }) {
 // `labels` is turned off for the country-picking step: that map is already carpeted
 // with country name chips, and a second layer of text under them just reads as mess.
 // The rivers and lakes themselves stay — they're the terrain, not the clutter.
-function WaterFeatures({ box, vbW, vbH, zoomed, frameAR, labels = true }) {
+function WaterFeatures({ box, vbW, vbH, zoomed, frameAR, labels = true, mapStretchY = 1 }) {
   const max = waterTier(box.w);
   // Font size in USER units, picked so a label always lands at ~1.6% of the frame's
   // width on screen — the same apparent size at every zoom, and it scales down with
@@ -1416,6 +1416,10 @@ function WaterFeatures({ box, vbW, vbH, zoomed, frameAR, labels = true }) {
   // counter-stretched back to the right shape.
   const size = 0.016 * (zoomed ? Math.max(vbW, frameAR * vbH) : frameAR * box.h);
   const stretch = zoomed ? 1 : box.w / (frameAR * box.h);
+  // A zoomed plate sits inside the map's vertical-stretch group, so its labels would
+  // stretch with it (rivers SHOULD stretch, to stay on the river; the words should
+  // not). This is the vertical counter, applied per label the way the pins are.
+  const vStretch = zoomed ? 1 / mapStretchY : 1;
   // Where the compass rose sits, as a fraction of the frame (see the atlas furniture
   // below the map) — labels give it a wide berth. Kept in step with the button's own
   // size/offset: it was shrunk into the corner so it stops covering Hawaii, which
@@ -1443,7 +1447,7 @@ function WaterFeatures({ box, vbW, vbH, zoomed, frameAR, labels = true }) {
       ))}
       {labels && [...rivers, ...lakes, ...marine].map((f) => (
         <WaterLabel key={"l" + f.id} f={f} size={f.kind === "ocean" ? size * 1.02 : size}
-          stretch={stretch} upper={f.kind === "ocean"} box={box} avoid={avoid} />
+          stretch={stretch} vStretch={vStretch} upper={f.kind === "ocean"} box={box} avoid={avoid} />
       ))}
     </g>
   );
@@ -5282,7 +5286,7 @@ export default function ShutterbugWorld() {
                     {(plateMode === "wrap" ? [0, 360] : [0]).map((off) => (
                       <g key={"w" + off} transform={off ? `translate(${off} 0)` : undefined}>
                         <WaterFeatures box={{ ...box, x: box.x - off }} vbW={box.w * (1 + 2 * vbPad)}
-                          vbH={box.h * (1 + 2 * vbPad)} zoomed frameAR={FRAME_AR} labels={!inCountry} />
+                          vbH={box.h * (1 + 2 * vbPad)} zoomed frameAR={FRAME_AR} labels={!inCountry} mapStretchY={mapStretchY} />
                       </g>
                     ))}
                   </g>
