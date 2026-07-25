@@ -105,7 +105,7 @@ src/
                            #   seeding primitives are still used and still tested)
   robinson.js              # Robinson projection helpers for the world map
   data/
-    locations.js           # game content: 447 places in 106 countries — clues, facts, photos, greetings, category
+    locations.js           # game content: 457 places in 108 countries — clues, facts, photos, greetings, category
     categories.js          # the 14 subject categories + kinds + display metadata
     art.js                 # UI art registry — game key → badge/icon/crest file
     worldmap.js            # country outline paths + COUNTRY_CONTINENT colour map
