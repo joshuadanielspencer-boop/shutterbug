@@ -1775,6 +1775,7 @@ export default function ShutterbugWorld() {
   const [guideOpen, setGuideOpen] = useState(false);          // Field Guide tool: clue-research popup
   const [guideFresh, setGuideFresh] = useState(false);        // did this Field Guide open just spend the research day?
   const [passportOpen, setPassportOpen] = useState(false);    // Passport tool: multi-page booklet popup
+  const [bagOpen, setBagOpen] = useState(false);              // Camera-bag tool (Long Trip): kit + conditions popup
   const [toolNote, setToolNote] = useState(null);             // why a greyed-out tool isn't usable this mode
   const [createOpen, setCreateOpen] = useState(false);        // "Create New Traveler" modal open
   const [meetInfo, setMeetInfo] = useState(null);             // { line, comment } shown on the meet-Uncle screen
@@ -3476,6 +3477,10 @@ export default function ShutterbugWorld() {
   // Assignments, but there is no target count to finish — the score IS how far you
   // got — and you set off with a bag Jonah packed (see src/data/kit.js).
   const isLongTrip = gameMode === "longtrip";
+  // The rail holds four tools in the Long Trip (the camera bag joins the three), so
+  // the tiles shrink to keep them all on the desk without scrolling; three tools keep
+  // the roomier size.
+  const railToolMax = isLongTrip ? 150 : 200;
   // Travel modes (hubs + last-leg transport + a money budget) run on the two higher
   // Grand Tour tiers only.
   const travelModes = isTour && (difficulty === "medium" || difficulty === "hard");
@@ -5155,45 +5160,10 @@ export default function ShutterbugWorld() {
               )}
             </div>
           )}
-          {/* The bag, on the panel, all trip. A charge you've forgotten about is a
-              charge you won't plan around, and the whole mode is planning around
-              them. Spent items stay listed but greyed — seeing "0 left" is what
-              teaches that it was a limited thing, where quietly vanishing would just
-              look like a bug. */}
-          {isLongTrip && condition && (
-            <div style={{ marginTop: 12, display: "flex", gap: 9, alignItems: "center",
-              background: condition.kind === "good" ? "#EAF6EF" : "#FFF8E6",
-              border: `1px solid ${condition.kind === "good" ? GREEN : GOLD}`, borderRadius: 10, padding: "8px 11px" }}>
-              <span aria-hidden="true" style={{ fontSize: 19 }}>{condition.emoji}</span>
-              <div style={{ minWidth: 0 }}>
-                <div style={{ fontWeight: 800, color: INK, fontSize: 12.5 }}>{condition.name}</div>
-                <div style={{ color: INK, opacity: 0.8, fontSize: 11.5, lineHeight: 1.35 }}>{condition.blurb}</div>
-              </div>
-            </div>
-          )}
-          {isLongTrip && Object.keys(kit).length > 0 && (
-            <div style={{ marginTop: 12, background: PAPER, border: `1px solid ${PAPER_LINE}`, borderRadius: 10, padding: "10px 12px" }}>
-              <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 10, letterSpacing: "0.16em", color: CORAL, fontWeight: 800, marginBottom: 7 }}>🎒 IN YOUR BAG</div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                {Object.keys(kit).map((id) => {
-                  const item = KIT_BY_ID[id]; if (!item) return null;
-                  const left = kit[id] || 0;
-                  const spent = left <= 0;
-                  return (
-                    <div key={id} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12.5,
-                      opacity: spent ? 0.45 : 1, color: INK }}>
-                      <span aria-hidden="true" style={{ fontSize: 17, filter: spent ? "grayscale(1)" : "none" }}>{item.emoji}</span>
-                      <span style={{ fontWeight: 700, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.name}</span>
-                      <span style={{ marginLeft: "auto", fontFamily: "ui-monospace, monospace", fontSize: 11,
-                        color: spent ? INK : GREEN, fontWeight: 800, whiteSpace: "nowrap" }}>
-                        {item.charges >= 99 ? (spent ? "spent" : "all trip") : `${left} left`}
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
+          {/* The bag and the trip's conditions used to render inline HERE, which
+              pushed the note and photo down far enough to make the whole left panel
+              scroll every run. They now live in the camera-bag tool on the right rail
+              (a popup), so the main screen never scrolls (Joshua's report). */}
 
           {/* Grand Tour, standing on a continent and choosing a country: it has no
               single target, so leaving again has to be possible from HERE too. Without
@@ -5830,6 +5800,13 @@ export default function ShutterbugWorld() {
             same amount, so lifting it keeps the rail evenly spaced. */}
         <div style={{ flex: "0 0 210px", alignSelf: "stretch", display: "flex", flexDirection: "column",
           justifyContent: "space-between", alignItems: "center", padding: "4px 0 26px" }}>
+          {/* The Long Trip adds a FOURTH tool (the camera bag), so the tiles shrink to
+              keep all four on the desk without scrolling — Joshua's "compress the four
+              assets so they all fit". Other modes keep the roomier three. */}
+          {isLongTrip && (
+            <ToolButton img="camera-bag.png" maxWidth={railToolMax} label="Camera bag — your kit and this trip's conditions"
+              onClick={() => { setGearOpen(false); setBagOpen(true); }} />
+          )}
           {/* All three tools show in every mode. The Field Guide researches a CLUE, so
               it only works where there is one to solve — greyed (not gone) on the Grand
               Tour, on Explore, and on Expert, with a tap explaining why. Keeping the
@@ -5841,7 +5818,7 @@ export default function ShutterbugWorld() {
               : null;
             const guideUsable = !guideReason;
             return (
-              <ToolButton img="field-guide.png" dim={!guideUsable}
+              <ToolButton img="field-guide.png" dim={!guideUsable} maxWidth={railToolMax}
                 label={guideUsable ? "Field Guide — research the clue" : "Field Guide — not used in this mode"}
                 onClick={guideUsable
                   ? () => { setGearOpen(false); const fresh = !researched[step] && mode.research !== "off"; if (fresh) doResearch(); setGuideFresh(fresh); setGuideOpen(true); }
@@ -5849,8 +5826,8 @@ export default function ShutterbugWorld() {
                 disabled={guideUsable && busy} />
             );
           })()}
-          <ToolButton img="photo-album.png" label="Photo Album" onClick={() => setAlbumOpen(true)} />
-          <ToolButton img="passport.png" label="Passport" onClick={() => { setGearOpen(false); setPassportOpen(true); }} />
+          <ToolButton img="photo-album.png" maxWidth={railToolMax} label="Photo Album" onClick={() => setAlbumOpen(true)} />
+          <ToolButton img="passport.png" maxWidth={railToolMax} label="Passport" onClick={() => { setGearOpen(false); setPassportOpen(true); }} />
         </div>
       </div>
 
@@ -5858,6 +5835,7 @@ export default function ShutterbugWorld() {
 
       {toolNote && <ToolNoteModal note={toolNote} onClose={() => setToolNote(null)} />}
       {passportOpen && <PassportModal profile={profileName ? getProfile(profileName) : null} onClose={() => setPassportOpen(false)} />}
+      {bagOpen && isLongTrip && <KitBagModal condition={condition} kit={kit} onClose={() => setBagOpen(false)} />}
       {albumOpen && <AlbumModal album={album} onPick={(p) => { setAlbumOpen(false); setAlbumView(p); }} onClose={() => setAlbumOpen(false)} />}
       {guideOpen && <FieldGuideModal note={researched[step]} spent={guideFresh && researchCost > 0} onClose={() => setGuideOpen(false)} />}
       {pending && <ResultModal data={pending} onContinue={continueFromResult} reduced={prefersReduced} />}
@@ -6238,13 +6216,13 @@ function Itinerary({ reqs, here }) {
 // used for a tool that doesn't apply to this mode, whose tap opens an explanation
 // rather than the tool. A dimmed image plus its "not used in this mode" label carry
 // the state without relying on colour alone (rule 4).
-function ToolButton({ img, label, onClick, disabled, dim }) {
+function ToolButton({ img, label, onClick, disabled, dim, maxWidth = 200 }) {
   const faded = disabled || dim;
   return (
     <button onClick={onClick} disabled={disabled} aria-label={label} title={label} className="sbw-tool"
       style={{ display: "flex", alignItems: "center", justifyContent: "center", background: "transparent",
         border: "none", padding: 0, cursor: disabled ? "default" : "pointer", opacity: faded ? 0.4 : 1, width: "100%" }}>
-      <img src={`${UI}${img}`} alt="" style={{ width: "100%", maxWidth: 200, display: "block",
+      <img src={`${UI}${img}`} alt="" style={{ width: "100%", maxWidth, display: "block",
         filter: dim ? "grayscale(1) drop-shadow(0 5px 7px rgba(0,0,0,0.45))" : "drop-shadow(0 5px 7px rgba(0,0,0,0.45))" }} />
     </button>
   );
@@ -6397,6 +6375,61 @@ function useModalFocus(ref, onClose, { escape = true } = {}) {
 // "That tool isn't used in this mode." Lifted out of the main component's JSX so
 // it mounts and unmounts as a unit — useModalFocus runs on mount, and a hook can't
 // be called from inside a `{cond && ...}` branch.
+// The camera-bag popup (Long Trip). Holds the two things unique to this run —
+// what's in the bag and the weather you drew — which used to sit inline on the main
+// screen and force it to scroll. A charge you've forgotten is a charge you won't
+// plan around, so spent items stay listed but greyed ("0 left"), never vanish.
+function KitBagModal({ condition, kit, onClose }) {
+  const ids = Object.keys(kit || {});
+  return (
+    <ModalShell label="Your camera bag" onClose={onClose} maxWidth={440} accent={CORAL}>
+      <div style={{ textAlign: "center", marginBottom: 4 }}>
+        <img src={`${UI}camera-bag.png`} alt="" aria-hidden="true" style={{ width: 96, height: "auto" }} />
+        <h2 style={{ fontFamily: "ui-sans-serif, system-ui", fontWeight: 900, fontSize: 20, color: INK, margin: "2px 0 0" }}>Your camera bag</h2>
+      </div>
+      {condition && (
+        <div style={{ marginTop: 12, display: "flex", gap: 10, alignItems: "center", textAlign: "left",
+          background: condition.kind === "good" ? "#EAF6EF" : "#FFF8E6",
+          border: `1px solid ${condition.kind === "good" ? GREEN : GOLD}`, borderRadius: 10, padding: "10px 13px" }}>
+          <span aria-hidden="true" style={{ fontSize: 26, flex: "none" }}>{condition.emoji}</span>
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 10, letterSpacing: "0.14em", color: condition.kind === "good" ? GREEN : "#B8860B", fontWeight: 800 }}>THIS TRIP</div>
+            <div style={{ fontWeight: 800, color: INK, fontSize: 14 }}>{condition.name}</div>
+            <div style={{ color: INK, opacity: 0.85, fontSize: 12.5, lineHeight: 1.4 }}>{condition.blurb}</div>
+          </div>
+        </div>
+      )}
+      <div style={{ marginTop: 12, background: PAPER, border: `1px solid ${PAPER_LINE}`, borderRadius: 10, padding: "12px 14px", textAlign: "left" }}>
+        <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 10, letterSpacing: "0.16em", color: CORAL, fontWeight: 800, marginBottom: 9 }}>🎒 IN YOUR BAG</div>
+        {ids.length === 0 ? (
+          <div style={{ color: INK, opacity: 0.7, fontSize: 13 }}>Nothing packed this trip.</div>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
+            {ids.map((id) => {
+              const item = KIT_BY_ID[id]; if (!item) return null;
+              const left = kit[id] || 0;
+              const spent = left <= 0;
+              return (
+                <div key={id} style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 14, opacity: spent ? 0.5 : 1, color: INK }}>
+                  <span aria-hidden="true" style={{ fontSize: 22, filter: spent ? "grayscale(1)" : "none", flex: "none" }}>{item.emoji}</span>
+                  <span style={{ minWidth: 0 }}>
+                    <span style={{ fontWeight: 800, display: "block" }}>{item.name}</span>
+                    <span style={{ fontSize: 12, opacity: 0.8, lineHeight: 1.35, display: "block" }}>{item.blurb}</span>
+                  </span>
+                  <span style={{ marginLeft: "auto", fontFamily: "ui-monospace, monospace", fontSize: 12,
+                    color: spent ? INK : GREEN, fontWeight: 800, whiteSpace: "nowrap", flex: "none" }}>
+                    {item.charges >= 99 ? (spent ? "spent" : "all trip") : `${left} left`}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </ModalShell>
+  );
+}
+
 function ToolNoteModal({ note, onClose }) {
   const ref = useRef(null);
   useModalFocus(ref, onClose);
