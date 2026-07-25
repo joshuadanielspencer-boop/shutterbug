@@ -1699,6 +1699,14 @@ export default function ShutterbugWorld() {
   // Per-assignment shot record, for the Daily share card: how many wrong city
   // shots were taken on each one before it was filed. index -> misses.
   const missesRef = useRef({});
+  // The Long Trip's "ever-diminishing roll": a first-try shot banks a half-day, but
+  // each half-day takes one more perfect shot to earn than the last — the k-th is
+  // earned at the k-th triangular number of perfect shots (1, 3, 6, 10, 15…). So a
+  // strong run breathes out and stretches, while the reward tapers so it can never
+  // run away. It keys off PERFECT (first-try) shots on purpose: this rewards KNOWING
+  // the answer, never a lucky guess, the same rule the perfect-point bonus and Fast
+  // film already follow. Reset per run.
+  const perfectRunRef = useRef(0);   // count of first-try shots this run
   const riddleCountRef = useRef(0);
   // The kind of place Uncle asked for on the last results screen. The NEXT run
   // quietly works one of them onto the itinerary, so bringing it home actually
@@ -2431,6 +2439,7 @@ export default function ShutterbugWorld() {
     setCityPlan(null);
     setTourPlan(null);
     missesRef.current = {};
+    perfectRunRef.current = 0;
     riddleCountRef.current = 0;
     startRef.current = Date.now();
     recorded.current = false;
@@ -3278,7 +3287,7 @@ export default function ShutterbugWorld() {
 
     // "The long way round" makes every frame cost a whole day instead of half.
     const shotCost = hasCond("costlyShots") ? SHOT_COST * 2 : SHOT_COST;
-    const d = Math.round((days - shotCost) * 10) / 10; // a shot costs half a day
+    let d = Math.round((days - shotCost) * 10) / 10; // a shot costs half a day (refunds below can add back)
     setDays(d);
 
     if (gameMode === "tour") {
@@ -3378,7 +3387,24 @@ export default function ShutterbugWorld() {
       // shot that was actually perfect, so it rewards knowing the answer — never a
       // lucky guess that took three tries.
       const filmBack = perfect && spendKit("refundPerfect") ? 0.5 : 0;
-      if (filmBack) setDays((d) => Math.round((d + filmBack) * 10) / 10);
+      // The diminishing roll (Long Trip only). Count this first-try shot, then hand
+      // back a half-day if the new count is a triangular number — the tapering
+      // cadence 1, 3, 6, 10, 15… The isTriangular check: 8n+1 is a perfect square
+      // exactly at the triangular numbers, which avoids storing the next threshold.
+      let rollBack = 0;
+      if (isLongTrip && perfect) {
+        perfectRunRef.current += 1;
+        const n = perfectRunRef.current;
+        const root = Math.round(Math.sqrt(8 * n + 1));
+        if (root * root === 8 * n + 1) rollBack = 0.5;
+      }
+      const rollTxt = rollBack ? " On a roll — half a day back!" : "";
+      // Fold both refunds into `d` BEFORE the out-of-days branches below, so a
+      // roll (or Fast film) can genuinely keep a run alive rather than arriving a
+      // beat too late — which is the whole point of a time bonus. The earlier
+      // setDays(d) set the base cost; this overrides it with the refunded total.
+      const refund = filmBack + rollBack;
+      if (refund) { d = Math.round((d + refund) * 10) / 10; setDays(d); }
       const perfectTxt = pBonus ? ` (+${pts(pBonus)} for a perfect first-try shot!)` : "";
       setAlbum((al) => (al.some((x) => x.id === clicked.id) ? al : [...al, { id: clicked.id, subject: clicked.subject, flag: clicked.flag, city: clicked.city, country: clicked.country, continent: clicked.continent, category: clicked.category, fact: clicked.fact, icon: clicked.icon, photo: clicked.photo, greeting: clicked.greeting }]));
       const found = a.type === "category" ? `You found a ${CATEGORIES[a.category].noun} — ${clicked.subject}!` : `You photographed ${clicked.subject}.`;
@@ -3409,7 +3435,7 @@ export default function ShutterbugWorld() {
         // wrong guess still counts, but it's a plainer "Nice shot!".
         setPending({ kind: "correct", tone: "good", emoji: perfect ? "🎯" : "✅",
           title: perfect ? "Perfect shot!" : "Nice shot!",
-          subtitle: perfect ? `${found} +${gain}${perfectTxt}` : `${found} +${pts(gain)}.`,
+          subtitle: (perfect ? `${found} +${gain}${perfectTxt}` : `${found} +${pts(gain)}.`) + rollTxt,
           fact: clicked.fact, photo: clicked.photo, category: clicked.category, cheer, buttonLabel: "Next assignment ✈" });
       }
     } else {
