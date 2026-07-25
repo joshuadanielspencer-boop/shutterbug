@@ -14,10 +14,10 @@
       "port": 4173
     },
     {
-      "_comment": "The Wanderer spike lives in a sibling folder (../Wanderer) with its own .claude/launch.json. This entry exists only so it can be previewed while Shutterbug is the open project; delete it once Wanderer is opened on its own.",
-      "name": "wanderer-dev",
+      "_comment": "SOLBOUND lives in a sibling folder (../Solbound) with its own .claude/launch.json. This entry exists only so it can be previewed while Shutterbug is the open project; delete it once Solbound is opened on its own.",
+      "name": "solbound-dev",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev", "--prefix", "../Wanderer", "--", "--port", "5273"],
+      "runtimeArgs": ["run", "dev", "--prefix", "../Solbound", "--", "--port", "5273"],
       "port": 5273
     }
   ]

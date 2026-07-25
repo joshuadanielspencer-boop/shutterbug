@@ -678,7 +678,10 @@ const countriesOf = (l) => (l.countries && l.countries.length ? l.countries : [l
     // Trimmed east to the real Atlantic coast (lon −66, x 114) and re-centred a
     // degree south: the old 64°-wide box ran to lon −52.5, so a third of the frame
     // was open Atlantic with Hudson Bay in the top corner.
-    "North America|United States": box145(84.5, 51.5, 59),
+    // Zoomed out ~12% and centred a touch WEST of the country, so the contiguous 48
+    // sit in the right of the frame and the left is open Pacific — room for the
+    // Alaska/Hawaiʻi locator boxes to stack without covering the mainland (Joshua).
+    "North America|United States": box145(80, 51.5, 66),
     // Chile is the one country the clip heuristic above cannot size. Its border path
     // includes Easter Island (lon −109, x 71) — 2,200 miles off the coast, but still
     // INSIDE the 70° clip that its own widely-spread landmarks earn it. So the border
@@ -779,10 +782,12 @@ const OVERSEAS_INSETS = {
   // These are LOCATORS, not playable maps — they show a child where the territory
   // sits, and they don't take clicks. An assignment whose target falls outside the
   // country box still routes to the continent view (see optionsFitCountry).
-  "United States": [
+  // Stacked in a COLUMN on the left (Alaska above Hawaiʻi), small, over the open
+  // Pacific the widened box now leaves there. `layout: "column"` drives that.
+  "United States": { layout: "column", items: [
     { name: "Alaska", cLon: -152, cLat: 63,   w: 44, dots: [[-151, 63.1]] },
     { name: "Hawaiʻi", cLon: -157, cLat: 20.2, w: 16, dots: [[-155.3, 19.4]] },
-  ],
+  ] },
   // Rapa Nui is 2,200 miles off the Chilean coast — the one pin that used to drag
   // Chile's map into the open Pacific (and Oceania's with it, before the move).
   // A wide window on purpose: the island is a speck at any scale that fits it, so
@@ -1291,37 +1296,49 @@ function ShapeView({ d }) {
 // window onto the region the territory sits in — nearby land drawn as a tan
 // silhouette, a coral marker on the territory, its name on a banner. All in the
 // plate's coordinate space, so it rides inside the same map <svg>.
-function OverseasInsets({ specs, box }) {
+function OverseasInsets({ spec, box }) {
+  // Accept either a plain array (a row along the bottom, the default) or
+  // { layout: "column", items } for a vertical stack on the left (the USA).
+  const specs = Array.isArray(spec) ? spec : spec.items;
+  const column = !Array.isArray(spec) && spec.layout === "column";
   const n = specs.length;
   const gap = 0.012 * box.w;
+  const inset = 0.02 * box.w;
+  const bandH = 0.03 * box.h;
+  // ---- Column: stacked on the left, smaller (the USA's Alaska over Hawaiʻi) ----
+  // The widened USA box leaves open Pacific on the left; the boxes sit there,
+  // clear of the mainland, well above the bottom-left compass rose.
+  const colIw = box.w * 0.19;
+  const colIh = colIw * 0.8;
+  // ---- Row: along the bottom (France's four, Chile's one) ----
   // Cap the width per inset. This used to divide 96% of the map between however
   // many insets there were, which was fine for France's four and absurd for one:
-  // Chile's single Easter Island window covered most of the country map. An inset
-  // is a locator in the corner of the page, never the page.
-  const iw = Math.min((box.w * 0.96 - gap * (n - 1)) / n, box.w * 0.26);
-  const ih = iw * 0.72;
+  // Chile's single Easter Island window covered most of the country map.
+  const rowIw = Math.min((box.w * 0.96 - gap * (n - 1)) / n, box.w * 0.26);
+  const iw = column ? colIw : rowIw;
+  const ih = column ? colIh : iw * 0.72;
   const rowW = iw * n + gap * (n - 1);
   // Rule 5: put the row on the side of the frame the territory actually lies
-  // towards, so the inset points the right way — Hawaiʻi and Alaska off the USA's
-  // west, Rapa Nui off Chile's west, France's Caribbean and Indian Ocean holdings
-  // spread along the bottom as before.
+  // towards, so it points the right way — Rapa Nui off Chile's west, France's
+  // Caribbean and Indian Ocean holdings along the bottom.
   const meanX = specs.reduce((a, s) => a + (s.cLon + 180), 0) / n;
   const westward = meanX < box.x + box.w / 2;
-  const inset = 0.02 * box.w;
-  // The compass rose is pinned to the map's bottom-LEFT (it's a DOM element over
-  // the frame, not part of this svg), so a westward row has to start clear of it
-  // or Alaska lands under the compass — which is exactly what it did.
-  const compassGutter = westward ? 0.17 * box.w : 0;
-  const x0 = westward ? box.x + inset + compassGutter : box.x + box.w - inset - rowW;
-  // Clear of the bottom edge AND of the brass corner art. Measured, not guessed:
-  // at 0.055 the name banner rendered 11px below the svg's visible bottom and the
-  // labels were simply gone — an inset whose caption you can't read is decoration.
-  const y0 = box.y + box.h - ih - 0.12 * box.h;
-  const bandH = 0.03 * box.h;
+  // The compass rose is pinned to the map's bottom-LEFT (a DOM element over the
+  // frame), so a westward ROW starts clear of it. The column sits up top, away
+  // from it, so it needs no gutter.
+  const compassGutter = westward && !column ? 0.17 * box.w : 0;
+  const rowX0 = westward ? box.x + inset + compassGutter : box.x + box.w - inset - rowW;
+  const rowY0 = box.y + box.h - ih - 0.12 * box.h;
+  // Column origin: upper-left, in the open Pacific the widened box leaves — started
+  // low enough to clear the 🌍 World-map button pinned to the frame's top-left.
+  const colX0 = box.x + inset;
+  const colY0 = box.y + 0.15 * box.h;
+  const colGapY = 0.03 * box.h;
   return (
     <g style={{ pointerEvents: "none" }}>
       {specs.map((s, i) => {
-        const ix = x0 + i * (iw + gap), iy = y0;
+        const ix = column ? colX0 : rowX0 + i * (iw + gap);
+        const iy = column ? colY0 + i * (ih + colGapY + bandH) : rowY0;
         const cx = s.cLon + 180, cy = 90 - s.cLat;     // window centre, plate coords
         const sc = iw / s.w;                            // plate units → inset units
         const halfWx = s.w / 2, halfWy = (ih / sc) / 2; // window half-extents (degrees)
@@ -4939,6 +4956,37 @@ export default function ShutterbugWorld() {
       }
       if (!any) break;
     }
+    // Keep every icon fully inside the atlas frame — a pin near a country's edge
+    // used to disappear under the brass border (Joshua's UK example). The margin is
+    // the icon's own half-size, so the disc lands at most flush with the frame; a
+    // pin further out is nudged in to the nearest spot that fits (moving the pin
+    // slightly is fine, and the leader line back to its true place still shows it).
+    // The y bounds are computed in DISPLAY space and mapped back through the plate's
+    // vertical stretch, so a stretched map (the UK is 1.33) clamps correctly.
+    const m = 0.055 * WoverS;
+    const padX = vbPad * box.w, padY = vbPad * box.h;
+    const loX = box.x - padX + m, hiX = box.x + box.w + padX - m;
+    const s = mapStretchY, pivot = mapPivotY;
+    const invSy = (Y) => (Y - pivot * (1 - s)) / s;   // display y -> plate y
+    const yA = invSy(box.y - padY + m), yB = invSy(box.y + box.h + padY - m);
+    const loY = Math.min(yA, yB), hiY = Math.max(yA, yB);
+    const clamp = (v, lo, hi) => (hi < lo ? (lo + hi) / 2 : Math.min(Math.max(v, lo), hi));
+    for (const p of pts) { p.x = clamp(p.x, loX, hiX); p.y = clamp(p.y, loY, hiY); }
+    // Keep pins out from under the country-name banner at top-centre, so the label
+    // never overlaps a landmark (Joshua). The banner is a display-space rect; a pin
+    // whose (x, stretched-y) lands under it is pushed straight down to just below it.
+    // Same geometry the banner render uses, so they can't drift apart.
+    const bName = displayCountry(pickedCountry) || "";
+    const bw = (bName.length * 0.025 + 0.06) * box.w;
+    const bL = box.x + box.w * 0.5 - bw / 2 - m, bR = box.x + box.w * 0.5 + bw / 2 + m;
+    const bBottomPlate = invSy(box.y + 0.095 * box.h + m);   // banner's lower edge, in plate y
+    const bTopPlate = invSy(box.y + 0.02 * box.h - m);
+    const [bLoY, bHiY] = bBottomPlate < bTopPlate ? [bBottomPlate, bTopPlate] : [bTopPlate, bBottomPlate];
+    for (const p of pts) {
+      if (p.x >= bL && p.x <= bR && p.y >= bLoY && p.y <= bHiY) {
+        p.y = clamp(bBottomPlate, loY, hiY);   // drop it just under the banner
+      }
+    }
     const pos = {}, moved = {};
     for (const p of pts) {
       pos[p.id] = { x: p.x, y: p.y };
@@ -5686,13 +5734,27 @@ export default function ShutterbugWorld() {
               {inCity && cityOptions.map((id) => {
                 const t = cityPinLayout.moved[id]; if (!t) return null;
                 const p = cityPinLayout.pos[id];
+                // The true spot can sit right at (or beyond) the frame edge — a
+                // landmark the edge-clamp pulled inward. Keep the leader's endpoint dot
+                // FLUSH inside the frame rather than half-clipped on the brass border.
+                // This MUST be a display-space clamp: the plate is stretched vertically,
+                // so a plate-y at the box top displays ABOVE it — a plain plate clamp
+                // (which is what left a clipped dot here) doesn't account for that.
+                const s = mapStretchY, pivot = mapPivotY;
+                const syL = (v) => v * s + pivot * (1 - s);
+                const invSyL = (Y) => (Y - pivot * (1 - s)) / s;
+                const dm = 0.02 * box.w, padX = vbPad * box.w, padY = vbPad * box.h;
+                const cl = (v, lo, hi) => Math.min(Math.max(v, lo), hi);
+                const tx = cl(t.x, box.x - padX + dm, box.x + box.w + padX - dm);
+                const ty = invSyL(cl(syL(t.y), box.y - padY + dm, box.y + box.h + padY - dm));
+                if (Math.hypot(tx - p.x, ty - p.y) < 0.05 * WoverS) return null;
                 return <g key={"lead" + id} style={{ pointerEvents: "none" }}>
-                  <line x1={p.x} y1={p.y} x2={t.x} y2={t.y} stroke={INK} strokeWidth="3" strokeOpacity="0.45" strokeDasharray="2 2" vectorEffect="non-scaling-stroke" />
-                  <line x1={p.x} y1={p.y} x2={t.x} y2={t.y} stroke="#FFFFFF" strokeWidth="1.4" strokeOpacity="0.95" strokeDasharray="2 2" vectorEffect="non-scaling-stroke" />
+                  <line x1={p.x} y1={p.y} x2={tx} y2={ty} stroke={INK} strokeWidth="3" strokeOpacity="0.45" strokeDasharray="2 2" vectorEffect="non-scaling-stroke" />
+                  <line x1={p.x} y1={p.y} x2={tx} y2={ty} stroke="#FFFFFF" strokeWidth="1.4" strokeOpacity="0.95" strokeDasharray="2 2" vectorEffect="non-scaling-stroke" />
                   {/* the leader LINE may stay stretched (a line is a line), but the
                       dot marking the true spot has to stay a dot */}
-                  <g transform={unstretchAt(t.y)}>
-                    <ellipse cx={t.x} cy={t.y} {...pinR(0.013)} fill="#FFFFFF" fillOpacity="0.95" stroke={INK} strokeOpacity="0.5" strokeWidth="1" vectorEffect="non-scaling-stroke" />
+                  <g transform={unstretchAt(ty)}>
+                    <ellipse cx={tx} cy={ty} {...pinR(0.013)} fill="#FFFFFF" fillOpacity="0.95" stroke={INK} strokeOpacity="0.5" strokeWidth="1" vectorEffect="non-scaling-stroke" />
                   </g>
                 </g>;
               })}
@@ -5759,7 +5821,7 @@ export default function ShutterbugWorld() {
                 </g>
               )}
               {countryBox && pickedCountry && OVERSEAS_INSETS[pickedCountry] && (
-                <OverseasInsets specs={OVERSEAS_INSETS[pickedCountry]} box={box} />
+                <OverseasInsets spec={OVERSEAS_INSETS[pickedCountry]} box={box} />
               )}
               </g>
               {/* The overland hop is drawn OUTSIDE the map's vertical-stretch group
