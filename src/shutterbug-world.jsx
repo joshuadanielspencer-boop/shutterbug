@@ -2943,7 +2943,11 @@ export default function ShutterbugWorld() {
       const from = current ? loc(current) : (pickedContinent ? CONTINENT_PIN[pickedContinent] : HUB);
       const to = landAt;
       const useCountry = COUNTRY_LAYER_CONTINENTS.has(cont);
-      const sameHere = !!current && loc(current).continent === cont; // already here — no flight
+      // "Already here" now also covers re-picking the continent you're STANDING on
+      // after a trip to the world map — pickedContinent records that even when you've
+      // arrived but not yet photographed (current is null then). Re-selecting it is a
+      // free return; selecting a different continent still flies and costs.
+      const sameHere = (!!current && loc(current).continent === cont) || (!!pickedContinent && pickedContinent === cont); // already here — no flight
       const finalize = () => {
         setFlying(null); setPickedContinent(cont); setPickedCountry(null); setCityPlan(null);
         setPhase(useCountry ? "country" : "city"); setCurrent(null); setRevealed(false);
@@ -2964,7 +2968,11 @@ export default function ShutterbugWorld() {
       const from = current ? loc(current) : (pickedContinent ? CONTINENT_PIN[pickedContinent] : HUB);
       const to = landAt;
       // Already on this continent? No real flight — skip animation/music/cost.
-      const sameHere = !!current && loc(current).continent === cont;
+      // "Already here" now also covers re-picking the continent you're STANDING on
+      // after a trip to the world map — pickedContinent records that even when you've
+      // arrived but not yet photographed (current is null then). Re-selecting it is a
+      // free return; selecting a different continent still flies and costs.
+      const sameHere = (!!current && loc(current).continent === cont) || (!!pickedContinent && pickedContinent === cont);
       const nextStop = tourPlan && tourPlan.order.find((c) => tourReqs.some((r) => !r.done && r.continent === c));
       const offPlan = !sameHere && nextStop && cont !== nextStop && pickedContinent !== cont;
       const penalty = offPlan ? DEVIATION_COST : 0;
@@ -2983,7 +2991,7 @@ export default function ShutterbugWorld() {
         const nd = Math.round((days - cost) * 10) / 10;
         setDays(nd);
         setFlying(null); setPickedContinent(cont); setPickedCountry(null); setCityPlan(null);
-        setPhase(useCountry ? "country" : "city"); setCurrent(null); setRevealed(false);
+        setPhase(useCountry ? "country" : "city"); if (!sameHere) setCurrent(null); setRevealed(false);
         poppedCountryRef.current = null; // let this continent's countries pop their card
         if (penalty) setTourPlan((p) => ({ ...p, deviations: p.deviations + 1 }));
         const costTxt = sameHere ? "no days lost"
@@ -3033,7 +3041,10 @@ export default function ShutterbugWorld() {
         setPickedContinent(cont);
         setPickedCountry(null);
         setPhase(useCountry ? "country" : "city"); // Medium/Hard Europe: pick the country first
-        setCurrent(null);   // arrived on the continent; no city picked yet
+        // A REAL arrival clears current (no city picked on the new continent). A free
+        // return (sameHere — you never left) keeps it, so the next country hop still
+        // flies from the last place you photographed.
+        if (!sameHere) setCurrent(null);
         setRevealed(false);
         if (nd <= 0) outOfDays(`You reached ${cont}, but the trip's budget is spent.`);
         else { setMsg({ type: "info", text: sameHere ? `Still in ${cont} — ${useCountry ? "pick the right country." : "pick the right city."}` : `Touched down in ${cont} (${costTxt}). ${useCountry ? "Now pick the right country." : "Now pick the right city."}` }); say(cont); if (!sameHere) maybeMrO(cont); }
@@ -5740,16 +5751,32 @@ export default function ShutterbugWorld() {
                 a continent chosen, and not in Explore/Journeys, which own their own
                 navigation. Sits inside the frame's overflow:hidden so it clips to the
                 atlas page. */}
-            {zoomed && pickedContinent && !isExplore && gameMode !== "journey" && (
-              <button onClick={() => { if (busy) return; setPickedContinent(null); setPickedCountry(null); setCityPlan(null); setPhase("continent"); setRevealed(false); setMsg({ type: "info", text: "Pick the continent your next target is in." }); }}
+            {zoomed && pickedContinent && !isExplore && gameMode !== "journey" && (() => {
+              // Glow when the next target is on ANOTHER continent, so a young player
+              // sees plainly that the way forward is off this map. `asg` is the
+              // current assignment; its continent against the one you're standing on.
+              const offContinent = !!asg && !!asg.continent && asg.continent !== pickedContinent;
+              return (
+              <button onClick={() => {
+                  if (busy) return;
+                  // KEEP pickedContinent — it records the continent you're physically
+                  // on, so re-picking it from the world map is a free return (no flight,
+                  // no day) rather than a fresh trip. Only phase changes: the world map
+                  // shows, and the game still remembers where you left off. (Joshua:
+                  // "switching views… shouldn't take travel time.")
+                  setPickedCountry(null); setCityPlan(null); setPhase("continent"); setRevealed(false);
+                  setMsg({ type: "info", text: "Pick the continent your next target is in — or tap the one you're in to go back for free." });
+                }}
                 disabled={busy} aria-label="Back to the world map"
+                className={offContinent && !prefersReduced ? "sbw-worldglow" : undefined}
                 style={{ position: "absolute", top: 8, left: 8, zIndex: 4, display: "flex", alignItems: "center", gap: 6,
-                  padding: "6px 11px", borderRadius: 9, border: `1.5px solid ${OCEAN_DEEP}`,
-                  background: "rgba(244,236,216,0.94)", color: INK, fontWeight: 800, fontSize: 12.5,
+                  padding: "6px 11px", borderRadius: 9, border: `1.5px solid ${offContinent ? CORAL : OCEAN_DEEP}`,
+                  background: offContinent ? "rgba(255,244,238,0.97)" : "rgba(244,236,216,0.94)", color: INK, fontWeight: 800, fontSize: 12.5,
                   cursor: busy ? "default" : "pointer", opacity: busy ? 0.5 : 1, boxShadow: "0 2px 5px rgba(0,0,0,0.25)" }}>
                 <span aria-hidden="true">🌍</span> World map
               </button>
-            )}
+              );
+            })()}
 
           </div>
             {/* Decorative atlas furniture (non-interactive, over the map plate). */}
@@ -5987,6 +6014,10 @@ function Frame({ children, desk = false }) {
            Colour is still never the only signal (rule 4): the border, the hover and
            focus highlights, and the country's name on hover all say "clickable"
            without depending on the wash. */
+        /* World-map button glow: the way forward is off this map. */
+        .sbw-worldglow{ animation: sbw-worldglow 1.15s ease-in-out infinite; }
+        @keyframes sbw-worldglow{ 0%,100%{ box-shadow: 0 2px 5px rgba(0,0,0,0.25), 0 0 0 0 rgba(198,91,62,0.55) } 50%{ box-shadow: 0 2px 5px rgba(0,0,0,0.25), 0 0 0 6px rgba(198,91,62,0) } }
+        body.sbw-no-anim .sbw-worldglow{ animation: none; }
         .sbw-country{ outline: none; }
         /* Island nations that come out a pixel wide. The ring breathes so a child can
            SEE there's something to aim at, and it's a big invisible target so they
