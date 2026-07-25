@@ -114,16 +114,14 @@ export const ROUNDEL_ART = {
   "Antarctica":    "roundels/roundel-antarctica.png",
 };
 
-// The Grand Tour's travel layer, keyed by TRANSPORT_MODES id in data/travel.js.
-// Drawn top-down, like the map itself and the aircraft token already flown across
-// it — so they read as pieces on the board rather than logos. That orientation is
-// the reason they render at 34px and not the 16px the emoji used: from above, a
-// bus and a train are both small rectangles until you give them room.
+// The local-transport layer, keyed by TRANSPORT_MODES id in data/travel.js.
 // Illustrated side-view vehicles (chroma-keyed off green screens). They replaced
 // the flat top-down icons once the overland-ride ANIMATION was retired — these now
 // only sit as a still on the arrival card's "getting about" line, where a
 // recognisable three-quarter view reads far better than a top-down silhouette.
-// Cable car keeps its top-down for now: the green-screen set had no cable-car art.
+// Cable car was retired (the green-screen set had no cable-car art): its mountain
+// places now show their country's everyday transport — cog railway where one runs
+// (Matterhorn, Zugspitze), otherwise the local train.
 export const TRANSPORT_ART = {
   flight:    "transport/transport-flight-green.png",
   train:     "transport/transport-train-green.png",
@@ -133,7 +131,6 @@ export const TRANSPORT_ART = {
   riverboat: "transport/transport-riverboat-green.png",
   canoe:     "transport/transport-canoe-green.png",
   gondola:   "transport/transport-gondola-green.png",
-  cablecar:  "transport/transport-cablecar-topdown.png",
   cograil:   "transport/transport-cograil-green.png",
   tuktuk:    "transport/transport-tuktuk-green.png",
   camel:     "transport/transport-camel-green.png",

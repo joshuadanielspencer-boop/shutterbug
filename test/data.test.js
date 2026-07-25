@@ -689,21 +689,21 @@ describe("travel modes", () => {
     }
   });
 
-  it("offers a cable car or cog railway only where one has been built", () => {
-    // Subset, not equality: a place with both (the Matterhorn has the Glacier
-    // Paradise cable car AND the Gornergrat cog railway) shows whichever its hash
-    // picks, so asserting an exact list would pin the hash rather than the fact.
-    const CABLE_OK = new Set(["capetown", "matterhorn", "montblanc", "zugspitze", "huangshan"]);
+  it("offers a cog railway only where one has been built, and never a cable car", () => {
+    // Cable car was RETIRED (2026-07-25) — the illustrated green-screen transport
+    // set had no cable-car art, so rather than ship one mode on the old top-down
+    // style it was dropped, and its mountain places fall to their country's everyday
+    // transport (cog railway where one runs, otherwise the train). So nothing offers
+    // a cable car any more, and cog railway stays pinned to the places that have one.
     const COG_OK = new Set(["matterhorn", "zugspitze", "rio"]);
     for (const l of LOCATIONS) {
-      if (offers(l, "cablecar")) expect(CABLE_OK, `cable car at ${l.subject}`).toContain(l.id);
+      expect(offers(l, "cablecar"), `cable car at ${l.subject} (retired)`).toBe(false);
       if (offers(l, "cograil")) expect(COG_OK, `cog railway at ${l.subject}`).toContain(l.id);
     }
-    // The great expedition peaks have neither, and must never be offered one.
+    // The great expedition peaks have no built railway, and must never be offered one.
     for (const id of ["everest", "denali", "aconcagua", "kilimanjaro", "vinson", "k2"]) {
       const l = LOCATIONS.find((x) => x.id === id);
       if (!l) continue;
-      expect(offers(l, "cablecar"), `cable car up ${l.subject}`).toBe(false);
       expect(offers(l, "cograil"), `cog railway up ${l.subject}`).toBe(false);
     }
   });

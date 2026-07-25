@@ -86,7 +86,6 @@ export const TRANSPORT_MODES = [
   { id: "riverboat",name: "Riverboat",       emoji: "🛥️", speed: 1, cost: 2, contexts: ["river"], blurb: "Up the river — sometimes the only road there is." },
   { id: "canoe",    name: "Dugout canoe",    emoji: "🛶", speed: 1, cost: 1, contexts: ["dugout"], blurb: "Paddled the last stretch, the old way." },
   { id: "gondola",  name: "Gondola",         emoji: "🛶", speed: 1, cost: 3, contexts: ["venice"], blurb: "Poled through the canals — only in Venice." },
-  { id: "cablecar", name: "Cable car",       emoji: "🚠", speed: 2, cost: 2, contexts: ["cablecar"], blurb: "Swung up the mountainside by cable." },
   { id: "cograil",  name: "Cog railway",     emoji: "🚞", speed: 1, cost: 2, contexts: ["cograil"], blurb: "A toothed rail that grips the steep track." },
   { id: "tuktuk",   name: "Tuk-tuk",         emoji: "🛺", speed: 2, cost: 1, contexts: ["southasia", "seasia"], blurb: "A little three-wheeler — cheap and everywhere." },
   { id: "camel",    name: "Camel",           emoji: "🐪", speed: 1, cost: 1, contexts: ["camelriding"], blurb: "The desert's own ship, one slow swaying step at a time." },
@@ -137,13 +136,6 @@ const CAMEL_COUNTRIES = new Set([
 //
 // An id missing here means the mode simply isn't offered, which is the safe default:
 // add one only once you have checked it, and note what you checked (rule 2).
-const CABLECAR_PLACES = new Set([
-  "capetown",   // Table Mountain Aerial Cableway, running since 1929
-  "matterhorn", // Matterhorn Glacier Paradise, Zermatt — Europe's highest mountain station
-  "montblanc",  // Aiguille du Midi from Chamonix — the world's highest vertical ascent
-  "zugspitze",  // Seilbahn Zugspitze, opened 2017
-  "huangshan",  // the Yellow Mountains carry four separate cableways
-]);
 const COGRAIL_PLACES = new Set([
   "matterhorn", // Gornergrat Railway — Europe's highest open-air cog railway
   "zugspitze",  // Bayerische Zugspitzbahn, running since 1930
@@ -174,7 +166,6 @@ export function destinationContexts(loc) {
   if (cat === "waterway" && tags.includes("river")) c.add("river");
   if (DUGOUT_PLACES.has(loc.id)) c.add("dugout");
   if (cat === "desert" && CAMEL_COUNTRIES.has(loc.country)) c.add("camelriding");
-  if (CABLECAR_PLACES.has(loc.id)) c.add("cablecar");
   if (COGRAIL_PLACES.has(loc.id)) c.add("cograil");
   if (loc.city === "Venice" || loc.subject === "Venice's Grand Canal") c.add("venice");
   if (SEASIA.has(loc.country)) c.add("seasia");
@@ -437,7 +428,7 @@ export function countryTransport(locs, legDeg = 10) {
     // because "water" is satisfied by any coast and would hand a plain ferry to India
     // and Italy — both of which have something far more worth showing a child. A
     // country only reaches the bottom of this list if it has nothing special.
-    const RANK = ["gondola", "cograil", "cablecar", "camel", "canoe", "tuktuk", "riverboat", "ferry"];
+    const RANK = ["gondola", "cograil", "camel", "canoe", "tuktuk", "riverboat", "ferry"];
     const best = flavours.slice().sort((a, b) => {
       const ra = RANK.indexOf(a.id), rb = RANK.indexOf(b.id);
       return (ra < 0 ? 99 : ra) - (rb < 0 ? 99 : rb);
