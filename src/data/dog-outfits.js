@@ -25,20 +25,29 @@ export const OUTFIT_POSE_FILE = {
 };
 
 // Region → its outfit(s). `primary` is worn ~2/3 of the time and `alt` ~1/3 when
-// BOTH are unlocked; if only one is unlocked, that one is worn. Home regions have a
-// single signature outfit; the "gap" regions borrow a themed costume plus an
-// alternate. Values are outfit ids = the file-name prefixes in dog-outfits/.
+// BOTH are unlocked; if only one is unlocked, that one is worn. Every region has a
+// signature look plus an alternate: the 10 home regions wear their own costume with
+// a themed second, the "gap" regions borrow two themed costumes.
+// Values are outfit ids = the file-name prefixes in dog-outfits/.
+//
+// A home region's alternate is always one of the 8 milestone costumes, and each was
+// picked because it is TRUE of that region, not just spare: the Himalaya really is
+// where a hiker belongs, the monsoon really is Southeast Asia's weather. A side
+// effect worth knowing: the milestone costume often unlocks BEFORE the home one, so
+// Pickles now turns up dressed in a region a child has only just started exploring
+// instead of undressed — the fallback below hands back whichever single outfit is
+// unlocked.
 export const OUTFIT_REGIONS = {
-  british_isles:              { primary: "scottish_highlands" },
-  nordic_arctic:              { primary: "nordic_arctic" },
-  alpine_europe:              { primary: "alpine_europe" },
-  mediterranean:              { primary: "mediterranean" },
-  mena:                       { primary: "desert_traveler" },
-  safari_africa:              { primary: "safari_africa" },
-  south_asian:                { primary: "south_asian" },
-  east_asian:                 { primary: "east_asian" },
-  southeast_asian_tropical:   { primary: "southeast_asian_tropical" },
-  andean_highlands:           { primary: "andean_highlands" },
+  british_isles:              { primary: "scottish_highlands",       alt: "detective" },          // London, and a certain deerstalker
+  nordic_arctic:              { primary: "nordic_arctic",            alt: "photographer" },       // out shooting the northern lights
+  alpine_europe:              { primary: "alpine_europe",            alt: "train_conductor" },    // the Swiss mountain railways
+  mediterranean:              { primary: "mediterranean",            alt: "pirate_captain" },     // an old sea of sailors
+  mena:                       { primary: "desert_traveler",          alt: "aviator" },            // the desert airmail routes
+  safari_africa:              { primary: "safari_africa",            alt: "photographer" },       // the wildlife photographer
+  south_asian:                { primary: "south_asian",              alt: "mountain_hiker" },     // the Himalaya
+  east_asian:                 { primary: "east_asian",               alt: "train_conductor" },    // the bullet trains
+  southeast_asian_tropical:   { primary: "southeast_asian_tropical", alt: "rainy_day_explorer" }, // the monsoon
+  andean_highlands:           { primary: "andean_highlands",         alt: "mountain_hiker" },     // the Inca Trail
   united_states:              { primary: "aviator",            alt: "train_conductor" },
   western_europe:             { primary: "rainy_day_explorer", alt: "detective" },
   canada_pnw:                 { primary: "mountain_hiker",     alt: "rainy_day_explorer" },

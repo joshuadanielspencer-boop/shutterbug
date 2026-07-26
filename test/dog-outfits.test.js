@@ -39,6 +39,26 @@ describe("every country and outfit is wired up", () => {
     for (const o of used) expect(OUTFIT_UNLOCK[o], `${o} has no unlock rule`).toBeTruthy();
     expect(ALL_OUTFITS.length).toBe(18);
   });
+
+  // Every region shuffles between TWO looks. A region that quietly lost its alternate
+  // would still render — Pickles would just wear one outfit forever in that part of
+  // the world, which reads as a missing costume rather than a bug.
+  it("every region has a primary and a DIFFERENT alternate", () => {
+    for (const [region, r] of Object.entries(OUTFIT_REGIONS)) {
+      expect(r.primary, `${region} has no primary`).toBeTruthy();
+      expect(r.alt, `${region} has no alternate`).toBeTruthy();
+      expect(r.alt, `${region} wears the same outfit twice`).not.toBe(r.primary);
+    }
+    expect(Object.keys(OUTFIT_REGIONS).length).toBe(20);
+  });
+
+  // Each of the 18 outfits has to be reachable — an outfit a player can earn but
+  // never see worn is a costume that fell out of the map.
+  it("every outfit is worn by at least one region", () => {
+    const worn = new Set();
+    for (const r of Object.values(OUTFIT_REGIONS)) { worn.add(r.primary); worn.add(r.alt); }
+    for (const o of ALL_OUTFITS) expect(worn.has(o), `${o} is earnable but never worn`).toBe(true);
+  });
 });
 
 describe("outfits are earned at the right thresholds", () => {
