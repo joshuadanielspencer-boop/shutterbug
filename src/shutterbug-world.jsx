@@ -40,7 +40,8 @@ import { listProfiles, lastProfileName, getProfile, createProfile, setLastProfil
 import { CURIOSITY_DECK_BY_ID, CURIOSITY_TOTAL } from "./data/curiosities.js";
 import { KIT_ITEMS, KIT_BY_ID, KIT_OFFERED, KIT_TAKEN } from "./data/kit.js";
 import { CONDITIONS } from "./data/conditions.js";
-import { OUTFIT_POSE_FILE, OUTFIT_REGIONS, outfitRegionFor } from "./data/dog-outfits.js";
+import { OUTFIT_POSE_FILE, OUTFIT_REGIONS, outfitRegionFor,
+  unlockedOutfits, OUTFIT_NAME, OUTFIT_UNLOCK, ALL_OUTFITS, outfitUnlockLabel } from "./data/dog-outfits.js";
 import { cityMissLesson, categoryMissLesson, continentMissLesson } from "./data/misses.js";
 import { DIFFICULTY_ART, MODE_ART, THEME_ART, CATEGORY_ART, ACHIEVEMENT_ART,
   RANK_ART, RECORD_ART, ROUNDEL_ART, TRANSPORT_ART, SEAL_UNLOCKED, MARKER_MASTERED } from "./data/art.js";
@@ -1903,6 +1904,34 @@ export default function ShutterbugWorld() {
     return out;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profileName, lastResult]);
+  // Which of Pickles's outfits are earned (phase 2). A guest can't collect, so they
+  // get the whole wardrobe to enjoy; a named traveler earns them by exploring.
+  // Recomputed only when the run is recorded or the traveler changes, same as above.
+  const dogUnlocked = useMemo(() => (profileName ? unlockedOutfits(getProfile(profileName)) : new Set(ALL_OUTFITS)),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [profileName, lastResult]);
+  const dogUnlockedHas = (id) => dogUnlocked.has(id);
+  // The wardrobe (phase 3): how the player wants Pickles dressed. "auto" (default) =
+  // dress for the region where the outfit is unlocked; "basic" = never; "always" = one
+  // chosen favourite everywhere it's unlocked. Persisted per traveler.
+  const [wardrobeOpen, setWardrobeOpen] = useState(false);
+  const [dogMode, setDogMode] = useState("auto");
+  const [dogPick, setDogPick] = useState(null);
+  useEffect(() => {
+    const p = profileName ? getProfile(profileName) : null;
+    setDogMode(p?.dogOutfitMode || "auto");
+    setDogPick(p?.dogOutfitPick || null);
+  }, [profileName]);
+  const saveWardrobe = (mode, pick) => {
+    setDogMode(mode); if (pick !== undefined) setDogPick(pick);
+    if (profileName) { setProfileFlag(profileName, "dogOutfitMode", mode); if (pick !== undefined) setProfileFlag(profileName, "dogOutfitPick", pick); }
+  };
+  // The outfit Pickles wears celebrating in a country, honouring the wardrobe setting.
+  const dogOutfitFor = (country) => {
+    if (dogMode === "basic") return null;
+    if (dogMode === "always") return dogPick && dogUnlockedHas(dogPick) ? dogPick : null;
+    return pickDogOutfit(country, dogUnlockedHas); // auto
+  };
   const [newBadges, setNewBadges] = useState([]); // achievements newly earned this game
   const [confirmRemove, setConfirmRemove] = useState(false); // passport delete confirmation
   const [passportPage, setPassportPage] = useState("id"); // passport booklet page: id | stamps | collections | badges
@@ -3134,10 +3163,20 @@ export default function ShutterbugWorld() {
           const visitedNow = progressByContinent(updated).filter((c) => c.mastered > 0).map((c) => c.continent);
           const seenJ = Array.isArray(updated.seenJournals) ? updated.seenJournals : [];
           const newJournals = visitedNow.filter((c) => JONAH_JOURNALS[c] && !seenJ.includes(c));
-          if (newModes.length || newJournals.length) {
-            setUnlockBeat({ modes: newModes, journals: newJournals });
+          // Newly-earned outfits for Pickles (phase 2). Same seen-flag pattern.
+          const outfitsNow = [...unlockedOutfits(updated)];
+          const seenO = Array.isArray(updated.seenOutfits) ? updated.seenOutfits : null;
+          const newOutfits = seenO ? outfitsNow.filter((o) => !seenO.includes(o)) : [];
+          if (newModes.length || newJournals.length || newOutfits.length) {
+            setUnlockBeat({ modes: newModes, journals: newJournals, outfits: newOutfits });
             setProfileFlag(profileName, "seenUnlocks", nowU);
             setProfileFlag(profileName, "seenJournals", visitedNow);
+            setProfileFlag(profileName, "seenOutfits", outfitsNow);
+          } else {
+            // Keep the outfit baseline current even on a run that unlocked nothing new,
+            // so an existing traveler's already-earned outfits don't all pop at once the
+            // first time this ships.
+            if (!seenO) setProfileFlag(profileName, "seenOutfits", outfitsNow);
           }
         }
       }
@@ -3785,7 +3824,7 @@ export default function ShutterbugWorld() {
           title: isCoverShot ? "You made the cover!" : (perfect ? "Perfect shot!" : "Nice shot!"),
           subtitle: (perfect ? `${found} +${shotGain}${perfectTxt}` : `${found} +${pts(shotGain)}.`) + firstTxt + coverTxt + rollTxt,
           fact: clicked.fact, photo: clicked.photo, category: clicked.category, cheer,
-          cheerOutfit: pickDogOutfit(clicked.country), buttonLabel: "Next assignment ✈" };
+          cheerOutfit: dogOutfitFor(clicked.country), buttonLabel: "Next assignment ✈" };
         // Push-your-luck (slice 5): a perfect shot — always, on the cover — may hold for
         // the light. Offering it defers the reward card to resolveGamble; otherwise the
         // card shows now. The base points above are already banked either way.
@@ -3855,7 +3894,7 @@ export default function ShutterbugWorld() {
   // opened up — a new mode/difficulty, or Jonah's journal for a continent you just
   // stamped. Reached from the results screen; returns to it. ----------
   if (screen === "unlock" && unlockBeat) {
-    const { modes = [], journals = [] } = unlockBeat;
+    const { modes = [], journals = [], outfits = [] } = unlockBeat;
     const shownJournals = journals.slice(0, 3);
     const moreJ = journals.length - shownJournals.length;
     const done = () => { setUnlockBeat(null); setScreen("end"); };
@@ -3894,6 +3933,17 @@ export default function ShutterbugWorld() {
                   …and {moreJ} more journal{moreJ === 1 ? "" : "s"} — read them any time in your passport.
                 </div>
               )}
+              {outfits.map((o) => (
+                <div key={o} style={{ display: "flex", alignItems: "center", gap: 14, background: "#F1E9F6", border: `2px solid ${OCEAN}`, borderRadius: 14, padding: "10px 16px" }}>
+                  <img src={`${UI}dog-outfits/${o}_seated_smile.png`} alt="" aria-hidden="true"
+                    style={{ width: 64, height: 64, objectFit: "contain", flex: "none" }} />
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 10, letterSpacing: "0.14em", color: OCEAN, fontWeight: 800 }}>👕 A NEW OUTFIT FOR PICKLES</div>
+                    <div style={{ fontWeight: 900, fontSize: 18, color: INK, textTransform: "capitalize" }}>{OUTFIT_NAME[o] || o}</div>
+                    <div style={{ fontSize: 13, color: INK, opacity: 0.8 }}>She'll wear it when you travel there.</div>
+                  </div>
+                </div>
+              ))}
             </div>
 
             <button onClick={done} style={{ ...primaryBtn, marginTop: 20 }}>Wonderful — carry on ✈</button>
@@ -4268,11 +4318,19 @@ export default function ShutterbugWorld() {
             </button>
           </div>
           </div>{/* end flex row */}
-          <button onClick={() => setScreen("start")}
-            style={{ marginTop: 14, background: "none", border: "none", color: INK, opacity: 0.6, fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
-            ← Back to travelers
-          </button>
+          <div style={{ display: "flex", gap: 18, alignItems: "center", flexWrap: "wrap" }}>
+            <button onClick={() => setScreen("start")}
+              style={{ marginTop: 14, background: "none", border: "none", color: INK, opacity: 0.6, fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
+              ← Back to travelers
+            </button>
+            <button onClick={() => setWardrobeOpen(true)}
+              style={{ marginTop: 14, background: "none", border: "none", color: OCEAN, opacity: 0.85, fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
+              🐾 Pickles's wardrobe
+            </button>
+          </div>
         </DeskBoard>
+        {wardrobeOpen && <WardrobeModal unlocked={dogUnlocked} mode={dogMode} pick={dogPick}
+          onSet={saveWardrobe} onClose={() => setWardrobeOpen(false)} />}
       </Frame>
     );
   }
@@ -5549,6 +5607,7 @@ export default function ShutterbugWorld() {
               <button onClick={() => setSoundOn((s) => !s)} role="menuitemcheckbox" aria-checked={soundOn} style={gearItem}>{soundOn ? "🔊" : "🔇"} Sound: {soundOn ? "On" : "Off"}</button>
               <button onClick={() => setMusicOn((m) => { const v = !m; if (v) MUSIC.start(); else MUSIC.stop(); return v; })} role="menuitemcheckbox" aria-checked={musicOn} style={gearItem}>🎵 Music: {musicOn ? "On" : "Off"}</button>
               <button onClick={() => setAnimOn((v) => !v)} role="menuitemcheckbox" aria-checked={animOn} style={gearItem}>✨ Animations: {animOn ? "On" : "Off"}</button>
+              <button onClick={() => { setGearOpen(false); setWardrobeOpen(true); }} role="menuitem" style={gearItem}>🐾 Pickles's wardrobe</button>
             </div>
           )}
         </div>
@@ -6406,6 +6465,8 @@ export default function ShutterbugWorld() {
       {toolNote && <ToolNoteModal note={toolNote} onClose={() => setToolNote(null)} />}
       {passportOpen && <PassportModal profile={profileName ? getProfile(profileName) : null} onClose={() => setPassportOpen(false)} />}
       {bagOpen && isLongTrip && <KitBagModal condition={condition} kit={kit} onClose={() => setBagOpen(false)} />}
+      {wardrobeOpen && <WardrobeModal unlocked={dogUnlocked} mode={dogMode} pick={dogPick}
+        onSet={saveWardrobe} onClose={() => setWardrobeOpen(false)} />}
       {albumOpen && <AlbumModal album={album} onPick={(p) => { setAlbumOpen(false); setAlbumView(p); }} onClose={() => setAlbumOpen(false)} />}
       {guideOpen && <FieldGuideModal note={researched[step]} spent={guideFresh && researchCost > 0} onClose={() => setGuideOpen(false)} />}
       {pending && <ResultModal data={pending} onContinue={continueFromResult} reduced={prefersReduced} />}
@@ -7150,6 +7211,51 @@ function KitBagModal({ condition, kit, onClose }) {
             })}
           </div>
         )}
+      </div>
+    </ModalShell>
+  );
+}
+
+// Pickles's wardrobe (rewards phase 3). Choose how she dresses on the travel desk:
+// "auto" dresses her for whatever region she's celebrating in (the default and the
+// star of the feature), "basic" keeps her in her own fur, or tap an EARNED outfit to
+// have her wear that one everywhere. Locked outfits show how to earn them.
+function WardrobeModal({ unlocked, mode, pick, onSet, onClose }) {
+  const earnedCount = ALL_OUTFITS.filter((o) => unlocked.has(o)).length;
+  const modeBtn = (active) => ({
+    flex: "1 1 auto", background: active ? OCEAN : "transparent", color: active ? "#fff" : INK,
+    border: `2px solid ${OCEAN}`, borderRadius: 10, padding: "9px 12px", fontWeight: 800, fontSize: 13, cursor: "pointer",
+  });
+  return (
+    <ModalShell label="Pickles's wardrobe" onClose={onClose} accent={OCEAN} maxWidth={640}>
+      <div style={{ textAlign: "center", marginBottom: 10 }}>
+        <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.16em", color: OCEAN, fontWeight: 800 }}>🐾 PICKLES'S WARDROBE</div>
+        <h2 style={{ fontFamily: "ui-sans-serif, system-ui", fontWeight: 900, fontSize: 20, color: INK, margin: "3px 0 2px" }}>Dress your travelling dog</h2>
+        <p style={{ margin: 0, fontSize: 12.5, color: INK, opacity: 0.75 }}>{earnedCount} of {ALL_OUTFITS.length} outfits earned — travel to new regions to unlock more.</p>
+      </div>
+      <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+        <button onClick={() => onSet("auto")} style={modeBtn(mode === "auto")}>🌍 Dress for the region</button>
+        <button onClick={() => onSet("basic")} style={modeBtn(mode === "basic")}>🐕 Just Pickles</button>
+      </div>
+      <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 10, letterSpacing: "0.14em", color: CORAL, fontWeight: 800, marginBottom: 8 }}>
+        {mode === "always" ? "ALWAYS WEARING — TAP ANOTHER TO SWITCH" : "OR TAP AN EARNED OUTFIT TO ALWAYS WEAR IT"}
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(96px, 1fr))", gap: 9 }}>
+        {ALL_OUTFITS.map((o) => {
+          const on = unlocked.has(o);
+          const sel = mode === "always" && pick === o;
+          return (
+            <button key={o} disabled={!on} onClick={() => onSet("always", o)} title={on ? OUTFIT_NAME[o] : outfitUnlockLabel(o)}
+              style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 3, padding: "7px 5px",
+                background: sel ? "#FBF1D6" : "#fff", border: `2px solid ${sel ? GOLD : PAPER_LINE}`, borderRadius: 12,
+                cursor: on ? "pointer" : "default", opacity: on ? 1 : 0.6 }}>
+              <img src={`${UI}dog-outfits/${o}_seated_smile.png`} alt="" aria-hidden="true"
+                style={{ width: 58, height: 58, objectFit: "contain", filter: on ? "none" : "grayscale(1) opacity(0.55)" }} />
+              <div style={{ fontSize: 10.5, fontWeight: 800, color: INK, textAlign: "center", lineHeight: 1.15 }}>{(OUTFIT_NAME[o] || o).replace(/^the /, "")}</div>
+              {!on && <div style={{ fontSize: 8.5, color: INK, opacity: 0.7, textAlign: "center", lineHeight: 1.2 }}>🔒 {outfitUnlockLabel(o)}</div>}
+            </button>
+          );
+        })}
       </div>
     </ModalShell>
   );

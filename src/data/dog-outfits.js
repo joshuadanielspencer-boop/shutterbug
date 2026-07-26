@@ -128,3 +128,105 @@ export const COUNTRY_REGION = {
 // The region for a place, by its country (the outfit is the country's, not the
 // continent's — a Scottish dog in the UK, an alpine one in Switzerland).
 export const outfitRegionFor = (country) => COUNTRY_REGION[country] || null;
+
+// ---- Earning (phase 2) -----------------------------------------------------
+import { LOCATIONS } from "./locations.js";
+
+// Friendly names for the beat and the wardrobe.
+export const REGION_NAME = {
+  british_isles: "the British Isles", nordic_arctic: "Scandinavia & the Arctic",
+  alpine_europe: "Central Europe & the Alps", mediterranean: "the Mediterranean",
+  mena: "the Middle East & North Africa", safari_africa: "Sub-Saharan Africa",
+  south_asian: "South Asia", east_asian: "East Asia",
+  southeast_asian_tropical: "Southeast Asia", andean_highlands: "the Andes",
+  united_states: "the United States", western_europe: "Western Europe",
+  canada_pnw: "Canada & the Pacific NW", mexico_centam: "Mexico & Central America",
+  caribbean: "the Caribbean", brazil_amazon: "Brazil & the Amazon",
+  eastern_europe_balkans: "Eastern Europe & the Balkans",
+  russia_siberia_centralasia: "Russia, Siberia & Central Asia",
+  oceania: "Oceania", antarctica: "Antarctica",
+};
+export const OUTFIT_NAME = {
+  scottish_highlands: "the Highlands kit", nordic_arctic: "the Arctic parka",
+  alpine_europe: "the Alpine outfit", mediterranean: "the Mediterranean look",
+  desert_traveler: "the Desert Traveler", safari_africa: "the Safari kit",
+  south_asian: "the South Asian outfit", east_asian: "the East Asian outfit",
+  southeast_asian_tropical: "the Tropical outfit", andean_highlands: "the Andean outfit",
+  aviator: "the Aviator", train_conductor: "the Train Conductor",
+  detective: "the Detective", rainy_day_explorer: "the Rainy-Day Explorer",
+  mountain_hiker: "the Mountain Hiker", photographer: "the Photographer",
+  pirate_captain: "the Pirate Captain", astronaut: "the Astronaut",
+};
+
+// The place ids in each region, for the "master N here" thresholds.
+const REGION_PLACE_IDS = {};
+for (const l of LOCATIONS) {
+  const r = COUNTRY_REGION[l.country];
+  if (r) (REGION_PLACE_IDS[r] = REGION_PLACE_IDS[r] || []).push(l.id);
+}
+
+// How each outfit is earned. The 10 home outfits open by exploring their home region
+// (master 3 places there, or all of them if the region is smaller); the 8 "gap"
+// costumes are milestone rewards, so the wardrobe fills as you travel wider.
+//   region     — master min(3, size) places in `region`
+//   region1    — earn a single stamp in `region`
+//   places     — master `n` distinct places anywhere
+//   category   — master `n` places of a given category
+//   continents — master a place on `n` of the 7 continents
+export const OUTFIT_UNLOCK = {
+  scottish_highlands:       { type: "region", region: "british_isles" },
+  nordic_arctic:            { type: "region", region: "nordic_arctic" },
+  alpine_europe:            { type: "region", region: "alpine_europe" },
+  mediterranean:            { type: "region", region: "mediterranean" },
+  desert_traveler:          { type: "region", region: "mena" },
+  safari_africa:            { type: "region", region: "safari_africa" },
+  south_asian:              { type: "region", region: "south_asian" },
+  east_asian:               { type: "region", region: "east_asian" },
+  southeast_asian_tropical: { type: "region", region: "southeast_asian_tropical" },
+  andean_highlands:         { type: "region", region: "andean_highlands" },
+  photographer:             { type: "places", n: 10 },
+  aviator:                  { type: "places", n: 25 },
+  detective:                { type: "places", n: 40 },
+  mountain_hiker:           { type: "category", category: "mountain", n: 5 },
+  pirate_captain:           { type: "region1", region: "caribbean" },
+  train_conductor:          { type: "region1", region: "russia_siberia_centralasia" },
+  rainy_day_explorer:       { type: "region1", region: "western_europe" },
+  astronaut:                { type: "continents", n: 7 },
+};
+
+export const ALL_OUTFITS = Object.keys(OUTFIT_UNLOCK);
+const catOf = Object.fromEntries(LOCATIONS.map((l) => [l.id, l.category]));
+const contOf = Object.fromEntries(LOCATIONS.map((l) => [l.id, l.continent]));
+
+// A one-line "how to earn it" for a locked outfit, for the wardrobe.
+export function outfitUnlockLabel(outfit) {
+  const u = OUTFIT_UNLOCK[outfit]; if (!u) return "";
+  if (u.type === "region") { const need = Math.min(3, (REGION_PLACE_IDS[u.region] || []).length || 3); return `Master ${need} place${need === 1 ? "" : "s"} in ${REGION_NAME[u.region]}`; }
+  if (u.type === "region1") return `Earn a stamp in ${REGION_NAME[u.region]}`;
+  if (u.type === "places") return `Photograph ${u.n} places`;
+  if (u.type === "category") return `Photograph ${u.n} ${u.category}s`;
+  if (u.type === "continents") return `Photograph on all ${u.n} continents`;
+  return "";
+}
+
+// Which outfits a profile has earned. Reads profile.loc (mastered = c > 0), so it's
+// live — no new tracking. Returns a Set of outfit ids.
+export function unlockedOutfits(profile) {
+  const loc = (profile && profile.loc) || {};
+  const has = (id) => !!(loc[id] && loc[id].c > 0);
+  const inRegion = (r) => (REGION_PLACE_IDS[r] || []).filter(has).length;
+  const distinct = Object.keys(loc).filter((id) => loc[id] && loc[id].c > 0);
+  const conts = new Set(distinct.map((id) => contOf[id]).filter(Boolean));
+  const catCount = (c) => distinct.filter((id) => catOf[id] === c).length;
+  const out = new Set();
+  for (const [outfit, u] of Object.entries(OUTFIT_UNLOCK)) {
+    let ok = false;
+    if (u.type === "region") ok = inRegion(u.region) >= Math.min(3, (REGION_PLACE_IDS[u.region] || []).length || 3);
+    else if (u.type === "region1") ok = inRegion(u.region) >= 1;
+    else if (u.type === "places") ok = distinct.length >= u.n;
+    else if (u.type === "category") ok = catCount(u.category) >= u.n;
+    else if (u.type === "continents") ok = conts.size >= u.n;
+    if (ok) out.add(outfit);
+  }
+  return out;
+}
