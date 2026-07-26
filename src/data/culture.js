@@ -701,10 +701,10 @@ export const COUNTRY_PEOPLE = {
     caption: "Jonkonnu (John Canoe) masqueraders in costume at Christmas in Kingston, Jamaica",
   },
   "Nicaragua": {
-    src: "https://commons.wikimedia.org/wiki/Special:FilePath/Torovenado%20de%20Masaya.jpg?width=800",
-    source: "https://commons.wikimedia.org/wiki/File:Torovenado_de_Masaya.jpg",
-    credit: "Jorge Mejía Peralta", license: "CC BY 2.0",
-    caption: "A masked dancer in the traditional Torovenado folk festival in Masaya, Nicaragua",
+    src: "https://commons.wikimedia.org/wiki/Special:FilePath/Young_Woman_in_Traditional_Dress_-_Granada_-_Nicaragua_(31572131030)_(2).jpg?width=800",
+    source: "https://commons.wikimedia.org/wiki/File:Young_Woman_in_Traditional_Dress_-_Granada_-_Nicaragua_(31572131030)_(2).jpg",
+    credit: "Adam Jones", license: "CC BY-SA 2.0",
+    caption: "A young woman in traditional Nicaraguan folk dress in Granada, Nicaragua",
   },
   "Trinidad and Tobago": {
     src: "https://commons.wikimedia.org/wiki/Special:FilePath/MoKo%20Jumbie.jpg?width=800",

@@ -84,13 +84,19 @@ export const SFX = (() => {
   const safe = (fn) => { try { if (muted) return; const c = ac(); if (c) fn(c); } catch { /* ignore */ } };
   return {
     setMuted(v) { muted = !!v; },
-    // Camera shutter: mirror-slap click, shutter close, then the soft rising
-    // whirr of the film advance — the full "kerchunk-zzip" of an old SLR.
+    // Camera shutter: a two-beat "chick–CHEEK" — the softer first click of the
+    // mirror lifting, a beat, then the louder second click of the shutter with a
+    // bright upward chirp (the "eek") as the film winds on.
     shutter() { safe((c) => { const t = c.currentTime;
-      burst(c, t, 0.03, "highpass", 2400, 0.34);
-      burst(c, t + 0.045, 0.05, "highpass", 1400, 0.3);
-      const { f } = burst(c, t + 0.12, 0.22, "bandpass", 900, 0.1);
-      f.Q.value = 3; f.frequency.setValueAtTime(700, t + 0.12); f.frequency.linearRampToValueAtTime(1900, t + 0.34);
+      // "chick" — the first, softer click.
+      burst(c, t, 0.022, "highpass", 2700, 0.22);
+      burst(c, t + 0.018, 0.03, "bandpass", 1500, 0.14);
+      // "CHEEK" — the second, louder click, with a rising chirp on top.
+      const t2 = t + 0.11;
+      burst(c, t2, 0.028, "highpass", 2900, 0.4);
+      burst(c, t2 + 0.02, 0.05, "bandpass", 1700, 0.26);
+      const { f } = burst(c, t2 + 0.03, 0.16, "bandpass", 1200, 0.12);
+      f.Q.value = 3.5; f.frequency.setValueAtTime(1100, t2 + 0.03); f.frequency.linearRampToValueAtTime(2700, t2 + 0.19);
     }); },
     // Airplane: a low engine rumble under a swept jet whoosh that passes by.
     plane() { safe((c) => { const t = c.currentTime;

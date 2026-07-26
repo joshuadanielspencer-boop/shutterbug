@@ -77,18 +77,23 @@ export const HUBS = {
 // are the situations a mode fits; a mode is only ever offered where its context
 // matches the destination (see transportOptionsFor). `core` modes work almost
 // anywhere on land and are the always-available fallback.
+// The `blurb` is the "getting about" line on a country's arrival card. It's a
+// teaching moment, not just flavour (Joshua's steer): each one says a little about
+// how and where people really use that way of getting around, so the transport
+// graphic earns its place. Facts here follow rule 2 — accurate for every place the
+// mode is offered, naming real examples rather than claiming a mode is unique to one.
 export const TRANSPORT_MODES = [
-  { id: "flight",   name: "Domestic flight", emoji: "🛩️", speed: 3, cost: 3, contexts: ["far"], blurb: "Quickest, but the priciest way to close a long gap." },
-  { id: "train",    name: "Train",           emoji: "🚆", speed: 2, cost: 2, core: true, blurb: "A steady, comfortable ride across the land." },
-  { id: "bus",      name: "Bus",             emoji: "🚌", speed: 1, cost: 1, core: true, blurb: "The slow, cheap way — and you see the countryside." },
-  { id: "taxi",     name: "Taxi",            emoji: "🚕", speed: 3, cost: 3, contexts: ["near"], blurb: "Door to door and fast, for a short, pricey hop." },
-  { id: "ferry",    name: "Ferry",           emoji: "⛴️", speed: 2, cost: 2, contexts: ["water", "island"], blurb: "Across the water by boat." },
-  { id: "riverboat",name: "Riverboat",       emoji: "🛥️", speed: 1, cost: 2, contexts: ["river"], blurb: "Up the river — sometimes the only road there is." },
-  { id: "canoe",    name: "Dugout canoe",    emoji: "🛶", speed: 1, cost: 1, contexts: ["dugout"], blurb: "Paddled the last stretch, the old way." },
-  { id: "gondola",  name: "Gondola",         emoji: "🛶", speed: 1, cost: 3, contexts: ["venice"], blurb: "Poled through the canals — only in Venice." },
-  { id: "cograil",  name: "Cog railway",     emoji: "🚞", speed: 1, cost: 2, contexts: ["cograil"], blurb: "A toothed rail that grips the steep track." },
-  { id: "tuktuk",   name: "Tuk-tuk",         emoji: "🛺", speed: 2, cost: 1, contexts: ["southasia", "seasia"], blurb: "A little three-wheeler — cheap and everywhere." },
-  { id: "camel",    name: "Camel",           emoji: "🐪", speed: 1, cost: 1, contexts: ["camelriding"], blurb: "The desert's own ship, one slow swaying step at a time." },
+  { id: "flight",   name: "Domestic flight", emoji: "🛩️", speed: 3, cost: 3, contexts: ["far"], blurb: "In a country big enough, people fly between distant cities to turn a two-day drive into a couple of hours." },
+  { id: "train",    name: "Train",           emoji: "🚆", speed: 2, cost: 2, core: true, blurb: "Trains carry people and goods across whole countries on rails — steady and comfortable, and able to climb where roads struggle." },
+  { id: "bus",      name: "Bus",             emoji: "🚌", speed: 1, cost: 1, core: true, blurb: "Buses are how millions of people get between towns every day — cheap, and you watch the whole countryside roll past your window." },
+  { id: "taxi",     name: "Taxi",            emoji: "🚕", speed: 3, cost: 3, contexts: ["near"], blurb: "For a short hop across a busy city, a taxi carries you door to door — fast, if a little pricey." },
+  { id: "ferry",    name: "Ferry",           emoji: "⛴️", speed: 2, cost: 2, contexts: ["water", "island"], blurb: "Ferries carry people and even cars across water — to islands and along coasts where no bridge reaches." },
+  { id: "riverboat",name: "Riverboat",       emoji: "🛥️", speed: 1, cost: 2, contexts: ["river"], blurb: "For generations riverboats have carried people and cargo up and down great rivers like the Amazon and the Mississippi — sometimes the only road into the interior." },
+  { id: "canoe",    name: "Dugout canoe",    emoji: "🛶", speed: 1, cost: 1, contexts: ["dugout"], blurb: "In rainforest country a dugout canoe — carved from a single tree trunk — still paddles people along rivers too narrow for anything bigger." },
+  { id: "gondola",  name: "Gondola",         emoji: "🛶", speed: 1, cost: 3, contexts: ["venice"], blurb: "In Venice, Italy, where the streets are canals, a boatman stands and poles a slender gondola between the houses." },
+  { id: "cograil",  name: "Cog railway",     emoji: "🚞", speed: 1, cost: 2, contexts: ["cograil"], blurb: "A cog railway has a toothed centre rail its wheels grip, so it can climb mountainsides far too steep for an ordinary train." },
+  { id: "tuktuk",   name: "Tuk-tuk",         emoji: "🛺", speed: 2, cost: 1, contexts: ["southasia", "seasia"], blurb: "Across South and Southeast Asia the tuk-tuk — a little three-wheeled auto-rickshaw — buzzes through crowded streets, cheap and everywhere." },
+  { id: "camel",    name: "Camel",           emoji: "🐪", speed: 1, cost: 1, contexts: ["camelriding"], blurb: "For thousands of years camels — the 'ships of the desert' — have carried people across sand seas like the Sahara and Arabia, plodding for days between water." },
 ];
 export const TRANSPORT_BY_ID = Object.fromEntries(TRANSPORT_MODES.map((m) => [m.id, m]));
 

@@ -78,6 +78,18 @@ function mergeBestMeta(a, b, mergedBest) {
   return out;
 }
 
+// The Long Trip's banked totals, merged field-by-field to their monotonic max, so
+// no device's progress is thrown away by the other's being written more recently.
+function mergeLongTrip(a, b) {
+  const x = isObj(a) ? a : {}, y = isObj(b) ? b : {};
+  return {
+    renown: Math.max(num(x.renown) || 0, num(y.renown) || 0),
+    bestDistance: Math.max(num(x.bestDistance) || 0, num(y.bestDistance) || 0),
+    runs: Math.max(num(x.runs) || 0, num(y.runs) || 0),
+    covers: Math.max(num(x.covers) || 0, num(y.covers) || 0),
+  };
+}
+
 const MAX = (x, y) => Math.max(x, y);
 const MIN = (x, y) => Math.min(x, y);
 
@@ -132,6 +144,12 @@ export function mergePassports(a, b) {
     metNigel: !!(a.metNigel || b.metNigel),
     metMrO: !!(a.metMrO || b.metMrO),
     dreamDone: !!(a.dreamDone || b.dreamDone),
+
+    // The Long Trip's banked renown and farthest run are monotonic — they only
+    // ever climb — so a merge takes the MAX of each rather than letting the newer
+    // device's total quietly overwrite the other's. Emitted only when a side
+    // actually has one, so profiles that never flew a Long Trip gain no empty key.
+    ...(a.longtrip || b.longtrip ? { longtrip: mergeLongTrip(a.longtrip, b.longtrip) } : {}),
 
     // The one real choice, not an accumulation: no "more recent" avatar is more
     // correct than the other, so the last-played device wins.

@@ -185,6 +185,18 @@ export const END_WIN = [
   "Oh, wonderful! It's like I went there myself, sitting right here in this chair.",
   "Bravo! A full roll and not a shot wasted. You've a real gift, you have.",
 ];
+// The Long Trip never "finishes" — it ends when the days run out — so it can't use
+// the END_WIN lines above (they cheer bringing the whole roll home). A Long Trip is a
+// WIN when you got as far as, or farther than, your best run yet, or landed the Cover
+// Story. These celebrate the DISTANCE and the record, never completion.
+export const END_LONG_WIN = [
+  "Your finest trip yet! Look how far you got before the days ran out — I'm proud as anything.",
+  "A record, that is! You went farther than you ever have. Come, tell me about every single one.",
+  "Now THAT was a run. You matched your very best — a real traveler's traveler, you are.",
+  "Farther than you've ever gone! These are going straight up on my wall, every one.",
+  "What a haul! You've got the knack for making the days stretch. Bravo, my dear.",
+  "You made the front page AND came home with a full bag — I couldn't be prouder if I'd shot it myself.",
+];
 export const END_LOSE = [
   "Ran out of days, did you? No matter at all — look at what you DID bring back. Let's get back out there soon.",
   "Chin up, now. Every great photographer misses a few. Rest a moment, then off you go again — you can do it!",
@@ -195,6 +207,23 @@ export const END_LOSE = [
   "Every wrong turn teaches you something. You're getting sharper each trip — I can see it. Let's go again.",
   "Don't you dare be discouraged. Even I came home empty-handed more than once. Take a breath and let's have another crack.",
 ];
+
+// ---- Uncle Jonah's journals: his own trip to each continent ------------------
+// Unlocked one at a time — a continent's story opens once you've earned a stamp
+// there, so the reward for reaching a new continent is a memory of when HE reached
+// it, young, with this same camera. These are his personal recollections, not
+// geography claims (rule 2 doesn't bind them), but the places they touch are real.
+// Antarctica is the one he never reached — which is the whole reason he lends you
+// the camera, so it reads as a wish rather than a memory.
+export const JONAH_JOURNALS = {
+  "Asia": "Asia I knew before I knew the word for it — the smell of the markets, the mountains breathing mist at dawn. I carried this very camera up switchback roads and along rivers the colour of tea, and every picture taught me my own continent was far bigger than I had ever dreamed.",
+  "Europe": "Ah, Europe. I was young and nearly broke and slept more than one night in a train station — and I would not trade a minute of it. I photographed old cathedrals until my neck ached, and I learned that every worn stone has a story, if you stand still long enough to hear it.",
+  "Africa": "Africa took my breath clean away. The light there is like nowhere else on Earth — gold in the morning, copper by dusk — and I would lie awake to the sound of the wide land humming and think: I must find a way to bring this home. This camera was how I tried.",
+  "North America": "North America does not sit still. I rode buses from grey cities out to red canyons so vast the far wall went blue with distance, and I filled roll after roll trying to fit even a corner of it in the frame. You never quite manage it — but oh, the joy of trying.",
+  "South America": "South America is where I learned to climb. My lungs burned in the thin mountain air, whole villages clung to the slopes as if they had grown there, and the old ruins looked down on the clouds themselves. I was never so tired, nor so happy, in all my life.",
+  "Oceania": "Oceania I reached last and loved longest — all that blue, and islands scattered across it like stepping stones. I learned to read the sea a little, the way the people there do, and I came home browner and quieter and quite unable to explain it. Some places you simply keep.",
+  "Antarctica": "And Antarctica… no. That one I never reached, though I meant to my whole life — the great white at the bottom of the map, the cold that keeps its own counsel. This old camera has been very nearly everywhere but there. So go for me, would you? Bring me back the ice.",
+};
 
 // ---- The pre-game "meet Uncle" screen ----------------------------------
 // Before every expedition, Uncle says one of these at random — a warm, funny,

@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import { LOCATIONS } from "./data/locations.js";
 import { WORLD_COUNTRIES, COUNTRY_CONTINENT } from "./data/worldmap.js";
+import { ANTARCTICA_POLAR } from "./data/antarctica-polar.js";
 // WORLD_COUNTRIES_ROBINSON (the ~290 KB Robinson-projected country outlines) is
 // only used by the world map, so it's loaded lazily (see the effect below) to
 // keep it out of the first paint. worldmap.js stays eager — its outlines feed the
@@ -26,7 +27,7 @@ import { ANECDOTES } from "./data/anecdotes.js";
 import { TUNES, tuneKeyFor } from "./data/tunes.js";
 import { GRANDPA, INTRO_BEATS, SENDOFF_BEATS, NOTE_HEADER, GUIDEBOOK,
   HOMECOMING_INTRO, WRONG_REACTIONS, ACHIEVEMENT_INTRO, DREAM_FULFILLED,
-  END_WIN, END_LOSE, MEET_LINES, MEET_RUN, MEET_ASK, UNLOCK_LINES, RANKUP_LINE,
+  END_WIN, END_LOSE, END_LONG_WIN, JONAH_JOURNALS, MEET_LINES, MEET_RUN, MEET_ASK, UNLOCK_LINES, RANKUP_LINE,
   GRANDPA_WANTS, WANT_LINES, nigelFace } from "./data/grandpa.js";
 import { dailyResult, recordDaily, dailyStreak } from "./profiles.js";
 import { listProfiles, lastProfileName, getProfile, createProfile, setLastProfile,
@@ -34,6 +35,7 @@ import { listProfiles, lastProfileName, getProfile, createProfile, setLastProfil
   weightedOrder, freshFirst, passportData, achievements, topScores, storageAvailable,
   careerRank, unlocks, UNLOCK_REQ, markCuriositySeen, curiositiesSeen, nextGoal,
   exportPassport, passportFilename, importPassportText,
+  recordLongTrip, renownRank, longTripStats,
   progressByContinent, troubleSpots } from "./profiles.js";
 import { CURIOSITY_DECK_BY_ID, CURIOSITY_TOTAL } from "./data/curiosities.js";
 import { KIT_ITEMS, KIT_BY_ID, KIT_OFFERED, KIT_TAKEN } from "./data/kit.js";
@@ -278,7 +280,7 @@ const MODES = {
 // spends growing out of its origin (and shrinking onto its destination) at each
 // end. Read by the flight timers, the landing sound, and the CSS keyframes — all
 // three have to agree or the plane lands at a different moment than the map says.
-const FLIGHT_MS = 5000;
+const FLIGHT_MS = 5000;          // the default / longest flight, also the cap
 const PLANE_SCALE_MS = 2000;
 // The same number in the units each consumer wants. The takeoff/landing sounds
 // take their length from PLANE_SCALE_SEC and the sbw-hop keyframes take their
@@ -286,7 +288,35 @@ const PLANE_SCALE_MS = 2000;
 // is answered in exactly one place. Everything below is derived — don't hand-
 // write a percentage into the keyframes again.
 const PLANE_SCALE_SEC = PLANE_SCALE_MS / 1000;
-const PLANE_SCALE_PCT = (100 * PLANE_SCALE_MS) / FLIGHT_MS;
+// The grow/shrink SHARE of a flight (0.4). Flights now vary in length (see
+// flightMsFor), so the plane can't grow for a fixed 2s — a 2.5s hop would be all
+// grow and shrink with no cruise. Keeping the FRACTION constant means the sbw-hop
+// keyframes (which are percentage-based) stay valid at every duration, and the
+// takeoff/landing sounds scale with the flight.
+const PLANE_SCALE_FRAC = PLANE_SCALE_MS / FLIGHT_MS;
+const PLANE_SCALE_PCT = 100 * PLANE_SCALE_FRAC;
+
+// How long a flight takes, by the geography it crosses (Joshua's timing model):
+//   • country → country on a continent map ...... 2.5s (a "local" hop)
+//   • continent → continent within one land-mass ... 4s
+//   • continent → continent across land-masses ..... 5s
+// The Americas count as one land-mass and Africa/Asia/Europe as one; Oceania and
+// Antarctica each stand alone, so any hop touching them across a boundary is 5s.
+const CONTINENT_GROUP = {
+  "North America": "americas", "South America": "americas",
+  "Africa": "afroeurasia", "Europe": "afroeurasia", "Asia": "afroeurasia",
+  "Oceania": "oceania", "Antarctica": "antarctica",
+};
+const FLIGHT_LOCAL_MS = 2500;
+const FLIGHT_NEAR_MS = 4000;
+const FLIGHT_FAR_MS = 5000;
+// The from-continent may be null on the very first flight (departing the home hub),
+// which sits in the Americas — so a null origin flies as if from the Americas.
+function continentHopMs(fromCont, toCont) {
+  const a = CONTINENT_GROUP[fromCont] || "americas";
+  const b = CONTINENT_GROUP[toCont] || "americas";
+  return a === b ? FLIGHT_NEAR_MS : FLIGHT_FAR_MS;
+}
 
 // A small efficiency reward: +1 point per 2 full travel days you bank, capped so
 // it never dominates the shot points. QUIZ_BONUS is the ½-point extra credit each
@@ -299,6 +329,11 @@ const dayBonus = (days) => Math.min(DAY_BONUS_CAP, Math.floor(Math.max(0, days) 
 // precision is rewarded — worth proportionally the most on Expert, where a shot is
 // only 1 point to begin with. Wrong-guess shots still score, just without this.
 const PERFECT_BONUS = 1;
+// A little extra the first time you ever bring home a given place (across all your
+// trips, not just this one), so ranging wide is scored better than replaying the same
+// few — the breadth the content exists to teach. Never rewards a wrong guess: it only
+// lands on a correct shot.
+const FIRST_TIME_BONUS = 1;
 const QUIZ_BONUS = 0.5;
 // Round a score to at most one decimal place (quiz extra credit is in halves).
 const tidyScore = (n) => Math.round(n * 10) / 10;
@@ -307,6 +342,17 @@ const tidyScore = (n) => Math.round(n * 10) / 10;
 // quiz take the plural ("0.5 points"), which is correct: only exactly one is singular.
 const pts = (n) => `${tidyScore(n)} point${Math.abs(n) === 1 ? "" : "s"}`;
 const MODE_ORDER = ["scout", "easy", "medium", "hard"];
+// The unlocks worth a full-screen "Uncle Jonah has something for you" beat, and how to
+// name/draw each. Difficulties and modes both live here; `quiz`/`daily` aren't real
+// unlocks any more, and `assignments`/`journey`/`explore` are open from the start.
+const UNLOCK_BEAT_KEYS = ["medium", "tour", "hard", "expeditions", "longtrip"];
+const UNLOCK_META = {
+  medium:      { name: "Adventurer difficulty", emoji: "🧭", kind: "a harder challenge, with hubs, money and local transport to juggle" },
+  hard:        { name: "Expert difficulty",     emoji: "🎖️", kind: "the toughest tier — cryptic clues, no hints, no labels" },
+  tour:        { name: "the Grand Tour",        emoji: "🗺️", kind: "a whole itinerary on one day budget — plan the smartest route" },
+  expeditions: { name: "Themed Expeditions",    emoji: "⛰️", kind: "curated grand tours, each with a little lesson" },
+  longtrip:    { name: "The Long Trip",         emoji: "🎒", kind: "the endurance run — keep going until the days run out" },
+};
 // Uncle's face reacts to the difficulty you pick on the meet screen — warmer and
 // gentler at the bottom, more impressed / wide-eyed as it climbs (see NIGEL_MOOD).
 const DIFFICULTY_MOOD = { scout: "diffScout", easy: "diffEasy", medium: "diffMedium", hard: "diffHard" };
@@ -322,6 +368,34 @@ const SHOT_COST = 0.5;
 
 // The traveler's home airport — where the very first flight departs from.
 const HUB = { x: 106, y: 49 };
+
+// The Long Trip offers this many briefs to choose between at each stop (slice 3).
+const ROUTE_CHOICES = 3;
+
+// The Long Trip's finale (slice 5). Once a run is going well (a few places banked)
+// and the days are running down, the route board floats a marquee "Cover Story" —
+// a front-page assignment worth double points and a renown bonus. Going for it is a
+// strategic gamble (it may cost precious days); landing it caps the run.
+const COVER_MIN_CAPTURES = 3;   // don't dangle the cover until the run has legs under it
+const COVER_DAYS = 5;           // …and only once the clock is genuinely running down
+const COVER_POINTS_MULT = 2;    // the cover shot pays double
+const COVER_RENOWN = 10;        // and books a fat renown bonus on the debrief
+
+// Push-your-luck on the shot (slice 5). After a PERFECT shot you may "hold for the
+// light": a coin the child chooses to flip on the REWARD, never on the geography (the
+// place is already found). Win and the light breaks golden for a bonus; bust and a
+// cloud costs you half a day — but the shot you already took always stands.
+const HOLD_ELIGIBLE_CHANCE = 0.34; // roughly one perfect shot in three offers the choice
+const HOLD_WIN_CHANCE = 0.55;      // the light is a little kinder than a coin
+const HOLD_BONUS = 2;              // points for holding and winning
+// The window of upcoming assignments the route board draws its choices from. A pure
+// helper (no state) so it can be called with a freshly-built list before setState
+// has committed it. Returns null when there's nothing to choose (0 or 1 left).
+function routeWindow(atStep, total) {
+  const idxs = [];
+  for (let i = atStep; i < total && idxs.length < ROUTE_CHOICES; i++) idxs.push(i);
+  return idxs.length > 1 ? { atStep, idxs } : null;
+}
 
 // Flight costs and the Grand Tour's par live in src/routes.js, so `npm test` can
 // exercise the real routing rules (see the note there on why par must be exact).
@@ -678,10 +752,12 @@ const countriesOf = (l) => (l.countries && l.countries.length ? l.countries : [l
     // Trimmed east to the real Atlantic coast (lon −66, x 114) and re-centred a
     // degree south: the old 64°-wide box ran to lon −52.5, so a third of the frame
     // was open Atlantic with Hudson Bay in the top corner.
-    // Zoomed out ~12% and centred a touch WEST of the country, so the contiguous 48
-    // sit in the right of the frame and the left is open Pacific — room for the
-    // Alaska/Hawaiʻi locator boxes to stack without covering the mainland (Joshua).
-    "North America|United States": box145(80, 51.5, 66),
+    // Zoomed out further and centred WEST of the country, so the contiguous 48 sit
+    // in the RIGHT of the frame and the left is a wide band of open Pacific — enough
+    // room for the Alaska/Hawaiʻi locator boxes to stack clear of the mainland
+    // (Joshua asked for more Pacific here). Right edge stays past the Atlantic coast
+    // (x 114 ≈ lon −66) so Maine and Florida keep their east coast.
+    "North America|United States": box145(77, 51.5, 78),
     // Chile is the one country the clip heuristic above cannot size. Its border path
     // includes Easter Island (lon −109, x 71) — 2,200 miles off the coast, but still
     // INSIDE the 70° clip that its own widely-spread landmarks earn it. So the border
@@ -699,6 +775,12 @@ const countriesOf = (l) => (l.countries && l.countries.length ? l.countries : [l
     // mainland ended up small in a corner. Hand-set to the peninsula — lon −9.4…3.9,
     // lat 35.6…44.2 — at the atlas frame's own aspect so it fills the frame.
     "Europe|Spain": box145(177, 50.2, 13.4),
+    // South Africa is the same story again: its border path carries the PRINCE EDWARD
+    // ISLANDS (lon 37.6, lat −46.9), ~1,200 miles out in the Southern Ocean but still
+    // inside the clip its landmarks earn, so the derived box slid far south and the
+    // country sat in the TOP of the frame over a whole empty sea. Hand-set to the
+    // mainland — lon 16.5…33, lat −22…−35 — at the frame's own aspect so it fills it.
+    "Africa|South Africa": box145(204.7, 118.7, 21),
   };
   // Every hand-set box goes through the same frame-aspect normalisation the derived
   // ones do (rule 5). These predate that change and several were square or portrait —
@@ -1181,7 +1263,12 @@ function quizQuestionFor(l) {
     const others = pickN(withShape, 3, new Set([l.country]));
     const filled = others.length >= 3 ? others : [...others, ...pickN([...new Set(LOCATIONS.map((x) => x.country))], 3 - others.length, new Set([l.country, ...others]))];
     const opts = shuffleArr([l.country, ...filled]);
-    return { kind, prompt: "Which country is this shape?", photo: null, shape: wcPath(l.country),
+    // Antarctica has no country, and its flat-map outline is a horizontal smear across
+    // the whole bottom of the world — useless as a silhouette. Show the reprojected
+    // SOUTH-POLAR view instead (the way it looks from directly above the pole), which
+    // is how the continent map draws it too.
+    const shape = l.country === "Antarctica" ? ANTARCTICA_POLAR : wcPath(l.country);
+    return { kind, prompt: "Which country is this shape?", photo: null, shape,
       options: opts.map((o) => ({ label: o, correct: o === l.country })),
       explain: `That's the shape of ${l.country} — ${l.subject} is there.` };
   }
@@ -1674,6 +1761,29 @@ export default function ShutterbugWorld() {
   // (see src/data/conditions.js). Null in every other mode.
   const [condition, setCondition] = useState(null);
   const hasCond = (effect) => !!condition && condition.effect === effect;
+  // The Long Trip's route-choice board (roguelike slice 3): before each new
+  // assignment the editor wires THREE briefs and you pick which to chase — a
+  // decision, not a fixed queue. `{ atStep, idxs }` while the board is up, else null.
+  // The chosen brief is swapped into `assignments[atStep]`, so the rest of the play
+  // loop keeps reading `assignments[step]` with no idea a choice was ever offered.
+  const [routeChoices, setRouteChoices] = useState(null);
+  // The banked-renown debrief the Long Trip's end screen shows (slice 4). Set when
+  // the run is recorded; null in every other mode.
+  const [longDebrief, setLongDebrief] = useState(null);
+  // Did this Long Trip count as a WIN? Its days always run out, so "win" can't mean
+  // finishing — it means you got as far as (or farther than) your best run yet, or you
+  // landed the Cover Story. Drives Jonah's face, his closing line, and the confetti,
+  // so a strong run is celebrated instead of mourned.
+  const [longWon, setLongWon] = useState(false);
+  // Push-your-luck (slice 5): while a "hold for the light?" choice is open, this holds
+  // the reward card that will show once the child picks safe or gambles. Null otherwise.
+  const [gamble, setGamble] = useState(null);
+  // The Cover Story finale (slice 5). `offered` gates it to once per run; `step` marks
+  // which assignment index is the cover (so its shot pays double and always offers the
+  // hold); `landed` records that the cover shot was actually made, for the debrief.
+  const coverOfferedRef = useRef(false);
+  const coverStepRef = useRef(-1);
+  const coverLandedRef = useRef(false);
   const [kitNote, setKitNote] = useState(null);   // "Fast film — half a day back!"
   const kitNoteTimer = useRef(null);
   // Does the bag hold a live charge of this effect? Spending one is a separate step,
@@ -2075,6 +2185,9 @@ export default function ShutterbugWorld() {
   }, []);
   const poppedCountryRef = useRef(null); // country whose arrival popup already showed this leg
   const [dreamPending, setDreamPending] = useState(false); // Jonah's dream just fulfilled — show the win scene
+  // The full-screen unlock beat (rewards layer): { modes:[keys], journals:[continents] }
+  // that just opened up this run, shown from the results screen. Null when nothing new.
+  const [unlockBeat, setUnlockBeat] = useState(null);
   const pendingRunRef = useRef(null); // start action to run after the intro story
   const recorded = useRef(false);
   const startRef = useRef(0); // ms timestamp the current game began
@@ -2105,11 +2218,15 @@ export default function ShutterbugWorld() {
   // is how you crossed a continent". One plane, one 4s flight, one music cue,
   // everywhere.
   const [arrivalRide, setArrivalRide] = useState(null);   // the local way-of-getting-about to show on the country card
-  const launchFlight = (from, to, finalize) => {
-    sfx("takeoff", PLANE_SCALE_SEC);
-    landingSfxRef.current = setTimeout(() => { landingSfxRef.current = null; sfx("landing", PLANE_SCALE_SEC); }, FLIGHT_MS - PLANE_SCALE_MS);
+  const launchFlight = (from, to, finalize, ms = FLIGHT_MS) => {
+    // The grow/shrink and the engine sounds scale with the flight, so a short local
+    // hop doesn't sound like a transatlantic haul (and vice versa).
+    const scaleMs = Math.round(ms * PLANE_SCALE_FRAC);
+    const scaleSec = scaleMs / 1000;
+    sfx("takeoff", scaleSec);
+    landingSfxRef.current = setTimeout(() => { landingSfxRef.current = null; sfx("landing", scaleSec); }, ms - scaleMs);
     flightFinalizeRef.current = finalize;
-    setFlying({ fromX: from.x, fromY: from.y, toX: to.x, toY: to.y });
+    setFlying({ fromX: from.x, fromY: from.y, toX: to.x, toY: to.y, ms });
     // Land the plane HERE, not in the caller's finalize. The continent finalizers
     // each cleared `flying` themselves, which was fine while they were the only
     // callers — then the country hop started flying too (it used to drive an
@@ -2123,7 +2240,7 @@ export default function ShutterbugWorld() {
       flightFinalizeRef.current = null;
       setFlying(null);
       finalize();
-    }, FLIGHT_MS);
+    }, ms);
   };
   useEffect(() => () => { if (landingSfxRef.current) clearTimeout(landingSfxRef.current); }, []);
   const refreshProfiles = () => setProfiles(listProfiles());
@@ -2440,6 +2557,12 @@ export default function ShutterbugWorld() {
     setAssignments(assignmentObjs);
     setOptionsByStep(options);
     setStep(0);
+    // The Long Trip opens on a choice, not a fixed brief: the editor wires the first
+    // three assignments and you pick which to chase (slice 3). Every other mode takes
+    // assignment 1 exactly as dealt, so no board is offered. The debrief is cleared
+    // here so a fresh run never shows the last one's banked renown.
+    setRouteChoices(gameMode === "longtrip" ? routeWindow(0, assignmentObjs.length) : null);
+    setLongDebrief(null); setLongWon(false); setUnlockBeat(null);
     setPhase("continent");
     setPickedContinent(null);
     setPickedCountry(null);
@@ -2469,6 +2592,12 @@ export default function ShutterbugWorld() {
     setTourPlan(null);
     missesRef.current = {};
     perfectRunRef.current = 0;
+    // Slice 5 run state, fresh each trip: no gamble open, and the Cover Story neither
+    // offered nor landed yet.
+    setGamble(null);
+    coverOfferedRef.current = false;
+    coverStepRef.current = -1;
+    coverLandedRef.current = false;
     riddleCountRef.current = 0;
     startRef.current = Date.now();
     recorded.current = false;
@@ -2815,6 +2944,12 @@ export default function ShutterbugWorld() {
       setRevealed(false);          // clear the photo just taken...
       setPickedCountry(null);
       poppedCountryRef.current = null; // let the next leg's country pop its card
+      // The Long Trip wires a fresh choice of briefs before the next leg (slice 3),
+      // and once the run is going well and the days run down, that offer may include
+      // the marquee Cover Story (slice 5). The board overlays the map, so the
+      // continent/country phase set below is what the player lands on once they've
+      // picked. Every other mode just takes the next assignment as dealt.
+      if (gameMode === "longtrip") offerNextRoute(step + 1);
       // Stay on the CONTINENT you're standing on rather than snapping back to the
       // world map (Joshua's call — it keeps the trip continuous). `current` stays the
       // place just photographed, so picking the next country flies you there FROM
@@ -2841,6 +2976,112 @@ export default function ShutterbugWorld() {
     }
     // wrong continent just closes and leaves you on the world map to try again.
     // (Riddles now fire on continent arrival, not after a shot — see maybeMrO.)
+  }
+
+  // Take one of the route board's briefs (slice 3). The chosen assignment is swapped
+  // into the step position both `assignments` and `optionsByStep` index by, so the
+  // whole play loop keeps reading `assignments[step]` with no idea a choice was made.
+  // The briefs passed over stay in the pool and reappear in later windows — the road
+  // not taken is still out there — so nothing is ever lost and the deep list can't run
+  // dry before the days do.
+  function takeRoute(pickedIdx) {
+    if (!routeChoices) return;
+    const at = routeChoices.atStep;
+    // Taking the marquee Cover Story? Remember which step it lands on, so its shot pays
+    // double and always offers the hold (slice 5). Taking any OTHER brief while a cover
+    // was on offer lets it slip by — it's a one-time chance, gone if passed over.
+    const tookCover = routeChoices.coverIdx === pickedIdx;
+    if (pickedIdx !== at) {
+      setAssignments((arr) => { const n = arr.slice(); const t = n[at]; n[at] = n[pickedIdx]; n[pickedIdx] = t; return n; });
+      setOptionsByStep((arr) => { const n = arr.slice(); const t = n[at]; n[at] = n[pickedIdx]; n[pickedIdx] = t; return n; });
+    }
+    if (tookCover) coverStepRef.current = at;
+    setRouteChoices(null);
+    sfx("click");
+  }
+
+  // Wire the next leg's route board (slice 3), upgrading the offer to include the
+  // marquee Cover Story (slice 5) once the run has a few places banked and the days are
+  // running down — but only once per run. The cover is drawn from the pool's next
+  // SPECIFIC assignment (a named landmark reads best on a front page); it rides in the
+  // board as one gold card among the usual choices, so going for it stays a decision.
+  function offerNextRoute(atStep) {
+    const total = assignments.length;
+    const normal = routeWindow(atStep, total);
+    if (!coverOfferedRef.current && normal && album.length >= COVER_MIN_CAPTURES && days <= COVER_DAYS) {
+      let coverIdx = normal.idxs.find((i) => assignments[i] && assignments[i].type === "specific");
+      if (coverIdx === undefined) { for (let i = atStep; i < total; i++) if (assignments[i] && assignments[i].type === "specific") { coverIdx = i; break; } }
+      if (coverIdx !== undefined) {
+        coverOfferedRef.current = true;
+        const idxs = [coverIdx, ...normal.idxs.filter((i) => i !== coverIdx)].slice(0, ROUTE_CHOICES);
+        setRouteChoices({ atStep, idxs, coverIdx });
+        return;
+      }
+    }
+    setRouteChoices(normal);
+  }
+
+  // Resolve the "hold for the light" choice (slice 5). The base reward for the shot was
+  // already banked when it was taken — this only adds the hold's upside or its cost, so
+  // the child never loses what they earned by knowing the answer. Safe: take it as shot.
+  // Hold: a coin they chose to flip — win and the light breaks golden for a bonus; bust
+  // and a cloud costs half a day (which, at the very end, can be the day that ends it).
+  function resolveGamble(hold) {
+    const g = gamble; if (!g) return;
+    setGamble(null);
+    const card = g.card;
+    if (!hold) { setPending(card); return; }
+    if (rnd() < HOLD_WIN_CHANCE) {
+      setScore((s) => tidyScore(s + HOLD_BONUS));
+      rewardSfx("perfect");
+      setPending({ ...card, emoji: "🌅",
+        title: g.cover ? "The cover, in golden light!" : "Golden hour!",
+        subtitle: `${card.subtitle} You held for the light — and it broke perfect. +${pts(HOLD_BONUS)}!` });
+    } else {
+      const nd = Math.round((days - 0.5) * 10) / 10;
+      setDays(nd);
+      sfx("fail");
+      if (nd <= 0) {
+        setElapsedMs(Date.now() - startRef.current);
+        rewardSfx("lose");
+        setPending({ kind: "lose", tone: "bad", emoji: "☁️", title: "The light never came",
+          subtitle: `${card.subtitle} You waited on the light, a cloud rolled in — and that was your last half-day.`,
+          fact: card.fact, buttonLabel: "See my results" });
+      } else {
+        setPending({ ...card, emoji: "☁️",
+          title: g.cover ? "Cover's in the bag" : "Clouded over",
+          subtitle: `${card.subtitle} You held for the light, but a cloud rolled in — half a day gone.` });
+      }
+    }
+  }
+
+  // A route card's teaser for one assignment, WITHOUT naming where it is: the kind of
+  // place, a one-line clue at the run's tier, and (on easy) the subject. The location
+  // is deliberately withheld — choosing a brief shouldn't hand a child the geography
+  // the shot is there to teach; the travel cost beside it is the only spatial hint,
+  // and it names no continent. Once a brief is taken the full note (with its continent
+  // or country) types out as always.
+  function assignmentBrief(a) {
+    if (!a) return null;
+    const tier = MODES[difficulty].clue;
+    if (a.type === "category") {
+      const cm = CATEGORIES[a.category];
+      const cc = a.countries ? a.countries.length : 0;
+      return {
+        badgeCat: a.category, subject: null, continent: a.continent, showTypeBadge: true,
+        clueText: cc
+          ? `Find a ${cm.noun} in ${NUMWORD[cc] || cc} of the countries here — you pick which.`
+          : `Find any ${cm.noun} on Jonah's list here — you pick which.`,
+      };
+    }
+    const t = loc(a.targetId);
+    const namesSubject = tier === "easy";
+    return {
+      badgeCat: t ? t.category : null,
+      subject: namesSubject ? (t ? t.subject : null) : null,
+      continent: a.continent, showTypeBadge: tier !== "hard",
+      clueText: t ? (t[tier] || t.hard) : "",
+    };
   }
 
   // When a game ends, record its outcome once against the active profile.
@@ -2880,6 +3121,45 @@ export default function ShutterbugWorld() {
         // First time the dream is complete, queue Jonah's triumphant scene.
         const updated = getProfile(profileName);
         if (updated && !updated.dreamDone && dreamFulfilled(updated)) setDreamPending(true);
+        // Unlock beat: anything that just opened up gets a full-screen moment rather
+        // than a line in passing. A new mode/difficulty, or Jonah's journal for a
+        // continent you've just stamped for the first time. Mark each seen here so the
+        // meet screen doesn't also announce it (this beat replaces that quieter note).
+        if (updated) {
+          const uNow = unlocks(updated);
+          const seenU = Array.isArray(updated.seenUnlocks) ? updated.seenUnlocks : null;
+          const nowU = UNLOCK_BEAT_KEYS.filter((k) => uNow[k]);
+          const newModes = seenU ? nowU.filter((k) => !seenU.includes(k)) : [];
+          const visitedNow = progressByContinent(updated).filter((c) => c.mastered > 0).map((c) => c.continent);
+          const seenJ = Array.isArray(updated.seenJournals) ? updated.seenJournals : [];
+          const newJournals = visitedNow.filter((c) => JONAH_JOURNALS[c] && !seenJ.includes(c));
+          if (newModes.length || newJournals.length) {
+            setUnlockBeat({ modes: newModes, journals: newJournals });
+            setProfileFlag(profileName, "seenUnlocks", nowU);
+            setProfileFlag(profileName, "seenJournals", visitedNow);
+          }
+        }
+      }
+      // The Long Trip banks renown (slice 4) whether or not there's a profile to keep
+      // it. With one, recordLongTrip persists the run and reports back any promotion or
+      // new distance record; a guest just sees this run's tally, so the debrief still
+      // reads as progress even though they've nowhere to keep it. Two published photos
+      // are worth four renown (the same formula recordLongTrip uses).
+      if (gameMode === "longtrip") {
+        const coverBonus = coverLandedRef.current ? COVER_RENOWN : 0;
+        const debrief = profileName
+          ? recordLongTrip(profileName, { places: album.length, score, coverBonus })
+          : { gained: album.length * 2 + coverBonus, cover: coverBonus, total: null, isBestDistance: false,
+              bestDistance: album.length, prevBest: 0, rank: null, rankedUp: false, guest: true };
+        setLongDebrief(debrief);
+        // A WIN is matching or beating your best distance yet (the first run always
+        // sets the bar and so always wins), or landing the Cover Story. A guest has no
+        // record to beat, so a solid run (three places) or the cover carries the day.
+        const prevBest = (debrief && debrief.prevBest) || 0;
+        const won = coverBonus > 0
+          || (profileName ? (album.length > 0 && album.length >= prevBest)
+                          : album.length >= 3);
+        setLongWon(won);
       }
       // The Daily's shareable result. Built OUTSIDE the profile check: a guest flew
       // the same expedition as everybody else and should still get a card to paste —
@@ -2912,12 +3192,18 @@ export default function ShutterbugWorld() {
   // A function declaration, not a const: the music effect above calls it, and by
   // the time any effect runs the state it reads is initialized.
   function endWon() {
+    // The Long Trip can't "bring everything home" (its list is endless) — its win is
+    // getting as far as your best yet, or making the cover. That's decided when the run
+    // is banked and held in `longWon`.
+    if (gameMode === "longtrip") return longWon;
     const totalTargets = gameMode === "tour" ? tourReqs.length : assignments.length;
     return totalTargets > 0 && album.length >= totalTargets;
   }
   useEffect(() => {
     if (screen !== "end") return;
-    const pool = endWon() ? END_WIN : END_LOSE;
+    // A winning Long Trip gets its OWN pool — the END_WIN lines cheer a full roll home,
+    // which a Long Trip never is.
+    const pool = !endWon() ? END_LOSE : (gameMode === "longtrip" ? END_LONG_WIN : END_WIN);
     setEndLine(pool[Math.floor(Math.random() * pool.length)]);
 
     // The three reasons to go again, fixed when the screen opens so they don't
@@ -2943,7 +3229,10 @@ export default function ShutterbugWorld() {
       setGrandpaWant(null);
       grandpaWishRef.current = null;
     }
-  }, [screen]); // eslint-disable-line react-hooks/exhaustive-deps
+    // longWon is set by the record effect above on this same screen change, one commit
+    // later — depend on it so a winning Long Trip re-picks Jonah's line from the WIN
+    // pool instead of being stuck on the lose line from the first paint.
+  }, [screen, longWon]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const outOfDays = (subtitle) => {
     setElapsedMs(Date.now() - startRef.current);
@@ -2985,7 +3274,7 @@ export default function ShutterbugWorld() {
       };
       if (prefersReduced || sameHere) { finalize(); return; }
       music("travelJig");
-      launchFlight(from, to, finalize);
+      launchFlight(from, to, finalize, continentHopMs(current ? loc(current).continent : pickedContinent, cont));
       return;
     }
     if (gameMode === "tour") {
@@ -3035,7 +3324,7 @@ export default function ShutterbugWorld() {
       };
       if (prefersReduced || sameHere) { finalize(); return; }
       music("travelJig");
-      launchFlight(from, to, finalize);
+      launchFlight(from, to, finalize, continentHopMs(current ? loc(current).continent : pickedContinent, cont));
       return;
     }
     if (!target) return;
@@ -3079,7 +3368,7 @@ export default function ShutterbugWorld() {
       };
       if (prefersReduced || sameHere) { finalize(); return; }
       music("travelJig");
-      launchFlight(from, to, finalize);
+      launchFlight(from, to, finalize, continentHopMs(current ? loc(current).continent : pickedContinent, cont));
     } else {
       // A friend in town: the first wrong continent is free. The mistake still
       // HAPPENS — you're told where you should have gone, and the lesson still runs —
@@ -3136,7 +3425,7 @@ export default function ShutterbugWorld() {
     };
     if (prefersReduced) { finalize(); return; }
     music("travelJig");
-    launchFlight(tc.from, tc.to, finalize);
+    launchFlight(tc.from, tc.to, finalize, continentHopMs(current ? loc(current).continent : pickedContinent, cont));
   }
 
   // ---- Country phase (Medium/Hard): pick the target's country on the continent ----
@@ -3182,7 +3471,7 @@ export default function ShutterbugWorld() {
       };
       const legE = rideLegFor(country, at);
       setArrivalRide(legE ? legE.mode : null);
-      if (legE) launchFlight(legE.from, legE.to, arrive); else arrive();
+      if (legE) { music("travelJig"); launchFlight(legE.from, legE.to, arrive, FLIGHT_LOCAL_MS); } else arrive();
       return;
     }
     if (gameMode === "tour") {
@@ -3205,7 +3494,7 @@ export default function ShutterbugWorld() {
       };
       const legT = rideLegFor(country, at);
       setArrivalRide(legT ? legT.mode : null);
-      if (legT) launchFlight(legT.from, legT.to, arriveT); else arriveT();
+      if (legT) { music("travelJig"); launchFlight(legT.from, legT.to, arriveT, FLIGHT_LOCAL_MS); } else arriveT();
       return;
     }
     if (days <= 0 || !target) return;
@@ -3255,7 +3544,7 @@ export default function ShutterbugWorld() {
       };
       const legA = rideLegFor(country, at);
       setArrivalRide(legA ? legA.mode : null);
-      if (legA) launchFlight(legA.from, legA.to, arriveA); else arriveA();
+      if (legA) { music("travelJig"); launchFlight(legA.from, legA.to, arriveA, FLIGHT_LOCAL_MS); } else arriveA();
     } else {
       // Telephoto lens: the first wrong country is free — you were close enough to
       // shoot it from where you stood.
@@ -3451,35 +3740,56 @@ export default function ShutterbugWorld() {
       const perfectTxt = pBonus ? ` (+${pts(pBonus)} for a perfect first-try shot!)` : "";
       setAlbum((al) => (al.some((x) => x.id === clicked.id) ? al : [...al, { id: clicked.id, subject: clicked.subject, flag: clicked.flag, city: clicked.city, country: clicked.country, continent: clicked.continent, category: clicked.category, fact: clicked.fact, icon: clicked.icon, photo: clicked.photo, greeting: clicked.greeting }]));
       const found = a.type === "category" ? `You found a ${CATEGORIES[a.category].noun} — ${clicked.subject}!` : `You photographed ${clicked.subject}.`;
+      // Cover Story finale (slice 5): the marquee front-page shot pays DOUBLE and books
+      // a renown bonus for the debrief. `coverLandedRef` records that the front page was
+      // actually made — whether the run rolls on or the days run out on this very shot.
+      const isCoverShot = isLongTrip && coverStepRef.current === step;
+      const shotGain = gain * (isCoverShot ? COVER_POINTS_MULT : 1);
+      if (isCoverShot) coverLandedRef.current = true;
+      const coverTxt = isCoverShot ? " 🌟 The front page is yours!" : "";
+      // First-time-place bonus (breadth reward). Read from the STORED profile, which
+      // only updates when a run is recorded — so `c > 0` means a PRIOR trip, not this
+      // one. A guest keeps no record, so every place is new to them.
+      const prof0 = profileName ? getProfile(profileName) : null;
+      const firstBonus = !(prof0 && prof0.loc && prof0.loc[id] && prof0.loc[id].c > 0) ? FIRST_TIME_BONUS : 0;
+      const firstTxt = firstBonus ? ` ✨ First time here — +${pts(firstBonus)}!` : "";
       // The Long Trip never "completes" — the assignments keep coming and the trip
       // ends only when the days do. That's the whole shape of the mode: not "did you
       // finish the list" but "how far did you get before the clock beat you".
       const done = !isLongTrip && step + 1 >= assignments.length;
       if (done) {
         const bonus = dayBonus(d);
-        setScore((s) => s + gain + bonus + pBonus);
+        setScore((s) => s + gain + bonus + pBonus + firstBonus);
         setElapsedMs(Date.now() - startRef.current);
         rewardSfx("win");
         setPending({ kind: "win", tone: "good", emoji: "🏆", title: "Trip complete!",
-          subtitle: `${found} +${gain}${perfectTxt}${bonus ? `, plus ${bonus} for ${d} day${d === 1 ? "" : "s"} to spare` : ""}.`,
+          subtitle: `${found} +${gain}${perfectTxt}${firstTxt}${bonus ? `, plus ${bonus} for ${d} day${d === 1 ? "" : "s"} to spare` : ""}.`,
           fact: clicked.fact, photo: clicked.photo, category: clicked.category, buttonLabel: "See my results 📸" });
       } else if (d <= 0) {
-        setScore((s) => s + gain + pBonus);
+        setScore((s) => s + shotGain + pBonus + firstBonus);
         setElapsedMs(Date.now() - startRef.current);
         rewardSfx("lose");
-        setPending({ kind: "lose", tone: "bad", emoji: "⏳", title: "Got the shot — but out of days!",
-          subtitle: `${found} (+${gain}${perfectTxt}) — but that spent your last travel day.`,
+        setPending({ kind: "lose", tone: "bad", emoji: isCoverShot ? "🌟" : "⏳",
+          title: isCoverShot ? "Made the cover — on your last day!" : "Got the shot — but out of days!",
+          subtitle: `${found} (+${shotGain}${perfectTxt}${firstTxt})${coverTxt} — but that spent your last travel day.`,
           fact: clicked.fact, buttonLabel: "See my results" });
       } else {
-        setScore((s) => s + gain + pBonus);
+        setScore((s) => s + shotGain + pBonus + firstBonus);
         rewardSfx(perfect ? "perfect" : "success");
         const cheer = pickForShot(perfect);
         // "Perfect shot!" is now earned — a first-try shot. A shot filed after a
         // wrong guess still counts, but it's a plainer "Nice shot!".
-        setPending({ kind: "correct", tone: "good", emoji: perfect ? "🎯" : "✅",
-          title: perfect ? "Perfect shot!" : "Nice shot!",
-          subtitle: (perfect ? `${found} +${gain}${perfectTxt}` : `${found} +${pts(gain)}.`) + rollTxt,
-          fact: clicked.fact, photo: clicked.photo, category: clicked.category, cheer, buttonLabel: "Next assignment ✈" });
+        const correctCard = { kind: "correct", tone: "good",
+          emoji: isCoverShot ? "🌟" : (perfect ? "🎯" : "✅"),
+          title: isCoverShot ? "You made the cover!" : (perfect ? "Perfect shot!" : "Nice shot!"),
+          subtitle: (perfect ? `${found} +${shotGain}${perfectTxt}` : `${found} +${pts(shotGain)}.`) + firstTxt + coverTxt + rollTxt,
+          fact: clicked.fact, photo: clicked.photo, category: clicked.category, cheer, buttonLabel: "Next assignment ✈" };
+        // Push-your-luck (slice 5): a perfect shot — always, on the cover — may hold for
+        // the light. Offering it defers the reward card to resolveGamble; otherwise the
+        // card shows now. The base points above are already banked either way.
+        const canHold = perfect && (isCoverShot || rnd() < HOLD_ELIGIBLE_CHANCE);
+        if (canHold) setGamble({ card: correctCard, cover: isCoverShot });
+        else setPending(correctCard);
       }
     } else {
       const wantTxt = a.type === "category" ? `a ${CATEGORIES[a.category].noun}` : target.subject;
@@ -3537,6 +3847,58 @@ export default function ShutterbugWorld() {
   if (screen === "dream") {
     return <StoryScreen beats={DREAM_FULFILLED} reduced={prefersReduced} mood="dream" ctaLabel="Keep exploring the world 🌍"
       onDone={() => { if (profileName) setProfileFlag(profileName, "dreamDone", true); setDreamPending(false); refreshProfiles(); setScreen("start"); }} />;
+  }
+
+  // ---------- UNLOCK BEAT (rewards layer): a full-screen moment for whatever just
+  // opened up — a new mode/difficulty, or Jonah's journal for a continent you just
+  // stamped. Reached from the results screen; returns to it. ----------
+  if (screen === "unlock" && unlockBeat) {
+    const { modes = [], journals = [] } = unlockBeat;
+    const shownJournals = journals.slice(0, 3);
+    const moreJ = journals.length - shownJournals.length;
+    const done = () => { setUnlockBeat(null); setScreen("end"); };
+    return (
+      <Frame>
+        <DeskBoard>
+          <div style={{ maxWidth: 760, margin: "0 auto", textAlign: "center" }}>
+            {!prefersReduced && <Confetti reduced={prefersReduced} />}
+            <NigelScene mood="endWin" style={{ width: "min(400px, 78%)", margin: "0 auto" }} />
+            <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 12, letterSpacing: "0.18em", color: CORAL, fontWeight: 800, marginTop: 6 }}>{GRANDPA.name.toUpperCase()}</div>
+            <h2 style={{ fontFamily: "ui-sans-serif, system-ui", fontWeight: 900, fontSize: "clamp(22px, 3vw, 30px)", color: INK, margin: "4px 0 2px" }}>Something new for you!</h2>
+            <p style={{ color: INK, fontSize: 15, opacity: 0.85, margin: "0 0 16px" }}>Look what your travels have opened up.</p>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: 12, textAlign: "left" }}>
+              {modes.map((k) => {
+                const m = UNLOCK_META[k] || { name: k, emoji: "✨", kind: "" };
+                return (
+                  <div key={k} style={{ display: "flex", alignItems: "center", gap: 14, background: "#FBF1D6", border: `2px solid ${GOLD}`, borderRadius: 14, padding: "12px 16px" }}>
+                    <span aria-hidden="true" style={{ fontSize: 40, lineHeight: 1, flex: "none" }}>{m.emoji}</span>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 10, letterSpacing: "0.14em", color: "#B8860B", fontWeight: 800 }}>★ NOW UNLOCKED</div>
+                      <div style={{ fontWeight: 900, fontSize: 18, color: INK }}>{m.name}</div>
+                      {m.kind && <div style={{ fontSize: 13, color: INK, opacity: 0.8, lineHeight: 1.4 }}>{m.kind}</div>}
+                    </div>
+                  </div>
+                );
+              })}
+              {shownJournals.map((cont) => (
+                <div key={cont} style={{ background: PAPER, border: `2px solid ${OCEAN}`, borderRadius: 14, padding: "12px 16px" }}>
+                  <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 10, letterSpacing: "0.14em", color: OCEAN, fontWeight: 800, marginBottom: 3 }}>📖 A JOURNAL OPENS — {cont.toUpperCase()}</div>
+                  <p style={{ margin: 0, fontSize: 14.5, lineHeight: 1.5, color: INK, fontStyle: "italic" }}>{JONAH_JOURNALS[cont]}</p>
+                </div>
+              ))}
+              {moreJ > 0 && (
+                <div style={{ fontSize: 13.5, color: INK, opacity: 0.8, textAlign: "center" }}>
+                  …and {moreJ} more journal{moreJ === 1 ? "" : "s"} — read them any time in your passport.
+                </div>
+              )}
+            </div>
+
+            <button onClick={done} style={{ ...primaryBtn, marginTop: 20 }}>Wonderful — carry on ✈</button>
+          </div>
+        </DeskBoard>
+      </Frame>
+    );
   }
 
   // ---------- MEET GRANDPA (pre-game): he says something, nods to your last trip,
@@ -4618,7 +4980,7 @@ export default function ShutterbugWorld() {
     const r = rankFor(pct);
     return (
       <Frame>
-        {totalTargets > 0 && album.length >= totalTargets && <Confetti reduced={prefersReduced} />}
+        {(isLongEnd ? longWon : (totalTargets > 0 && album.length >= totalTargets)) && <Confetti reduced={prefersReduced} />}
         <DeskBoard>
           {/* The tally reads as ONE compact banner across the top rather than six
               centred lines. Those lines were what pushed the roll and Uncle below the
@@ -4696,6 +5058,59 @@ export default function ShutterbugWorld() {
                 </div>
               )}
 
+          {/* The Long Trip's debrief (slice 4). The days running out is the expected
+              ending here, so the end screen has to bank something rather than just
+              tally a loss: renown earned on the wire, the reporter standing it climbs,
+              and the farthest run yet. Every cue is spelled out in words as well as
+              colour (rule 4) — "PROMOTED", "NEW RECORD" — never colour alone. */}
+          {isLongEnd && longDebrief && (
+            <div style={{ background: "linear-gradient(160deg, #16324E, #10262E)", color: "#F4E3B8", borderRadius: 14, padding: "16px 18px", textAlign: "left" }}>
+              <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.2em", color: "#EAB94E", fontWeight: 800, marginBottom: 8 }}>📡 PRESS DEBRIEF</div>
+              <div style={{ display: "flex", alignItems: "baseline", gap: 9, flexWrap: "wrap" }}>
+                <span style={{ fontSize: 30, fontWeight: 900, color: "#fff", lineHeight: 1 }}>+{longDebrief.gained}</span>
+                <span style={{ fontSize: 14, opacity: 0.9 }}>renown from {album.length} photo{album.length === 1 ? "" : "s"} on the wire</span>
+              </div>
+              {longDebrief.cover > 0 && (
+                <div style={{ fontSize: 13, color: "#EAB94E", fontWeight: 800, marginTop: 3 }}>★ +{longDebrief.cover} for making the Cover Story!</div>
+              )}
+              {longDebrief.scoop > 0 && (
+                <div style={{ fontSize: 13, color: "#7BD0A0", fontWeight: 800, marginTop: 3 }}>+{longDebrief.scoop} scoop bonus — a new personal best!</div>
+              )}
+              {longDebrief.guest ? (
+                <p style={{ margin: "10px 0 0", fontSize: 12.5, opacity: 0.85, lineHeight: 1.45 }}>
+                  Pick a traveler name on the main screen to keep your renown climbing from one trip to the next.
+                </p>
+              ) : longDebrief.rank && (
+                <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid rgba(244,227,184,0.25)" }}>
+                  {longDebrief.rankedUp && (
+                    <div style={{ fontSize: 13.5, fontWeight: 800, color: "#EAB94E", marginBottom: 6 }}>⭐ PROMOTED — you're now {longDebrief.rank.title}!</div>
+                  )}
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8, fontSize: 13.5, marginBottom: 6 }}>
+                    <span>Standing: <b style={{ color: "#fff" }}>{longDebrief.rank.title}</b></span>
+                    <span style={{ fontFamily: "ui-monospace, monospace", whiteSpace: "nowrap" }}>{longDebrief.total} renown</span>
+                  </div>
+                  {longDebrief.rank.next ? (
+                    <>
+                      <div role="presentation" style={{ height: 8, borderRadius: 5, background: "rgba(244,227,184,0.2)", overflow: "hidden" }}>
+                        <div style={{ width: `${Math.max(3, Math.round(100 * longDebrief.rank.into / longDebrief.rank.span))}%`, height: "100%", background: "#EAB94E" }} />
+                      </div>
+                      <div style={{ fontSize: 11.5, opacity: 0.8, marginTop: 4, fontFamily: "ui-monospace, monospace" }}>
+                        {longDebrief.rank.nextNeed - longDebrief.total} more to {longDebrief.rank.next}
+                      </div>
+                    </>
+                  ) : (
+                    <div style={{ fontSize: 12, opacity: 0.85 }}>Top of the masthead — nothing ranks above this.</div>
+                  )}
+                  <div style={{ fontSize: 12.5, marginTop: 10, display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                    <span aria-hidden="true">🧭</span>
+                    Farthest run: <b style={{ color: "#fff" }}>{longDebrief.bestDistance} place{longDebrief.bestDistance === 1 ? "" : "s"}</b>
+                    {longDebrief.isBestDistance && <span style={{ color: "#7BD0A0", fontWeight: 800 }}>· NEW RECORD!</span>}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           {isDailyEnd && dailyBanked && <DailyShare banked={dailyBanked} />}
 
           {profileName && (lastResult?.isBest || lastResult?.isBestTime) && (
@@ -4727,6 +5142,16 @@ export default function ShutterbugWorld() {
               <p style={{ color: INK, fontSize: 13.5, lineHeight: 1.5, margin: "10px auto 0", maxWidth: 420, fontStyle: "italic", opacity: 0.9 }}>
                 <span aria-hidden="true">{GRANDPA.emoji} </span>{ACHIEVEMENT_INTRO} {newBadges.length > 1 ? `you've gone and earned ${newBadges.length} keepsakes! I'm putting every one in the album.` : `"${newBadges[0].name}" — that's going straight in the album, that is.`}
               </p>
+            </div>
+          )}
+
+          {unlockBeat && !dreamPending && (
+            <div style={{ textAlign: "center" }}>
+              <div style={{ background: "linear-gradient(160deg, #5A3E12, #3E2A0C)", color: "#F6E7BE", borderRadius: 12, padding: "14px 18px", maxWidth: 480, margin: "0 auto", border: `2px solid ${GOLD}` }}>
+                <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.18em", marginBottom: 6, color: "#EAB94E" }}>🎁 SOMETHING NEW OPENED UP</div>
+                <p style={{ margin: 0, fontSize: 14, lineHeight: 1.5, color: "#fff" }}>Uncle Jonah has something to show you…</p>
+                <button onClick={() => setScreen("unlock")} style={{ ...primaryBtn, marginTop: 14, background: GOLD, color: INK, boxShadow: "0 4px 0 #A9861E" }}>Go and see Uncle Jonah →</button>
+              </div>
             </div>
           )}
 
@@ -4786,6 +5211,25 @@ export default function ShutterbugWorld() {
     : (target ? (target[tier] || target.hard) : ""));
   const inCountry = phase === "country";
   const inCity = phase === "city";
+  // The route board's cards (slice 3). Cost is what this leg will ACTUALLY cost once
+  // flown — same formula chooseContinent charges, including any run modifier — so a
+  // monsoon's extra day on Asia shows on the card and makes avoiding it a real choice.
+  // A brief on the continent you're already standing on needs no flight at all.
+  const routeFrom = current ? loc(current) : (pickedContinent ? CONTINENT_PIN[pickedContinent] : HUB);
+  const routeHereCont = pickedContinent || (current ? loc(current).continent : null);
+  const routeCards = (isLongTrip && routeChoices)
+    ? routeChoices.idxs.map((idx) => {
+        const a = assignments[idx];
+        if (!a) return null;
+        const sameCont = a.continent === routeHereCont;
+        const condFlight = (hasCond("slowContinent") && a.continent === condition.continent ? 1 : 0)
+          + (hasCond("fastFlights") ? -0.5 : 0);
+        const days = sameCont ? 0
+          : Math.max(0.5, Math.round((flightDays(routeFrom, CONTINENT_PIN[a.continent]) + condFlight) * 10) / 10);
+        return { idx, brief: assignmentBrief(a), sameCont, days, cover: routeChoices.coverIdx === idx };
+      }).filter(Boolean)
+    : [];
+  const routeHasCover = routeCards.some((c) => c.cover);
   // Which country the traveler is "in" right now, for the country card. Easy
   // mode has no country step, but a specific mission's country is known as soon
   // as you land on the continent (the easy clue names it anyway); category
@@ -5032,18 +5476,18 @@ export default function ShutterbugWorld() {
         minHeight: 60, overflow: "visible" }}>
         {/* Logo — extra large, allowed to overrun the teal top/bottom. Also a
             tap-to-learn target (what the game is / how to play). */}
-        <button onClick={() => openCurio("logo")} title="About the game" aria-label="About the game"
-          style={{ background: "transparent", border: "none", padding: 0, margin: 0, cursor: "help", flex: "0 0 auto", lineHeight: 0 }}>
+        <button onClick={() => openCurio("logo")} title="About the game" aria-label="About the game" className="sbw-jiggle"
+          style={{ background: "transparent", border: "none", padding: 0, margin: 0, cursor: "pointer", flex: "0 0 auto", lineHeight: 0 }}>
           <img src={`${UI}shutterbug-logo.png`} alt="Shutterbug" style={{ height: 184, width: "auto",
             marginTop: -60, marginBottom: -60, filter: "drop-shadow(0 3px 4px rgba(0,0,0,0.4))" }} />
         </button>
         <div style={{ flex: 1, minWidth: 8 }} />
         {/* Travel-days calendar — centered over the bar, oversized, overruns the teal. */}
         {!isExplore ? (
-          <button onClick={() => openCurio("calendar")} title="Travel & time" aria-label="Travel and time — a fact to learn"
+          <button onClick={() => openCurio("calendar")} title="Travel & time" aria-label="Travel and time — a fact to learn" className="sbw-wiggle"
             style={{ position: "absolute", left: "50%", top: "54%", transform: "translate(-50%, -50%)", zIndex: 2,
             display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", width: 176, height: 168,
-            background: "transparent", border: "none", cursor: "help",
+            background: "transparent", border: "none", cursor: "pointer",
             backgroundImage: `url("${UI}days-calendar-blank-no-clock.png")`, backgroundSize: "contain",
             backgroundRepeat: "no-repeat", backgroundPosition: "center", filter: "drop-shadow(0 4px 5px rgba(0,0,0,0.35))" }}>
             {/* A half-day reading ("2.5") is three glyphs wide and used to crowd the
@@ -5619,8 +6063,8 @@ export default function ShutterbugWorld() {
                     <g className="sbw-plane-group" transform={undo} style={{ pointerEvents: "none" }}>
                       <path d={d} fill="none" stroke={INK} strokeOpacity="0.45" strokeWidth="2.4" strokeDasharray="3 3" vectorEffect="non-scaling-stroke" />
                       <path d={d} fill="none" stroke="#FFFFFF" strokeOpacity="0.9" strokeWidth="1.1" strokeDasharray="3 3" vectorEffect="non-scaling-stroke" />
-                      <g style={{ animation: `sbw-fly ${FLIGHT_MS}ms ease-in-out forwards`, offsetPath: `path('${d}')`, offsetRotate: "auto 90deg" }}>
-                        <g style={{ animation: `sbw-hop ${FLIGHT_MS}ms ease-in-out forwards` }}>
+                      <g style={{ animation: `sbw-fly ${flying.ms || FLIGHT_MS}ms ease-in-out forwards`, offsetPath: `path('${d}')`, offsetRotate: "auto 90deg" }}>
+                        <g style={{ animation: `sbw-hop ${flying.ms || FLIGHT_MS}ms ease-in-out forwards` }}>
                           <image href={`${UI}passenger-aircraft-777-token.png`} width={sz} height={sz} x={-sz / 2} y={-sz / 2}
                             style={{ filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.45))" }} />
                         </g>
@@ -5887,9 +6331,9 @@ export default function ShutterbugWorld() {
                 already leaves around the land — so it overlaps frame, not targets.
                 It's also off during a flight, so it can never steal a continent tap. */}
             <button onClick={() => openCurio("compass")} title="About the compass" aria-label="About the compass"
-              disabled={flying}
+              disabled={flying} className={flying ? undefined : "sbw-jiggle"}
               style={{ position: "absolute", left: 40, bottom: 36, width: "clamp(78px, 11vw, 132px)", height: "clamp(78px, 11vw, 132px)",
-                padding: 0, border: "none", background: "transparent", cursor: flying ? "default" : "help", zIndex: 4 }}>
+                padding: 0, border: "none", background: "transparent", cursor: flying ? "default" : "pointer", zIndex: 4 }}>
               <img src={`${UI}compass-rose.png`} alt="" aria-hidden="true"
                 style={{ width: "100%", height: "100%", objectFit: "contain", opacity: 0.92, filter: "drop-shadow(0 2px 3px rgba(0,0,0,0.35))" }} />
             </button>
@@ -5963,6 +6407,14 @@ export default function ShutterbugWorld() {
       {albumOpen && <AlbumModal album={album} onPick={(p) => { setAlbumOpen(false); setAlbumView(p); }} onClose={() => setAlbumOpen(false)} />}
       {guideOpen && <FieldGuideModal note={researched[step]} spent={guideFresh && researchCost > 0} onClose={() => setGuideOpen(false)} />}
       {pending && <ResultModal data={pending} onContinue={continueFromResult} reduced={prefersReduced} />}
+      {/* The Long Trip's route board (slice 3): pick which brief to chase next. A
+          required choice, so it refuses Escape and offers no dismiss — you leave it
+          by taking an assignment. */}
+      {isLongTrip && routeChoices && routeCards.length > 0 &&
+        <RouteBoard cards={routeCards} onPick={takeRoute} condition={condition}
+          atStart={routeChoices.atStep === 0} hasCover={routeHasCover} reduced={prefersReduced} />}
+      {/* Push-your-luck: "hold for the light?" on a perfect shot (slice 5). */}
+      {gamble && <GambleModal cover={gamble.cover} onChoose={resolveGamble} reduced={prefersReduced} />}
       {/* A photo is only ever opened FROM the album, so closing it returns there
           (not to the map behind it). */}
       {albumView && <LandmarkModal p={albumView} onClose={() => { setAlbumView(null); setAlbumOpen(true); }} reduced={prefersReduced} />}
@@ -6108,8 +6560,13 @@ function Frame({ children, desk = false }) {
            focus highlights, and the country's name on hover all say "clickable"
            without depending on the wash. */
         /* World-map button glow: the way forward is off this map. */
-        .sbw-worldglow{ animation: sbw-worldglow 1.15s ease-in-out infinite; }
-        @keyframes sbw-worldglow{ 0%,100%{ box-shadow: 0 2px 5px rgba(0,0,0,0.25), 0 0 0 0 rgba(198,91,62,0.55) } 50%{ box-shadow: 0 2px 5px rgba(0,0,0,0.25), 0 0 0 6px rgba(198,91,62,0) } }
+        /* The "fly to another continent" cue for young players: a bold gold pulse
+           with a little bounce, so it's unmistakable that this is where to go next. */
+        .sbw-worldglow{ animation: sbw-worldglow 0.9s ease-in-out infinite; position: relative; z-index: 2; }
+        @keyframes sbw-worldglow{
+          0%,100%{ box-shadow: 0 2px 6px rgba(0,0,0,0.3), 0 0 0 0 rgba(232,178,54,0.9), 0 0 10px 2px rgba(232,178,54,0.55); transform: scale(1); }
+          50%{ box-shadow: 0 3px 10px rgba(0,0,0,0.35), 0 0 0 14px rgba(232,178,54,0), 0 0 16px 4px rgba(232,178,54,0.8); transform: scale(1.07); }
+        }
         body.sbw-no-anim .sbw-worldglow{ animation: none; }
         .sbw-country{ outline: none; }
         /* Island nations that come out a pixel wide. The ring breathes so a child can
@@ -6193,13 +6650,19 @@ function Frame({ children, desk = false }) {
           0%,100%{ transform: translate(-50%,-50%) rotate(-1.1deg) }
           50%{ transform: translate(-50%,-50%) rotate(1.1deg) }
         }
+        /* The same playful "point at me" wiggle for chrome that ISN'T centre-anchored —
+           the logo, the compass, the calendar, the phase-tracker icons. It replaces the
+           old "ⓘ" affordance: point at the graphic and it jiggles (with the global
+           hover ping), signalling "poke me for a fact" without a schoolroom question mark. */
+        .sbw-jiggle:hover, .sbw-jiggle:focus-visible{ animation: sbw-jiggle 0.45s ease-in-out infinite }
+        @keyframes sbw-jiggle{ 0%,100%{ transform: rotate(-4deg) } 50%{ transform: rotate(4deg) } }
         /* The camera bag Uncle hands you: bobbing so a child knows to take it. */
         .sbw-bob{ animation: sbw-bob 1.5s ease-in-out infinite }
         @keyframes sbw-bob{ 0%,100%{ transform: translateY(0) } 50%{ transform: translateY(-9px) } }
         /* Uncle changing expression — a cross-fade, not a cut. */
         .sbw-fade{ animation: sbw-fade 0.45s ease-out }
         @keyframes sbw-fade{ 0%{ opacity: 0.25 } 100%{ opacity: 1 } }
-        @media (prefers-reduced-motion: reduce){ .sbw-wiggle:hover, .sbw-bob, .sbw-fade{ animation: none } }
+        @media (prefers-reduced-motion: reduce){ .sbw-wiggle:hover, .sbw-jiggle:hover, .sbw-bob, .sbw-fade{ animation: none } }
         /* Photo develops like film: washed-out gray blooming into full color. */
         /* Film develops: a washed-out grey chemical bath that HOLDS for a beat,
            then blooms into full colour. It starts only once the photo has actually
@@ -6390,7 +6853,15 @@ function PhaseTracker({ stepIdx, onCurio, continentName, countryName, onCountryI
               display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 900, fontSize: 13,
               background: active ? CORAL : done ? GREEN : "transparent", color: active || done ? "#fff" : INK,
               border: active || done ? "none" : `2px solid ${INK}` }}>{done ? "✓" : i + 1}</span>
-            <img src={`${UI}${s.icon}`} alt="" style={{ width: 30, height: 30, objectFit: "contain", flex: "0 0 auto" }} />
+            {/* The step's own icon IS the tap-to-learn trigger now (Joshua's steer):
+                the little "ⓘ" is gone, and instead the graphic wiggles on hover with
+                the soft click-ping (the global hover sound) so it reads as playful
+                discovery, not a quiz prompt. */}
+            <button className="sbw-jiggle" onClick={() => onCurio(s.key)}
+              aria-label={`What is a ${s.label.toLowerCase()}? Tap to find out.`} title={`What is a ${s.label.toLowerCase()}?`}
+              style={{ flex: "0 0 auto", width: 34, height: 34, padding: 2, border: "none", background: "transparent", cursor: "pointer" }}>
+              <img src={`${UI}${s.icon}`} alt="" style={{ width: "100%", height: "100%", objectFit: "contain" }} />
+            </button>
             <LabelTag {...(infoable ? { type: "button", onClick: () => onCountryInfo(countryName), title: `About ${countryName}` } : {})}
               style={{ lineHeight: 1.2, flex: 1, minWidth: 0, textAlign: "left",
                 ...(infoable ? { cursor: "pointer", background: "transparent", border: "none", padding: 0, font: "inherit" } : {}) }}>
@@ -6400,11 +6871,6 @@ function PhaseTracker({ stepIdx, onCurio, continentName, countryName, onCountryI
                 {hint}{infoable && <span aria-hidden="true"> · tap for its card 🪪</span>}
               </span>
             </LabelTag>
-            <button onClick={() => onCurio(s.key)} aria-label={`Learn: what is a ${s.label.toLowerCase()}?`}
-              title={`What is a ${s.label.toLowerCase()}?`}
-              style={{ flex: "0 0 auto", width: 30, height: 30, borderRadius: "50%", border: `1.5px solid ${OCEAN}`,
-                background: "rgba(30,86,102,0.08)", color: OCEAN, fontWeight: 900, fontSize: 15, lineHeight: 1, cursor: "help",
-                display: "flex", alignItems: "center", justifyContent: "center" }}>ⓘ</button>
           </li>
         );
       })}
@@ -6498,6 +6964,135 @@ function useModalFocus(ref, onClose, { escape = true } = {}) {
       if (opener && opener.isConnected && typeof opener.focus === "function") opener.focus();
     };
   }, [ref]);
+}
+
+// The Long Trip's route board (roguelike slice 3). The editor has THREE briefs on
+// the wire; the traveler picks which to chase. Each card shows the kind of place, a
+// clue at the run's tier, and what the leg will cost in travel days — but never WHERE
+// the place is, because deducing that from the clue is the game. A required decision,
+// so it traps focus and refuses Escape: you leave it by taking an assignment.
+function RouteBoard({ cards, onPick, condition, atStart, hasCover, reduced }) {
+  const ref = useRef(null);
+  useModalFocus(ref, () => {}, { escape: false });
+  return (
+    <div ref={ref} role="dialog" aria-modal="true" aria-label="Choose your next assignment"
+      style={{ position: "fixed", inset: 0, background: "rgba(16,38,46,0.72)", display: "flex",
+        alignItems: "center", justifyContent: "center", padding: 16, zIndex: 60 }}>
+      <div onClick={(e) => e.stopPropagation()}
+        style={{ position: "relative", background: PAPER, borderRadius: 18, border: `3px solid ${hasCover ? GOLD : OCEAN}`,
+          boxShadow: "0 16px 50px rgba(0,0,0,0.4)", maxWidth: 940, width: "100%", maxHeight: "92vh",
+          overflowY: "auto", padding: "22px 24px 26px",
+          animation: reduced ? "none" : "sbw-pop 0.22s ease" }}>
+        <div style={{ textAlign: "center", marginBottom: 4 }}>
+          <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.22em", color: CORAL, fontWeight: 800 }}>
+            📡 ON THE WIRE
+          </div>
+          <h2 style={{ fontFamily: "ui-sans-serif, system-ui", fontWeight: 900, fontSize: "clamp(20px, 2.4vw, 26px)", color: INK, margin: "3px 0 0" }}>
+            {hasCover ? "The front page is open" : atStart ? "Where to first?" : "Where to next?"}
+          </h2>
+          <p style={{ color: INK, opacity: 0.75, fontSize: 13.5, margin: "5px auto 0", maxWidth: 560, lineHeight: 1.45 }}>
+            {hasCover
+              ? "The editor's holding the front page — chase the ★ Cover Story for double points and a fat renown bonus, or play it safe. Your call."
+              : "The editor has assignments on offer. Pick the one to chase — the days it costs to get there are on each card. The briefs you pass over stay out there for later."}
+          </p>
+        </div>
+
+        {condition && (
+          <div style={{ margin: "14px auto 0", maxWidth: 620, display: "flex", gap: 10, alignItems: "center", textAlign: "left",
+            background: condition.kind === "good" ? "#EAF6EF" : "#FFF8E6",
+            border: `1px solid ${condition.kind === "good" ? GREEN : GOLD}`, borderRadius: 10, padding: "8px 12px" }}>
+            <span aria-hidden="true" style={{ fontSize: 22, flex: "none" }}>{condition.emoji}</span>
+            <div style={{ minWidth: 0, fontSize: 12.5, color: INK, lineHeight: 1.4 }}>
+              <b>{condition.name}.</b> {condition.blurb}
+            </div>
+          </div>
+        )}
+
+        <div style={{ display: "flex", gap: 14, flexWrap: "wrap", justifyContent: "center", marginTop: 16 }}>
+          {cards.map((c, i) => {
+            const b = c.brief;
+            const cover = c.cover;
+            const dayTxt = c.sameCont ? "No flight — you're already here"
+              : `✈ ${c.days} day${c.days === 1 ? "" : "s"} to get there`;
+            return (
+              <div key={c.idx} style={{ flex: "1 1 240px", minWidth: 230, maxWidth: 290, display: "flex", flexDirection: "column",
+                background: "#fff", border: `${cover ? 3 : 2}px solid ${cover ? GOLD : PAPER_LINE}`, borderRadius: 14, overflow: "hidden",
+                boxShadow: cover ? "0 0 0 3px rgba(212,160,44,0.18)" : "none" }}>
+                <div style={{ background: cover ? "#FBF1D6" : PAPER, borderBottom: `1px dashed ${cover ? GOLD : INK}`, padding: "8px 12px",
+                  display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                  <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 10.5, letterSpacing: "0.14em", color: cover ? "#B8860B" : CORAL, fontWeight: 800 }}>
+                    {cover ? "★ COVER STORY" : `BRIEF ${String.fromCharCode(65 + i)}`}
+                  </span>
+                  {b.showTypeBadge && b.badgeCat && <CategoryBadge category={b.badgeCat} size="sm" />}
+                </div>
+                <div style={{ padding: "12px 14px", flex: 1, display: "flex", flexDirection: "column" }}>
+                  {cover && (
+                    <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 10, letterSpacing: "0.1em", color: "#B8860B", fontWeight: 800, marginBottom: 5 }}>
+                      DOUBLE POINTS · +{COVER_RENOWN} RENOWN
+                    </div>
+                  )}
+                  {b.subject && (
+                    <div style={{ fontFamily: HAND, fontWeight: 700, fontSize: 19, color: INK, lineHeight: 1.15, marginBottom: 4 }}>{b.subject}</div>
+                  )}
+                  <p style={{ margin: 0, color: INK, opacity: 0.9, fontFamily: HAND, fontSize: 16, lineHeight: 1.35 }}>{b.clueText}</p>
+                  <div style={{ marginTop: "auto", paddingTop: 12 }}>
+                    <div style={{ display: "inline-flex", alignItems: "center", gap: 6, fontFamily: "ui-monospace, monospace",
+                      fontSize: 12, fontWeight: 800, color: c.sameCont ? GREEN : OCEAN,
+                      background: c.sameCont ? "#EAF6EF" : "#EAF1F2", borderRadius: 20, padding: "4px 11px" }}>
+                      {dayTxt}
+                    </div>
+                  </div>
+                </div>
+                <button onClick={() => onPick(c.idx)}
+                  style={{ border: "none", borderTop: `2px solid ${cover ? GOLD : PAPER_LINE}`, background: cover ? GOLD : CORAL, color: cover ? INK : "#fff",
+                    fontWeight: 800, fontSize: 15, padding: "12px 10px", cursor: "pointer", letterSpacing: "0.02em" }}>
+                  {cover ? "Chase the cover ★" : "Take this brief →"}
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Push-your-luck (slice 5): "hold for the light?" The shot is already in the bag —
+// this is a coin the CHILD chooses to flip on the reward, never on the geography. It
+// refuses Escape (a real choice, not a card to dismiss) but both options are one tap.
+function GambleModal({ cover, onChoose, reduced }) {
+  const ref = useRef(null);
+  useModalFocus(ref, () => {}, { escape: false });
+  return (
+    <div ref={ref} role="dialog" aria-modal="true" aria-label="Hold for the light?"
+      style={{ position: "fixed", inset: 0, background: "rgba(16,38,46,0.66)", display: "flex",
+        alignItems: "center", justifyContent: "center", padding: 16, zIndex: 62 }}>
+      <div onClick={(e) => e.stopPropagation()}
+        style={{ position: "relative", background: PAPER, borderRadius: 16, border: `3px solid ${GOLD}`,
+          boxShadow: "0 14px 44px rgba(0,0,0,0.35)", maxWidth: 440, width: "100%", padding: "22px 22px 24px", textAlign: "center",
+          animation: reduced ? "none" : "sbw-pop 0.2s ease" }}>
+        <div style={{ fontSize: 40, lineHeight: 1 }} aria-hidden="true">🌅</div>
+        <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.18em", color: "#B8860B", fontWeight: 800, margin: "8px 0 2px" }}>
+          {cover ? "THE COVER SHOT" : "THE LIGHT IS DOING SOMETHING"}
+        </div>
+        <h2 style={{ fontFamily: "ui-sans-serif, system-ui", fontWeight: 900, fontSize: 21, color: INK, margin: "0 0 6px" }}>Hold for the light?</h2>
+        <p style={{ color: INK, opacity: 0.85, fontSize: 14, lineHeight: 1.5, margin: "0 0 16px" }}>
+          You've got the shot. Wait for the light to break and it could be your best yet
+          — <b>+{HOLD_BONUS} points</b> — but if a cloud rolls in you'll lose <b>half a day</b>.
+        </p>
+        <div style={{ display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap" }}>
+          <button onClick={() => onChoose(true)}
+            style={{ ...primaryBtn, margin: 0, background: GOLD, color: INK, boxShadow: "0 4px 0 #A9861E", padding: "12px 20px", fontSize: 15 }}>
+            🌅 Hold for the light
+          </button>
+          <button onClick={() => onChoose(false)}
+            style={{ ...primaryBtn, margin: 0, background: "transparent", color: INK, border: `2px solid ${INK}`, boxShadow: "none", padding: "12px 20px", fontSize: 15 }}>
+            📸 Take it now
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 // "That tool isn't used in this mode." Lifted out of the main component's JSX so
@@ -6728,17 +7323,25 @@ function PassportModal({ profile, onClose }) {
   ];
   const PER = 12; // items per two-page spread (6 a page)
   const spreads = Math.max(1, Math.ceil(items.length / PER));
-  // page 0 = profile, page 1 = PROGRESS, 2..(spreads+1) = accomplishments.
-  // Progress sits second on purpose: it's the page a parent opens the passport FOR,
-  // and burying it behind the stamp spreads would make it the page nobody finds.
-  const PROGRESS_PAGE = 1;
-  const lastPage = spreads + 1;
+  // page 0 = profile, 1 = PROGRESS, 2 = TROPHY SHELF, 3..(spreads+2) = accomplishments.
+  // Progress sits second on purpose: it's the page a parent opens the passport FOR.
+  // The shelf sits third: it shows every achievement as a silhouette so the child can
+  // see the SHAPE of what's left, the same way the world map fills in.
+  const PROGRESS_PAGE = 1, SHELF_PAGE = 2, JOURNAL_PAGE = 3, ACCOMPLISH_START = 4;
+  const lastPage = spreads + 3;
   const isProfile = page === 0;
   const isProgress = page === PROGRESS_PAGE;
+  const isShelf = page === SHELF_PAGE;
+  const isJournal = page === JOURNAL_PAGE;
+  const allAch = profile ? achievements(profile) : [];
   const bookImg = isProfile ? "passport-open-profile-blank.png" : "passport-open-pages-blank.png";
-  const spreadItems = (isProfile || isProgress) ? [] : items.slice((page - 2) * PER, (page - 1) * PER);
+  const spreadItems = (isProfile || isProgress || isShelf || isJournal) ? [] : items.slice((page - ACCOMPLISH_START) * PER, (page - ACCOMPLISH_START + 1) * PER);
   const leftItems = spreadItems.slice(0, PER / 2), rightItems = spreadItems.slice(PER / 2);
   const byCont = profile ? progressByContinent(profile) : [];
+  // A continent's journal unlocks once you've earned a stamp there (mastered ≥1 place).
+  const visitedConts = new Set(byCont.filter((c) => c.mastered > 0).map((c) => c.continent));
+  const journalConts = CONTINENT_ORDER.filter((c) => JONAH_JOURNALS[c]);
+  const unlockedJournals = journalConts.filter((c) => visitedConts.has(c));
   const trouble = profile ? troubleSpots(profile, 6) : [];
   const bestPairs = profile ? Object.entries(profile.best || {}).filter(([, v]) => typeof v === "number") : [];
   // A country stamp shows its flag emoji; an earned keepsake shows its badge art
@@ -6754,6 +7357,23 @@ function PassportModal({ profile, onClose }) {
       {list.map((it, i) => <Cell key={i} it={it} />)}
     </div>
   );
+  // The trophy shelf: every achievement listed, earned ones bright with a ✓, the rest
+  // dimmed to a silhouette with their progress — so a child sees the shape of what's
+  // still to earn, not just what they've got.
+  const shelfCol = (list) => (
+    <div style={{ display: "flex", flexDirection: "column", gap: 5, overflow: "hidden" }}>
+      {list.map((b) => (
+        <div key={b.id} style={{ display: "flex", alignItems: "center", gap: 7, minWidth: 0 }}>
+          <ArtBadge art={b.art} emoji={b.emoji} size={22} dim={!b.earned} />
+          <span style={{ fontSize: 11, fontWeight: 700, color: INK, opacity: b.earned ? 1 : 0.6, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>{b.name}</span>
+          <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 9.5, fontWeight: 700, whiteSpace: "nowrap", color: b.earned ? GREEN : INK, opacity: b.earned ? 1 : 0.5 }}>
+            {b.earned ? "✓" : `${b.have}/${b.need}`}
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+  const shelfHalf = Math.ceil(allAch.length / 2);
   return (
     <div ref={ref} role="dialog" aria-modal="true" aria-label="Passport" onClick={onClose}
       style={{ position: "fixed", inset: 0, background: "rgba(16,38,46,0.66)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 10, padding: 16, zIndex: 56 }}>
@@ -6856,6 +7476,48 @@ function PassportModal({ profile, onClose }) {
               )}
             </div>
           </>
+        ) : isShelf ? (
+          <>
+            <div style={{ position: "absolute", left: "15.5%", top: "13%", width: "27%", bottom: "14%" }}>
+              <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 10, letterSpacing: "0.16em", color: "#B8860B", fontWeight: 700, marginBottom: 8 }}>🏆 TROPHY SHELF · {earned.length}/{allAch.length}</div>
+              {shelfCol(allAch.slice(0, shelfHalf))}
+            </div>
+            <div style={{ position: "absolute", right: "15.5%", top: "13%", width: "27%", bottom: "14%" }}>
+              <div style={{ height: 18, marginBottom: 8 }} />
+              {shelfCol(allAch.slice(shelfHalf))}
+            </div>
+          </>
+        ) : isJournal ? (
+          <>
+            <div style={{ position: "absolute", left: "15.5%", top: "13%", width: "27%", bottom: "14%", overflowY: "auto", paddingRight: 5 }}>
+              <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 10, letterSpacing: "0.16em", color: OCEAN, fontWeight: 700, marginBottom: 8 }}>📖 JONAH'S JOURNALS · {unlockedJournals.length}/{journalConts.length}</div>
+              {unlockedJournals.length === 0 ? (
+                <div style={{ fontSize: 12, opacity: 0.72, lineHeight: 1.5, color: INK }}>Earn a stamp on a continent and Jonah will tell you the story of when <i>he</i> went there — young, with this very camera.</div>
+              ) : (
+                unlockedJournals.map((cont) => (
+                  <div key={cont} style={{ marginBottom: 11 }}>
+                    <div style={{ fontWeight: 800, fontSize: 11.5, color: CORAL, marginBottom: 1 }}>{cont}</div>
+                    <p style={{ margin: 0, fontSize: 10.5, lineHeight: 1.42, color: INK, fontStyle: "italic" }}>{JONAH_JOURNALS[cont]}</p>
+                  </div>
+                ))
+              )}
+            </div>
+            <div style={{ position: "absolute", right: "15.5%", top: "13%", width: "27%", bottom: "14%" }}>
+              <div style={{ height: 18, marginBottom: 8 }} />
+              <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 10, letterSpacing: "0.16em", color: "#B8860B", fontWeight: 700, marginBottom: 9 }}>THE SEVEN CONTINENTS</div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                {journalConts.map((cont) => {
+                  const got = visitedConts.has(cont);
+                  return (
+                    <div key={cont} style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 12, opacity: got ? 1 : 0.55 }}>
+                      <span aria-hidden="true">{got ? "📖" : "🔒"}</span>
+                      <span style={{ fontWeight: 700, color: INK }}>{cont}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </>
         ) : (
           <>
             {/* 14%, not 11%: the book art's printed page starts inside its cover, and
@@ -6878,7 +7540,7 @@ function PassportModal({ profile, onClose }) {
         <button onClick={() => setPage((p) => Math.max(0, p - 1))} disabled={page === 0} aria-label="Previous page"
           style={{ background: "rgba(255,255,255,0.14)", border: "1.5px solid rgba(244,236,216,0.5)", color: "#F4ECD8", borderRadius: 8, width: 40, height: 34, fontSize: 18, cursor: page === 0 ? "default" : "pointer", opacity: page === 0 ? 0.4 : 1 }}>‹</button>
         <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 13, fontWeight: 700, minWidth: 150, textAlign: "center" }}>
-          {isProfile ? "Profile" : isProgress ? "Progress" : `Page ${page - 1} of ${spreads}`}
+          {isProfile ? "Profile" : isProgress ? "Progress" : isShelf ? "Trophy Shelf" : isJournal ? "Journals" : `Page ${page - 3} of ${spreads}`}
         </span>
         <button onClick={() => setPage((p) => Math.min(lastPage, p + 1))} disabled={page >= lastPage} aria-label="Next page"
           style={{ background: "rgba(255,255,255,0.14)", border: "1.5px solid rgba(244,236,216,0.5)", color: "#F4ECD8", borderRadius: 8, width: 40, height: 34, fontSize: 18, cursor: page >= lastPage ? "default" : "pointer", opacity: page >= lastPage ? 0.4 : 1 }}>›</button>
@@ -7805,8 +8467,8 @@ function CuriosityCard({ deck, seen, onSeen, onClose, reduced }) {
     }
     return idx;
   });
-  const [pos, setPos] = useState(0);
-  const card = deck.cards[order[pos]];
+  // Always the first of the freshly-shuffled order — one random tidbit per open.
+  const card = deck.cards[order[0]];
   // Was this card new to the player when it first appeared? Snapshot at open time so
   // the "NEW" flag doesn't flicker off the instant we record it as seen.
   const wasNew = !seen[card.id];
@@ -7837,19 +8499,10 @@ function CuriosityCard({ deck, seen, onSeen, onClose, reduced }) {
           </a>
         )}
       </div>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginTop: 18 }}>
-        <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 12, color: INK, opacity: 0.6, fontWeight: 700 }}>
-          {pos + 1} of {deck.cards.length}
-        </span>
-        {deck.cards.length > 1 && (
-          <button onClick={() => setPos((p) => (p + 1) % deck.cards.length)}
-            className={reduced ? "" : ""}
-            style={{ background: accent, color: "#fff", border: "none", borderRadius: 10, padding: "9px 18px",
-              fontWeight: 800, fontSize: 14, cursor: "pointer" }}>
-            Another ↻
-          </button>
-        )}
-      </div>
+      {/* One blurb per open — no "1 of 6" counter and no in-card navigation. The deck
+          is shuffled on mount (see `order`), so each time the child pokes the feature
+          they get a random tidbit; re-poking it opens a fresh one. Joshua's steer: keep
+          it a moment of discovery, not a page-through quiz. */}
     </ModalShell>
   );
 }

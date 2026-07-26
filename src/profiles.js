@@ -484,6 +484,81 @@ export function careerRank(profile) {
   return { tier: i, title: PRESS_RANKS[i].title, have, next: next ? next.title : null, nextNeed: next ? next.need : null };
 }
 
+// ---- The Long Trip: renown, banked across runs -------------------------------
+// The Long Trip is the endurance mode, and running out of days is the EXPECTED
+// ending — the score is how far you got, not whether you "finished". So a run has
+// to feel like it banked something even when the days beat you. Renown is that
+// something: reporter reputation earned on the wire, one keepsake at a time, that
+// only ever goes up across every Long Trip and climbs a ladder of newsroom
+// standings. A short run still books renown; a long one just books more.
+const RENOWN_RANKS = [
+  { need: 0,   title: "Unknown on the Wire" },
+  { need: 20,  title: "Local Stringer" },
+  { need: 50,  title: "Wire Correspondent" },
+  { need: 100, title: "Featured Photographer" },
+  { need: 200, title: "Front-Page Regular" },
+  { need: 400, title: "Living Legend" },
+];
+export function renownRank(total) {
+  const have = Math.max(0, Math.floor(total || 0));
+  let i = 0;
+  for (let k = 0; k < RENOWN_RANKS.length; k++) if (have >= RENOWN_RANKS[k].need) i = k;
+  const next = RENOWN_RANKS[i + 1] || null;
+  return {
+    tier: i, title: RENOWN_RANKS[i].title, have,
+    next: next ? next.title : null, nextNeed: next ? next.need : null,
+    // How far into the current band, and how wide the band is, for a progress bar.
+    into: have - RENOWN_RANKS[i].need, span: next ? next.need - RENOWN_RANKS[i].need : null,
+  };
+}
+
+// Renown earned by ONE Long Trip. Pure, so the number is testable and can never
+// silently drift: two published photos are worth four renown, the first time a run
+// beats your own distance record it books a five-point scoop, and landing the run's
+// Cover Story (the marquee front-page shot) pays a fixed cover bonus on top. Nothing
+// here pays for a wrong guess — `places` is photos actually filed and brought home,
+// and the cover bonus only lands when the cover shot was actually made.
+export function renownGain({ places = 0, isBestDistance = false, coverBonus = 0 } = {}) {
+  const base = Math.max(0, Math.floor(places)) * 2;
+  const scoop = isBestDistance && places > 0 ? 5 : 0;
+  const cover = Math.max(0, Math.floor(coverBonus));
+  return { base, scoop, cover, total: base + scoop + cover };
+}
+
+// A profile's standing at a glance (for the meet screen and the debrief), safe on a
+// profile that has never flown a Long Trip.
+export function longTripStats(profile) {
+  const lt = (profile && profile.longtrip) || {};
+  return { renown: lt.renown || 0, bestDistance: lt.bestDistance || 0,
+           runs: lt.runs || 0, covers: lt.covers || 0, rank: renownRank(lt.renown || 0) };
+}
+
+// Bank one finished Long Trip: add its renown, track the farthest run, and report
+// back what changed so the debrief can celebrate a new record or a promotion.
+export function recordLongTrip(name, { places = 0, score = 0, coverBonus = 0 } = {}) {
+  const s = read();
+  const p = s.profiles[name];
+  if (!p) return null;
+  const lt = p.longtrip || (p.longtrip = { renown: 0, bestDistance: 0, runs: 0, covers: 0 });
+  lt.runs = (lt.runs || 0) + 1;
+  if (coverBonus > 0) lt.covers = (lt.covers || 0) + 1;
+  const prevRenown = lt.renown || 0;
+  const prevBest = lt.bestDistance || 0;
+  const isBestDistance = places > prevBest;
+  if (isBestDistance) lt.bestDistance = places;
+  const gain = renownGain({ places, isBestDistance, coverBonus });
+  lt.renown = prevRenown + gain.total;
+  const before = renownRank(prevRenown);
+  const after = renownRank(lt.renown);
+  s.lastProfile = name;
+  write(s);
+  return {
+    gained: gain.total, base: gain.base, scoop: gain.scoop, cover: gain.cover,
+    total: lt.renown, isBestDistance, bestDistance: lt.bestDistance, prevBest,
+    runs: lt.runs, covers: lt.covers || 0, rank: after, rankedUp: after.tier > before.tier,
+  };
+}
+
 // Which modes / difficulties / itineraries this profile has unlocked. New
 // travelers start simple; more opens up as they collect the world, so the game
 // reveals itself gradually (Uncle narrates each unlock on the meet screen).

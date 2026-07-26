@@ -4027,7 +4027,7 @@ export const LOCATIONS = [
     greeting: {"text":"Hello","language":"English","pronunciation":null} },
   { id: "brycecanyon", city: "Bryce Canyon City", country: "United States", flag: "🇺🇸", continent: "North America",
     x: 67.83, y: 52.37,
-    subject: "hoodoos", icon: "", category: "rock", tags: ["hoodoos","spires","amphitheater"],
+    subject: "Bryce Canyon's hoodoos", icon: "", category: "rock", tags: ["hoodoos","spires","amphitheater"],
     easy: "In North America, in the United States, thousands of orange stone spires fill a natural amphitheater in southern Utah. Photograph the hoodoos.",
     medium: "Word from the United States: a pioneer supposedly called this maze of spires a hard place to lose a cow; the native Paiute saw them as folk turned to stone. Photograph the hoodoos.",
     hard: "In a horseshoe-shaped bowl glowing orange at sunrise, countless slender rock spires stand crowded together like a frozen crowd. Bring me the hoodoos.",
@@ -5162,9 +5162,9 @@ export const LOCATIONS = [
     medium: "Word from the United States: long before Europeans arrived, a great city stood by the Mississippi, its people raising a mound of earth taller than a ten-storey building. Photograph the mounds.",
     hard: "By a great river, a vanished people built a city of flat-topped earthen mounds, the biggest rising higher than a ten-storey building — and almost no one is taught its name. Bring me the mounds.",
     fact: "Cahokia, by the Mississippi River in Illinois, was the largest city in North America north of Mexico about 1,000 years ago; its biggest earthen mound, Monks Mound, rises around 100 feet (30 meters).",
-    photo: { src: "https://commons.wikimedia.org/wiki/Special:FilePath/Cahokia monks mound HRoe 2008.jpg?width=800",
-      credit: "Herb Roe", license: "CC BY-SA 3.0", licenseUrl: "https://creativecommons.org/licenses/by-sa/3.0/",
-      source: "https://commons.wikimedia.org/wiki/File:Cahokia monks mound HRoe 2008.jpg" },
+    photo: { src: "https://commons.wikimedia.org/wiki/Special:FilePath/Monks_Mound_in_July.JPG?width=800",
+      credit: "Skubasteve834", license: "CC BY-SA 3.0", licenseUrl: "https://creativecommons.org/licenses/by-sa/3.0/",
+      source: "https://commons.wikimedia.org/wiki/File:Monks_Mound_in_July.JPG" },
     greeting: { text: "Hello", language: "English", pronunciation: null } },
 
   // A Neolithic VILLAGE, not a monument — a different kind of ruin entirely.

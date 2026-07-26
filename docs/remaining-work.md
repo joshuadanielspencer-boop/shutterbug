@@ -118,9 +118,12 @@ This document is long enough that things get lost in it. Every section, in order
    the keys to **`src/data/art.js`**, `npm test`. Every render site prefers art and falls
    back to emoji, and `<ArtBadge dim>` generates the greyed/locked state from the colour
    file. See `docs/art-assets-needed.md`.
-3. **The roguelike layer** (§3) — the biggest remaining build, nothing started. Begin
-   with the **route-choice map** slice: it reuses the per-leg chooser pattern the
-   travel-modes feature just proved.
+3. **The roguelike layer** (§3) — **all five slices now shipped** (camera bag, run
+   modifiers, route-choice map, debrief/renown, push-your-luck + Cover Story finale).
+   The Long Trip is feature-complete; what's left is playtest and feel — dial the
+   balance knobs (`LONG_TRIP_DAYS`, `renownGain`/`renownRank`, `COVER_DAYS`, the
+   hold-for-the-light odds, condition/kit strengths), and decide whether guests should
+   be able to reach the mode at all.
 
 **Then, in Joshua's stated order:** the graphics pass (§1 avatar redesign — §6 badges
 are done) once his art lands, and the **desktop executable + final single-screen fit** (§8) as
@@ -261,20 +264,73 @@ credit/license`, `npm test`, and **show Joshua the photo first**.
 
 ## 3. The roguelike layer
 
-Spec'd in `docs/design-notes.md` §3. Not started. This is the largest remaining
-build. Suggested order — each piece is playable on its own, so ship them separately:
+Spec'd in `docs/design-notes.md` §3. This is **The Long Trip** — the fifth mode.
+**Four of the five slices have shipped**; each was built to be playable on its own.
 
-1. **Route-choice map.** Instead of a fixed list, offer 2–3 destination nodes and let
-   the player pick. Grand Tour's committed-route screen (`screen === "route"` in
-   `shutterbug-world.jsx`) is the obvious place to grow this from.
-2. **Camera-bag loadout** — run-scoped items: telephoto lens (shoot from a
-   neighbouring country), fast film (a perfect shot refunds ½ day), press pass (free
-   research), bush plane (cheap intra-continent hops), lucky fixer (negate one wrong
-   guess).
-3. **Run modifiers** — 1–2 per run ("Monsoon — flights to Asia +1 day").
-4. **Push-your-luck on the shot** — safe shot vs. hold for the light.
-5. **A boss "Cover Story" finale**, and a **debrief/renown end screen** so a failed
-   run still feels like progress.
+1. **Camera-bag loadout** — ✅ SHIPPED (`src/data/kit.js`). Run-scoped items: telephoto
+   lens (first wrong country free), fast film (a perfect shot refunds ½ day), bush
+   plane (one free continent hop), a friend in town (first wrong continent free)…
+   Jonah deals a hand of three at the bag screen; you take two.
+2. **Run modifiers** — ✅ SHIPPED (`src/data/conditions.js`). One condition drawn per
+   run ("Monsoon — flights to Asia +1 day", "Clear skies — perfect shots pay extra"),
+   announced by Jonah on the kit screen and shown on the route board. The `effect` id
+   is the contract; a test pins that every one has a handler.
+3. **Route-choice map** — ✅ SHIPPED (2026-07-25). At the start of every leg the editor
+   wires THREE briefs (`RouteBoard` in `shutterbug-world.jsx`, offered from
+   `offerRouteChoice`/`routeWindow`, taken via `takeRoute`). Each card shows the kind
+   of place, a tier-appropriate clue teaser, and the real day-cost to reach it (same
+   formula `chooseContinent` charges, run modifier included) — but NEVER the continent
+   name, so choosing a brief never hands a child the geography the shot teaches. The
+   pick is swapped into `assignments[step]`, so the rest of the play loop is untouched;
+   briefs you pass over reappear in later windows (the road not taken stays out there).
+4. **Debrief / renown end screen** — ✅ SHIPPED (2026-07-25). Running out of days is the
+   expected ending, so the results screen banks **renown**: two per photo brought home,
+   plus a five-point scoop the first time a run beats your own distance record. It
+   accumulates across every Long Trip (`profile.longtrip.{renown,bestDistance,runs}`,
+   `recordLongTrip`) and climbs a newsroom ladder (`renownRank`: Unknown → Local
+   Stringer → … → Living Legend). The "📡 PRESS DEBRIEF" card on the end screen shows
+   the run's renown, the standing + bar to the next, and the farthest run. Guests see
+   the run tally without the persistent totals. Pure formulas in `src/profiles.js`,
+   tested in `test/longtrip.test.js`; the sync merge takes renown/distance to the MAX.
+5. **Push-your-luck + the boss "Cover Story" finale** — ✅ SHIPPED (2026-07-25). Two
+   climactic beats:
+   - **Hold for the light** (`GambleModal` / `resolveGamble`): after a PERFECT shot
+     (~1 in 3, and always on the cover) the child may gamble the reward — win and the
+     light breaks golden for +points, bust and a cloud costs half a day. It's a coin
+     flip on the REWARD, never on the geography (the place is already found), so it
+     rewards nerve without ever paying for a wrong guess. The base points bank first,
+     so a bust never takes what knowing the answer earned.
+     `HOLD_ELIGIBLE_CHANCE`/`HOLD_WIN_CHANCE`/`HOLD_BONUS` are the knobs.
+   - **Cover Story** (`offerNextRoute` / `coverStepRef` / `coverLandedRef`): once per
+     run, after `COVER_MIN_CAPTURES` places and once `days <= COVER_DAYS`, the route
+     board floats a gold "★ COVER STORY" brief among the choices — a marquee front-page
+     landmark worth `COVER_POINTS_MULT`× points and `+COVER_RENOWN` renown. Chasing it
+     is a strategic gamble (it may cost the days that end the run); landing it stamps
+     "You made the cover!" and shows the cover bonus on the debrief. `recordLongTrip`
+     takes a `coverBonus`, `renownGain` folds it in, and `profile.longtrip.covers`
+     counts them — all pinned in `test/longtrip.test.js`.
+
+**The Long Trip is now feature-complete — all five roguelike slices are in.** Open
+threads are all playtest/feel, not build:
+- Balance: `LONG_TRIP_DAYS`, the `renownGain`/`renownRank` numbers, `COVER_DAYS`/
+  `COVER_MIN_CAPTURES` (how often the cover appears), and the hold-for-the-light odds.
+- Guests can't reach the Long Trip at all — `unlocks(null)` (profiles.js) predates the
+  mode and omits its key, so `longtrip` is undefined→locked for guests. A named
+  traveler unlocks it at 20 mastered places. Decide whether guests should get it.
+- The cover is drawn from the pool's next SPECIFIC assignment and framed as marquee;
+  it isn't hand-curated to the world's most iconic landmarks. If you want the front
+  page to always be an Eiffel-Tower-tier place, add a curated id set and prefer it in
+  `offerNextRoute`.
+
+**Notes for slices 3 & 4 (feedback welcome):**
+- The debrief adds a card to the results screen's right column. For a short run the
+  left roll is short, so at a 1280×720 window the right column can run a touch past the
+  fold before the `DeskBoard` scrolls. Worth a glance if the no-scroll fit matters —
+  making the debrief more compact, or moving it under the score banner, are both easy.
+- The route board withholds the continent name deliberately (teaching), but the easy
+  tier's clue text still names the place, exactly as the note does — that's consistent,
+  not a leak. If a future tier wanted the board to tease *less*, `assignmentBrief` is
+  the one place to change it.
 
 **Use `src/rng.js` for every random choice** (`rnd()`, `shuffled()`, `pickOne()`).
 Never call `Math.random()` directly in generation code: `withSeed()` is what makes a
