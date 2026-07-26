@@ -128,7 +128,12 @@ export const COUNTRY_PEOPLE = {
     src: "https://commons.wikimedia.org/wiki/Special:FilePath/Maltese lady in vintage Ghonnella.jpg?width=800",
     source: "https://commons.wikimedia.org/wiki/File:Maltese lady in vintage Ghonnella.jpg",
     credit: "Renata Apan", license: "CC BY-SA 4.0",
-    caption: "A Maltese woman in the traditional għonnella, a hooded cloak once worn across Malta" },
+    caption: "A Maltese woman in the traditional għonnella, a hooded cloak once worn across Malta",
+    // 5105x7369 — the tallest photo in the set, and the għonnella is a HOOD, so the
+    // 16:9 crop cut off the very thing the picture is of. Same fix as Nicaragua; found
+    // by auditing all 118 culture photos against their real dimensions, where these
+    // two were the only portrait-orientation images missing the flag.
+    portrait: true },
   "Micronesia": {
     src: "https://commons.wikimedia.org/wiki/Special:FilePath/Folk Micronesian dance.png?width=800",
     source: "https://commons.wikimedia.org/wiki/File:Folk Micronesian dance.png",
@@ -705,6 +710,14 @@ export const COUNTRY_PEOPLE = {
     source: "https://commons.wikimedia.org/wiki/File:Young_Woman_in_Traditional_Dress_-_Granada_-_Nicaragua_(31572131030)_(2).jpg",
     credit: "Adam Jones", license: "CC BY-SA 2.0",
     caption: "A young woman in traditional Nicaraguan folk dress in Granada, Nicaragua",
+    // A 2736x3648 portrait. Without this flag the 16:9 card cropped a horizontal band
+    // across her eyes — the flower crown and her chin both fell outside it, which is
+    // what "it doesn't even show a full face" was. Commons has no better option: the
+    // only free landscape photos of Nicaraguan folk dress are either MASKED dancers
+    // (baile de negras, Toro Huaco — no face at all) or Nicaraguan-diaspora troupes
+    // photographed at festivals in Canada, which a caption can't honestly call Nicaragua.
+    // This one is the real thing, shot in Granada. So show it whole.
+    portrait: true,
   },
   "Trinidad and Tobago": {
     src: "https://commons.wikimedia.org/wiki/Special:FilePath/MoKo%20Jumbie.jpg?width=800",
