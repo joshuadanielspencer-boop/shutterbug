@@ -759,9 +759,13 @@ export const MUSIC = (() => {
     // The country's tune on arrival: TUNE_PASSES times through the melody, then
     // silence. Not a loop — it ends on its own and doesn't follow you around the
     // country map. Replaces any tune still sounding from a previous arrival.
+    //
+    // Returns HOW LONG the melody runs, in seconds, so the arrival sequence can put
+    // the local greeting after the last note instead of after a guessed constant
+    // (see announceArrival). Returns 0 if there was nothing to play.
     countryTune(country, continent) {
       try {
-        const c = ac(); if (!c) return;   // before stopCountry: it needs ctx to fade
+        const c = ac(); if (!c) return 0;  // before stopCountry: it needs ctx to fade
         this.fadeTravel(1.0);             // the jig is out of the way in a second, not four
         this.stopCountry();               // fade out anything still sounding, and let its bus go
         wake(c);
@@ -769,8 +773,8 @@ export const MUSIC = (() => {
         countryBus.gain.value = 1;
         countryBus.connect(master);
         countryActive = true;
-        playTune(tuneKeyFor(country, continent));
-      } catch { /* ignore */ }
+        return playTune(tuneKeyFor(country, continent)) || 0;
+      } catch { return 0; }
     },
     // End-of-run flourish: stop the loop, then a brief celebratory jig run that
     // lands on a bright D-major chord. About 5 seconds, then silence.
@@ -915,28 +919,62 @@ export function speakGreeting(g) {
     window.speechSynthesis.speak(greetingUtterance(g));
   } catch { /* speech is a nice-to-have; never break gameplay */ }
 }
-// Arrival announcement: the country's name, a beat of silence, then hello in the
-// local language. The pause is measured from when the NAME finishes rather than from
-// when it starts — utterance length varies enormously ("Chad" against "the Democratic
-// Republic of the Congo"), so a fixed timer would either overlap the name or leave a
-// hole after it. Returns a cancel function; the caller must call it if the player
-// leaves, or a queued greeting will speak over the next screen.
-export function speakArrival(country, greeting, gapMs = 1000) {
-  let timer = null, done = false;
-  try {
-    if (!speechAvailable) return () => {};
-    window.speechSynthesis.cancel();
-    const name = utter(country, { pitch: 1.05 });
-    const sayHello = () => {
-      if (done || !greeting?.text) return;
-      try { window.speechSynthesis.speak(greetingUtterance(greeting)); } catch { /* optional */ }
-    };
-    // onend doesn't fire on every browser (and never fires if the utterance is
-    // cancelled), so a timer backstops it — whichever lands first wins, and `done`
-    // keeps the greeting from being spoken twice.
-    name.onend = () => { if (!done) { clearTimeout(timer); timer = setTimeout(sayHello, gapMs); } };
-    window.speechSynthesis.speak(name);
-    timer = setTimeout(() => { name.onend = null; sayHello(); }, 4000 + gapMs);
-  } catch { /* speech is optional */ }
-  return () => { done = true; clearTimeout(timer); };
+// Arriving in a country, as one strictly ordered performance:
+//
+//   [travel jig fades] → 1s of quiet → "Norway" → the Norwegian tune, once → "God dag"
+//
+// One thing at a time, and in that order, is the whole point. Before this the tune
+// started the instant the wheels touched down and the spoken name landed on top of
+// it, so a child got the melody, the country and the greeting as one wash of sound
+// and could pick none of them out.
+//
+// Two of the four waits can't be constants. A NAME's length varies enormously
+// ("Chad" against "the Democratic Republic of the Congo"), so the tune waits on the
+// utterance ending, not on a timer. A TUNE's length varies by country, so the
+// greeting waits on the duration countryTune hands back rather than on a guess.
+//
+// Both toggles are honoured independently, and the order survives either being off:
+// with music off it's name → hello; with speech off it's just the tune.
+//
+// Returns a cancel function. The caller MUST call it when the player leaves or
+// arrives somewhere new, or a queued greeting will speak over the next screen.
+export function announceArrival(country, continent, greeting, opts = {}) {
+  const { leadMs = 1000, gapMs = 450, speech = true, music = true } = opts;
+  let done = false;
+  const timers = new Set();
+  const at = (ms, fn) => {
+    const t = setTimeout(() => { timers.delete(t); if (!done) fn(); }, ms);
+    timers.add(t);
+  };
+  const cancel = () => { done = true; timers.forEach(clearTimeout); timers.clear(); };
+
+  // Get the travel jig out of the way NOW, not when the tune starts — otherwise it
+  // would still be playing under the spoken country name.
+  try { MUSIC.fadeTravel(1.0); } catch { /* ignore */ }
+
+  const hello = () => {
+    if (!speech || !speechAvailable || !greeting?.text) return;
+    try { window.speechSynthesis.speak(greetingUtterance(greeting)); } catch { /* optional */ }
+  };
+  const tuneThenHello = () => {
+    const secs = music ? (MUSIC.countryTune(country, continent) || 0) : 0;
+    at(secs * 1000 + gapMs, hello);
+  };
+  const nameThenTune = () => {
+    if (!speech || !speechAvailable) { tuneThenHello(); return; }
+    try {
+      window.speechSynthesis.cancel();
+      const name = utter(country, { pitch: 1.05 });
+      // `once` because onend is unreliable across browsers (and never fires on a
+      // cancelled utterance), so a 4s backstop races it — whichever lands first wins
+      // and the other becomes a no-op. Without the guard the tune could start twice.
+      let started = false;
+      const go = () => { if (!started) { started = true; tuneThenHello(); } };
+      name.onend = go;
+      window.speechSynthesis.speak(name);
+      at(4000, go);
+    } catch { tuneThenHello(); }
+  };
+  at(leadMs, nameThenTune);
+  return cancel;
 }
