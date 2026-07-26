@@ -47,7 +47,7 @@ import { DIFFICULTY_ART, MODE_ART, THEME_ART, CATEGORY_ART, ACHIEVEMENT_ART,
   RANK_ART, RECORD_ART, ROUNDEL_ART, TRANSPORT_ART, SEAL_UNLOCKED, MARKER_MASTERED } from "./data/art.js";
 import { HELLO_BUBBLES, HELLO_SPOTS } from "./data/hello.js";
 import { MR_O, MR_O_FACTS, MR_O_RIDDLES } from "./data/mr-o.js";
-import { SFX, MUSIC, speakEn, speakGreeting, speakArrival, speechAvailable } from "./audio.js";
+import { SFX, MUSIC, speakEn, speakGreeting, announceArrival, speechAvailable } from "./audio.js";
 import { BASE, OCEAN, OCEAN_DEEP, SEA, SEA_DEEP, SEA_LINE, LAND, LAND_EDGE, INK, GOLD, CORAL, GREEN, PAPER, PAPER_LINE } from "./theme.js";
 import { Confetti, Stamp, GradualText, TypeLine, TALKING_CPS } from "./components/text.jsx";
 
@@ -536,6 +536,11 @@ const CONTINENTS = CONTINENT_ORDER.filter((c) => LOCATIONS.some((l) => l.contine
 // Antarctica is drawn on a south-polar relief image (a square plate), not the
 // equirectangular projection — so it shows the true round continent, not a sliver.
 const ANT_PLATE = 200; // the polar plate is a 200x200 square in its own units
+// Default margin around a fitted zoom. Module scope because the Oceania box below is
+// built backwards from the area that ends up VISIBLE, and the visible area is the box
+// plus this pad on every side — a local copy in the map component (where it is also
+// used) is how the two would silently drift apart.
+const VB_PAD = 0.1;
 const CONTINENT_META = (() => {
   const meta = {};
   for (const c of CONTINENTS) {
@@ -626,15 +631,31 @@ const CONTINENT_META = (() => {
       continue;
     }
     if (wrap) {
-      // Oceania sprawls ~120° of longitude (Australia to Rapa Nui) but only ~64° of
-      // latitude. Forcing it into a SQUARE — as every other continent is — made the
-      // square as tall as it was wide, so the map had to show the north Pacific rim
-      // and the Antarctic coast just to fit, and squeezed the country labels into
-      // the middle. Its box hugs the content instead; the frame takes the box's
-      // aspect ratio, so nothing is distorted.
-      const w = Math.max(40, (maxX - minX) * 1.10);
-      const h = Math.max(40, (maxY - minY) * 1.28);
-      meta[c] = { mode: "wrap", box: { x: cx - w / 2, y: cy - h / 2, w, h }, cx, cy };
+      // Oceania is the one continent whose frame can't be fitted to its LANDMARKS.
+      //
+      // Two reasons, pulling opposite ways. In the west, Australia's landmarks stop at
+      // Uluru (131°E) while the continent itself runs on to 113°E, so a box hugging the
+      // landmarks clipped the western tip of Australia clean off the map — a child
+      // looking for the shape they know doesn't find it. In the east, the last island
+      // (Bora Bora, ~212°) was followed by another 17° of absolutely empty Pacific,
+      // because the box was centred on the landmarks and then widened to the frame's
+      // aspect, and the surplus went half to each side.
+      //
+      // So this box is built BACKWARDS from what should end up on screen: pick the two
+      // meridians the map should run between, and solve for the box that puts them at
+      // the frame's edges. `meet` fits the box uniformly and the visible area is the box
+      // plus VB_PAD on each side, so giving the box the frame's own aspect ratio means
+      // nothing extra creeps in on either axis.
+      const WEST = 290;      // 110°E — a few degrees of Indian Ocean, then Australia's west coast
+      const EAST_PAD = 3.6;  // and the east edge lands just past the last island, not 17° past it
+      const visW = (maxX + EAST_PAD) - WEST;
+      const w = visW / (1 + 2 * VB_PAD);
+      const h = w / FRAME_AR;
+      // Horizontally this is the shift west that brings Australia back; vertically it
+      // stays centred on the content, which puts Micronesia and New Zealand an equal
+      // distance inside the top and bottom edges.
+      const x = WEST + visW / 2 - w / 2;
+      meta[c] = { mode: "wrap", box: { x, y: cy - h / 2, w, h }, cx, cy };
       continue;
     }
     const side = Math.min(360, Math.max(40, Math.max(maxX - minX, maxY - minY) * 1.35));
@@ -2366,18 +2387,18 @@ export default function ShutterbugWorld() {
   // plane has settled and the landing engines have died away, rather than talking
   // over them.
   const say = (text) => { if (soundOn) setTimeout(() => { if (soundOn) speakEn(text); }, 1500); };
-  // Arriving in a COUNTRY says its name, waits a beat, then says hello in the local
-  // language — the greeting the culture card is showing on screen at that moment, so
-  // the child hears the words they're looking at. Cancelled if they leave first.
+  // Arriving in a COUNTRY: a beat of quiet, its name, its tune once through, then
+  // hello in the local language — the greeting the culture card is showing on screen
+  // at that moment, so the child hears the words they're looking at. The ordering
+  // lives in announceArrival (audio.js), because only the audio module knows how long
+  // a country's tune runs. Cancelled if they leave, or arrive somewhere new, first.
   const sayArrivalRef = useRef(null);
-  const sayCountry = (country) => {
-    if (!soundOn) return;
+  const arriveInCountry = (country, continent) => {
     if (sayArrivalRef.current) sayArrivalRef.current();
-    const t = setTimeout(() => {
-      if (!soundOn) return;
-      sayArrivalRef.current = speakArrival(country, COUNTRY_GREETING[country]);
-    }, 1500);
-    sayArrivalRef.current = () => clearTimeout(t);
+    sayArrivalRef.current = null;
+    if (!soundOn && !musicOn) return;
+    sayArrivalRef.current = announceArrival(country, continent, COUNTRY_GREETING[country],
+      { speech: soundOn, music: musicOn });
   };
   useEffect(() => () => { if (sayArrivalRef.current) sayArrivalRef.current(); }, []);
   // On the two gentlest tiers, the map reads itself aloud: hover a continent or a
@@ -3505,8 +3526,8 @@ export default function ShutterbugWorld() {
         setPickedCountry(country);
         setCityPlan({ ids: exploreIds, wide: !exploreHasBox || !optionsFitCountry(exploreIds, pickedContinent, country) });
         setPhase("city"); setCurrent(null); setRevealed(false);
-        music("countryTune", country, pickedContinent); // a few seconds of local music on arrival
-        sayCountry(country); // spoken arrival: the country, a beat, then hello in its language
+        // Arrival audio, in order: a beat, the country's name, its tune once, hello.
+        arriveInCountry(country, pickedContinent);
         setMsg({ type: "info", text: `${displayCountry(country)} — click any place to learn about it.` });
       };
       const legE = rideLegFor(country, at);
@@ -3527,8 +3548,8 @@ export default function ShutterbugWorld() {
         setPickedCountry(country);
         setPhase("city"); setCurrent(null); setRevealed(false);
         if (COUNTRY_INFO[country] && poppedCountryRef.current !== country) { poppedCountryRef.current = country; setCountryPopup(country); }
-        music("countryTune", country, pickedContinent); // a few seconds of local music on arrival
-        sayCountry(country); // spoken arrival: the country, a beat, then hello in its language
+        // Arrival audio, in order: a beat, the country's name, its tune once, hello.
+        arriveInCountry(country, pickedContinent);
         const targetHere = tourReqs.some((r) => !r.done && (COUNTRY_LOCS[pickedContinent]?.[country] || []).some((id) => r.kind === "category" ? BY_ID[id].category === r.category : r.targetId === id));
         setMsg({ type: targetHere ? "info" : "warn", text: targetHere ? `Arrived in ${displayCountry(country)}. Photograph your target here!` : `Arrived in ${displayCountry(country)} — but no target on your list is here. Pick another country, or fly on.` });
       };
@@ -3578,8 +3599,8 @@ export default function ShutterbugWorld() {
         setRevealed(false);
         // Pop the culture card the moment you land in the country.
         if (COUNTRY_INFO[country] && poppedCountryRef.current !== country) { poppedCountryRef.current = country; setCountryPopup(country); }
-        music("countryTune", country, pickedContinent); // a few seconds of local music on arrival
-        sayCountry(country); // spoken arrival: the country, a beat, then hello in its language
+        // Arrival audio, in order: a beat, the country's name, its tune once, hello.
+        arriveInCountry(country, pickedContinent);
         setMsg({ type: "info", text: `Arrived in ${displayCountry(country)}. Now photograph Jonah's subject.` });
       };
       const legA = rideLegFor(country, at);
@@ -3936,7 +3957,7 @@ export default function ShutterbugWorld() {
               {outfits.map((o) => (
                 <div key={o} style={{ display: "flex", alignItems: "center", gap: 14, background: "#F1E9F6", border: `2px solid ${OCEAN}`, borderRadius: 14, padding: "10px 16px" }}>
                   <img src={`${UI}dog-outfits/${o}_seated_smile.png`} alt="" aria-hidden="true"
-                    style={{ width: 64, height: 64, objectFit: "contain", flex: "none" }} />
+                    style={{ width: 96, height: 96, objectFit: "contain", flex: "none" }} />
                   <div style={{ minWidth: 0 }}>
                     <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 10, letterSpacing: "0.14em", color: OCEAN, fontWeight: 800 }}>👕 A NEW OUTFIT FOR PICKLES</div>
                     <div style={{ fontWeight: 900, fontSize: 18, color: INK, textTransform: "capitalize" }}>{OUTFIT_NAME[o] || o}</div>
@@ -5386,7 +5407,8 @@ export default function ShutterbugWorld() {
   // FRAME_AR is module-scope now (see its declaration) — the country boxes are
   // built against the same number at module load, and a local copy here is how
   // the two would silently drift apart.
-  const VB_PAD = 0.1;                   // default margin around a fitted zoom
+  // VB_PAD (the default fitted-zoom margin) is module-scope now, for the same reason
+  // FRAME_AR is — see its declaration above CONTINENT_META.
   // A continent may ask for a TIGHTER margin than the default. 10% of the box on every
   // side is a lot once the box is 75° wide — on Europe it was ~9° of extra map in each
   // direction, which is the whole of the Sahara coast at the bottom and a slab of the
@@ -6719,13 +6741,21 @@ function Frame({ children, desk = false }) {
            hover ping), signalling "poke me for a fact" without a schoolroom question mark. */
         .sbw-jiggle:hover, .sbw-jiggle:focus-visible{ animation: sbw-jiggle 0.45s ease-in-out infinite }
         @keyframes sbw-jiggle{ 0%,100%{ transform: rotate(-4deg) } 50%{ transform: rotate(4deg) } }
+        /* A whole ROW that wiggles — the itinerary steps. Pointing anywhere on the step
+           tilts the whole card, because the whole card is the button; wiggling only the
+           little icon inside it told a child the icon was the target when the row was.
+           The tilt is the gentle 1.1deg of the splash title, not the icon's 4deg: the
+           same angle on something 260px wide swings its far end about a centimetre.
+           It matches on :focus-within too, so tabbing to a step looks like pointing. */
+        .sbw-wiggle-row:hover, .sbw-wiggle-row:focus-within{ animation: sbw-wiggle-row 0.5s ease-in-out infinite }
+        @keyframes sbw-wiggle-row{ 0%,100%{ transform: rotate(-1.1deg) } 50%{ transform: rotate(1.1deg) } }
         /* The camera bag Uncle hands you: bobbing so a child knows to take it. */
         .sbw-bob{ animation: sbw-bob 1.5s ease-in-out infinite }
         @keyframes sbw-bob{ 0%,100%{ transform: translateY(0) } 50%{ transform: translateY(-9px) } }
         /* Uncle changing expression — a cross-fade, not a cut. */
         .sbw-fade{ animation: sbw-fade 0.45s ease-out }
         @keyframes sbw-fade{ 0%{ opacity: 0.25 } 100%{ opacity: 1 } }
-        @media (prefers-reduced-motion: reduce){ .sbw-wiggle:hover, .sbw-jiggle:hover, .sbw-bob, .sbw-fade{ animation: none } }
+        @media (prefers-reduced-motion: reduce){ .sbw-wiggle:hover, .sbw-jiggle:hover, .sbw-wiggle-row:hover, .sbw-wiggle-row:focus-within, .sbw-bob, .sbw-fade{ animation: none } }
         /* Photo develops like film: washed-out gray blooming into full color. */
         /* Film develops: a washed-out grey chemical bath that HOLDS for a beat,
            then blooms into full colour. It starts only once the photo has actually
@@ -6909,23 +6939,32 @@ function PhaseTracker({ stepIdx, onCurio, continentName, countryName, onCountryI
         // destination is; how a photograph works). The ⓘ makes that discoverable
         // without competing with the step's job of showing where you are.
         return (
-          <li key={s.key} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 12px", borderRadius: 8,
+          // The WHOLE step is the target, not the icon sitting in it: it wiggles
+          // wherever you point at it and opens the same card wherever you click it.
+          // The click handler here is a mouse convenience layered over the real
+          // button below — that button is what Tab reaches and what a screen reader
+          // announces, so no keyboard path depends on this <li>.
+          <li key={s.key} className="sbw-wiggle-row" onClick={() => onCurio(s.key)}
+            style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 12px", borderRadius: 8,
             background: active ? "#FBE7DF" : PAPER, border: `2px solid ${active ? CORAL : PAPER_LINE}`,
-            opacity: done ? 0.62 : 1 }}>
+            cursor: "pointer", opacity: done ? 0.62 : 1 }}>
             <span aria-hidden="true" style={{ flex: "0 0 auto", width: 26, height: 26, borderRadius: "50%",
               display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 900, fontSize: 13,
               background: active ? CORAL : done ? GREEN : "transparent", color: active || done ? "#fff" : INK,
               border: active || done ? "none" : `2px solid ${INK}` }}>{done ? "✓" : i + 1}</span>
-            {/* The step's own icon IS the tap-to-learn trigger now (Joshua's steer):
-                the little "ⓘ" is gone, and instead the graphic wiggles on hover with
-                the soft click-ping (the global hover sound) so it reads as playful
-                discovery, not a quiz prompt. */}
-            <button className="sbw-jiggle" onClick={() => onCurio(s.key)}
+            {/* The icon is still the KEYBOARD trigger for the tap-to-learn card (the
+                little "ⓘ" is gone, per Joshua's steer) — it just no longer wiggles on
+                its own, because the row it lives in now does that for it. It stops the
+                click from bubbling so the row's handler doesn't open the card twice. */}
+            <button onClick={(e) => { e.stopPropagation(); onCurio(s.key); }}
               aria-label={`What is a ${s.label.toLowerCase()}? Tap to find out.`} title={`What is a ${s.label.toLowerCase()}?`}
               style={{ flex: "0 0 auto", width: 34, height: 34, padding: 2, border: "none", background: "transparent", cursor: "pointer" }}>
               <img src={`${UI}${s.icon}`} alt="" style={{ width: "100%", height: "100%", objectFit: "contain" }} />
             </button>
-            <LabelTag {...(infoable ? { type: "button", onClick: () => onCountryInfo(countryName), title: `About ${countryName}` } : {})}
+            {/* Also stops the bubble: on the country step this label opens that
+                COUNTRY's card, which is a different card from the row's "what is a
+                country?" one, and letting it through would open both at once. */}
+            <LabelTag {...(infoable ? { type: "button", onClick: (e) => { e.stopPropagation(); onCountryInfo(countryName); }, title: `About ${countryName}` } : {})}
               style={{ lineHeight: 1.2, flex: 1, minWidth: 0, textAlign: "left",
                 ...(infoable ? { cursor: "pointer", background: "transparent", border: "none", padding: 0, font: "inherit" } : {}) }}>
               <span style={{ display: "block", fontWeight: 800, fontSize: 13.5, letterSpacing: "0.04em",
@@ -7227,7 +7266,7 @@ function WardrobeModal({ unlocked, mode, pick, onSet, onClose }) {
     border: `2px solid ${OCEAN}`, borderRadius: 10, padding: "9px 12px", fontWeight: 800, fontSize: 13, cursor: "pointer",
   });
   return (
-    <ModalShell label="Pickles's wardrobe" onClose={onClose} accent={OCEAN} maxWidth={640}>
+    <ModalShell label="Pickles's wardrobe" onClose={onClose} accent={OCEAN} maxWidth={760}>
       <div style={{ textAlign: "center", marginBottom: 10 }}>
         <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.16em", color: OCEAN, fontWeight: 800 }}>🐾 PICKLES'S WARDROBE</div>
         <h2 style={{ fontFamily: "ui-sans-serif, system-ui", fontWeight: 900, fontSize: 20, color: INK, margin: "3px 0 2px" }}>Dress your travelling dog</h2>
@@ -7240,7 +7279,9 @@ function WardrobeModal({ unlocked, mode, pick, onSet, onClose }) {
       <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 10, letterSpacing: "0.14em", color: CORAL, fontWeight: 800, marginBottom: 8 }}>
         {mode === "always" ? "ALWAYS WEARING — TAP ANOTHER TO SWITCH" : "OR TAP AN EARNED OUTFIT TO ALWAYS WEAR IT"}
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(96px, 1fr))", gap: 9 }}>
+      {/* The tiles grew with her (87px art, up from 58), so the columns had to grow too
+          or the names would wrap under a picture wider than its cell. */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(126px, 1fr))", gap: 9 }}>
         {ALL_OUTFITS.map((o) => {
           const on = unlocked.has(o);
           const sel = mode === "always" && pick === o;
@@ -7250,7 +7291,7 @@ function WardrobeModal({ unlocked, mode, pick, onSet, onClose }) {
                 background: sel ? "#FBF1D6" : "#fff", border: `2px solid ${sel ? GOLD : PAPER_LINE}`, borderRadius: 12,
                 cursor: on ? "pointer" : "default", opacity: on ? 1 : 0.6 }}>
               <img src={`${UI}dog-outfits/${o}_seated_smile.png`} alt="" aria-hidden="true"
-                style={{ width: 58, height: 58, objectFit: "contain", filter: on ? "none" : "grayscale(1) opacity(0.55)" }} />
+                style={{ width: 87, height: 87, objectFit: "contain", filter: on ? "none" : "grayscale(1) opacity(0.55)" }} />
               <div style={{ fontSize: 10.5, fontWeight: 800, color: INK, textAlign: "center", lineHeight: 1.15 }}>{(OUTFIT_NAME[o] || o).replace(/^the /, "")}</div>
               {!on && <div style={{ fontSize: 8.5, color: INK, opacity: 0.7, textAlign: "center", lineHeight: 1.2 }}>🔒 {outfitUnlockLabel(o)}</div>}
             </button>
@@ -8920,9 +8961,11 @@ function PicklesCheer({ kind, outfit, reduced }) {
       // for a little overlap, not none. On the narrower 620px card (no photo) she
       // clears it entirely, which is right — there's more gutter to sit in.
       //
-      // The width cap keeps her on screen when the gutter runs out.
+      // The width cap keeps her on screen when the gutter runs out: 390px is the size
+      // she WANTS to be, `50vw - 360px` is the gutter she actually has, and on a
+      // narrow window the gutter wins. (She was 260px; Joshua asked for half again.)
       style={{ position: "absolute", right: "calc(50% + 360px)", bottom: "2vh", zIndex: 2, pointerEvents: "none",
-        width: "min(260px, calc(50vw - 360px))", display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
+        width: "min(390px, calc(50vw - 360px))", display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
       <img src={src} alt=""
         style={{ width: "100%", height: "auto", filter: "drop-shadow(0 10px 18px rgba(0,0,0,0.55))" }} />
       <p style={{ margin: 0, color: "#FFF3D6", fontSize: 15, lineHeight: 1.4, textAlign: "center", fontWeight: 600,
