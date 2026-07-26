@@ -40,6 +40,7 @@ import { listProfiles, lastProfileName, getProfile, createProfile, setLastProfil
 import { CURIOSITY_DECK_BY_ID, CURIOSITY_TOTAL } from "./data/curiosities.js";
 import { KIT_ITEMS, KIT_BY_ID, KIT_OFFERED, KIT_TAKEN } from "./data/kit.js";
 import { CONDITIONS } from "./data/conditions.js";
+import { OUTFIT_POSE_FILE, OUTFIT_REGIONS, outfitRegionFor } from "./data/dog-outfits.js";
 import { cityMissLesson, categoryMissLesson, continentMissLesson } from "./data/misses.js";
 import { DIFFICULTY_ART, MODE_ART, THEME_ART, CATEGORY_ART, ACHIEVEMENT_ART,
   RANK_ART, RECORD_ART, ROUNDEL_ART, TRANSPORT_ART, SEAL_UNLOCKED, MARKER_MASTERED } from "./data/art.js";
@@ -3783,7 +3784,8 @@ export default function ShutterbugWorld() {
           emoji: isCoverShot ? "🌟" : (perfect ? "🎯" : "✅"),
           title: isCoverShot ? "You made the cover!" : (perfect ? "Perfect shot!" : "Nice shot!"),
           subtitle: (perfect ? `${found} +${shotGain}${perfectTxt}` : `${found} +${pts(shotGain)}.`) + firstTxt + coverTxt + rollTxt,
-          fact: clicked.fact, photo: clicked.photo, category: clicked.category, cheer, buttonLabel: "Next assignment ✈" };
+          fact: clicked.fact, photo: clicked.photo, category: clicked.category, cheer,
+          cheerOutfit: pickDogOutfit(clicked.country), buttonLabel: "Next assignment ✈" };
         // Push-your-luck (slice 5): a perfect shot — always, on the cover — may hold for
         // the light. Offering it defers the reward card to resolveGamble; otherwise the
         // card shows now. The base points above are already banked either way.
@@ -7727,7 +7729,7 @@ function ResultModal({ data, onContinue, reduced }) {
       // Dim a touch more when Pickles is here, so she reads clearly against a
       // quieter desk (Joshua: "darken it just a bit more" when a character pops up).
       style={{ position: "fixed", inset: 0, background: data.cheer ? "rgba(16,38,46,0.76)" : "rgba(16,38,46,0.62)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16, zIndex: 50 }}>
-      {data.cheer && <PicklesCheer kind={data.cheer} reduced={reduced} />}
+      {data.cheer && <PicklesCheer kind={data.cheer} outfit={data.cheerOutfit} reduced={reduced} />}
       <div className={reduced ? "" : "sbw-pop"}
         style={{ background: PAPER, borderRadius: 16, border: `3px solid ${accent}`, boxShadow: "0 14px 44px rgba(0,0,0,0.35)", maxWidth: sideBySide ? 840 : 620, width: "100%", maxHeight: "92vh", overflowY: "auto", padding: "34px 40px", textAlign: "center" }}>
         <div style={{ fontSize: 56, lineHeight: 1 }} aria-hidden="true">{data.emoji}</div>
@@ -8750,6 +8752,20 @@ const DOG_POSES = {
   lying: "dog_pose_06_lying_down.png",
   sit: "dog_pose_02_sitting_paw_up.png", // a paw up — "well done, you"
 };
+// Pick Pickles's OUTFIT for the country she's celebrating in: her region's primary
+// outfit ~2/3 of the time and the alternate ~1/3 (when both are unlocked; otherwise
+// whichever is). Returns an outfit id, or null for basic (no region / nothing
+// unlocked). `isUnlocked` gates by what the player has earned — it defaults to
+// "everything unlocked", which is what Phase 1 shows before the earning layer lands.
+const OUTFIT_PRIMARY_ODDS = 2 / 3;
+function pickDogOutfit(country, isUnlocked = () => true) {
+  const reg = OUTFIT_REGIONS[outfitRegionFor(country)];
+  if (!reg) return null;
+  const primary = isUnlocked(reg.primary) ? reg.primary : null;
+  const alt = reg.alt && isUnlocked(reg.alt) ? reg.alt : null;
+  if (primary && alt) return rnd() < OUTFIT_PRIMARY_ODDS ? primary : alt;
+  return primary || alt || null;
+}
 // What she is feeling, in words. Her face does the work, but a child shouldn't have
 // to INFER why she turned up, and rule 4 forbids leaving meaning to the picture alone
 // — so every visit says out loud what she's excited about.
@@ -8776,8 +8792,14 @@ const DOG_LINES = {
 //
 // pointerEvents: none throughout, because she is celebration, not a control: she
 // must never intercept a click meant for the card behind her.
-function PicklesCheer({ kind, reduced }) {
+function PicklesCheer({ kind, outfit, reduced }) {
   const copy = DOG_LINES[kind] || DOG_LINES.perfect;
+  // Dressed for the region she's in (Phase 1), else her basic fur. Each outfit ships
+  // the same six poses, so her celebration pose survives the costume — the semantic
+  // pose maps onto the outfit's file (see OUTFIT_POSE_FILE).
+  const src = outfit
+    ? `${UI}dog-outfits/${outfit}_${OUTFIT_POSE_FILE[copy.pose] || "seated_smile"}.png`
+    : `${UI}dog/${DOG_POSES[copy.pose]}`;
   return (
     <div className={reduced ? "" : "sbw-pop"} aria-hidden="true"
       // Anchored to the CARD's edge, not the viewport's. Positioning her from the
@@ -8795,7 +8817,7 @@ function PicklesCheer({ kind, reduced }) {
       // The width cap keeps her on screen when the gutter runs out.
       style={{ position: "absolute", right: "calc(50% + 360px)", bottom: "2vh", zIndex: 2, pointerEvents: "none",
         width: "min(260px, calc(50vw - 360px))", display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
-      <img src={`${UI}dog/${DOG_POSES[copy.pose]}`} alt=""
+      <img src={src} alt=""
         style={{ width: "100%", height: "auto", filter: "drop-shadow(0 10px 18px rgba(0,0,0,0.55))" }} />
       <p style={{ margin: 0, color: "#FFF3D6", fontSize: 15, lineHeight: 1.4, textAlign: "center", fontWeight: 600,
         textShadow: "0 2px 6px rgba(0,0,0,0.85), 0 0 2px rgba(0,0,0,0.9)" }}>
