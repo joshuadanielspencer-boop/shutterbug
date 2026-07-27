@@ -28,7 +28,7 @@ const CULTURE_PHOTOS = Object.values(COUNTRY_PEOPLE)
 
 // Kept as a constant so the footer, the page heading and any future export all
 // say the same thing.
-export const COPYRIGHT_HOLDER = "Joshua Spencer";
+export const COPYRIGHT_HOLDER = "Lotus Creative Studios";
 export const COPYRIGHT_YEAR = 2026;
 export const COPYRIGHT_LINE = `© ${COPYRIGHT_YEAR} ${COPYRIGHT_HOLDER}`;
 

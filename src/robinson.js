@@ -25,7 +25,7 @@ const RY0 = 91.3;  // y of the equator (lat 0), north pole near y=0
 // on the far left). Centring on ~11°E instead puts the projection SEAM at ~169°W,
 // in the empty Pacific just west of Hawaiʻi and off the left edge of the crop, so
 // Russia stays a single contiguous shape on the right with nothing wrapping back.
-const LON0 = 11;
+export const LON0 = 11;
 
 export const ROBINSON_W = 2 * 0.8487 * Math.PI * RS; // ≈ 360 (full width at equator)
 export const ROBINSON_H = 2 * 1.3523 * RS;           // ≈ 182.6 (pole to pole)
@@ -81,3 +81,62 @@ export const robinsonToEq = (px, py) => {
   const { lon, lat } = robinsonInverse(px, py);
   return { x: lon + 180, y: 90 - lat };
 };
+
+// ---------------------------------------------------------------------------
+// FLIGHT PATHS THAT GO THE SHORT WAY — including across the seam of the map.
+// ---------------------------------------------------------------------------
+// A flat map has an edge, and the edge is a lie: it cuts the Pacific in half.
+// Drawn naively, Sydney to Los Angeles is a line straight across the screen, so
+// the plane sets off WEST over Asia, Africa, Europe and the Atlantic — the long
+// way round a planet it is pretending to be flat. Real aircraft cross the Pacific.
+//
+// So the route is worked out in longitude, where "short way" actually means
+// something, and only then projected. If the short way crosses the map's seam, it
+// comes back as TWO legs — one running off one edge, one arriving at the other —
+// and the caller animates them back to back.
+//
+// The arc bows toward the nearer pole rather than being a straight screen line.
+// That is not decoration: it is why a Tokyo–New York flight really does go over
+// the Arctic, and on this map the bow makes that visible.
+//
+// Returns { legs: [[{x,y}…], …], split } where `split` is the fraction of the
+// whole journey spent on the first leg (1 when there is only one).
+export function flightLegs(fromX, fromY, toX, toY, { samples = 56, maxLift = 16 } = {}) {
+  const lonA = fromX - 180, latA = 90 - fromY;
+  const lonB = toX - 180, latB = 90 - toY;
+  // The shortest way round the globe, signed: east is positive.
+  const d = ((lonB - lonA + 540) % 360) - 180;
+  // Where each end sits on THIS map, whose seam is half a world from LON0.
+  const rel = (l) => ((l - LON0 + 540) % 360) - 180;
+  const relA = rel(lonA), relB = rel(lonB);
+  // The bow toward the pole, biggest on the longest hops, and toward whichever
+  // pole the two ends are nearer to.
+  const poleSign = (latA + latB) >= 0 ? 1 : -1;
+  const liftDeg = Math.min(maxLift, Math.abs(d) * 0.11);
+  const at = (t) => {
+    const lat = latA + (latB - latA) * t + poleSign * liftDeg * Math.sin(Math.PI * t);
+    return Math.max(-85, Math.min(85, lat));
+  };
+  // Does the short way run off the edge? Only if the seam falls strictly between.
+  const f = d === 0 ? -1 : (180 * Math.sign(d) - relA) / d;
+  const wraps = f > 1e-6 && f < 1 - 1e-6;
+  const project = (relLon, lat) => robinson(relLon + LON0, lat);
+  const sample = (t0, t1, r0, r1) => {
+    const pts = [];
+    const n = Math.max(2, Math.round(samples * Math.abs(t1 - t0)));
+    for (let i = 0; i <= n; i++) {
+      const u = i / n, t = t0 + (t1 - t0) * u;
+      pts.push(project(r0 + (r1 - r0) * u, at(t)));
+    }
+    return pts;
+  };
+  if (!wraps) return { legs: [sample(0, 1, relA, relB)], split: 1 };
+  // Stop a hair short of the seam on each side: exactly ±180 is ambiguous and
+  // robinson() would wrap it to the wrong edge.
+  const e = 180 * Math.sign(d) - 1e-9 * Math.sign(d);
+  return { legs: [sample(0, f, relA, e), sample(f, 1, -e, relB)], split: f };
+}
+
+// A sampled leg as an SVG path.
+export const legPath = (pts) =>
+  pts.map((p, i) => `${i ? "L" : "M"}${p.x.toFixed(2)} ${p.y.toFixed(2)}`).join("");

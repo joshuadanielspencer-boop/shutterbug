@@ -13,6 +13,7 @@ import { COUNTRY_PEOPLE, GREETING_MEANING, peopleCards } from "../src/data/cultu
 import { RIVERS, LAKES, MARINE, WATER_FEATURES, WATER_KINDS } from "../src/data/geography.js";
 import { TUNES, tuneKeyFor } from "../src/data/tunes.js";
 import { JOURNEYS, journeyBox, closestStops, unrolledX } from "../src/data/journeys.js";
+import { flightLegs, ROBINSON_W } from "../src/robinson.js";
 import { CURIOSITY_DECKS, CURIOSITY_DECK_BY_ID, ALL_CURIOSITY_IDS } from "../src/data/curiosities.js";
 import { KIT_ITEMS, KIT_OFFERED, KIT_TAKEN } from "../src/data/kit.js";
 import { eqToRobinson } from "../src/robinson.js";
@@ -1195,5 +1196,62 @@ describe("travel conditions", () => {
   it("has unique ids", () => {
     const ids = CONDITIONS.map((c) => c.id);
     expect(new Set(ids).size).toBe(ids.length);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Flights take the SHORT way, even when that means leaving the map.
+// ---------------------------------------------------------------------------
+describe("flight paths", () => {
+  const eq = (lon, lat) => [lon + 180, 90 - lat];
+  const legsFor = (a, b) => flightLegs(...eq(...a), ...eq(...b));
+
+  it("crosses the Pacific instead of going the long way round the world", () => {
+    // The bug this replaced: a flat map's straight line from Sydney to Los Angeles
+    // runs west across Asia, Africa and the Atlantic, because the map's edge cuts
+    // the Pacific in half. Two legs means it left one edge and arrived at the other.
+    for (const [name, a, b] of [
+      ["Sydney → Los Angeles", [151.2, -33.9], [-118.2, 34.1]],
+      ["Tokyo → San Francisco", [139.7, 35.7], [-122.4, 37.8]],
+      ["Auckland → Santiago", [174.8, -36.8], [-70.6, -33.4]],
+      ["Bangkok → Los Angeles", [100.5, 13.7], [-118.2, 34.1]],
+    ]) {
+      expect(legsFor(a, b).legs.length, `${name}: should wrap across the Pacific`).toBe(2);
+    }
+  });
+
+  it("does NOT wrap when the direct way really is shorter", () => {
+    // Joshua's guess was that the dividing line sits around India. It does — but as
+    // a CONSEQUENCE of picking the shorter route, not as a rule anyone wrote down.
+    for (const [name, a, b] of [
+      ["London → New York", [-0.1, 51.5], [-74, 40.7]],
+      ["Paris → Cairo", [2.3, 48.9], [31.2, 30.0]],
+      ["Delhi → New York", [77.2, 28.6], [-74, 40.7]],
+      ["Lima → Madrid", [-77, -12], [-3.7, 40.4]],
+    ]) {
+      expect(legsFor(a, b).legs.length, `${name}: should not wrap`).toBe(1);
+    }
+  });
+
+  it("hands over at the map's edge, and the two legs meet there", () => {
+    const { legs, split } = legsFor([151.2, -33.9], [-118.2, 34.1]);
+    expect(split).toBeGreaterThan(0);
+    expect(split).toBeLessThan(1);
+    const endOfFirst = legs[0][legs[0].length - 1];
+    const startOfSecond = legs[1][0];
+    // One ends at an edge, the other starts at the opposite one, at the same latitude.
+    expect(Math.abs(endOfFirst.y - startOfSecond.y), "legs meet at the same latitude").toBeLessThan(0.5);
+    expect(Math.sign(endOfFirst.x - ROBINSON_W / 2), "legs are on opposite edges")
+      .not.toBe(Math.sign(startOfSecond.x - ROBINSON_W / 2));
+  });
+
+  it("bows toward the pole rather than running dead straight", () => {
+    // A great circle from Tokyo to New York goes over the Arctic. On a flat map that
+    // has to be drawn as a bow, or the route teaches something false.
+    const { legs } = legsFor([139.7, 35.7], [-74, 40.7]);
+    const pts = legs.flat();
+    const ends = (pts[0].y + pts[pts.length - 1].y) / 2;
+    const highest = Math.min(...pts.map((p) => p.y));   // smaller y = further north
+    expect(ends - highest, "the arc should bow north of its endpoints").toBeGreaterThan(1);
   });
 });

@@ -137,7 +137,12 @@ export const TALKING_CPS = 45;
 // is far likelier to be a fact than a line of speech, so forgetting reads too slow
 // rather than too fast, and too slow is the recoverable mistake (you can click to
 // finish a line; you cannot click to un-miss one).
-export function TypeLine({ text, reduced, style, inline = false, cps = Math.round(TALKING_CPS / 2), onDone, mute = false }) {
+// `skip` lets a PARENT fast-forward the line. Clicking the text itself has always
+// completed it, but a container that owns the whole interaction — Mr O's bubble,
+// where the click target is the entire screen — needs to say "finish now" without
+// the pointer ever landing on the words. Raise skip to true and the line snaps to
+// full and fires onDone, exactly as a click on it would.
+export function TypeLine({ text, reduced, style, inline = false, cps = Math.round(TALKING_CPS / 2), onDone, mute = false, skip = false }) {
   const str = text == null ? "" : String(text);
   const [n, setN] = useState(reduced ? str.length : 0);
   const idRef = useRef(null);
@@ -165,6 +170,9 @@ export function TypeLine({ text, reduced, style, inline = false, cps = Math.roun
   }, [str, reduced]);
   const busy = n < str.length;
   const complete = () => { if (idRef.current) { clearInterval(idRef.current); idRef.current = null; } setN(str.length); if (onDone) onDone(); };
+  // The parent asked for the rest of the line. Guarded on `busy` so a skip that
+  // stays true across a re-render doesn't call onDone again and again.
+  useEffect(() => { if (skip && busy) complete(); });
   // Block usage reserves its FINAL size up front (a hidden full-text layer under the
   // visible one, sharing a grid cell) so the box never grows as the text types in.
   // Inline usage stays in normal flow (it lives inside an already-sized sentence).

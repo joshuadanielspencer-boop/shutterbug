@@ -938,8 +938,14 @@ export function speakGreeting(g) {
 //
 // Returns a cancel function. The caller MUST call it when the player leaves or
 // arrives somewhere new, or a queued greeting will speak over the next screen.
+// `spokenName` exists because the name the game STORES and the name a voice should
+// READ are not always the same string. The map data calls two countries
+// "Dem. Rep. Congo" and "Solomon Is.", and speech synthesis says those literally —
+// "Dem. Rep." out loud is not a country. The stored name still has to be passed as
+// `country`, because that is the key the tune lookup uses.
 export function announceArrival(country, continent, greeting, opts = {}) {
-  const { leadMs = 1000, gapMs = 450, speech = true, music = true } = opts;
+  const { leadMs = 1000, gapMs = 450, speech = true, music = true, spokenName } = opts;
+  const saidAs = spokenName || country;
   let done = false;
   const timers = new Set();
   const at = (ms, fn) => {
@@ -964,7 +970,7 @@ export function announceArrival(country, continent, greeting, opts = {}) {
     if (!speech || !speechAvailable) { tuneThenHello(); return; }
     try {
       window.speechSynthesis.cancel();
-      const name = utter(country, { pitch: 1.05 });
+      const name = utter(saidAs, { pitch: 1.05 });
       // `once` because onend is unreliable across browsers (and never fires on a
       // cancelled utterance), so a 4s backstop races it — whichever lands first wins
       // and the other becomes a no-op. Without the guard the tune could start twice.

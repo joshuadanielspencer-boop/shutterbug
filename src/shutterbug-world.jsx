@@ -31,7 +31,8 @@ import { defaultAvatar, avatarFor, Avatar, AvatarEditor,
   AVATAR_SKIN, AVATAR_HAIR, AVATAR_HAIRC, AVATAR_GLASSES, AVATAR_HAT, AVATAR_SHIRT,
   AVATAR_DIMS } from "./components/avatar.jsx";
 import { categoryCountries, categoryMissionOK as missionOK } from "./missions.js";
-import { robinson, eqToRobinson, robinsonToEq, ROBINSON_W, ROBINSON_H } from "./robinson.js";
+import { robinson, eqToRobinson, robinsonToEq, ROBINSON_W, ROBINSON_H,
+  flightLegs, legPath } from "./robinson.js";
 // The pure map geometry — bounding boxes, the two antimeridian cutters, frame-aspect
 // fitting, the scale-bar arithmetic. Extracted from this file (it was ~7,900 lines and
 // this layer had three untested bugs in one session); tested in test/map-geometry.test.js.
@@ -2268,7 +2269,9 @@ export default function ShutterbugWorld() {
     sayArrivalRef.current = null;
     if (!soundOn && !musicOn) return;
     sayArrivalRef.current = announceArrival(country, continent, COUNTRY_GREETING[country],
-      { speech: soundOn, music: musicOn });
+      // The stored name keys the tune; the DISPLAY name is what gets read out, or the
+      // voice says "Dem. Rep. Congo" and "Solomon Is." exactly as written.
+      { speech: soundOn, music: musicOn, spokenName: displayCountry(country) });
   };
   useEffect(() => () => { if (sayArrivalRef.current) sayArrivalRef.current(); }, []);
   // On the two gentlest tiers, the map reads itself aloud: hover a continent or a
@@ -5970,7 +5973,7 @@ export default function ShutterbugWorld() {
                     <g key={country} className={`sbw-country${tiny ? " sbw-country--tiny" : ""}${flashHint && flashHint.type === "country" && flashHint.key === country ? " sbw-flash-hint" : ""}`} role="button" tabIndex={busy ? -1 : 0}
                        aria-label={`Choose ${displayCountry(country)}`} onClick={(e) => pickCountry(country, platePointFromEvent(e))}
                        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); pickCountry(country); } }}
-                       onMouseEnter={() => { setHoverCountry(country); sayOnHover(country); }} onMouseLeave={() => setHoverCountry((c) => (c === country ? null : c))}
+                       onMouseEnter={() => { setHoverCountry(country); sayOnHover(displayCountry(country)); }} onMouseLeave={() => setHoverCountry((c) => (c === country ? null : c))}
                        onFocus={() => setHoverCountry(country)} onBlur={() => setHoverCountry((c) => (c === country ? null : c))}
                        style={{ cursor: busy ? "default" : "pointer" }}>
                       {/* The generous target, first and invisible, so a near-miss on a
@@ -6000,17 +6003,33 @@ export default function ShutterbugWorld() {
                 // every region so nothing can cover it. Hidden entirely in Hard mode.
                 const hov = showLabels && hoverCountry && list.includes(hoverCountry)
                   ? COUNTRY_META[countryKey(pickedContinent, hoverCountry)] : null;
-                const labels = hov ? [(
-                  // unstretchAt: this text lives inside the vertically-stretched map
-                  // group, and without the counter-scale its letters came out
-                  // 31% too tall on the Europe map (that plate is stretched 1.31).
-                  // Same fix the pins use. Pivoted about the label's own y so it
-                  // stays put while un-squashing.
-                  <g key={"lbl" + hoverCountry} transform={unstretchAt(baseY(hov))} style={{ pointerEvents: "none" }}>
-                    <text x={hov.cx} y={baseY(hov)} fontSize={0.055 * box.h} fontFamily="ui-monospace, monospace" fontWeight="800" fill={INK} textAnchor="middle"
-                      style={{ paintOrder: "stroke", stroke: PAPER, strokeWidth: 0.02 * box.h }}>{hoverCountry}</text>
-                  </g>
-                )] : [];
+                const labels = hov ? (() => {
+                  // The label is centred on the country, which is fine until the
+                  // country sits against the edge of the frame: French Polynesia is
+                  // the last thing in the Pacific, so half of its name was being cut
+                  // off by the atlas border. Keep the whole word inside the map by
+                  // sliding it back in — a name that has to move is still readable,
+                  // where half a name is not.
+                  //
+                  // Monospace, so the width is honestly estimable: ~0.6em a character.
+                  const label = displayCountry(hoverCountry);
+                  const fs = 0.055 * box.h;
+                  const halfW = label.length * fs * 0.3;
+                  const pad = 0.012 * box.w;
+                  const lx = Math.min(Math.max(hov.cx, box.x + halfW + pad),
+                                      box.x + box.w - halfW - pad);
+                  return [(
+                    // unstretchAt: this text lives inside the vertically-stretched map
+                    // group, and without the counter-scale its letters came out
+                    // 31% too tall on the Europe map (that plate is stretched 1.31).
+                    // Same fix the pins use. Pivoted about the label's own y so it
+                    // stays put while un-squashing.
+                    <g key={"lbl" + hoverCountry} transform={unstretchAt(baseY(hov))} style={{ pointerEvents: "none" }}>
+                      <text x={lx} y={baseY(hov)} fontSize={fs} fontFamily="ui-monospace, monospace" fontWeight="800" fill={INK} textAnchor="middle"
+                        style={{ paintOrder: "stroke", stroke: PAPER, strokeWidth: 0.02 * box.h }}>{label}</text>
+                    </g>
+                  )];
+                })() : [];
                 return regions.concat(labels);
               })()}
 
@@ -6101,28 +6120,61 @@ export default function ShutterbugWorld() {
                 const inset = 6;
                 const clampX = (v) => Math.min(Math.max(v, WORLD_BOX.x + inset), WORLD_BOX.x + WORLD_BOX.w - inset);
                 const clampY = (v) => Math.min(Math.max(v, WORLD_BOX.y + inset), WORLD_BOX.y + WORLD_BOX.h - inset);
-                const raw0 = eqToRobinson(flying.fromX, flying.fromY), raw1 = eqToRobinson(flying.toX, flying.toY);
-                const a = { x: clampX(raw0.x), y: clampY(raw0.y) };
-                const b = { x: clampX(raw1.x), y: clampY(raw1.y) };
-                const dx = b.x - a.x, dy = b.y - a.y;
-                const dist = Math.hypot(dx, dy) || 1;
-                // Perpendicular that points map-north, scaled to the hop length.
-                let nx = -dy / dist, ny = dx / dist;
-                if (ny > 0) { nx = -nx; ny = -ny; }
-                const lift = Math.min(38, dist * 0.22);
-                const cx = (a.x + b.x) / 2 + nx * lift, cy = (a.y + b.y) / 2 + ny * lift;
-                const d = `M${a.x} ${a.y} Q${cx} ${cy} ${b.x} ${b.y}`;
+                // The route is worked out in LONGITUDE and only then projected, so
+                // "the short way" means what it means on a globe. Sydney to Los
+                // Angeles used to be drawn as a straight line across the screen, which
+                // sent the plane west over Asia, Africa and the Atlantic — the long way
+                // round a planet the map is only pretending to have flattened. It now
+                // crosses the Pacific, leaving one edge of the map and arriving at the
+                // other, because that is genuinely shorter. See flightLegs().
+                //
+                // The India-ish dividing line Joshua predicted falls out of this rather
+                // than being written down: Delhi to New York still goes west over the
+                // Atlantic, Bangkok to Los Angeles goes east over the Pacific.
+                const { legs, split } = flightLegs(flying.fromX, flying.fromY, flying.toX, flying.toY);
+                // Clamping each projected point keeps a departure from one of the five
+                // places that sit outside the world map's trimmed frame (Bora Bora and
+                // friends) on screen: the arc hugs the edge until it re-enters, which
+                // reads as flying in from off the map. On every other flight no point
+                // is outside the box and this does nothing at all.
+                const paths = legs.map((leg) => legPath(leg.map((p) => ({ x: clampX(p.x), y: clampY(p.y) }))));
+                const t1 = Math.round(FLIGHT_MS * split), t2 = FLIGHT_MS - t1;
+                const token = (
+                  <image href={`${UI}passenger-aircraft-777-token.png`} width="26" height="26" x="-13" y="-13"
+                    style={{ filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.45))" }} />
+                );
                 return (
                 <g className="sbw-plane-group">
-                  <path d={d} fill="none" stroke="#D8DEE3" strokeWidth="1" strokeDasharray="3 3" opacity="0.85" />
-                  <g style={{ animation: `sbw-fly ${FLIGHT_MS}ms ease-in-out forwards`, offsetPath: `path('${d}')`, offsetRotate: "auto 90deg" }}>
-                    {/* The illustrated 777 token. offset-rotate "auto 90deg" turns the
-                        nose (which points up in the art) to follow the flight path. */}
-                    <g style={{ animation: `sbw-hop ${FLIGHT_MS}ms ease-in-out forwards` }}>
-                      <image href={`${UI}passenger-aircraft-777-token.png`} width="26" height="26" x="-13" y="-13"
-                        style={{ filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.45))" }} />
+                  {paths.map((d, i) => (
+                    <path key={"trail" + i} d={d} fill="none" stroke="#D8DEE3" strokeWidth="1" strokeDasharray="3 3" opacity="0.85" />
+                  ))}
+                  {paths.length === 1 ? (
+                    <g style={{ animation: `sbw-fly ${FLIGHT_MS}ms ease-in-out forwards`, offsetPath: `path('${paths[0]}')`, offsetRotate: "auto 90deg" }}>
+                      {/* The illustrated 777 token. offset-rotate "auto 90deg" turns the
+                          nose (which points up in the art) to follow the flight path. */}
+                      <g style={{ animation: `sbw-hop ${FLIGHT_MS}ms ease-in-out forwards` }}>{token}</g>
                     </g>
-                  </g>
+                  ) : (
+                    // Two legs: one plane flies off the edge and a second arrives at the
+                    // other, handing over at exactly the moment the first vanishes, so it
+                    // reads as one aircraft crossing the seam. Linear on both, because
+                    // easing each leg separately would make it brake at the edge and
+                    // accelerate away again.
+                    //
+                    // The take-off/landing hop keeps ONE timeline across both: the second
+                    // leg's hop carries a negative delay, so it picks the animation up
+                    // exactly where the first left it rather than hopping twice.
+                    <>
+                      <g style={{ animation: `sbw-fly ${t1}ms linear forwards, sbw-vanish 1ms linear ${t1}ms forwards`,
+                        offsetPath: `path('${paths[0]}')`, offsetRotate: "auto 90deg" }}>
+                        <g style={{ animation: `sbw-hop ${FLIGHT_MS}ms ease-in-out forwards` }}>{token}</g>
+                      </g>
+                      <g style={{ opacity: 0, animation: `sbw-fly ${t2}ms linear ${t1}ms forwards, sbw-appear 1ms linear ${t1}ms forwards`,
+                        offsetPath: `path('${paths[1]}')`, offsetRotate: "auto 90deg" }}>
+                        <g style={{ animation: `sbw-hop ${FLIGHT_MS}ms ease-in-out -${t1}ms forwards` }}>{token}</g>
+                      </g>
+                    </>
+                  )}
                 </g>
                 );
               })()}
@@ -6162,18 +6214,28 @@ export default function ShutterbugWorld() {
                     vectorEffect="non-scaling-stroke" style={{ pointerEvents: "none" }} />
                 );
               })()}
-              {inCity && (ctxCountry || pickedCountry) && (
-                // unstretchAt so the banner pill and its text don't stretch with the
-                // plate (the UK's city map is scaled 1.27). Pivoted about the banner's
-                // own y, near the top of the frame.
-                <g transform={unstretchAt(box.y + 0.05 * box.h)} style={{ pointerEvents: "none" }}>
-                  <rect x={box.x + box.w * 0.5 - (String(ctxCountry || pickedCountry).length * 0.0125 + 0.03) * box.w} y={box.y + 0.02 * box.h}
-                    width={(String(ctxCountry || pickedCountry).length * 0.025 + 0.06) * box.w} height={0.075 * box.h} rx={0.02 * box.h}
-                    fill="rgba(16,38,46,0.82)" />
-                  <text x={box.x + box.w * 0.5} y={box.y + 0.073 * box.h} fontSize={0.045 * box.h} fontFamily="ui-sans-serif, system-ui" fontWeight="900"
-                    fill="#fff" textAnchor="middle">{displayCountry(ctxCountry || pickedCountry)}</text>
-                </g>
-              )}
+              {inCity && (ctxCountry || pickedCountry) && (() => {
+                // The pill is sized from the name it ACTUALLY PRINTS. It used to be
+                // measured from the raw data name while the text rendered the display
+                // one, which is invisible for every country whose two names match and
+                // badly wrong for the two where they don't: "Dem. Rep. Congo" is 15
+                // characters, "Democratic Republic of the Congo" is 32, so the words
+                // ran straight out of both ends of their own shade.
+                const label = displayCountry(ctxCountry || pickedCountry);
+                const halfW = (label.length * 0.0125 + 0.03) * box.w;
+                return (
+                  // unstretchAt so the banner pill and its text don't stretch with the
+                  // plate (the UK's city map is scaled 1.27). Pivoted about the banner's
+                  // own y, near the top of the frame.
+                  <g transform={unstretchAt(box.y + 0.05 * box.h)} style={{ pointerEvents: "none" }}>
+                    <rect x={box.x + box.w * 0.5 - halfW} y={box.y + 0.02 * box.h}
+                      width={halfW * 2} height={0.075 * box.h} rx={0.02 * box.h}
+                      fill="rgba(16,38,46,0.82)" />
+                    <text x={box.x + box.w * 0.5} y={box.y + 0.073 * box.h} fontSize={0.045 * box.h} fontFamily="ui-sans-serif, system-ui" fontWeight="900"
+                      fill="#fff" textAnchor="middle">{label}</text>
+                  </g>
+                );
+              })()}
 
               {/* city pins (city phase): the target + same-continent decoys. Each pin
                   carries its subject's CATEGORY EMOJI on a light disc — a color-blind-
@@ -6618,6 +6680,11 @@ function Frame({ children, desk = false }) {
         .sbw-ping{ transform-box: fill-box; transform-origin: center; animation: sbw-ping 1.6s ease-out infinite; }
         @keyframes sbw-ping{ 0%{ transform: scale(0.6); opacity:.9 } 100%{ transform: scale(1.9); opacity:0 } }
         @keyframes sbw-fly{ 0%{ offset-distance: 0% } 100%{ offset-distance: 100% } }
+        /* The hand-over when a flight crosses the map's seam: the plane leaving one
+           edge disappears at the exact instant the one arriving at the other appears,
+           so the two tokens read as a single aircraft crossing the Pacific. */
+        @keyframes sbw-vanish{ to{ opacity: 0 } }
+        @keyframes sbw-appear{ to{ opacity: 1 } }
         /* The overland hop. Same motion-path trick as the flight, but it starts and
            ends at a standstill — a bus pulls away and pulls in; it doesn't cruise
            past the destination. */
@@ -8184,9 +8251,18 @@ function MrOBubble({ fact, beats, onClose, reduced }) {
   const [img, setImg] = useState(() => nextMrOImage(poseKind));
   const [imgOk, setImgOk] = useState(true);
   const last = beat >= lines.length - 1;
+  // Has THIS beat finished typing? A click or Enter used to advance regardless, so
+  // an eager player dismissed Mr O in the middle of his own sentence and never saw
+  // what he came to say — the fact is the entire point of him being there. Now the
+  // first press always FINISHES the line, and only a press after that moves on or
+  // sends him away. Same rule for the mouse, since the whole overlay is the target.
+  const [typed, setTyped] = useState(false);
+  const [skip, setSkip] = useState(false);
   const advance = () => {
+    if (!typed) { setSkip(true); return; }   // first press: show the rest of the line
     if (last) { onClose(); return; }
     setBeat((b) => b + 1);
+    setTyped(false); setSkip(false);         // the next beat types itself out too
     setImg(nextMrOImage(poseKind));  // a new pose for the next thing he says
     setImgOk(true);
   };
@@ -8195,7 +8271,7 @@ function MrOBubble({ fact, beats, onClose, reduced }) {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [beat, lines.length]);
+  }, [beat, lines.length, typed, last]);
   // escape:false because the handler above already maps Escape onto advance —
   // the hook is here for the trap and for putting focus back afterwards. He has
   // no focusable children, so the trap makes the dialog itself the focus holder,
@@ -8225,7 +8301,8 @@ function MrOBubble({ fact, beats, onClose, reduced }) {
           <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 15, letterSpacing: "0.12em", color: OCEAN, fontWeight: 800, marginBottom: 10 }}>{MR_O.name.toUpperCase()}</div>
           {/* For a plain fact the catchphrase already leads the line ("Oh! Did you
               know… <fact>"); intro beats are whole self-contained lines. */}
-          <TypeLine key={beat} text={lines[beat]} reduced={reduced} style={{ color: INK, fontSize: 22, lineHeight: 1.5 }} />
+          <TypeLine key={beat} text={lines[beat]} reduced={reduced} skip={skip} onDone={() => setTyped(true)}
+            style={{ color: INK, fontSize: 22, lineHeight: 1.5 }} />
           <div style={{ marginTop: 14, fontSize: 13, fontWeight: 700, color: INK, opacity: 0.55 }}>{last ? "click to continue ▸" : "click for more ▸"}</div>
         </div>
       </div>
