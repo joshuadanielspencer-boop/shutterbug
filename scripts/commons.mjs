@@ -11,7 +11,10 @@
 //   node scripts/commons.mjs verify "File:Foo.jpg" ["File:Bar.jpg" ...]
 // ===========================================================================
 const API = "https://commons.wikimedia.org/w/api.php";
-const UA = "Shutterbug-educational-game/1.0 (homeschool geography game; contact via repo)";
+// Wikimedia's UA policy wants a real contact in the string. With a vague one,
+// upload.wikimedia.org starts returning 429 after about four thumbnail fetches,
+// which makes reviewing a batch of candidate photos nearly impossible.
+const UA = "ShutterbugGeographyGame/1.0 (https://github.com/joshuadanielspencer-boop/shutterbug; joshuadanielspencer@gmail.com)";
 
 const call = async (params) => {
   const url = `${API}?${new URLSearchParams({ format: "json", origin: "*", ...params })}`;

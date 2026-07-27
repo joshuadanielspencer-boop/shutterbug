@@ -159,10 +159,11 @@ export const COUNTRY_PEOPLE = {
     caption: "Dancers perform the Jarabe Tapatío, Mexico's national dance",
   },
   "Peru": {
-    src: "https://commons.wikimedia.org/wiki/Special:FilePath/Pollera_de_Pomabamba.jpg?width=800",
-    source: "https://commons.wikimedia.org/wiki/File:Pollera_de_Pomabamba.jpg",
-    credit: "Cbrescia", license: "CC BY-SA 4.0",
-    caption: "The pollera dress of Pomabamba, in Peru's Áncash region",
+    // Was a pollera skirt hanging on a washing line — a garment, with nobody in it.
+    src: "https://commons.wikimedia.org/wiki/Special:FilePath/Amerindian_girl_in_her_traditional_clothes.png?width=800",
+    source: "https://commons.wikimedia.org/wiki/File:Amerindian_girl_in_her_traditional_clothes.png",
+    credit: "Rafael Estrella", license: "CC BY-SA 2.5",
+    caption: "A girl in traditional Andean dress — an embroidered hat and a woven shawl — with llamas in Peru",
   },
   "Kenya": {
     src: "https://commons.wikimedia.org/wiki/Special:FilePath/Traditional%20Kikuyu%20Women%20Dancers.jpg?width=800",
@@ -339,10 +340,12 @@ export const COUNTRY_PEOPLE = {
     caption: "A Khmer classical dancer in a golden Apsara crown and pleated silk sampot, Siem Reap",
   },
   "Myanmar": {
-    src: "https://commons.wikimedia.org/wiki/Special:FilePath/Mandalay%20Thingyan%20Rehearsal%202012.JPG?width=800",
-    source: "https://commons.wikimedia.org/wiki/File:Mandalay_Thingyan_Rehearsal_2012.JPG",
+    // Was a stadium mass-display: thousands of dancers, each about four pixels tall.
+    // Same photographer, same Thingyan in Mandalay, one dancer close enough to meet.
+    src: "https://commons.wikimedia.org/wiki/Special:FilePath/Burma_Dance.JPG?width=800",
+    source: "https://commons.wikimedia.org/wiki/File:Burma_Dance.JPG",
     credit: "Htoo Tay Zar", license: "CC BY-SA 3.0",
-    caption: "Dancers in Burmese dress rehearse a traditional dance for the Thingyan water festival in Mandalay",
+    caption: "A student in Burmese dress dances at the opening of the Thingyan water festival, Mandalay",
   },
   "Iran": {
     src: "https://commons.wikimedia.org/wiki/Special:FilePath/Iran%20IMG%209821%20Iran%20%2816778393900%29.jpg?width=800",
@@ -375,10 +378,14 @@ export const COUNTRY_PEOPLE = {
     caption: "The RASPEV folk ensemble in sarafans and headscarves at a folk festival near Moscow",
   },
   "Saudi Arabia": {
-    src: "https://commons.wikimedia.org/wiki/Special:FilePath/Saudi_Ardha_(Najdi_Sword_Dance)_in_At-Turaif_district,_Diriyah,_Saudi_Arabia.jpg?width=800",
-    source: "https://commons.wikimedia.org/wiki/File:Saudi_Ardha_(Najdi_Sword_Dance)_in_At-Turaif_district,_Diriyah,_Saudi_Arabia.jpg",
-    credit: "Ahad.F", license: "CC BY-SA 4.0",
-    caption: "Men in traditional dress performing the Ardha, the Najdi sword dance, in Diriyah, Saudi Arabia",
+    // Was the same dance shot from far enough back that the picture was really of the
+    // At-Turaif fort at night, with figures the size of pixels along the bottom.
+    // Freely-licensed close-up Saudi photos are thin on Commons; this is a 2014 Saudi
+    // Press Agency frame, so the row includes King Salman — see the audit doc.
+    src: "https://commons.wikimedia.org/wiki/Special:FilePath/%D8%A7%D9%84%D9%85%D9%84%D9%83_%D8%B3%D9%84%D9%85%D8%A7%D9%86_%D8%A8%D9%86_%D8%B9%D8%A8%D8%AF%D8%A7%D9%84%D8%B9%D8%B2%D9%8A%D8%B2_%D8%A2%D9%84_%D8%B3%D8%B9%D9%88%D8%AF_%D9%8A%D8%A4%D8%AF%D9%8A_%D8%A7%D9%84%D8%B9%D8%B1%D8%B6%D8%A9_%D8%A7%D9%84%D8%B3%D8%B9%D9%88%D8%AF%D9%8A%D8%A9.jpg?width=800",
+    source: "https://commons.wikimedia.org/wiki/File:%D8%A7%D9%84%D9%85%D9%84%D9%83_%D8%B3%D9%84%D9%85%D8%A7%D9%86_%D8%A8%D9%86_%D8%B9%D8%A8%D8%AF%D8%A7%D9%84%D8%B9%D8%B2%D9%8A%D8%B2_%D8%A2%D9%84_%D8%B3%D8%B9%D9%88%D8%AF_%D9%8A%D8%A4%D8%AF%D9%8A_%D8%A7%D9%84%D8%B9%D8%B1%D8%B6%D8%A9_%D8%A7%D9%84%D8%B3%D8%B9%D9%88%D8%AF%D9%8A%D8%A9.jpg",
+    credit: "Saudi Press Agency", license: "CC BY-SA 4.0",
+    caption: "Men in thobe and ghutra, swords in hand, performing the Ardha — the Najdi sword dance of Saudi Arabia",
   },
   "Turkey": {
     src: "https://commons.wikimedia.org/wiki/Special:FilePath/Turkish%20folk%20dancers%20(1085290934).jpg?width=800",
@@ -431,10 +438,12 @@ export const COUNTRY_PEOPLE = {
     caption: "A Scottish pipe band in full Highland dress, kilts and bagpipes, at the Cowal Highland Gathering",
   },
   "France": {
-    src: "https://commons.wikimedia.org/wiki/Special:FilePath/2016%20Festo%20Vierginenco%2001.jpg?width=800",
-    source: "https://commons.wikimedia.org/wiki/File:2016%20Festo%20Vierginenco%2001.jpg",
+    // Was the same festival shot from the back of a very large crowd on stadium steps.
+    // Same photographer, same Pays d'Arles costume, two faces instead of two hundred.
+    src: "https://commons.wikimedia.org/wiki/Special:FilePath/2014_F%C3%AAte_des_Gardians_14.jpg?width=800",
+    source: "https://commons.wikimedia.org/wiki/File:2014_F%C3%AAte_des_Gardians_14.jpg",
     credit: "Finoskov", license: "CC BY-SA 4.0",
-    caption: "Young women of the Pays d'Arles in traditional Arlésienne dress at a festival in Provence",
+    caption: "Women of the Pays d'Arles in traditional Arlésienne dress at the Fête des Gardians, Arles, Provence",
   },
   "Italy": {
     src: "https://commons.wikimedia.org/wiki/Special:FilePath/Women%20of%20sardinia.jpg?width=800",
@@ -461,10 +470,12 @@ export const COUNTRY_PEOPLE = {
     caption: "Women in colorful ruffled flamenco dresses at Seville's April Fair",
   },
   "Portugal": {
-    src: "https://commons.wikimedia.org/wiki/Special:FilePath/Pa%C3%A7os%20do%20Concelho%20de%20Angra%20do%20Hero%C3%ADsmo%20-%20Folclore.jpg?width=800",
-    source: "https://commons.wikimedia.org/wiki/File:Paços_do_Concelho_de_Angra_do_Heroísmo_-_Folclore.jpg",
-    credit: "Concierge.2C", license: "CC BY-SA 3.0",
-    caption: "Folk dancers in traditional dress on the Praça Velha at the Azores folklore festival, Angra do Heroísmo, Portugal",
+    // Was a night shot of a square full of figures the size of grains of rice.
+    // Filename is a camera default; the photo's own coordinates put it in Braga.
+    src: "https://commons.wikimedia.org/wiki/Special:FilePath/00100dPORTRAIT_00100_BURST20181118161200471_COVER.jpg?width=800",
+    source: "https://commons.wikimedia.org/wiki/File:00100dPORTRAIT_00100_BURST20181118161200471_COVER.jpg",
+    credit: "PolinaSol", license: "CC BY-SA 4.0",
+    caption: "Musicians in traditional costume at a November chestnut festival in Braga, northern Portugal",
   },
   "Netherlands": {
     src: "https://commons.wikimedia.org/wiki/Special:FilePath/Marken%20Klederdracht%20IMG0022.jpg?width=800",
@@ -498,10 +509,12 @@ export const COUNTRY_PEOPLE = {
     caption: "Dancers of the Baudyš group in Horácko folk costume (kroj) at Třebíč, Czechia",
   },
   "Croatia": {
-    src: "https://commons.wikimedia.org/wiki/Special:FilePath/PosavinaGirls.jpg?width=800",
-    source: "https://commons.wikimedia.org/wiki/File:PosavinaGirls.jpg",
+    // Was a long brick wall of Sisak fortress with three figures the size of thumbnails
+    // at the foot of it. Same photographer, same Posavina costume, faces this time.
+    src: "https://commons.wikimedia.org/wiki/Special:FilePath/PosavinaCostumes.jpg?width=800",
+    source: "https://commons.wikimedia.org/wiki/File:PosavinaCostumes.jpg",
     credit: "Veronikablg", license: "CC BY-SA 4.0",
-    caption: "Two young women in the red-and-white folk costume of Croatia's Posavina region by Sisak fortress",
+    caption: "A young man and woman in the red-and-white folk costume of Croatia's Posavina region",
   },
   "Iceland": {
     src: "https://commons.wikimedia.org/wiki/Special:FilePath/All%20Dressed%20Up%20(5847023926).jpg?width=800",
@@ -611,11 +624,13 @@ export const COUNTRY_PEOPLE = {
       portrait: true, // no free landscape photo of this dress exists — show it whole
     },
     {
-      src: "https://commons.wikimedia.org/wiki/Special:FilePath/Akiaboro_Kayap%C3%B3_-_Kayapo_-_149656.jpg?width=800",
-      source: "https://commons.wikimedia.org/wiki/File:Akiaboro_Kayap%C3%B3_-_Kayapo_-_149656.jpg",
-      credit: "Valter Campanato / Agência Brasil", license: "CC BY 3.0 BR",
+      // Was the CONFERENCE BANNER behind him — a sheet of printed text, not a face.
+      // Same man, photographed close: chief Akiaboro in the Kayapó feather headdress.
+      src: "https://commons.wikimedia.org/wiki/Special:FilePath/Cacique_Caiap%C3%B3_Akiaboro.jpg?width=800",
+      source: "https://commons.wikimedia.org/wiki/File:Cacique_Caiap%C3%B3_Akiaboro.jpg",
+      credit: "Renato Araújo / Agência Brasil", license: "CC BY 3.0 BR",
       people: "Indigenous (Kayapó)",
-      caption: "Akyboro Kayapó, a leader of the Kayapó people, in traditional dress at a national gathering of Indigenous peoples",
+      caption: "Chief Akiaboro, a leader of the Kayapó people, in the feather headdress of his village",
     },
   ],
   "Chile": {
@@ -825,16 +840,20 @@ export const COUNTRY_PEOPLE = {
     caption: "Women perform a traditional dance in grass skirts and floral tops in Fiji",
   },
   "New Caledonia": {
-    src: "https://commons.wikimedia.org/wiki/Special:FilePath/Danses%20kanak%20%C3%A0%20Canala%203.jpg?width=800",
-    source: "https://commons.wikimedia.org/wiki/File:Danses_kanak_à_Canala_3.jpg",
-    credit: "Monofruit", license: "CC0",
-    caption: "Kanak dancers in grass costumes perform at a festival in Canala, New Caledonia",
+    // Was a distant field with a stage at the far end of it. This one is a portrait
+    // source, but the 16:9 crop at 50%/30% lands square on the three dancers' faces,
+    // so it needs no `portrait: true` — the crop is the close-up.
+    src: "https://commons.wikimedia.org/wiki/Special:FilePath/Kanak_Dance_Group_(31010343777).jpg?width=800",
+    source: "https://commons.wikimedia.org/wiki/File:Kanak_Dance_Group_(31010343777).jpg",
+    credit: "David Stanley", license: "CC BY 2.0",
+    caption: "A Kanak dance group performs in the garden of the Tjibaou Cultural Centre, Nouméa, New Caledonia",
   },
   "Papua New Guinea": {
-    src: "https://commons.wikimedia.org/wiki/Special:FilePath/DPAA%2025-4PG%20Team%20celebrates%20PNG%2050th%20Independence%20Day%20%289332993%29.jpg?width=800",
-    source: "https://commons.wikimedia.org/wiki/File:DPAA_25-4PG_Team_celebrates_PNG_50th_Independence_Day_(9332993).jpg",
-    credit: "U.S. Air Force / Staff Sgt. Matthew Angulo", license: "Public domain",
-    caption: "Tolai masked dancers in leaf costumes perform the Kinavai dawn dance for Papua New Guinea's Independence Day",
+    // Was two masked figures walking AWAY down a beach.
+    src: "https://commons.wikimedia.org/wiki/Special:FilePath/Adorable_(48875248593).jpg?width=800",
+    source: "https://commons.wikimedia.org/wiki/File:Adorable_(48875248593).jpg",
+    credit: "gailhampshire", license: "CC BY 2.0",
+    caption: "Children in face paint, shell headbands and leaf costume at the Mount Hagen Show, Western Highlands, Papua New Guinea",
   },
   "Solomon Is.": {
     src: "https://commons.wikimedia.org/wiki/Special:FilePath/Pacific%20Partnership%202022%20visits%20Francis%20Primary%20School%20%287408289%29.jpg?width=800",
@@ -860,11 +879,15 @@ export const COUNTRY_PEOPLE = {
       caption: "A lion dance for Chinese New Year at a shopping district in Kuala Lumpur",
     },
     {
-      src: "https://commons.wikimedia.org/wiki/Special:FilePath/Colourful_Unity_of_Love_towards_God.jpg?width=800",
-      source: "https://commons.wikimedia.org/wiki/File:Colourful_Unity_of_Love_towards_God.jpg",
-      credit: "Puvent Santhrasagaran", license: "CC BY-SA 4.0",
+      // Was a night crowd at Batu Caves with no readable face. The Commons page for this
+      // one has no infobox, so the API reports no author — the wikitext credits Flickr
+      // user "tajai / June" (flickr.com/photos/cayce/104676396), which is the attribution
+      // CC BY-2.0 requires.
+      src: "https://commons.wikimedia.org/wiki/Special:FilePath/Thaipusam3.jpg?width=800",
+      source: "https://commons.wikimedia.org/wiki/File:Thaipusam3.jpg",
+      credit: "tajai", license: "CC BY 2.0",
       people: "Indian Malaysian",
-      caption: "Hindu devotees at the Thaipusam festival at the Batu Caves near Kuala Lumpur",
+      caption: "Worshippers carry milk pots on their heads in a Thaipusam procession, Malaysia",
     },
   ],
   "Kazakhstan": {
@@ -898,10 +921,11 @@ export const COUNTRY_PEOPLE = {
     caption: "A girl in traditional Tunisian dress and gold jewelry at a wedding celebration on Djerba",
   },
   "Bangladesh": {
-    src: "https://commons.wikimedia.org/wiki/Special:FilePath/Mangal%20Shobhajatra%201.jpg?width=800",
-    source: "https://commons.wikimedia.org/wiki/File:Mangal_Shobhajatra_1.jpg",
-    credit: "Mustmamun", license: "CC BY-SA 4.0",
-    caption: "Colorful masks at the Mangal Shobhajatra parade for Pohela Boishakh, the Bengali New Year, in Dhaka",
+    // Was an aerial shot of a crowd — no face in it larger than a full stop.
+    src: "https://commons.wikimedia.org/wiki/Special:FilePath/Bangladeshi_girls_celebrating_Pohela_Falgun_festival_at_DC_Hill_(01).jpg?width=800",
+    source: "https://commons.wikimedia.org/wiki/File:Bangladeshi_girls_celebrating_Pohela_Falgun_festival_at_DC_Hill_(01).jpg",
+    credit: "Moheen Reeyad", license: "CC BY-SA 4.0",
+    caption: "Young women in saris at Pohela Falgun, the first day of spring in the Bengali calendar, Chattogram, Bangladesh",
   },
   "Uruguay": {
     src: "https://commons.wikimedia.org/wiki/Special:FilePath/Desfile%20de%20Llamadas%202020%20-%20Barrio%20Sur%20-%20Montevideo%20-%20Uruguay%20200214-1020898-jikatu%20%2849538521121%29.jpg?width=800",
