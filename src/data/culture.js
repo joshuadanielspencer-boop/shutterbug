@@ -242,10 +242,13 @@ export const COUNTRY_PEOPLE = {
     },
   ],
   "Tanzania": {
-    src: "https://commons.wikimedia.org/wiki/Special:FilePath/Two_women_wearing_Kangas.jpg?width=800",
-    source: "https://commons.wikimedia.org/wiki/File:Two_women_wearing_Kangas.jpg",
-    credit: "Sophiestolle", license: "CC BY-SA 4.0",
-    caption: "Two women in Tanzania wear colorful kanga cloths printed with Swahili sayings",
+    // Was one person photographed from behind. Losing the kanga is a real loss — the
+    // Swahili sayings printed on them are a good fact — but every freely-licensed kanga
+    // photo on Commons is either a market stall of folded cloth or a distant figure.
+    src: "https://commons.wikimedia.org/wiki/Special:FilePath/2005-04-20_Masai_(Maasai)_youths.jpg?width=800",
+    source: "https://commons.wikimedia.org/wiki/File:2005-04-20_Masai_(Maasai)_youths.jpg",
+    credit: "Kevin Walsh", license: "CC BY 2.0",
+    caption: "Maasai young men in red shúkà cloth and beaded collars at the rim of the Ngorongoro Crater, Tanzania",
   },
   "Namibia": {
     src: "https://commons.wikimedia.org/wiki/Special:FilePath/Herero%20lady%20%285%29.jpg?width=800",
@@ -406,10 +409,11 @@ export const COUNTRY_PEOPLE = {
     caption: "Women in atlas silk ikat dress dancing and playing doira drums at a Navruz celebration in Bukhara",
   },
   "Sri Lanka": {
-    src: "https://commons.wikimedia.org/wiki/Special:FilePath/Water%20Carrier%20Dancers.jpg?width=800",
-    source: "https://commons.wikimedia.org/wiki/File:Water_Carrier_Dancers.jpg",
-    credit: "Iamironviper", license: "CC BY-SA 4.0",
-    caption: "Performers of the traditional Water Carrier Dance (Kothala Paliya) at a Sri Lankan perahera festival",
+    // Was the same kind of dancers, all facing away from the camera.
+    src: "https://commons.wikimedia.org/wiki/Special:FilePath/Kandy_Dance_(6493011161).jpg?width=800",
+    source: "https://commons.wikimedia.org/wiki/File:Kandy_Dance_(6493011161).jpg",
+    credit: "Arian Zwegers", license: "CC BY 2.0",
+    caption: "A Kandyan dancer in the silver headdress and beaded breastplate of the ves costume, Kandy, Sri Lanka",
   },
   "Taiwan": {
     src: "https://commons.wikimedia.org/wiki/Special:FilePath/Ilisin%20-%20Young%20Girls%20Singing.jpg?width=800",
@@ -432,10 +436,12 @@ export const COUNTRY_PEOPLE = {
 
   // ---- Europe (reviewed batch; Russia & Turkey are in the Asia batch above) ----
   "United Kingdom": {
-    src: "https://commons.wikimedia.org/wiki/Special:FilePath/Northern%20Constabulary%20Pipe%20Band%20at%20Cowal%20Highland%20Games%20Dunoon%20Scotland%20(4949923566).jpg?width=800",
-    source: "https://commons.wikimedia.org/wiki/File:Northern%20Constabulary%20Pipe%20Band%20at%20Cowal%20Highland%20Games%20Dunoon%20Scotland%20(4949923566).jpg",
-    credit: "Dave Conner", license: "CC BY 2.0",
-    caption: "A Scottish pipe band in full Highland dress, kilts and bagpipes, at the Cowal Highland Gathering",
+    // Was a pipe band photographed entirely from behind — a wall of backs and bonnets.
+    // Same subject, marching towards the camera this time.
+    src: "https://commons.wikimedia.org/wiki/Special:FilePath/Bagpiper_march_in_Edinburgh_-_geograph.org.uk_-_8282339.jpg?width=800",
+    source: "https://commons.wikimedia.org/wiki/File:Bagpiper_march_in_Edinburgh_-_geograph.org.uk_-_8282339.jpg",
+    credit: "Lucas Kendall", license: "CC BY-SA 2.0",
+    caption: "A Scottish pipe band in kilts and blue balmorals marching through Edinburgh",
   },
   "France": {
     // Was the same festival shot from the back of a very large crowd on stadium steps.
@@ -464,10 +470,11 @@ export const COUNTRY_PEOPLE = {
     caption: "A Bavarian folk group at the Munich costume parade, men in lederhosen and a woman in a dirndl",
   },
   "Spain": {
-    src: "https://commons.wikimedia.org/wiki/Special:FilePath/Feria%20abril%202011%200001.jpg?width=800",
-    source: "https://commons.wikimedia.org/wiki/File:Feria%20abril%202011%200001.jpg",
-    credit: "Sevilla Congress & Convention Bureau", license: "CC BY-SA 4.0",
-    caption: "Women in colorful ruffled flamenco dresses at Seville's April Fair",
+    // Was the same Feria, same photographer, but every woman had her back to the lens.
+    src: "https://commons.wikimedia.org/wiki/Special:FilePath/19683460325_d6db6d6cc0_o_feria_abril_2011.jpg?width=800",
+    source: "https://commons.wikimedia.org/wiki/File:19683460325_d6db6d6cc0_o_feria_abril_2011.jpg",
+    credit: "Sevilla Congress & Convention Bureau", license: "CC BY-SA 2.0",
+    caption: "Women in the ruffled traje de flamenca, flowers in their hair, at Seville's April Fair",
   },
   "Portugal": {
     // Was a night shot of a square full of figures the size of grains of rice.
@@ -580,11 +587,14 @@ export const COUNTRY_PEOPLE = {
   // All three files licence-checked via the Commons API (scripts/commons.mjs).
   "United States": [
     {
-      src: "https://commons.wikimedia.org/wiki/Special:FilePath/Assiniboine%20Sioux%20Jingle%20Dress%20Girls.jpg?width=800",
-      source: "https://commons.wikimedia.org/wiki/File:Assiniboine%20Sioux%20Jingle%20Dress%20Girls.jpg",
-      credit: "Thayne Tuason", license: "CC BY-SA 4.0",
+      // Was jingle dancers photographed from behind. The jingle dress goes with them —
+      // every free front-on jingle photo was distant or in a museum case — so the
+      // caption follows the new photo: Lakota shawl dancers, not Assiniboine Sioux.
+      src: "https://commons.wikimedia.org/wiki/Special:FilePath/Lakota_girl.jpg?width=800",
+      source: "https://commons.wikimedia.org/wiki/File:Lakota_girl.jpg",
+      credit: "Neeta Lind", license: "CC BY 2.0",
       people: "Native American",
-      caption: "Assiniboine Sioux dancers in jingle dresses trimmed with metal cones that chime as they dance, at the Wadopana Pow Wow in Montana",
+      caption: "A young Lakota shawl dancer in a beaded breastplate, taking a break at a powwow",
     },
     {
       src: "https://commons.wikimedia.org/wiki/Special:FilePath/Juneteenth_marching_band_parade_in_Austin%2C_Texas%2C_2009.jpg?width=800",
