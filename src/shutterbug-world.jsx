@@ -13,6 +13,7 @@ import { JOURNEYS, JOURNEY_BY_ID, journeyBox, unrolledX, closestStops } from "./
 import { HUBS, TRANSPORT_BY_ID, transportOptionsFor, countryTransport, money as fmtMoney, currencyFor } from "./data/travel.js";
 import { COUNTRY_PEOPLE, peopleCards, greetingMeaning } from "./data/culture.js";
 import { COUNTRY_CURRENCY, CURRENCY_AS_OF } from "./data/currency.js";
+import { DOG_LINES } from "./data/pickles.js";
 import { CREDIT_SECTIONS, COPYRIGHT_LINE } from "./data/credits.js";
 // The small presentational pieces that only put a picture on the screen. They know
 // nothing about the game, so they live outside it — see src/components/media.jsx.
@@ -40,7 +41,7 @@ import { FRAME_AR, countryKey, pathBBox, pathBBoxCached as PATH_BBOX_CACHE, isSp
   wrapPathPacific, trimWrappedSubpaths, trimFarSubpaths, toFrameAspect, fitBox,
   eqPointFromEvent, milesPerLonDegree, niceScaleMiles,
   WC_ALIAS, COUNTRY_BOX_OVERRIDE } from "./map-geometry.js";
-import { rnd, shuffled, withSeed, randInt } from "./rng.js";
+import { rnd, shuffled, withSeed, randInt, pickOne } from "./rng.js";
 import { flightDays, kmBetween, tourPar as par, routeCost as legCost } from "./routes.js";
 import { dayNumber, dailySeed, dailyKey, shareText, DAILY_ASSIGNMENTS } from "./daily.js";
 import { CATEGORIES, CATEGORY_ORDER, KIND_META, kindOf } from "./data/categories.js";
@@ -1717,9 +1718,12 @@ export default function ShutterbugWorld() {
     if (!perfect) { perfectStreakRef.current = 0; return null; }
     perfectStreakRef.current += 1;
     const n = perfectStreakRef.current;
-    if (n % 3 === 0) return "streak";
-    if (n % 3 === 2) return "two";
-    return "perfect";
+    const kind = n % 3 === 0 ? "streak" : n % 3 === 2 ? "two" : "perfect";
+    // The LINE is chosen here, with the cheer, rather than inside the component.
+    // PicklesCheer is not remounted between result cards — same component, same
+    // slot — so a line picked in there would stick until the tier changed, which is
+    // exactly how one line came to feel like her entire vocabulary.
+    return { kind, line: pickOne(DOG_LINES[kind].lines) };
   };
   // Mr. O's double-points riddle: a blocking popup that appears at least once every
   // five shots (at a random shot within each window). { data, choices, answeredIdx }.
@@ -7799,7 +7803,7 @@ function ResultModal({ data, onContinue, reduced }) {
       // Dim a touch more when Pickles is here, so she reads clearly against a
       // quieter desk (Joshua: "darken it just a bit more" when a character pops up).
       style={{ position: "fixed", inset: 0, background: data.cheer ? "rgba(16,38,46,0.76)" : "rgba(16,38,46,0.62)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16, zIndex: 50 }}>
-      {data.cheer && <PicklesCheer kind={data.cheer} outfit={data.cheerOutfit} reduced={reduced} />}
+      {data.cheer && <PicklesCheer cheer={data.cheer} outfit={data.cheerOutfit} reduced={reduced} />}
       <div className={reduced ? "" : "sbw-pop"}
         style={{ background: PAPER, borderRadius: 16, border: `3px solid ${accent}`, boxShadow: "0 14px 44px rgba(0,0,0,0.35)", maxWidth: sideBySide ? 840 : 620, width: "100%", maxHeight: "92vh", overflowY: "auto", padding: "34px 40px", textAlign: "center" }}>
         <div style={{ fontSize: 56, lineHeight: 1 }} aria-hidden="true">{data.emoji}</div>
@@ -8633,11 +8637,6 @@ function pickDogOutfit(country, isUnlocked = () => true) {
 // She does NOT carry facts. That was Mr O's job as well, and two characters both
 // arriving to tell you something true made her feel like a second editor rather than
 // a dog. She reacts to the shot and nothing else; the pride IS the payload.
-const DOG_LINES = {
-  two: { pose: "sit", line: "Two in a row! Pickles is sat bolt upright, one paw up." },
-  streak: { pose: "bow", line: "Three perfect shots! Pickles is bowing and bouncing and can hardly stand it." },
-  perfect: { pose: "spin", line: "Pickles saw that one. Tail going like anything." },
-};
 // Pickles, celebrating alongside the shot you just took. She rides IN the result card
 // rather than arriving as her own screen: a second full-screen popup after the
 // perfect-shot card meant two things to click through for one good moment, and the
@@ -8652,8 +8651,10 @@ const DOG_LINES = {
 //
 // pointerEvents: none throughout, because she is celebration, not a control: she
 // must never intercept a click meant for the card behind her.
-function PicklesCheer({ kind, outfit, reduced }) {
-  const copy = DOG_LINES[kind] || DOG_LINES.perfect;
+function PicklesCheer({ cheer, outfit, reduced }) {
+  // `cheer` is { kind, line } — the line was drawn when the shot resolved, not here.
+  const copy = DOG_LINES[cheer?.kind] || DOG_LINES.perfect;
+  const line = cheer?.line || copy.lines[0];
   // Dressed for the region she's in (Phase 1), else her basic fur. Each outfit ships
   // the same six poses, so her celebration pose survives the costume — the semantic
   // pose maps onto the outfit's file (see OUTFIT_POSE_FILE).
@@ -8684,7 +8685,7 @@ function PicklesCheer({ kind, outfit, reduced }) {
       <p style={{ margin: 0, color: "#FFF3D6", fontSize: 15, lineHeight: 1.4, textAlign: "center", fontWeight: 600,
         textShadow: "0 2px 6px rgba(0,0,0,0.85), 0 0 2px rgba(0,0,0,0.9)" }}>
         <span style={{ display: "block", fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.14em", color: GOLD, fontWeight: 800, marginBottom: 3 }}>🐾 PICKLES</span>
-        {copy.line}
+        {line}
       </p>
     </div>
   );

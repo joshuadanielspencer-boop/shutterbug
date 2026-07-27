@@ -14,6 +14,7 @@ import { RIVERS, LAKES, MARINE, WATER_FEATURES, WATER_KINDS } from "../src/data/
 import { TUNES, tuneKeyFor } from "../src/data/tunes.js";
 import { JOURNEYS, journeyBox, closestStops, unrolledX } from "../src/data/journeys.js";
 import { flightLegs, ROBINSON_W } from "../src/robinson.js";
+import { DOG_LINES, ALL_DOG_LINES } from "../src/data/pickles.js";
 import { CURIOSITY_DECKS, CURIOSITY_DECK_BY_ID, ALL_CURIOSITY_IDS } from "../src/data/curiosities.js";
 import { KIT_ITEMS, KIT_OFFERED, KIT_TAKEN } from "../src/data/kit.js";
 import { eqToRobinson } from "../src/robinson.js";
@@ -1253,5 +1254,45 @@ describe("flight paths", () => {
     const ends = (pts[0].y + pts[pts.length - 1].y) / 2;
     const highest = Math.min(...pts.map((p) => p.y));   // smaller y = further north
     expect(ends - highest, "the arc should bow north of its endpoints").toBeGreaterThan(1);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Pickles has more than one thing to say.
+// ---------------------------------------------------------------------------
+describe("Pickles's lines", () => {
+  it("gives every cheer tier a real pool, not a single line", () => {
+    // The complaint that produced this: "Tail going like anything" over and over.
+    // `perfect` fires on two shots in every three, so a thin pool there is the one
+    // a player actually notices.
+    for (const [kind, d] of Object.entries(DOG_LINES)) {
+      expect(d.pose, `${kind}: no pose`).toBeTruthy();
+      expect(d.lines.length, `${kind}: only ${d.lines.length} line(s)`).toBeGreaterThanOrEqual(10);
+    }
+  });
+
+  it("never repeats a line, within a tier or across them", () => {
+    const seen = new Set();
+    for (const l of ALL_DOG_LINES) {
+      expect(seen.has(l), `duplicate line: "${l}"`).toBe(false);
+      seen.add(l);
+    }
+  });
+
+  it("keeps them short enough to read beside the photograph", () => {
+    // She shares the result card with the shot the player just earned. A line long
+    // enough to be a paragraph pulls the eye off the picture it is celebrating.
+    for (const l of ALL_DOG_LINES) {
+      expect(l.length, `too long: "${l}"`).toBeLessThanOrEqual(90);
+      expect(l.trim(), "blank line").toBeTruthy();
+    }
+  });
+
+  it("describes a dog rather than putting words in her mouth", () => {
+    // Pickles does not talk — that is why her line isn't typed out like Jonah's.
+    // A quoted line would mean someone had started writing dialogue for her.
+    for (const l of ALL_DOG_LINES) {
+      expect(l, `Pickles doesn't speak: "${l}"`).not.toMatch(/[""]/);
+    }
   });
 });

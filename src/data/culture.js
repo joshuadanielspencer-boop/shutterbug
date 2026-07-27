@@ -172,11 +172,15 @@ export const COUNTRY_PEOPLE = {
   },
   "New Zealand": [
     {
-      src: "https://commons.wikimedia.org/wiki/Special:FilePath/Maori_men%27s_cultural_performance_group_%28AM_78261-1%29.jpg?width=800",
-      source: "https://commons.wikimedia.org/wiki/File:Maori_men%27s_cultural_performance_group_(AM_78261-1).jpg",
-      credit: "T. W. Collins / Auckland War Memorial Museum", license: "CC BY 4.0",
+      // Was a 1943 black-and-white group shot taken from so far back that no face
+      // read at all — the exact thing this card exists to show. This one is close
+      // enough to see the performer's tā moko.
+      src: "https://commons.wikimedia.org/wiki/Special:FilePath/Maori_performer.jpg?width=800",
+      source: "https://commons.wikimedia.org/wiki/File:Maori_performer.jpg",
+      credit: "Unknown", license: "Public domain",
       people: "Māori",
-      caption: "Māori men perform a haka (Auckland Museum, 1943)",
+      caption: "A Māori performer in a piupiu and feather cloak, near Rotorua, New Zealand",
+      portrait: true,
     },
     {
       src: "https://commons.wikimedia.org/wiki/Special:FilePath/Kia_Aroha_College%2C_Siva_performance_at_ASB_Polyfest._(POLY-D-2015-103).jpg?width=800",

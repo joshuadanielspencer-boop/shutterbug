@@ -4751,9 +4751,12 @@ export const LOCATIONS = [
     medium: "Word from Canada: below a hanging glacier in the Rocky Mountains lies a startlingly turquoise lake, colored by rock the ice has ground into fine powder. Photograph the turquoise glacier lake.",
     hard: "A famously turquoise mountain lake sits beneath a glacier, its color made by rock flour that the ice grinds and washes into the water. Bring me the turquoise glacier lake.",
     fact: "Lake Louise gets its vivid turquoise color from 'rock flour' — microscopic rock particles ground up by the Victoria Glacier and carried into the lake by meltwater.",
-    photo: { src: "https://commons.wikimedia.org/wiki/Special:FilePath/Lake_Louise_Victoria_Glacier.jpg?width=800",
-      credit: "Kevin Gabbert", license: "Public domain", licenseUrl: "",
-      source: "https://commons.wikimedia.org/wiki/File:Lake_Louise_Victoria_Glacier.jpg" },
+    // The old photo (Lake_Louise_Victoria_Glacier.jpg) had no lake in it at all — it
+    // was a scree slope below the glacier, taken from the trail well above the water.
+    // A clue that says "bring me the turquoise glacier lake" has to show the lake.
+    photo: { src: "https://commons.wikimedia.org/wiki/Special:FilePath/Banff National Park (AB, Canada), Lake Louise -- 2022 -- 2200.jpg?width=800",
+      credit: "Dietmar Rabich", license: "CC BY-SA 4.0", licenseUrl: "https://creativecommons.org/licenses/by-sa/4.0/",
+      source: "https://commons.wikimedia.org/wiki/File:Banff National Park (AB, Canada), Lake Louise -- 2022 -- 2200.jpg" },
     greeting: {"text":"Hello","language":"English","pronunciation":null} },
   { id: "parliamenthill", city: "Ottawa", country: "Canada", flag: "🇨🇦", continent: "North America",
     x: 104.3, y: 44.58,
