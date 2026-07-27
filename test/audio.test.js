@@ -133,3 +133,38 @@ describe("title, travel and finale tunes", () => {
     }
   });
 });
+
+// ---------------------------------------------------------------------------
+// Every country must SOUND like somewhere.
+// ---------------------------------------------------------------------------
+describe("country tunes", () => {
+  it("no country falls through to the neutral generic bed", async () => {
+    const { LOCATIONS } = await import("../src/data/locations.js");
+    const { tuneKeyFor, TUNES } = await import("../src/data/tunes.js");
+    // `generic` is a music box with no regional character at all. It exists as a
+    // backstop so a new country never arrives in silence — but a country actually
+    // REACHING it means a child photographs, say, Banff and Niagara and hears the
+    // same nothing-in-particular each time. Canada was doing exactly that with ten
+    // places, which is how this test came to be written.
+    const fellThrough = [...new Set(LOCATIONS
+      .filter((l) => tuneKeyFor(l.country, l.continent) === "generic")
+      .map((l) => l.country))];
+    expect(fellThrough, `these countries have no music of their own: ${fellThrough.join(", ")}`).toEqual([]);
+  });
+
+  it("every tune a country resolves to actually exists, and is long enough to stand alone", async () => {
+    const { LOCATIONS } = await import("../src/data/locations.js");
+    const { tuneKeyFor, TUNES } = await import("../src/data/tunes.js");
+    for (const country of new Set(LOCATIONS.map((l) => l.country))) {
+      const l = LOCATIONS.find((x) => x.country === country);
+      const key = tuneKeyFor(country, l.continent);
+      const t = TUNES[key];
+      expect(t, `${country} resolves to "${key}", which has no tune`).toBeTruthy();
+      // The tunes play ONCE now, so a phrase too short to stand on its own reads as
+      // a fragment rather than a melody. The shipped beds run 4.7-9.9 seconds.
+      const secs = t.seq.reduce((s, [, beats]) => s + beats * t.spb, 0);
+      expect(secs, `${key} is only ${secs.toFixed(1)}s — too short to play once`).toBeGreaterThan(4);
+      expect(secs, `${key} is ${secs.toFixed(1)}s — too long to hold an arrival`).toBeLessThan(12);
+    }
+  });
+});

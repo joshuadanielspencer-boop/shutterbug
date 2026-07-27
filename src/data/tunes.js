@@ -244,6 +244,27 @@ export const TUNES = {
     ["D5",3],["A4",2],["r",1],["F5",3],["D5",2],["r",1],["A4",2],["D5",4],
   ] },
   // Fallback — a gentle music-box major.
+  // Canada — the last country of any size still landing on `generic`, and with ten
+  // places it was easily the biggest hole in the map's sound: a child could photograph
+  // Banff, Niagara and the Bay of Fundy and hear the same neutral music box each time.
+  //
+  // This is an ORIGINAL bed, like every other one here, not a national tune. That is
+  // deliberate. The obvious "Canadian melody" is a French-Canadian voyageur song, and
+  // the ones a child would know are exactly the ones this project has already refused
+  // to reconstruct from memory (see the note on La Cucaracha). Writing our own costs
+  // nothing and is honest.
+  //
+  // It is a PADDLING song: a rolling, two-beat lilt in G, the shape of the canoe
+  // songs the voyageurs actually sang to keep a stroke rate — call in the low
+  // register, answer up an octave, the way a work song trades between a leader and
+  // the boat. Fiddle-ish reed, but slower and rounder than the Irish reel, so Canada
+  // and Ireland can't be mistaken for one another.
+  canada: { timbre: "reed", spb: 0.25, seq: [
+    ["G4",1],["G4",0.5],["A4",0.5],["B4",1],["D5",1],["B4",1],["A4",1],["G4",1.5],["r",0.5],
+    ["A4",1],["A4",0.5],["B4",0.5],["C5",1],["E5",1],["C5",1],["B4",1],["A4",1.5],["r",0.5],
+    ["D5",1],["D5",0.5],["C5",0.5],["B4",1],["G4",1],["B4",1],["C5",1],["D5",2],
+    ["B4",1],["A4",1],["G4",1],["E4",1],["D4",1],["G4",1],["G4",2.5],
+  ] },
   generic: { timbre: "music", spb: 0.3, seq: [
     ["C4",1],["E4",1],["G4",1],["C5",1],["B4",1],["G4",1],["A4",1],["F4",1],["G4",2],["r",1],
     ["E5",1],["D5",1],["C5",1],["A4",1],["G4",1],["E4",1],["F4",1],["D4",1],["C4",3],
@@ -287,6 +308,10 @@ export const COUNTRY_MOTIF = {
   // Mediterranean Europe
   "Greece": "mediterranean", "Italy": "mediterranean", "Spain": "mediterranean", "Portugal": "mediterranean",
   "Croatia": "mediterranean",
+  // Malta was falling through to `generic` — an island in the middle of the
+  // Mediterranean playing a neutral music box. Its own folk singing, għana, sits
+  // squarely between Sicily and North Africa, which is what this bed already is.
+  "Malta": "mediterranean",
   // Slavic / Eastern Europe
   "Russia": "slavic", "Poland": "slavic", "Czechia": "slavic", "Hungary": "slavic", "Romania": "slavic",
   // Northern and Alpine Europe — these were all falling through to "generic".
@@ -312,6 +337,8 @@ export const COUNTRY_MOTIF = {
   "Costa Rica": "centralamerica", "Panama": "centralamerica",
   // The ice. See the note on the `polar` bed.
   "Antarctica": "polar", "Greenland": "polar",
+  // Canada gets its own paddling bed rather than the continent's fallback.
+  "Canada": "canada",
 };
 
 // Broad fallback by continent.
