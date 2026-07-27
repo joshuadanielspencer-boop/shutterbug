@@ -692,6 +692,251 @@ export const JOURNEYS = [
       },
     ],
   },
+
+  // -------------------------------------------------------------------------
+  // THE PONY EXPRESS. A wide, short, thoroughly documented run: eleven stations
+  // from the Missouri to the Sacramento, every one of which still exists as a
+  // named place with recorded coordinates.
+  // -------------------------------------------------------------------------
+  {
+    id: "pony-express",
+    title: "The Pony Express",
+    emoji: "🐎",
+    era: "1860–1861",
+    region: "North America",
+    blurb: "Mail across two thousand miles of the American West, in ten days, on horseback.",
+    intro: "In 1860 a letter from Missouri to California went by ship around South America, or by "
+      + "stagecoach, and took weeks. The Pony Express promised ten days. Riders galloped in relays "
+      + "night and day, changing horses every 10 to 15 miles, across prairie, over the Rocky "
+      + "Mountains and the Great Basin desert, to the goldfields of California. It ran for just "
+      + "eighteen months. Follow the mail west, station by station.",
+    outro: "The Pony Express lost money from the first day and closed two days after the "
+      + "transcontinental telegraph reached California. It had run for eighteen months — and it is "
+      + "remembered far better than the telegraph that replaced it.",
+    source: "https://en.wikipedia.org/wiki/Pony_Express",
+    aspect: 2.3,
+    stops: [
+      {
+        id: "st-joseph", name: "St. Joseph", place: "Missouri", when: "3 April 1860",
+        ...at(39.75806, -94.83667),
+        prompt: "The eastern end of the line: the last town on the railroad, where the first rider set off westward.",
+        fact: "St. Joseph was as far west as the railroad went, so this is where the Pony Express began. The first rider left on 3 April 1860 carrying a locked leather mochila of mail, bound for Sacramento about 1,900 miles (3,060 km) away.",
+        source: "https://en.wikipedia.org/wiki/St._Joseph,_Missouri",
+      },
+      {
+        id: "marysville", name: "Marysville", place: "Kansas", when: "Day 1",
+        ...at(39.84306, -96.63861),
+        prompt: "A home station on the Kansas prairie, where a tired rider handed the mail to a fresh one.",
+        fact: "Stations came in two kinds. At a relay station a rider swapped horses in about two minutes; at a home station like Marysville he handed the mail to a different rider entirely and rested. Marysville's stone barn still stands.",
+        source: "https://en.wikipedia.org/wiki/Marysville,_Kansas",
+      },
+      {
+        id: "fort-kearny", name: "Fort Kearny", place: "Nebraska", when: "Day 2",
+        ...at(40.65, -99.0),
+        prompt: "An army post on the Platte River where the trail from the east met the great westward road.",
+        fact: "Fort Kearny guarded the Platte River road, where the Pony Express route joined the same corridor used by the Oregon and California Trails. For hundreds of miles the riders followed the Platte simply because it was the flattest way west.",
+        source: "https://en.wikipedia.org/wiki/Fort_Kearny",
+      },
+      {
+        id: "julesburg", name: "Julesburg", place: "Colorado", when: "Day 3",
+        ...at(40.97722, -102.25694),
+        prompt: "Where the route left the main Platte and turned up the river's south branch toward the mountains.",
+        fact: "At Julesburg the trail followed the South Platte, then climbed away from the river toward the Rockies. The town had a rough reputation even by frontier standards, and was burned by Cheyenne and Arapaho raiders in 1865, after the Express had ended.",
+        source: "https://en.wikipedia.org/wiki/Julesburg,_Colorado",
+      },
+      {
+        id: "fort-laramie", name: "Fort Laramie", place: "Wyoming", when: "Day 4",
+        ...at(42.20917, -104.53586),
+        prompt: "A fur-trading post turned army fort, the great resupply stop before the mountains.",
+        fact: "Fort Laramie began as a fur-trading post and became the most important stop on the overland trails — a place to repair wagons, buy supplies and rest before the hard climb west. Every major trail west passed its gates.",
+        source: "https://en.wikipedia.org/wiki/Fort_Laramie_National_Historic_Site",
+      },
+      {
+        id: "south-pass", name: "South Pass", place: "Wyoming", when: "Day 5",
+        ...at(42.3303, -108.9738),
+        prompt: "The crossing of the Continental Divide — so broad and gentle that riders could miss the moment they crossed it.",
+        fact: "South Pass is the reason the American West could be crossed at all. At 7,412 feet (2,259 m) it is a wide, gentle saddle over the Continental Divide — so gradual that travellers often could not tell where the climb ended. Rain falling east of it reaches the Atlantic; west of it, the Pacific.",
+        source: "https://en.wikipedia.org/wiki/South_Pass_(Wyoming)",
+      },
+      {
+        id: "fort-bridger", name: "Fort Bridger", place: "Wyoming", when: "Day 6",
+        ...at(41.31778, -110.39194),
+        prompt: "A trading post built by a famous mountain man, where the trails to Oregon, California and Utah parted.",
+        fact: "Fort Bridger was built by the mountain man Jim Bridger as a supply stop for emigrants. It sat at the junction where travellers chose their destination — Oregon, California, or the Salt Lake valley.",
+        source: "https://en.wikipedia.org/wiki/Fort_Bridger",
+      },
+      {
+        id: "salt-lake-city", name: "Salt Lake City", place: "Utah", when: "Day 6–7",
+        ...at(40.76083, -111.89111),
+        prompt: "The only real city between the Missouri and California, and the halfway point of the run.",
+        fact: "Salt Lake City was roughly the midpoint of the route and the only substantial settlement along it. Mail from the east and the west met and passed here, and the city's telegraph office would later become part of the line that put the Express out of business.",
+        source: "https://en.wikipedia.org/wiki/Salt_Lake_City",
+      },
+      {
+        id: "ruby-valley", name: "Ruby Valley", place: "Nevada", when: "Day 8",
+        ...at(40.36028, -115.4475),
+        prompt: "A lonely station in the Great Basin, in the emptiest and most dangerous stretch of the whole route.",
+        fact: "The Great Basin crossing was the hardest part of the route: little water, long gaps between stations, and in 1860 the Paiute War, in which several stations were attacked and burned and the mail stopped for weeks.",
+        source: "https://en.wikipedia.org/wiki/Ruby_Valley,_Nevada",
+      },
+      {
+        id: "carson-city", name: "Carson City", place: "Nevada", when: "Day 9",
+        ...at(39.16444, -119.76694),
+        prompt: "The last stop before the riders climbed the final mountain wall between them and California.",
+        fact: "From Carson City the riders faced the Sierra Nevada — the steepest climb of the journey, and in winter the deepest snow. Riders crossed it in blizzards; some stretches had to be ridden on packed trails broken by mule teams.",
+        source: "https://en.wikipedia.org/wiki/Carson_City,_Nevada",
+      },
+      {
+        id: "sacramento", name: "Sacramento", place: "California", when: "Day 10",
+        ...at(38.58167, -121.49444),
+        prompt: "Journey's end: the western terminus, where the mail came off the horse and onto a steamboat.",
+        fact: "Sacramento was the western end of the line, about ten days from St. Joseph. From here the mail went on by steamboat down the river to San Francisco. The fastest run ever made carried news of Abraham Lincoln's inaugural address in 7 days and 17 hours.",
+        source: "https://en.wikipedia.org/wiki/Sacramento,_California",
+      },
+    ],
+  },
+
+  // -------------------------------------------------------------------------
+  // SHACKLETON'S ENDURANCE. The polar route on the wish list — but deliberately
+  // NOT Amundsen's dash to the Pole, and the reason is cartographic rather than
+  // historical. This journey map is equirectangular, where the South Pole is not
+  // a point but the entire bottom edge, and every meridian meets there. A route
+  // ending at 90°S would be drawn as a line running sideways along the foot of
+  // the world, which is nonsense — trap 1 in map form. Shackleton's story happens
+  // between about 54°S and 69°S, where an equirectangular map is honest.
+  // -------------------------------------------------------------------------
+  {
+    id: "endurance",
+    title: "Shackleton's Endurance",
+    emoji: "🧊",
+    era: "1914–1917",
+    region: "Antarctica",
+    blurb: "The ship was crushed by ice before the journey even began. Everyone came home alive.",
+    intro: "In 1914 Ernest Shackleton set out to walk across Antarctica. He never set foot on it. "
+      + "His ship Endurance was caught in the pack ice of the Weddell Sea, drifted for ten months, "
+      + "and was crushed. What follows is not an expedition but an escape — across ice floes, in "
+      + "open boats, and finally over an uncharted mountain range — and the astonishing part is "
+      + "that all twenty-eight men survived. Follow them.",
+    outro: "Shackleton failed at everything he set out to do, and brought all twenty-eight of his "
+      + "men home alive. It is remembered as one of the greatest feats of leadership ever recorded.",
+    source: "https://en.wikipedia.org/wiki/Imperial_Trans-Antarctic_Expedition",
+    aspect: 1.0,
+    stops: [
+      {
+        id: "plymouth", name: "Plymouth", place: "England", when: "8 August 1914",
+        ...at(50.37139, -4.14222),
+        prompt: "The port the expedition sailed from — four days after Britain entered a world war.",
+        fact: "Endurance left Plymouth on 8 August 1914, days after Britain entered the First World War. Shackleton offered his ship and crew to the war effort; the Admiralty sent back a one-word reply — \"Proceed\" — and they sailed south.",
+        source: "https://en.wikipedia.org/wiki/Imperial_Trans-Antarctic_Expedition",
+      },
+      {
+        id: "buenos-aires", name: "Buenos Aires", place: "Argentina", when: "October 1914",
+        ...at(-34.60389, -58.38139),
+        prompt: "The South American port where the ship was refitted and the last crew taken on.",
+        fact: "Endurance was refitted at Buenos Aires before heading south. From here she called at the whaling station of Grytviken on South Georgia, where the whalers warned that the pack ice that year was the worst they had seen. Shackleton sailed anyway.",
+        source: "https://en.wikipedia.org/wiki/Buenos_Aires",
+      },
+      {
+        id: "endurance-wreck", name: "Where Endurance sank", place: "the Weddell Sea", when: "21 November 1915",
+        ...at(-68.739167, -52.329722),
+        prompt: "Deep under the Weddell Sea lies the ship, almost exactly where she went down — and she was found again in 2022.",
+        fact: "Endurance was beset by pack ice in January 1915 and drifted, trapped, for ten months before the ice crushed her. She sank on 21 November 1915. Her wreck was found in March 2022, standing upright and remarkably intact 9,869 feet (3,008 m) down — one of the best-preserved wooden wrecks ever discovered.",
+        source: "https://en.wikipedia.org/wiki/Endurance_(1912_ship)",
+      },
+      {
+        id: "elephant-island", name: "Elephant Island", place: "the South Shetlands", when: "15 April 1916",
+        ...at(-61.14, -55.12),
+        prompt: "A bare rock island where twenty-eight men, after months camped on drifting ice, finally stood on solid ground.",
+        fact: "After the ship sank the men camped on drifting floes, then took to three small boats and reached Elephant Island on 15 April 1916 — the first solid ground under their feet in 497 days. It was uninhabited, unvisited, and no rescue would ever think to look there.",
+        source: "https://en.wikipedia.org/wiki/Elephant_Island",
+      },
+      {
+        id: "stromness", name: "Stromness", place: "South Georgia", when: "20 May 1916",
+        ...at(-54.16, -36.7116),
+        prompt: "A whaling station on the far side of an uncrossed mountain range — and the end of the walk for help.",
+        fact: "Shackleton and five men sailed a 22-foot lifeboat, the James Caird, about 800 miles (1,300 km) across the Southern Ocean to South Georgia in sixteen days. They landed on the wrong side of the island and three of them crossed its uncharted mountains on foot in 36 hours to reach the whaling station at Stromness. Every man left on Elephant Island was rescued that August.",
+        source: "https://en.wikipedia.org/wiki/Stromness,_South_Georgia",
+      },
+    ],
+  },
+
+  // -------------------------------------------------------------------------
+  // THE EXODUS — the most CONTESTED route in the game, and handled accordingly.
+  //
+  // Almost none of the places named in the biblical account can be securely
+  // located on a map. Some (Pi-Ramesses) are firmly identified by archaeology;
+  // most are traditional identifications that scholars dispute, and a few — the
+  // sea crossing itself — have no agreed location at all and are therefore NOT
+  // given a pin here rather than being invented.
+  //
+  // Every stop carries `certainty`, the card prints a plain warning on the
+  // traditional ones, and the intro says outright that the route is traditional.
+  // The rule is the one in this file's header: never quietly present a
+  // traditional site as a fact.
+  // -------------------------------------------------------------------------
+  {
+    id: "exodus",
+    title: "The Exodus Route",
+    emoji: "🏜️",
+    era: "traditionally c. 1450–1200 BC",
+    region: "Egypt & the Levant",
+    blurb: "The traditional path from Egypt to the edge of Canaan — and how much of it we can actually locate.",
+    intro: "The Book of Exodus describes a journey out of Egypt, through the wilderness, to the "
+      + "edge of Canaan. This route is the TRADITIONAL one — the path people have long pointed to. "
+      + "Most of the places it names cannot be located with certainty: scholars disagree about "
+      + "nearly every stop, including where Mount Sinai is, and some sites have no agreed location "
+      + "at all. Where a stop is a tradition rather than a proven address, this journey says so. "
+      + "That uncertainty is part of what there is to learn here.",
+    outro: "Of all the places named on this journey, only a few can be pointed to with confidence. "
+      + "That is normal for the ancient world — and knowing the difference between what is proven, "
+      + "what is traditional, and what is unknown is itself a piece of geography worth having.",
+    source: "https://en.wikipedia.org/wiki/The_Exodus",
+    aspect: 1.5,
+    stops: [
+      {
+        id: "pi-ramesses", name: "Pi-Ramesses", place: "the Nile Delta, Egypt", when: "the starting point", certainty: "documented",
+        ...at(30.79889, 31.83583),
+        prompt: "A vanished royal city in the Nile Delta — dug up by archaeologists, and named in the account as where the journey began.",
+        fact: "Pi-Ramesses was the capital built by Ramesses II in the Nile Delta, and it is one of the few places on this route that archaeology has firmly located — at modern Qantir. The city was later abandoned when its branch of the Nile silted up, and its stones were carted away to build elsewhere.",
+        source: "https://en.wikipedia.org/wiki/Pi-Ramesses",
+      },
+      {
+        id: "succoth", name: "Succoth", place: "eastern Nile Delta, Egypt", when: "the first stop", certainty: "traditional",
+        ...at(30.55194, 32.09861),
+        prompt: "The first stop after leaving Egypt — probably a fortified way-station on the desert road east.",
+        fact: "Succoth is often identified with Tell el-Maskhuta in the eastern delta, though the same mound is also argued to be the biblical Pithom, and neither identification is settled. It sat on the road running east out of Egypt toward Sinai.",
+        source: "https://en.wikipedia.org/wiki/Pithom",
+      },
+      {
+        id: "marah", name: "Marah", place: "the Sinai desert", when: "three days into the desert", certainty: "traditional",
+        ...at(29.33333, 32.91667),
+        prompt: "A desert spring remembered for its bitter, undrinkable water.",
+        fact: "Marah means \"bitter\", and the account describes water there too bitter to drink. It is traditionally identified with a spring on the Sinai coast, but the location is a tradition rather than a fixed site — several springs in the region have been proposed.",
+        source: "https://en.wikipedia.org/wiki/Marah_(Bible)",
+      },
+      {
+        id: "mount-sinai", name: "Mount Sinai", place: "the southern Sinai Peninsula", when: "the heart of the journey", certainty: "traditional",
+        ...at(28.53942, 33.97542),
+        prompt: "The mountain at the centre of the whole story — though which mountain it is has been argued about for centuries.",
+        fact: "This peak, Jebel Musa, has been honoured as Mount Sinai since at least the 4th century AD, and Saint Catherine's Monastery has stood at its foot since the 6th — one of the oldest working monasteries on earth. Other mountains in Sinai, in Arabia and in the Negev have all been proposed instead; there is no archaeological proof for any of them.",
+        source: "https://en.wikipedia.org/wiki/Mount_Sinai",
+      },
+      {
+        id: "kadesh-barnea", name: "Kadesh-Barnea", place: "the northern Sinai / Negev", when: "the long stay", certainty: "traditional",
+        ...at(30.6425, 34.41361),
+        prompt: "A desert oasis where, the account says, the people stayed for many years before going on.",
+        fact: "Kadesh-Barnea is usually identified with Tell el-Qudeirat, the largest spring in the northern Sinai — a genuine oasis on the desert routes, and the obvious place for a large group to stop. The identification is widely accepted but not proven.",
+        source: "https://en.wikipedia.org/wiki/Kadesh_(biblical)",
+      },
+      {
+        id: "mount-nebo", name: "Mount Nebo", place: "Jordan", when: "journey's end", certainty: "traditional",
+        ...at(31.76667, 35.725),
+        prompt: "A ridge above the Dead Sea where, tradition says, Moses saw the land ahead and went no further.",
+        fact: "From the ridge of Mount Nebo you can see across the Jordan valley to the hills of the West Bank, and on a clear day as far as Jerusalem — about 2,600 feet (800 m) above the Dead Sea, the lowest land on earth. It has been venerated as the place Moses saw Canaan since early Christian times, and a church has stood here since the 4th century.",
+        source: "https://en.wikipedia.org/wiki/Mount_Nebo",
+      },
+    ],
+  },
 ];
 
 export const JOURNEY_BY_ID = Object.fromEntries(JOURNEYS.map((j) => [j.id, j]));

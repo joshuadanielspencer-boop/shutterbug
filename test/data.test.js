@@ -529,6 +529,28 @@ describe("journeys", () => {
     }
   });
 
+  // A CONTESTED route must label every one of its stops, and the labels must be ones
+  // the card knows how to print. This is the rule-2 guard for journeys: Paul's route
+  // shipped carrying `certainty` on every stop and the UI rendered none of it, so a
+  // site located only by tradition was being told in the same confident voice as Fort
+  // Mandan. Adding the Exodus — where almost nothing can be securely located — is what
+  // made that unacceptable rather than untidy.
+  it("labels every stop on a contested route as documented or traditional", () => {
+    for (const id of ["paul-first-journey", "exodus"]) {
+      const j = JOURNEYS.find((x) => x.id === id);
+      expect(j, `${id}: missing`).toBeTruthy();
+      for (const s of j.stops) {
+        expect(["documented", "traditional"], `${id}/${s.id}: certainty is "${s.certainty}"`)
+          .toContain(s.certainty);
+      }
+      // If nothing on the route were traditional it wouldn't be contested, and the
+      // whole treatment would be pointless ceremony.
+      expect(j.stops.some((s) => s.certainty === "traditional"), `${id}: nothing marked traditional`).toBe(true);
+      // And the intro has to warn the reader before the first stop, not after.
+      expect(j.intro.toLowerCase(), `${id}: intro doesn't flag the uncertainty`).toMatch(/tradition|disagree|uncertain|cannot be located/);
+    }
+  });
+
   // The two circumnavigations must actually circumnavigate: the whole point is that
   // you come home from the far side, so the route has to span most of the globe.
   it("a round-the-world route really does go round the world", () => {

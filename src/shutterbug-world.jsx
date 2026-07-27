@@ -13,6 +13,7 @@ import { JOURNEYS, JOURNEY_BY_ID, journeyBox, unrolledX, closestStops } from "./
 import { HUBS, TRANSPORT_BY_ID, transportOptionsFor, countryTransport, money as fmtMoney, currencyFor } from "./data/travel.js";
 import { COUNTRY_PEOPLE, peopleCards, greetingMeaning } from "./data/culture.js";
 import { COUNTRY_CURRENCY, CURRENCY_AS_OF } from "./data/currency.js";
+import { CREDIT_SECTIONS, COPYRIGHT_LINE } from "./data/credits.js";
 import { categoryCountries, categoryMissionOK as missionOK } from "./missions.js";
 import { robinson, eqToRobinson, robinsonToEq, ROBINSON_W, ROBINSON_H } from "./robinson.js";
 // The pure map geometry — bounding boxes, the two antimeridian cutters, frame-aspect
@@ -1636,6 +1637,7 @@ export default function ShutterbugWorld() {
   const [soundOn, setSoundOn] = useState(true);
   const [flashHint, setFlashHint] = useState(null); // Scout: {type, key} of the correct answer to gently flash after a wrong pick
   const [howToPlay, setHowToPlay] = useState(false); // the splash's how-to-play card
+  const [creditsOpen, setCreditsOpen] = useState(false); // the splash's credits & legal page
   // The results screen's reasons to go again — the nearest unfinished collection,
   // something Uncle wants, and the rank within reach. Fixed when the screen opens.
   const [nextUp, setNextUp] = useState(null);
@@ -4411,15 +4413,25 @@ export default function ShutterbugWorld() {
                 service worker still feeding me an old one?" without guesswork.
                 Left selectable so it can be read out or copied when something looks
                 wrong; it sits clear of everything clickable on the splash. */}
-            <div title="Build version" style={{ position: "absolute", right: "1.6%", bottom: "1.4%",
+            <div style={{ position: "absolute", right: "1.6%", bottom: "1.4%", display: "flex", alignItems: "center", gap: 10,
               fontFamily: "ui-monospace, monospace", fontSize: "clamp(8px, 0.8vw, 11px)",
-              letterSpacing: "0.05em", color: "#fff", opacity: 0.38,
-              textShadow: "0 1px 2px rgba(0,0,0,0.55)" }}>
-              {BUILD_ID}
+              letterSpacing: "0.05em", textShadow: "0 1px 2px rgba(0,0,0,0.55)" }}>
+              {/* The copyright notice sits with the build stamp because this is the
+                  one corner of the game that is about the ARTEFACT rather than the
+                  story. It opens the full credits: most of the photography here is
+                  used under licences that REQUIRE attribution, so a findable list of
+                  who made what isn't politeness, it's the terms. */}
+              <button onClick={() => setCreditsOpen(true)} title="Credits and legal"
+                style={{ background: "transparent", border: "none", padding: 0, font: "inherit",
+                  color: "#fff", opacity: 0.55, cursor: "pointer", textDecoration: "underline" }}>
+                {COPYRIGHT_LINE} · Credits
+              </button>
+              <span title="Build version" style={{ color: "#fff", opacity: 0.38 }}>{BUILD_ID}</span>
             </div>
           </div>
         </div>
         {howToPlay && <HowToPlayModal onClose={() => setHowToPlay(false)} />}
+        {creditsOpen && <CreditsModal onClose={() => setCreditsOpen(false)} />}
         {createOpen && (
           <CreateTravelerModal onSubmit={createAndBegin} onClose={() => setCreateOpen(false)} />
         )}
@@ -4890,6 +4902,19 @@ export default function ShutterbugWorld() {
                 {cur.when.toUpperCase()} · {cur.place.toUpperCase()}
               </div>
               <h3 style={{ margin: "0 0 6px", color: INK, fontSize: 20, fontWeight: 900 }}>{cur.name}</h3>
+              {/* Where a stop is located by TRADITION rather than by evidence, the card
+                  has to say so out loud. The data has carried `certainty` since Paul's
+                  journey shipped and nothing rendered it, which meant a traditional
+                  site was being presented in exactly the same voice as Fort Mandan —
+                  the precise thing docs/remaining-work.md warned against. It is stated
+                  in words, not by colour alone (rule 4). */}
+              {cur.certainty === "traditional" && (
+                <p style={{ margin: "0 0 6px", padding: "5px 8px", background: "#FBF1D6",
+                  border: `1px solid ${GOLD}`, borderRadius: 7, color: INK, fontSize: 12.5, lineHeight: 1.45 }}>
+                  <span aria-hidden="true">📍 </span><b>Located by tradition.</b> Nobody knows for certain
+                  where this one was — this is the spot people have long pointed to, not a proven address.
+                </p>
+              )}
               <p style={{ margin: 0, color: INK, fontSize: 14.5, lineHeight: 1.55 }}>{cur.fact}</p>
               <a href={cur.source} target="_blank" rel="noreferrer"
                 style={{ display: "inline-block", marginTop: 8, fontSize: 11.5, color: OCEAN }}>
@@ -7335,6 +7360,56 @@ function ModalShell({ label, onClose, maxWidth, accent = OCEAN, children }) {
         {children}
       </div>
     </div>
+  );
+}
+// Credits & legal. Reached from the copyright line in the splash corner.
+//
+// Worth being clear about why this page exists at all, because it is the only screen
+// in the game that isn't for the child. Most of the photography here is used under
+// CC BY or CC BY-SA, where naming the photographer is a CONDITION of use rather than
+// a courtesy. The per-photo ⓘ already satisfies that at the point of use; this is the
+// same information gathered where a parent, a school or a licence audit would look
+// for it — plus the plain statement of what Joshua does and doesn't own.
+//
+// All wording lives in src/data/credits.js (rule 1); this only lays it out.
+function CreditsModal({ onClose }) {
+  return (
+    <ModalShell label="Credits and legal" onClose={onClose} accent={OCEAN} maxWidth={720}>
+      <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.16em", color: OCEAN, fontWeight: 800 }}>© CREDITS &amp; LEGAL</div>
+      <h2 style={{ margin: "4px 0 2px", color: INK, fontSize: 24, fontWeight: 900 }}>What this game is made of</h2>
+      <p style={{ margin: "0 0 14px", color: INK, opacity: 0.75, fontSize: 13, lineHeight: 1.5 }}>
+        Shutterbug stands on a great deal of other people's work. Here is whose.
+      </p>
+      {CREDIT_SECTIONS.map((s) => (
+        <section key={s.id} style={{ marginBottom: 16 }}>
+          <h3 style={{ margin: "0 0 4px", color: CORAL, fontSize: 15, fontWeight: 900 }}>{s.title}</h3>
+          <p style={{ margin: "0 0 8px", color: INK, fontSize: 13, lineHeight: 1.55 }}>{s.body}</p>
+          {s.items.length > 0 && (
+            <ul style={{ margin: 0, padding: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 5 }}>
+              {s.items.map((it) => (
+                <li key={it.name} style={{ display: "flex", gap: 8, alignItems: "baseline", flexWrap: "wrap",
+                  background: "#FFF8E6", border: `1px solid ${PAPER_LINE}`, borderRadius: 7, padding: "6px 9px" }}>
+                  <span style={{ fontWeight: 800, color: INK, fontSize: 12.5 }}>
+                    {it.url
+                      ? <a href={it.url} target="_blank" rel="noreferrer noopener" style={{ color: OCEAN }}>{it.name}</a>
+                      : it.name}
+                  </span>
+                  {it.detail && <span style={{ color: INK, opacity: 0.7, fontSize: 12 }}>{it.detail}</span>}
+                  {/* The licence is the load-bearing part of every row, so it is set
+                      apart rather than run into the prose. */}
+                  <span style={{ marginLeft: "auto", fontFamily: "ui-monospace, monospace", fontSize: 10.5,
+                    fontWeight: 800, color: GREEN, whiteSpace: "nowrap" }}>{it.license}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      ))}
+      <div style={{ borderTop: `1px solid ${PAPER_LINE}`, paddingTop: 10, color: INK, opacity: 0.7, fontSize: 12 }}>
+        {COPYRIGHT_LINE}. Photographs and map data remain the property of their creators,
+        under the licences named above.
+      </div>
+    </ModalShell>
   );
 }
 // A shared open-book popup: the book art fills a 3:2 frame and content is laid
