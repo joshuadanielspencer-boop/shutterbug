@@ -267,10 +267,14 @@ export const COUNTRY_PEOPLE = {
     caption: "Women in Rwanda wear the mushanana, a sash draped over one shoulder, at a wedding",
   },
   "Mali": {
-    src: "https://commons.wikimedia.org/wiki/Special:FilePath/ASC%20Leiden%20-%20F.%20van%20der%20Kraaij%20Collection%20-%2019%20-%20032%20-%20Huit%20chanteuses%20traditionnelles%20v%C3%AAtues%20de%20blanc%20r%C3%A9pr%C3%A9sentent%20S%C3%A9gou%20-%201%20-%20Tominian%2C%20R%C3%A9gion%20de%20S%C3%A9gou%2C%20Mali%2C%201972.tiff?width=800",
-    source: "https://commons.wikimedia.org/wiki/File:ASC_Leiden_-_F._van_der_Kraaij_Collection_-_19_-_032_-_Huit_chanteuses_traditionnelles_v%C3%AAtues_de_blanc_r%C3%A9pr%C3%A9sentent_S%C3%A9gou_-_1_-_Tominian,_R%C3%A9gion_de_S%C3%A9gou,_Mali,_1972.tiff",
-    credit: "Fred van der Kraaij", license: "CC BY-SA 4.0",
-    caption: "Women singers in white traditional dress at a gathering in the Ségou region, Mali (1972)",
+    // Was a very distant 1972 crowd. Two rounds of searching found no close free photo
+    // of Malian traditional dress that was actually taken in Mali — the best-looking
+    // candidate turned out to be the Smithsonian Folklife Festival in Washington DC.
+    // So this is the relaxed brief: four boys in Bamako, no costume, faces you can see.
+    src: "https://commons.wikimedia.org/wiki/Special:FilePath/Bamako_Boys_(27402674647).jpg?width=800",
+    source: "https://commons.wikimedia.org/wiki/File:Bamako_Boys_(27402674647).jpg",
+    credit: "Mark Fischer", license: "CC BY-SA 2.0",
+    caption: "Boys in the Hippodrome quarter of Bamako, Mali's capital on the Niger River",
   },
   "Algeria": {
     src: "https://commons.wikimedia.org/wiki/Special:FilePath/Dance%20naili%20a%20Bousaada%20%283%29.jpg?width=800",
@@ -387,10 +391,13 @@ export const COUNTRY_PEOPLE = {
     caption: "Men in the barong tagalog, an embroidered Filipino dress shirt, at a wedding",
   },
   "Russia": {
-    src: "https://commons.wikimedia.org/wiki/Special:FilePath/The%20Russian%20folk%20folkloric%20ensemble%20RASPEV%20%28chant%29%20will%20be%20performing%20in%202021%20in%20the%20Museum-Reservation%20of%20the%20Manor%20%22Muranovo%22%2C%20named%20after%20Fyodor%20Ivanovich%20Tyutchev.jpg?width=800",
-    source: "https://commons.wikimedia.org/wiki/File:The_Russian_folk_folkloric_ensemble_RASPEV_(chant)_will_be_performing_in_2021_in_the_Museum-Reservation_of_the_Manor_%22Muranovo%22,_named_after_Fyodor_Ivanovich_Tyutchev.jpg",
+    // Was a stage group with the faces too small. Russia's folk-costume categories are
+    // almost all pre-1917 studio plates; the Maslenitsa-by-year categories are where
+    // the modern colour photographs live.
+    src: "https://commons.wikimedia.org/wiki/Special:FilePath/%D0%92%D1%8F%D1%82%D1%81%D0%BA%D0%B8%D0%B9_%D0%BA%D0%BE%D0%BB%D0%BE%D1%80%D0%B8%D1%82.jpg?width=800",
+    source: "https://commons.wikimedia.org/wiki/File:%D0%92%D1%8F%D1%82%D1%81%D0%BA%D0%B8%D0%B9_%D0%BA%D0%BE%D0%BB%D0%BE%D1%80%D0%B8%D1%82.jpg",
     credit: "WikiMaxChe", license: "CC BY-SA 4.0",
-    caption: "The RASPEV folk ensemble in sarafans and headscarves at a folk festival near Moscow",
+    caption: "Performers in Vyatka folk dress at Maslenitsa, the Russian festival that sees out the winter",
   },
   "Saudi Arabia": {
     // Was the same dance shot from far enough back that the picture was really of the
@@ -445,10 +452,14 @@ export const COUNTRY_PEOPLE = {
     caption: "Peranakan (Nyonya) ladies in Singapore in the kebaya, an embroidered blouse over a batik sarong",
   },
   "Mongolia": {
-    src: "https://commons.wikimedia.org/wiki/Special:FilePath/Przed%20rozpocz%C4%99ciem%20lokalnego%20festiwalu%20Naadam%20(06).jpg?width=800",
-    source: "https://commons.wikimedia.org/wiki/File:Przed%20rozpocz%C4%99ciem%20lokalnego%20festiwalu%20Naadam%20(06).jpg",
-    credit: "Marcin Konsek", license: "CC BY-SA 4.0",
-    caption: "Men wearing the deel — Mongolia's traditional robe — before a Naadam festival",
+    // Was the same festival at mid-distance. This is the weakest of the batch — he is
+    // looking down at his hands — but the deel fills the frame and the face reads,
+    // which the old one did not. A tighter Naadam portrait exists
+    // (File:Mongolia Naadam.JPG) but the 16:9 crop cuts his mouth off.
+    src: "https://commons.wikimedia.org/wiki/Special:FilePath/Mongolia_Naadam_Spectator.JPG?width=800",
+    source: "https://commons.wikimedia.org/wiki/File:Mongolia_Naadam_Spectator.JPG",
+    credit: "Taylor Weidman / The Vanishing Cultures Project", license: "CC BY-SA 3.0",
+    caption: "A man in a fine deel — Mongolia's traditional robe — watching the wrestling at a local Naadam festival",
   },
 
   // ---- Europe (reviewed batch; Russia & Turkey are in the Asia batch above) ----
@@ -521,10 +532,12 @@ export const COUNTRY_PEOPLE = {
     caption: "A Gille of Binche under the tall ostrich-feather hat worn on the last day of the carnival",
   },
   "Switzerland": {
-    src: "https://commons.wikimedia.org/wiki/Special:FilePath/March%C3%A9-Concours%202019%2C%20Bild%203.jpg?width=800",
-    source: "https://commons.wikimedia.org/wiki/File:March%C3%A9-Concours%202019%2C%20Bild%203.jpg",
-    credit: "PaterMcFly", license: "CC BY 4.0",
-    caption: "A Swiss folk group in the red-and-yellow Appenzell Tracht at a festival",
+    // Was a mid-distance group. Same Appenzell Sennentracht, now at the Alpabfahrt —
+    // the autumn descent that brings the cattle down off the alp for the winter.
+    src: "https://commons.wikimedia.org/wiki/Special:FilePath/Urn%C3%A4sch_Alpabfahrt_2018_03.jpg?width=800",
+    source: "https://commons.wikimedia.org/wiki/File:Urn%C3%A4sch_Alpabfahrt_2018_03.jpg",
+    credit: "Paebi", license: "CC BY-SA 4.0",
+    caption: "Herders in the red Appenzell Sennentracht bring their cows down through Urnäsch, Switzerland",
   },
   "Austria": {
     src: "https://commons.wikimedia.org/wiki/Special:FilePath/Lindwurm%20Klagenfurt%2C%20Volkstanzgruppe%20aus%20K%C3%A4rnten.jpg?width=800",
@@ -574,10 +587,13 @@ export const COUNTRY_PEOPLE = {
     caption: "A woman wears Panama's national dress, the pollera, at a folk festival",
   },
   "Cuba": {
-    src: "https://commons.wikimedia.org/wiki/Special:FilePath/Bailarines%20de%20rumba%20cubana%20en%20la%20plaza%20de%20los%20trabajadores%20de%20Camag%C3%BCey%2C%20Cuba.jpg?width=800",
-    source: "https://commons.wikimedia.org/wiki/File:Bailarines%20de%20rumba%20cubana%20en%20la%20plaza%20de%20los%20trabajadores%20de%20Camag%C3%BCey%2C%20Cuba.jpg",
-    credit: "Manuel Díaz Reyes", license: "CC BY-SA 4.0",
-    caption: "Dancers perform Cuba's lively rumba in a public square in Camagüey",
+    // Was a rumba in Camagüey seen from across the square. Joshua approved this one
+    // knowing it has a lit cigar in it — the cigar is Havana's own emblem and the
+    // caption doesn't dwell on it. Tall source; the 16:9 crop lands on her face.
+    src: "https://commons.wikimedia.org/wiki/Special:FilePath/Folklore_Lady_in_Havanna%2C_Cuba.jpg?width=800",
+    source: "https://commons.wikimedia.org/wiki/File:Folklore_Lady_in_Havanna%2C_Cuba.jpg",
+    credit: "Marc-Lautenbacher", license: "CC BY-SA 4.0",
+    caption: "A folklore performer in bright ruffled dress and headwrap in Old Havana, Cuba",
   },
   "Greenland": {
     src: "https://commons.wikimedia.org/wiki/Special:FilePath/Greenland%201999%20(01).jpg?width=800",
@@ -587,12 +603,15 @@ export const COUNTRY_PEOPLE = {
   },
   "Canada": [
     {
-      src: "https://commons.wikimedia.org/wiki/Special:FilePath/Dancer%20on%20Pow-Wow%202016%20in%20Wendake%2C%20Quebec%2C%20Canada.jpg?width=800",
-      source: "https://commons.wikimedia.org/wiki/File:Dancer%20on%20Pow-Wow%202016%20in%20Wendake%2C%20Quebec%2C%20Canada.jpg",
-      credit: "Marc Lautenbacher", license: "CC BY-SA 4.0",
+      // Was the 2016 Wendake powwow with heavy motion blur. Same photographer, same
+      // powwow, 2024, sharp. Still a tall source, but `portrait: true` is gone on
+      // purpose: the 16:9 crop at 50%/30% lands on his face and reads much closer than
+      // letterboxing the whole figure did.
+      src: "https://commons.wikimedia.org/wiki/Special:FilePath/Dancer_at_Pow-Wow_in_Wendake_Canada.jpg?width=800",
+      source: "https://commons.wikimedia.org/wiki/File:Dancer_at_Pow-Wow_in_Wendake_Canada.jpg",
+      credit: "Marc-Lautenbacher", license: "CC BY-SA 4.0",
       people: "First Nations",
-      caption: "A First Nations dancer in traditional regalia at the powwow in Wendake, Quebec",
-      portrait: true, // no free landscape photo of this dress exists — show it whole
+      caption: "A dancer in feather regalia at the yearly powwow in Wendake, near Québec City",
     },
     {
       // Was dark and blurred. Same tradition, daylight, faces readable.
@@ -651,12 +670,13 @@ export const COUNTRY_PEOPLE = {
   },
   "Brazil": [
     {
-      src: "https://commons.wikimedia.org/wiki/Special:FilePath/Baiana%20em%20desfile%20de%202%20de%20Julho%20em%20S%C3%A3o%20F%C3%A9lix.jpg?width=800",
-      source: "https://commons.wikimedia.org/wiki/File:Baiana%20em%20desfile%20de%202%20de%20Julho%20em%20S%C3%A3o%20F%C3%A9lix.jpg",
-      credit: "ExpressaoSAMPA", license: "CC BY-SA 4.0",
+      // Was the same dress at mid-distance in a São Félix parade, letterboxed. This one
+      // is close, and the church behind her is in Salvador's Pelourinho.
+      src: "https://commons.wikimedia.org/wiki/Special:FilePath/Woman_in_Salvador_da_Bahia.jpg?width=800",
+      source: "https://commons.wikimedia.org/wiki/File:Woman_in_Salvador_da_Bahia.jpg",
+      credit: "Alex@Eddi", license: "Public domain",
       people: "Afro-Brazilian",
-      caption: "A woman in the Baiana dress of Bahia — white lace blouse, headwrap and full floral skirt",
-      portrait: true, // no free landscape photo of this dress exists — show it whole
+      caption: "A woman in the white blouse and headwrap of the Baiana, in Salvador da Bahia",
     },
     {
       // Was the CONFERENCE BANNER behind him — a sheet of printed text, not a face.
@@ -687,16 +707,21 @@ export const COUNTRY_PEOPLE = {
     caption: "A Kichwa Otavalo woman in a traditional shawl and coral beads, Ecuador",
   },
   "Venezuela": {
-    src: "https://commons.wikimedia.org/wiki/Special:FilePath/Pareja%20bailando%20joropo%20llanero%20(Puro).jpg?width=800",
-    source: "https://commons.wikimedia.org/wiki/File:Pareja%20bailando%20joropo%20llanero%20(Puro).jpg",
-    credit: "Simplemente Venezuela", license: "CC BY-SA 4.0",
-    caption: "A couple dances the joropo as harp, cuatro and maracas play",
+    // Was a joropo couple at mid-distance. A closer joropo photo exists and was
+    // rejected: its own Commons categories place it in COLOMBIA, not Venezuela, which
+    // the description ("los Llanos en Colombia y Venezuela") does not settle either way.
+    src: "https://commons.wikimedia.org/wiki/Special:FilePath/Diablo_Yare.jpg?width=800",
+    source: "https://commons.wikimedia.org/wiki/File:Diablo_Yare.jpg",
+    credit: "Mjulianaf77", license: "CC BY-SA 3.0",
+    caption: "A dancer lifts his mask at the Diablos Danzantes of San Francisco de Yare, Venezuela, on Corpus Christi",
   },
   "Guyana": {
-    src: "https://commons.wikimedia.org/wiki/Special:FilePath/Guyana%20dance%202002%2011%2023.jpg?width=800",
-    source: "https://commons.wikimedia.org/wiki/File:Guyana%20dance%202002%2011%2023.jpg",
-    credit: "EsAvila", license: "CC BY-SA 4.0",
-    caption: "Macushi people of Guyana dance in fibre skirts and feathered headdresses",
+    // Was dark and blurred. Loses the Macushi — no close free photo of them exists —
+    // and gains Mashramani, Guyana's own republic-day carnival.
+    src: "https://commons.wikimedia.org/wiki/Special:FilePath/Mashramani-in-Guyana-2007-by-GuyaneseTavern.jpg?width=800",
+    source: "https://commons.wikimedia.org/wiki/File:Mashramani-in-Guyana-2007-by-GuyaneseTavern.jpg",
+    credit: "King sheik", license: "Public domain",
+    caption: "A costumed dancer on a float at Mashramani, the carnival marking Guyana's republic day",
   },
   "Australia": [
     {
