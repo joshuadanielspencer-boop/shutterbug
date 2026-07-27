@@ -83,6 +83,43 @@ Last updated **2026-07-18**.
 > Also corrected there: this repo now holds **447 locations across 106 countries**,
 > not the 144 `CLAUDE.md` still claims.
 
+> ### ⚠ 2026-07-27 — several items below were ALREADY DONE. Check before you start.
+>
+> An overnight session picked up six tasks from this file and found three of them
+> finished months ago. The counts in this document are the least trustworthy thing
+> in it. **Verify against the shipped data before believing any number here.**
+>
+> - **The Progress page is DONE** (and so are the Trophy Shelf and the Journals).
+>   `PassportModal` has had `PROGRESS_PAGE = 1` with `progressByContinent` and
+>   `troubleSpots` since "Show what the child actually knows". The list of "still
+>   open" items further down still asks for it.
+> - **"18 countries on the generic music bed" was TWO** — Canada and Malta — and both
+>   now have their own. An earlier session added the Nordic, Alpine, Celtic, Slavic
+>   and African beds and never updated the note. `test/audio.test.js` now asserts no
+>   country can reach `generic` again, so this particular number can't go stale.
+> - **Chile's mainland is fine** (6 places), and South America is 41, not 34.
+> - **Oceania was the real gap** and is now 37, up from 30 — but the useful number was
+>   never the total: 13 of those 30 were `coast`, and the continent had no ice, no
+>   river, no sacred place and no rock art at all. Seven places fixed the spread.
+>
+> **Landed this session:** the Credits & Legal page (reachable from the copyright
+> line in the splash corner); three Journeys (Pony Express, Shackleton's Endurance,
+> the Exodus); the `certainty` warning that contested journey stops were carrying in
+> data but never showing; Canada's and Malta's music; seven Oceania places; and the
+> first slice of the big-file split (`src/components/media.jsx`).
+>
+> **Two things worth knowing:**
+> - **Amundsen's polar route is blocked on a polar projection.** The journey map is
+>   equirectangular, where the South Pole is the entire bottom edge and every meridian
+>   meets there, so a route ending at 90°S draws its last leg sideways along the foot
+>   of the world. Shackleton's story stays between 54°S and 69°S, which is why it was
+>   the polar route that could be built. Amundsen needs projection work first.
+> - **`nextMrOImage` calls `Math.random()` directly**, which the "every random choice
+>   goes through src/rng.js" rule forbids. It only picks which portrait of Mr O to
+>   show, so nothing about a run's outcome depends on it — but it is a real exception
+>   to a rule this project treats as absolute, and it should either be fixed or the
+>   rule should say "except art selection".
+
 ### Contents
 
 This document is long enough that things get lost in it. Every section, in order:

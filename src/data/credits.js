@@ -11,9 +11,20 @@
 // audit, a school, or a parent would actually ask for.
 //
 // Every licence below was read off the shipped file rather than remembered — the
-// photo counts come from src/data/locations.js and src/data/culture.js, and the
-// software licences from each package's own package.json.
+// software licences came from each package's own package.json.
+//
+// The photo COUNTS are computed from the data at load, never typed. The first draft
+// of this file said "457 landmark photographs" and was wrong within the hour,
+// because the same session went on to add seven places to Oceania. A number that
+// has to be remembered is a number that will be wrong.
 // ===========================================================================
+import { LOCATIONS } from "./locations.js";
+import { COUNTRY_PEOPLE } from "./culture.js";
+
+const LANDMARK_PHOTOS = LOCATIONS.filter((l) => l.photo && l.photo.src).length;
+const CULTURE_PHOTOS = Object.values(COUNTRY_PEOPLE)
+  .flatMap((v) => (Array.isArray(v) ? v : [v]))
+  .filter((p) => p && p.src).length;
 
 // Kept as a constant so the footer, the page heading and any future export all
 // say the same thing.
@@ -57,9 +68,9 @@ export const CREDIT_SECTIONS = [
       "original. Photographs shared under a share-alike licence remain under that licence; they " +
       "are used here alongside this game's own work, not absorbed into it.",
     items: [
-      { name: "457 landmark photographs", detail: "Wikimedia Commons contributors",
+      { name: `${LANDMARK_PHOTOS} landmark photographs`, detail: "Wikimedia Commons contributors",
         license: "CC BY · CC BY-SA · CC0 · public domain", url: "https://commons.wikimedia.org/" },
-      { name: "118 culture and traditional-dress photographs", detail: "Wikimedia Commons contributors",
+      { name: `${CULTURE_PHOTOS} culture and traditional-dress photographs`, detail: "Wikimedia Commons contributors",
         license: "CC BY · CC BY-SA · CC0 · public domain", url: "https://commons.wikimedia.org/" },
     ],
   },
