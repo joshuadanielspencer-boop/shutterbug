@@ -184,11 +184,13 @@ export const COUNTRY_PEOPLE = {
       portrait: true,
     },
     {
-      src: "https://commons.wikimedia.org/wiki/Special:FilePath/Kia_Aroha_College%2C_Siva_performance_at_ASB_Polyfest._(POLY-D-2015-103).jpg?width=800",
-      source: "https://commons.wikimedia.org/wiki/File:Kia_Aroha_College%2C_Siva_performance_at_ASB_Polyfest._(POLY-D-2015-103).jpg",
+      // Was the same Polyfest photographed from the back of the hall. Same
+      // photographer, same 2015 festival, one dancer close enough to see.
+      src: "https://commons.wikimedia.org/wiki/Special:FilePath/St_Cuthbert's_College_at_ASB_Polyfest._(POLY-D-2015-318).jpg?width=800",
+      source: "https://commons.wikimedia.org/wiki/File:St_Cuthbert's_College_at_ASB_Polyfest._(POLY-D-2015-318).jpg",
       credit: "Smita Biswas", license: "CC BY 4.0",
       people: "Samoan New Zealander",
-      caption: "A Samoan Siva Samoa dance at Auckland's Polyfest — the dancer wears a lava-lava wrap and a tuiga headpiece",
+      caption: "A student dances the Samoan taualuga at Auckland's ASB Polyfest, wearing the tuiga headdress",
     },
   ],
 
@@ -233,12 +235,14 @@ export const COUNTRY_PEOPLE = {
       caption: "Xhosa women in traditional dress, one wearing a head-scarf of indigo shweshwe cloth",
     },
     {
-      src: "https://commons.wikimedia.org/wiki/Special:FilePath/Zulu_dance.JPG?width=800",
-      source: "https://commons.wikimedia.org/wiki/File:Zulu_dance.JPG",
-      credit: "Svdmolen", license: "CC BY 3.0",
+      // Was a distant group. Smaller source than most here (604px), but it is the
+      // closest free photo of Zulu beadwork with faces in it, and the card renders
+      // well under 604px wide.
+      src: "https://commons.wikimedia.org/wiki/Special:FilePath/Song_and_Dance_2.jpg?width=800",
+      source: "https://commons.wikimedia.org/wiki/File:Song_and_Dance_2.jpg",
+      credit: "MduKhanyile", license: "CC BY-SA 4.0",
       people: "Zulu",
-      caption: "Zulu dancers in traditional dress during a performance in South Africa",
-      portrait: true,
+      caption: "Zulu women in beaded dress and isicholo hats at a song and dance gathering, South Africa",
     },
   ],
   "Tanzania": {
@@ -287,10 +291,12 @@ export const COUNTRY_PEOPLE = {
     caption: "Dancers performing the Mbende Jerusarema, a traditional Shona dance, in Murewa, Zimbabwe",
   },
   "Madagascar": {
-    src: "https://commons.wikimedia.org/wiki/Special:FilePath/Hira_gasy_musicians_2008.jpg?width=800",
-    source: "https://commons.wikimedia.org/wiki/File:Hira_gasy_musicians_2008.jpg",
-    credit: "Lemurbaby", license: "CC BY-SA 3.0",
-    caption: "Malagasy hira gasy musicians in traditional dress with a lamba sash",
+    // Was a hira gasy troupe shot from across the crowd. Losing the hira gasy is a
+    // pity, but no close free photo of one exists; this is the Antandroy of the south.
+    src: "https://commons.wikimedia.org/wiki/Special:FilePath/Antandroy_tribu_au_Sud_de_Madagascar.jpg?width=800",
+    source: "https://commons.wikimedia.org/wiki/File:Antandroy_tribu_au_Sud_de_Madagascar.jpg",
+    credit: "Tojosoa Raherinirainy", license: "CC BY-SA 4.0",
+    caption: "Women in traditional Antandroy dress at a festival in southern Madagascar",
   },
   "Sudan": {
     src: "https://commons.wikimedia.org/wiki/Special:FilePath/%C2%A9SUD2018-Sari%20Omer%20-0061.jpg?width=800",
@@ -319,16 +325,18 @@ export const COUNTRY_PEOPLE = {
     caption: "A couple in chut thai, the woman's golden silk sabai draped across one shoulder",
   },
   "Vietnam": {
-    src: "https://commons.wikimedia.org/wiki/Special:FilePath/Vietnamese%20student%20girls%20in%20Temple%20of%20Literature.JPG?width=800",
-    source: "https://commons.wikimedia.org/wiki/File:Vietnamese%20student%20girls%20in%20Temple%20of%20Literature.JPG",
-    credit: "Viethavvh", license: "CC BY-SA 4.0",
-    caption: "Students in the áo dài, Vietnam's national dress, at Hanoi's Temple of Literature",
+    // Was a line of women photographed from too far back to read a face.
+    src: "https://commons.wikimedia.org/wiki/Special:FilePath/%C3%81o_d%C3%A0i_(26282428400)_(cropped).jpg?width=800",
+    source: "https://commons.wikimedia.org/wiki/File:%C3%81o_d%C3%A0i_(26282428400)_(cropped).jpg",
+    credit: "Joe Le Merou", license: "CC BY 2.0",
+    caption: "A woman in the áo dài, Vietnam's national dress, in Ho Chi Minh City",
   },
   "Nepal": {
-    src: "https://commons.wikimedia.org/wiki/Special:FilePath/A%20group%20of%20Nepalese%20Girls%20and%20Boys%20in%20cultural%20dress.jpg?width=800",
-    source: "https://commons.wikimedia.org/wiki/File:A%20group%20of%20Nepalese%20Girls%20and%20Boys%20in%20cultural%20dress.jpg",
-    credit: "Rojisha Pandit Chettri", license: "CC BY-SA 4.0",
-    caption: "Children in Nepal dressed in traditional Nepali attire",
+    // Was a line-up photographed end-on, every face a smudge.
+    src: "https://commons.wikimedia.org/wiki/Special:FilePath/Messe-85.JPG?width=800",
+    source: "https://commons.wikimedia.org/wiki/File:Messe-85.JPG",
+    credit: "Sigismund von Dobschütz", license: "CC BY-SA 3.0",
+    caption: "Dancers in Nepal in red and gold festival dress and jewelled headpieces",
   },
   "Indonesia": {
     src: "https://commons.wikimedia.org/wiki/Special:FilePath/Girls%20in%20traditional%20Hindu%20dress%20in%20Bali%20Indonesia.jpg?width=800",
@@ -337,10 +345,11 @@ export const COUNTRY_PEOPLE = {
     caption: "Girls in Bali in traditional Balinese dress for a Hindu ceremony",
   },
   "Cambodia": {
-    src: "https://commons.wikimedia.org/wiki/Special:FilePath/Siem-Reap%20Dance%20of%20Cambodia%20(1).jpg?width=800",
-    source: "https://commons.wikimedia.org/wiki/File:Siem-Reap%20Dance%20of%20Cambodia%20(1).jpg",
-    credit: "Pierre André Leclercq", license: "CC BY-SA 4.0",
-    caption: "A Khmer classical dancer in a golden Apsara crown and pleated silk sampot, Siem Reap",
+    // Was the same dance in Siem Reap, small in the frame and lit from behind.
+    src: "https://commons.wikimedia.org/wiki/Special:FilePath/Apsara_dancers_Siem_Reap_20091118_03.jpg?width=800",
+    source: "https://commons.wikimedia.org/wiki/File:Apsara_dancers_Siem_Reap_20091118_03.jpg",
+    credit: "Viguent", license: "CC BY-SA 4.0",
+    caption: "A Khmer classical dancer in a golden Apsara crown, Siem Reap, Cambodia",
   },
   "Myanmar": {
     // Was a stadium mass-display: thousands of dancers, each about four pixels tall.
@@ -458,10 +467,13 @@ export const COUNTRY_PEOPLE = {
     caption: "Women of Sardinia in their bright, hand-embroidered village costumes for a festival",
   },
   "Greece": {
-    src: "https://commons.wikimedia.org/wiki/Special:FilePath/Evzones%20wearing%20the%20traditional%20Fustanella.jpg?width=800",
-    source: "https://commons.wikimedia.org/wiki/File:Evzones%20wearing%20the%20traditional%20Fustanella.jpg",
-    credit: "George E. Koronaios", license: "CC BY-SA 4.0",
-    caption: "Greek Evzone guards in the pleated fustanella at the Tomb of the Unknown Soldier, Athens",
+    // Was Evzone guards at the Tomb of the Unknown Soldier, faces small and in
+    // profile under the fez. A tall source (4480x6720), but the 16:9 crop lands on
+    // the face, so it does NOT set `portrait: true` — the crop IS the close-up.
+    src: "https://commons.wikimedia.org/wiki/Special:FilePath/Young_Greek_Folk_Dancer_in_Traditional_Costume_Studio_Portrait.jpg?width=800",
+    source: "https://commons.wikimedia.org/wiki/File:Young_Greek_Folk_Dancer_in_Traditional_Costume_Studio_Portrait.jpg",
+    credit: "Redhatstudiophotography", license: "CC BY-SA 4.0",
+    caption: "A young Greek folk dancer in traditional costume, photographed at a Greek festival",
   },
   "Germany": {
     src: "https://commons.wikimedia.org/wiki/Special:FilePath/005%20Trachtenumzug%20Feldmoching.JPG?width=800",
@@ -572,12 +584,12 @@ export const COUNTRY_PEOPLE = {
       portrait: true, // no free landscape photo of this dress exists — show it whole
     },
     {
-      src: "https://commons.wikimedia.org/wiki/Special:FilePath/Drumdance.jpg?width=800",
-      source: "https://commons.wikimedia.org/wiki/File:Drumdance.jpg",
-      credit: "Arctichistorian01", license: "CC BY 3.0",
+      // Was dark and blurred. Same tradition, daylight, faces readable.
+      src: "https://commons.wikimedia.org/wiki/Special:FilePath/Drumdance_Meliadine_3_1995-06-22.jpg?width=800",
+      source: "https://commons.wikimedia.org/wiki/File:Drumdance_Meliadine_3_1995-06-22.jpg",
+      credit: "Ansgar Walk", license: "CC BY-SA 2.5",
       people: "Inuit",
-      caption: "An Inuit dancer at the Drum Dance Festival in Gjoa Haven, Nunavut",
-      portrait: true,
+      caption: "Inuit drum dancers in parka and amauti by the Meliadine River, Nunavut, Canada",
     },
   ],
   // The United States is the clearest case for rotating cards: a single photo of
@@ -597,11 +609,13 @@ export const COUNTRY_PEOPLE = {
       caption: "A young Lakota shawl dancer in a beaded breastplate, taking a break at a powwow",
     },
     {
-      src: "https://commons.wikimedia.org/wiki/Special:FilePath/Juneteenth_marching_band_parade_in_Austin%2C_Texas%2C_2009.jpg?width=800",
-      source: "https://commons.wikimedia.org/wiki/File:Juneteenth_marching_band_parade_in_Austin,_Texas,_2009.jpg",
-      credit: "Jessica Mullen", license: "CC BY 2.0",
+      // Was a marching band too far down the street to see anyone. This one is from
+      // Galveston, which is where the holiday itself comes from.
+      src: "https://commons.wikimedia.org/wiki/Special:FilePath/Galveston_Juneteenth_Parade_and_Celebration_6-19-25_-_13.jpg?width=800",
+      source: "https://commons.wikimedia.org/wiki/File:Galveston_Juneteenth_Parade_and_Celebration_6-19-25_-_13.jpg",
+      credit: "2C2KPhotography", license: "CC BY 4.0",
       people: "African American",
-      caption: "A marching band parades for Juneteenth in Austin, Texas — the holiday marking the end of slavery in the United States",
+      caption: "The Juneteenth parade in Galveston, Texas — the city where, on 19 June 1865, the order freeing the state's enslaved people was read out",
     },
     {
       src: "https://commons.wikimedia.org/wiki/Special:FilePath/2005_Tacoma_Highland_Games.jpg?width=800",
