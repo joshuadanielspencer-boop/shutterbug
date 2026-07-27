@@ -360,10 +360,11 @@ export const COUNTRY_PEOPLE = {
     caption: "A student in Burmese dress dances at the opening of the Thingyan water festival, Mandalay",
   },
   "Iran": {
-    src: "https://commons.wikimedia.org/wiki/Special:FilePath/Iran%20IMG%209821%20Iran%20%2816778393900%29.jpg?width=800",
-    source: "https://commons.wikimedia.org/wiki/File:Iran_IMG_9821_Iran_(16778393900).jpg",
-    credit: "Ninara", license: "CC BY 2.0",
-    caption: "Qashqai men performing a traditional stick dance at a celebration, Iran",
+    // Was Qashqai men at mid-distance. Still Qashqai, close enough to see now.
+    src: "https://commons.wikimedia.org/wiki/Special:FilePath/Kashkuli_Kashkai_Nomads.jpg?width=800",
+    source: "https://commons.wikimedia.org/wiki/File:Kashkuli_Kashkai_Nomads.jpg",
+    credit: "Turk oğlan", license: "CC BY-SA 3.0",
+    caption: "Qashqai nomad women spinning wool in traditional dress, Kashkuli, Iran",
   },
   "Jordan": {
     src: "https://commons.wikimedia.org/wiki/Special:FilePath/Jordanian%20Bedouin%20Arab%20Men.jpg?width=800",
@@ -372,10 +373,12 @@ export const COUNTRY_PEOPLE = {
     caption: "Bedouin men in Jordan in the red-and-white shemagh headscarf and long robes",
   },
   "Pakistan": {
-    src: "https://commons.wikimedia.org/wiki/Special:FilePath/Schoolgirls%20in%20Shalwar%20Kameez%2C%20Abbotabad%20Pakistan%20-%20UK%20International%20Development.jpg?width=800",
-    source: "https://commons.wikimedia.org/wiki/File:Schoolgirls%20in%20Shalwar%20Kameez%2C%20Abbotabad%20Pakistan%20-%20UK%20International%20Development.jpg",
-    credit: "Vicki Francis / UK DFID", license: "CC BY 2.0",
-    caption: "Girls in Abbottabad in Pakistan's national dress: white shalwar trousers and blue kameez shirt",
+    // Was schoolgirls walking away up a road, faces too small to read. This shows one
+    // community rather than the national dress, so the caption names it.
+    src: "https://commons.wikimedia.org/wiki/Special:FilePath/Kalash_women_traditional_clothing-min.jpg?width=800",
+    source: "https://commons.wikimedia.org/wiki/File:Kalash_women_traditional_clothing-min.jpg",
+    credit: "KamalZain", license: "CC BY-SA 4.0",
+    caption: "Kalash women in embroidered dress and beaded headdresses at a festival in the Kalash valleys, Pakistan",
   },
   "Philippines": {
     src: "https://commons.wikimedia.org/wiki/Special:FilePath/Groomsmen%20wearing%20barong%20tagalog%20at%20a%20wedding.jpg?width=800",
@@ -400,16 +403,21 @@ export const COUNTRY_PEOPLE = {
     caption: "Men in thobe and ghutra, swords in hand, performing the Ardha — the Najdi sword dance of Saudi Arabia",
   },
   "Turkey": {
-    src: "https://commons.wikimedia.org/wiki/Special:FilePath/Turkish%20folk%20dancers%20(1085290934).jpg?width=800",
-    source: "https://commons.wikimedia.org/wiki/File:Turkish%20folk%20dancers%20(1085290934).jpg",
-    credit: "allen watkin", license: "CC BY-SA 2.0",
-    caption: "Dancers perform a traditional Turkish folk dance in bright regional costumes",
+    // Was dancers on a stage seen from the back of an amphitheatre.
+    src: "https://commons.wikimedia.org/wiki/Special:FilePath/Zeybek.jpg?width=800",
+    source: "https://commons.wikimedia.org/wiki/File:Zeybek.jpg",
+    credit: "Arjety", license: "CC BY-SA 3.0",
+    caption: "A boy dances the zeybek in regional Turkish costume, with the women's line behind him",
   },
   "United Arab Emirates": {
-    src: "https://commons.wikimedia.org/wiki/Special:FilePath/Ayyala.jpg?width=800",
-    source: "https://commons.wikimedia.org/wiki/File:Ayyala.jpg",
-    credit: "Rashed AlSumaiti", license: "CC BY-SA 4.0",
-    caption: "Emirati men in kandura performing Al Ayyala, a traditional stick dance, in the UAE",
+    // Was Al Ayyala at mid-distance. Losing the stick dance is a real trade — this is
+    // a craftsman rather than a dance — but it is the one close Emirati face on Commons
+    // that is freely licensed. The uploader's own category is the only attestation that
+    // it is the UAE, so the caption claims nothing beyond that.
+    src: "https://commons.wikimedia.org/wiki/Special:FilePath/SIH_Craft2.jpg?width=800",
+    source: "https://commons.wikimedia.org/wiki/File:SIH_Craft2.jpg",
+    credit: "Suhad Sawalha", license: "CC BY-SA 4.0",
+    caption: "A craftsman weaving palm fronds by hand, United Arab Emirates",
   },
   "Uzbekistan": {
     src: "https://commons.wikimedia.org/wiki/Special:FilePath/Navruz%20Dance%20in%20the%20Spring%20Whirlwind.png?width=800",
@@ -504,10 +512,13 @@ export const COUNTRY_PEOPLE = {
     portrait: true, // no free landscape photo of this dress exists — show it whole
   },
   "Belgium": {
-    src: "https://commons.wikimedia.org/wiki/Special:FilePath/0%20Binche%20-%20Les%20Gilles%20le%20jour%20du%20mardi%20gras%20(1).JPG?width=800",
-    source: "https://commons.wikimedia.org/wiki/File:0%20Binche%20-%20Les%20Gilles%20le%20jour%20du%20mardi%20gras%20(1).JPG",
+    // Was the same series, framed so the ostrich-feather hats filled the picture and
+    // the faces under them did not. Number 5 in the set puts one Gille's face front and
+    // centre with the hats behind him.
+    src: "https://commons.wikimedia.org/wiki/Special:FilePath/0_Binche_-_Les_Gilles_le_jour_du_mardi_gras_(5).jpg?width=800",
+    source: "https://commons.wikimedia.org/wiki/File:0_Binche_-_Les_Gilles_le_jour_du_mardi_gras_(5).jpg",
     credit: "Jean-Pol GRANDMONT", license: "CC BY-SA 3.0",
-    caption: "Gilles of Binche in tall ostrich-feather hats on the last day of their famous carnival",
+    caption: "A Gille of Binche under the tall ostrich-feather hat worn on the last day of the carnival",
   },
   "Switzerland": {
     src: "https://commons.wikimedia.org/wiki/Special:FilePath/March%C3%A9-Concours%202019%2C%20Bild%203.jpg?width=800",
@@ -777,10 +788,12 @@ export const COUNTRY_PEOPLE = {
     caption: "Egungun masqueraders in full sequined ancestral costumes at a festival in Benin",
   },
   "Cameroon": {
-    src: "https://commons.wikimedia.org/wiki/Special:FilePath/Danse%20Folklorique%20en%20Pays%20Bamilek%C3%A9.jpg?width=800",
-    source: "https://commons.wikimedia.org/wiki/File:Danse_Folklorique_en_Pays_Bamilek%C3%A9.jpg",
-    credit: "Sidoine Mbogni", license: "CC BY-SA 4.0",
-    caption: "Dancers in traditional Bamileke dress at an open-air folk dance in Dschang, western Cameroon",
+    // Was a Bamileke dance photographed from across the crowd. Still Bamileke, still
+    // western Cameroon, one face filling the frame.
+    src: "https://commons.wikimedia.org/wiki/Special:FilePath/Bamileke_woman_in_traditional_funeral_attire(feather_hat_and_embroidered_tunic)%2C_Bangangt%C3%A9%2C_Cameroon.jpg_02.jpg?width=800",
+    source: "https://commons.wikimedia.org/wiki/File:Bamileke_woman_in_traditional_funeral_attire(feather_hat_and_embroidered_tunic)%2C_Bangangt%C3%A9%2C_Cameroon.jpg_02.jpg",
+    credit: "Patrick Yakeu", license: "CC BY-SA 4.0",
+    caption: "A Bamileke woman in an embroidered ndop tunic and feather hat at a ceremony in Bangangté, Cameroon",
   },
   "Côte d'Ivoire": {
     src: "https://commons.wikimedia.org/wiki/Special:FilePath/Zahouli.jpg?width=800",
