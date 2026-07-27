@@ -8628,7 +8628,14 @@ function pickDogOutfit(country, isUnlocked = () => true) {
   const primary = isUnlocked(reg.primary) ? reg.primary : null;
   const alt = reg.alt && isUnlocked(reg.alt) ? reg.alt : null;
   if (primary && alt) return rnd() < OUTFIT_PRIMARY_ODDS ? primary : alt;
-  return primary || alt || null;
+  if (primary || alt) return primary || alt;
+  // Neither of THIS region's outfits is earned yet — so wear something else she owns
+  // rather than nothing. Joshua hit this in India: the South Asian kit opens at three
+  // mastered places there, so an early visit showed a plain dog with no explanation,
+  // which reads as a missing costume rather than as one still to be earned. Any earned
+  // outfit is better than bare fur; if she genuinely owns none, she stays as she is.
+  const owned = ALL_OUTFITS.filter(isUnlocked);
+  return owned.length ? pickOne(owned) : null;
 }
 // What she is feeling, in words. Her face does the work, but a child shouldn't have
 // to INFER why she turned up, and rule 4 forbids leaving meaning to the picture alone
