@@ -1121,13 +1121,14 @@ describe("world map coverage", () => {
     const outside = LOCATIONS
       .filter((l) => { const x = eqToRobinson(l.x, l.y).x; return x < LEFT || x > RIGHT; })
       .map((l) => l.id).sort();
-    // West of the left edge: French Polynesia (Bora Bora, Moorea, Rangiroa) and —
-    // the one that isn't Oceania at all — Kīlauea, in Hawaii, filed under North
-    // America. East of the right edge: three places in Fiji. Every one is a real,
-    // reachable landmark on its own continent map; they are only off the WORLD map's
-    // trimmed frame, which is why flights leaving them are clamped.
+    // West of the left edge: French Polynesia (Bora Bora, Moorea, Rangiroa, and
+    // Taputapuātea on Raiatea) and — the one that isn't Oceania at all — Kīlauea, in
+    // Hawaii, filed under North America. East of the right edge: four places in Fiji.
+    // Every one is a real, reachable landmark on its own continent map; they are only
+    // off the WORLD map's trimmed frame, which is why flights leaving them are clamped.
     expect(outside).toEqual([
-      "borabora", "boumafalls", "kilauea", "mamanuca", "mountrotui", "rangiroa", "sigatokadunes",
+      "borabora", "boumafalls", "kilauea", "mamanuca", "mountrotui", "rangiroa",
+      "sigatokadunes", "sivasubramaniya", "taputapuatea",
     ]);
   });
 

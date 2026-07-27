@@ -5235,5 +5235,116 @@ export const LOCATIONS = [
     photo: { src: "https://commons.wikimedia.org/wiki/Special:FilePath/Nan Madol, Pohnpei.jpg?width=800",
       credit: "Uhooep", license: "CC BY-SA 4.0", licenseUrl: "https://creativecommons.org/licenses/by-sa/4.0/",
       source: "https://commons.wikimedia.org/wiki/File:Nan Madol, Pohnpei.jpg" },
-    greeting: { text: "Kaselehlie", language: "Pohnpeian", pronunciation: "kah-seh-LEH-lee-eh" } },
+    greeting: { text: "Kaselehlie", language: "Pohnpeian", pronunciation: "kah-seh-LEH-lie-eh" } },
+
+  // ==========================================================================
+  // OCEANIA, 2026-07-27. The thinnest populated continent at 30 places against
+  // Europe's 110 — and thin in a lopsided way: THIRTEEN of those 30 were `coast`,
+  // and the continent had no ice, no river, no sacred place and no rock art at
+  // all. So these seven were chosen to widen the SUBJECTS as much as the count,
+  // and to take Micronesia off a single lonely landmark.
+  //
+  // Every photo below was run through `node scripts/commons.mjs verify` (free
+  // licence, real file, landscape) and every coordinate came from the place's own
+  // Wikipedia article via the MediaWiki API. Two candidates were dropped rather
+  // than fudged: Kepirohi Waterfall, which has no coordinates on Wikipedia to cite,
+  // and the Truk wreck photos, which are all portrait.
+  // ==========================================================================
+
+  // Micronesia's second place — it had only Nan Madol. Coast, but a lagoon so vast
+  // it reads as geography rather than another beach.
+  { id: "chuuklagoon", city: "Chuuk Lagoon", country: "Micronesia", flag: "🇫🇲", continent: "Oceania",
+    x: 331.735, y: 82.585,
+    subject: "the great lagoon and its sunken fleet", icon: "", category: "coast", tags: ["island", "reef"],
+    easy: "In Micronesia, in the western Pacific Ocean, a ring of coral reef encloses Chuuk Lagoon — one of the largest lagoons on Earth, with a whole sunken fleet resting on its floor.",
+    medium: "Word from Micronesia: a barrier reef the size of a county encircles a lagoon of green islands — and beneath the water lies a fleet that never sailed home. Photograph the lagoon.",
+    hard: "A ring of coral holds a sea of its own in the western Pacific, and on its floor rests a navy sunk in a single week. Bring me the lagoon.",
+    fact: "Chuuk Lagoon is one of the largest lagoons in the world, ringed by a barrier reef about 140 miles (225 km) around. It was Japan's main Pacific naval base in the Second World War, and dozens of ships sunk there in February 1944 still lie on the lagoon floor, now grown over with coral.",
+    photo: { src: "https://commons.wikimedia.org/wiki/Special:FilePath/Chuuk lagoon, Mochun Fanananei Pass aerial view (cropped).jpg?width=800",
+      credit: "Matt Kieffer", license: "CC BY-SA 2.0", licenseUrl: "https://creativecommons.org/licenses/by-sa/2.0/",
+      source: "https://commons.wikimedia.org/wiki/File:Chuuk lagoon, Mochun Fanananei Pass aerial view (cropped).jpg" },
+    greeting: { text: "Kaselehlie", language: "Pohnpeian", pronunciation: "kah-seh-LEH-lie-eh" } },
+
+  // Oceania had NO ice at all — a whole continent-layer with no frozen wonder.
+  { id: "franzjosef", city: "Franz Josef Glacier", country: "New Zealand", flag: "🇳🇿", continent: "Oceania",
+    x: 350.19167, y: 133.46694,
+    subject: "the glacier that ends in rainforest", icon: "", category: "ice", tags: ["glacier"],
+    easy: "On the South Island of New Zealand, Franz Josef Glacier flows down from the Southern Alps and ends among green rainforest, only a few miles from the sea.",
+    medium: "Word from New Zealand: a river of ice pours off a mountain range and stops among tree ferns and rainforest, almost within sight of the ocean. Photograph the glacier.",
+    hard: "A tongue of ice comes down off a young mountain range and ends, astonishingly, in warm rainforest a few miles from the sea. Bring me the glacier.",
+    fact: "Franz Josef Glacier runs about 7.5 miles (12 km) down from the Southern Alps and ends only around 980 feet (300 m) above sea level, among temperate rainforest — remarkably low and warm for a glacier. Its Māori name, Kā Roimata o Hine Hukatere, means 'the tears of Hine Hukatere.'",
+    photo: { src: "https://commons.wikimedia.org/wiki/Special:FilePath/Franz Josef glacier 2012.jpg?width=800",
+      credit: "Vaido Otsar", license: "CC BY-SA 4.0", licenseUrl: "https://creativecommons.org/licenses/by-sa/4.0/",
+      source: "https://commons.wikimedia.org/wiki/File:Franz Josef glacier 2012.jpg" },
+    greeting: { text: "Kia ora", language: "Māori", pronunciation: "KEE-ah OR-ah" } },
+
+  // Australia's interior, which the game showed only as red dunes and Uluru.
+  { id: "purnululu", city: "Purnululu", country: "Australia", flag: "🇦🇺", continent: "Oceania",
+    x: 308.56417, y: 107.46306,
+    subject: "the striped beehive domes of the Bungle Bungles", icon: "", category: "rock", tags: ["unesco"],
+    easy: "In the far north of Western Australia, the Bungle Bungle Range in Purnululu National Park is a maze of sandstone domes striped orange and grey like beehives.",
+    medium: "Word from Australia: hundreds of sandstone towers stand banded in orange and charcoal, shaped like beehives — and outsiders knew nothing of them until the 1980s. Photograph the domes.",
+    hard: "A hidden range of banded sandstone beehives in a remote north-western desert, unknown to the wider world until forty years ago. Bring me the striped domes.",
+    fact: "The Bungle Bungle Range rises about 800 feet (250 m) above the plain in beehive-shaped domes banded orange and dark grey. The orange bands are stained with iron; the darker ones are living cyanobacteria. Aboriginal people have known the range for thousands of years, but it was not widely known outside the region until 1983.",
+    photo: { src: "https://commons.wikimedia.org/wiki/Special:FilePath/Purnululu National Park (Bungle Bungles) WA -.jpg?width=800",
+      credit: "RustyRoots", license: "CC BY-SA 4.0", licenseUrl: "https://creativecommons.org/licenses/by-sa/4.0/",
+      source: "https://commons.wikimedia.org/wiki/File:Purnululu National Park (Bungle Bungles) WA -.jpg" },
+    greeting: { text: "G'day", language: "English (Australian)", pronunciation: "g-DAY" } },
+
+  // The oldest human story in the game, and Oceania had nothing like it.
+  { id: "ubirr", city: "Ubirr", country: "Australia", flag: "🇦🇺", continent: "Oceania",
+    x: 312.95927, y: 102.40946,
+    subject: "the ancient rock art of Ubirr", icon: "", category: "ruins", tags: ["ancient", "unesco"],
+    easy: "In Kakadu National Park in northern Australia, the rock shelters at Ubirr are painted with Aboriginal art — some of it made thousands of years ago, by the oldest continuing culture on Earth.",
+    medium: "Word from Australia: under overhanging rock, generations painted the animals they hunted — including one striped creature that has not walked this land for thousands of years. Photograph the rock art.",
+    hard: "Beneath a sandstone overhang, a gallery painted and repainted for millennia records a striped predator that vanished from the mainland long ago. Bring me the paintings.",
+    fact: "The rock shelters at Ubirr in Kakadu hold Aboriginal paintings made over many thousands of years, part of the oldest continuing artistic tradition in the world. Among them are paintings of the thylacine, a striped predator that died out on the Australian mainland roughly 2,000 years ago.",
+    photo: { src: "https://commons.wikimedia.org/wiki/Special:FilePath/MK-06997 Ubirr rock art.jpg?width=800",
+      credit: "Martin Kraft", license: "CC BY-SA 3.0", licenseUrl: "https://creativecommons.org/licenses/by-sa/3.0/",
+      source: "https://commons.wikimedia.org/wiki/File:MK-06997 Ubirr rock art.jpg" },
+    greeting: { text: "G'day", language: "English (Australian)", pronunciation: "g-DAY" } },
+
+  // Oceania had no sacred place at all — and this one teaches why Fiji has a Hindu
+  // community in the first place, which is a piece of geography, not just a building.
+  { id: "sivasubramaniya", city: "Nadi", country: "Fiji", flag: "🇫🇯", continent: "Oceania",
+    x: 357.41498, y: 107.80731,
+    subject: "the Sri Siva Subramaniya temple", icon: "", category: "temple", tags: ["sacred"],
+    easy: "In Nadi on the island of Viti Levu in Fiji stands the Sri Siva Subramaniya temple — a brightly painted Hindu temple, the largest in the southern half of the world.",
+    medium: "Word from Fiji: on a Pacific island better known for beaches, a tower of carved and painted gods rises in the South Indian style, built by craftsmen who came from India to raise it. Photograph the temple.",
+    hard: "A South Indian temple tower, painted in every colour, stands on a Pacific island thousands of miles from the country whose gods it houses. Bring me the temple.",
+    fact: "The Sri Siva Subramaniya temple in Nadi is the largest Hindu temple in the Southern Hemisphere, built in the South Indian Dravidian style with carvers and materials brought from India. Fiji has a large Hindu community because tens of thousands of indentured labourers were brought from India from 1879 onward to work the sugar plantations.",
+    photo: { src: "https://commons.wikimedia.org/wiki/Special:FilePath/Sri Siva Subramaniya Swami Temple - Nadi, Fiji 3.jpg?width=800",
+      credit: "Mark Heard", license: "CC BY 2.0", licenseUrl: "https://creativecommons.org/licenses/by/2.0/",
+      source: "https://commons.wikimedia.org/wiki/File:Sri Siva Subramaniya Swami Temple - Nadi, Fiji 3.jpg" },
+    greeting: { text: "Bula", language: "Fijian", pronunciation: "BOO-lah" } },
+
+  // Oceania's first river. The continent had waterfalls and lagoons but not one
+  // waterway, which made the whole layer read as coastline.
+  { id: "sepikriver", city: "Sepik River", country: "Papua New Guinea", flag: "🇵🇬", continent: "Oceania",
+    x: 324.54167, y: 93.84167,
+    subject: "the Sepik River", icon: "", category: "waterway", tags: ["river"],
+    easy: "The Sepik River winds for hundreds of miles across northern Papua New Guinea — a huge river with no delta at all, which simply runs straight out into the sea.",
+    medium: "Word from Papua New Guinea: a great brown river coils across the north of the island past villages of carvers and their tall spirit houses, and reaches the sea without building a delta. Photograph the river.",
+    hard: "One of the largest rivers of New Guinea loops through swamp and forest to the coast — and unlike almost every river its size, it has built no delta. Bring me the river.",
+    fact: "The Sepik River runs about 700 miles (1,126 km) across northern Papua New Guinea. Unusually for a river of its size it has no delta, emptying straight into the sea. The villages along it are famous for wood carving and for their haus tambaran, tall spirit houses with steeply peaked roofs.",
+    photo: { src: "https://commons.wikimedia.org/wiki/Special:FilePath/Sepik 0266.jpg?width=800",
+      credit: "Top1963", license: "CC BY-SA 3.0", licenseUrl: "https://creativecommons.org/licenses/by-sa/3.0/",
+      source: "https://commons.wikimedia.org/wiki/File:Sepik 0266.jpg" },
+    greeting: { text: "Gude", language: "Tok Pisin", pronunciation: "GOO-day" } },
+
+  // The place Polynesia sailed FROM — the single best answer to "how did people
+  // reach all these islands?", which the Oceania layer never explained.
+  { id: "taputapuatea", city: "Raiatea", country: "French Polynesia", flag: "🇵🇫", continent: "Oceania",
+    // Stored west of the antimeridian like every other French Polynesian place
+    // (x = lon + 180 = 28.64). The Pacific-centred Oceania view adds the 360 itself.
+    x: 28.6408, y: 106.8361,
+    subject: "the marae of Taputapuātea", icon: "", category: "temple", tags: ["ancient", "unesco", "sacred"],
+    easy: "On the island of Raiatea in French Polynesia stands Taputapuātea — a great stone marae, or ceremonial ground, at the heart of the Polynesian voyaging world.",
+    medium: "Word from French Polynesia: on an island once called Havai'i, a platform of black stone was the meeting place of navigators from across the ocean, who set out from here to find islands thousands of miles away. Photograph the marae.",
+    hard: "A low stone temple on a Pacific island that ancient navigators treated as the centre of their world, and from which they sailed to the farthest corners of the ocean. Bring me the marae.",
+    fact: "Taputapuātea on Raiatea is one of the most important marae — ceremonial grounds — in Polynesia. Raiatea was known as Havai'i, and Polynesian tradition remembers it as a centre from which voyaging canoes set out across the Pacific to islands as distant as Hawai'i, Aotearoa (New Zealand) and Rapa Nui.",
+    photo: { src: "https://commons.wikimedia.org/wiki/Special:FilePath/Taputapuatea marae Raiatea.jpg?width=800",
+      credit: "Sur la route", license: "CC BY 2.0", licenseUrl: "https://creativecommons.org/licenses/by/2.0/",
+      source: "https://commons.wikimedia.org/wiki/File:Taputapuatea marae Raiatea.jpg" },
+    greeting: { text: "Ia ora na", language: "Tahitian", pronunciation: "yah-oh-RAH-nah" } },
 ];
