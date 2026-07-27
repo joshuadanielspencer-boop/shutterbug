@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import { LOCATIONS } from "./data/locations.js";
 import { WORLD_COUNTRIES, COUNTRY_CONTINENT } from "./data/worldmap.js";
+import { COUNTRY_PLATES } from "./data/relief-plates.js";
 import { ANTARCTICA_POLAR } from "./data/antarctica-polar.js";
 // WORLD_COUNTRIES_ROBINSON (the ~290 KB Robinson-projected country outlines) is
 // only used by the world map, so it's loaded lazily (see the effect below) to
@@ -11,6 +12,7 @@ import { RIVERS, LAKES, MARINE } from "./data/geography.js";
 import { JOURNEYS, JOURNEY_BY_ID, journeyBox, unrolledX, closestStops } from "./data/journeys.js";
 import { HUBS, TRANSPORT_BY_ID, transportOptionsFor, countryTransport, money as fmtMoney, currencyFor } from "./data/travel.js";
 import { COUNTRY_PEOPLE, peopleCards, greetingMeaning } from "./data/culture.js";
+import { COUNTRY_CURRENCY, CURRENCY_AS_OF } from "./data/currency.js";
 import { categoryCountries, categoryMissionOK as missionOK } from "./missions.js";
 import { robinson, eqToRobinson, robinsonToEq, ROBINSON_W, ROBINSON_H } from "./robinson.js";
 // The pure map geometry — bounding boxes, the two antimeridian cutters, frame-aspect
@@ -18,7 +20,8 @@ import { robinson, eqToRobinson, robinsonToEq, ROBINSON_W, ROBINSON_H } from "./
 // this layer had three untested bugs in one session); tested in test/map-geometry.test.js.
 import { FRAME_AR, countryKey, pathBBox, pathBBoxCached as PATH_BBOX_CACHE, isSpeckIn,
   wrapPathPacific, trimWrappedSubpaths, trimFarSubpaths, toFrameAspect, fitBox,
-  eqPointFromEvent, milesPerLonDegree, niceScaleMiles } from "./map-geometry.js";
+  eqPointFromEvent, milesPerLonDegree, niceScaleMiles,
+  WC_ALIAS, COUNTRY_BOX_OVERRIDE } from "./map-geometry.js";
 import { rnd, shuffled, withSeed, randInt } from "./rng.js";
 import { flightDays, kmBetween, tourPar as par, routeCost as legCost } from "./routes.js";
 import { dayNumber, dailySeed, dailyKey, shareText, DAILY_ASSIGNMENTS } from "./daily.js";
@@ -669,10 +672,8 @@ const CONTINENT_META = (() => {
 // ---- which countries each layer-continent has, each country's outline path, and ----
 // ---- a square zoom box around that country's landmarks. ----
 const WC_BY_NAME = Object.fromEntries(WORLD_COUNTRIES.map((c) => [c.name, c.d]));
-// A few location country names differ from the world-map polygon names; map them
-// so the country outline/border can still be drawn. (Singapore has no polygon — a
-// tiny island — so it simply shows a marker with no border, which is fine.)
-const WC_ALIAS = { "United States": "United States of America" };
+// WC_ALIAS (location name -> world-map polygon name) is imported from map-geometry.js:
+// the relief-plate generator needs the same mapping to find a country's outline.
 const wcPath = (country) => WC_BY_NAME[country] || WC_BY_NAME[WC_ALIAS[country]];
 
 
@@ -762,49 +763,11 @@ const countriesOf = (l) => (l.countries && l.countries.length ? l.countries : [l
       COUNTRY_META[countryKey(cont, country)] = { box, cx, cy };
     }
   }
-  // A few countries are so far-flung that a box holding ALL their landmarks spans a
-  // hemisphere — the USA's Denali (Alaska) and Kīlauea (Hawaii) blew its box out to
-  // 120°, so its "country map" showed the Arctic, both oceans and half of South
-  // America. Override those with a hand-set box hugging the part that reads as the
-  // country, at the atlas frame's own 1.45 aspect so it fills the frame. Landmarks
-  // that fall OUTSIDE the override (Denali, Kīlauea) still work: when a run's options
-  // include one, optionsFitCountry() below sends that run to the continent view.
-  //   USA: contiguous 48, lon −125…−66 (x 55…114), lat 24…50 (y 40…66).
-  const box145 = (cx, cy, w) => ({ x: cx - w / 2, y: cy - (w / FRAME_AR) / 2, w, h: w / FRAME_AR });
-  const OVERRIDE = {
-    // Trimmed east to the real Atlantic coast (lon −66, x 114) and re-centred a
-    // degree south: the old 64°-wide box ran to lon −52.5, so a third of the frame
-    // was open Atlantic with Hudson Bay in the top corner.
-    // Zoomed out further and centred WEST of the country, so the contiguous 48 sit
-    // in the RIGHT of the frame and the left is a wide band of open Pacific — enough
-    // room for the Alaska/Hawaiʻi locator boxes to stack clear of the mainland
-    // (Joshua asked for more Pacific here). Right edge stays past the Atlantic coast
-    // (x 114 ≈ lon −66) so Maine and Florida keep their east coast.
-    "North America|United States": box145(77, 51.5, 78),
-    // Chile is the one country the clip heuristic above cannot size. Its border path
-    // includes Easter Island (lon −109, x 71) — 2,200 miles off the coast, but still
-    // INSIDE the 70° clip that its own widely-spread landmarks earn it. So the border
-    // bbox ran x 70.5…113.5 and Chile's "country map" was really a map of the south
-    // Pacific with South America down one edge. Hand-set to the mainland: lon −84…−58,
-    // lat −14…−58. Easter Island keeps working — it is filed under Oceania, and any
-    // run whose options fall outside this box goes wide via optionsFitCountry().
-    "South America|Chile": { x: 96, y: 104, w: 26, h: 44 },
-    // The UK's derived box carried ~5° of margin on every side, so the islands sat
-    // small in a lot of North Sea and Atlantic. Hug them instead.
-    "Europe|United Kingdom": { x: 171, y: 29.5, w: 12, h: 12 },
-    // Spain is Chile's problem again: its border path carries the CANARY ISLANDS
-    // (lon −16, lat 28), which sit just inside the ~15.8° clip its three landmarks
-    // earn it, so the derived box stretched south-west into the Atlantic and the
-    // mainland ended up small in a corner. Hand-set to the peninsula — lon −9.4…3.9,
-    // lat 35.6…44.2 — at the atlas frame's own aspect so it fills the frame.
-    "Europe|Spain": box145(177, 50.2, 13.4),
-    // South Africa is the same story again: its border path carries the PRINCE EDWARD
-    // ISLANDS (lon 37.6, lat −46.9), ~1,200 miles out in the Southern Ocean but still
-    // inside the clip its landmarks earn, so the derived box slid far south and the
-    // country sat in the TOP of the frame over a whole empty sea. Hand-set to the
-    // mainland — lon 16.5…33, lat −22…−35 — at the frame's own aspect so it fills it.
-    "Africa|South Africa": box145(204.7, 118.7, 21),
-  };
+  // The hand-set boxes for the countries this derivation cannot size (the USA's
+  // Alaska/Hawaiʻi spread, Chile's Easter Island, Spain's Canaries…) live in
+  // src/map-geometry.js as COUNTRY_BOX_OVERRIDE, because the relief-plate generator
+  // has to derive exactly these same boxes to know what ground each plate must cover.
+  const OVERRIDE = COUNTRY_BOX_OVERRIDE;
   // Every hand-set box goes through the same frame-aspect normalisation the derived
   // ones do (rule 5). These predate that change and several were square or portrait —
   // and a box narrower than the frame is not just "a bit letterboxed": under
@@ -5428,6 +5391,35 @@ export default function ShutterbugWorld() {
   const viewBox = zoomed
     ? `${box.x - vbPad * box.w} ${box.y - vbPad * box.h} ${box.w * (1 + 2 * vbPad)} ${box.h * (1 + 2 * vbPad)}`
     : `${box.x} ${box.y} ${box.w} ${box.h}`;
+  // ---- The country's own high-resolution relief plate --------------------------
+  // The shared world plate is 34 px/degree, which a country zoom magnifies several
+  // times over — Switzerland's Alps came out as brown mush with no valleys in them.
+  // Each country has a crop of the 10m source at its native 60 px/degree (see
+  // scripts/make-country-relief.mjs); this picks it and the map draws it on top.
+  //
+  // It is only used if it demonstrably COVERS everything the frame will draw, which
+  // is more than the box: `meet` fits the viewBox by its binding axis and shows the
+  // slack on the other one. Working that rectangle out here — rather than trusting
+  // the generator and the renderer to agree forever — means that if the box maths
+  // ever changes, a plate that no longer fits is simply not used. The map goes back
+  // to being soft, which is what it is today, instead of showing a hard seam where
+  // the sharp plate stops.
+  const countryPlate = (() => {
+    if (!zoomed || !countryBox || !pickedCountry) return null;
+    const p = COUNTRY_PLATES[countryKey(pickedContinent, pickedCountry)];
+    if (!p) return null;
+    const vx = box.x - vbPad * box.w, vy = box.y - vbPad * box.h;
+    const vw = box.w * (1 + 2 * vbPad), vh = box.h * (1 + 2 * vbPad);
+    const dw = Math.max(vw, FRAME_AR * vh), dh = Math.max(vh, vw / FRAME_AR);
+    const dx = vx + vw / 2 - dw / 2, dy = vy + vh / 2 - dh / 2;
+    // Only the part of the frame that is ON the globe has to be covered. A box may
+    // legitimately run past a pole — Canada's reaches y = −5 — and there is no map up
+    // there for any plate to carry, the world plate included.
+    const ry0 = Math.max(0, dy), ry1 = Math.min(180, dy + dh);
+    const covers = p.x <= dx + 1e-6 && p.x + p.w >= dx + dw - 1e-6
+      && p.y <= ry0 + 1e-6 && p.y + p.h >= ry1 - 1e-6;
+    return covers ? p : null;
+  })();
   // How many plate units the frame's WIDTH spans. Under `meet` the fit is uniform and
   // limited by whichever dimension is proportionally larger, so this is the one honest
   // "screen unit" — every pin, glyph and label is sized as a fraction of it. Sizing off
@@ -5885,6 +5877,17 @@ export default function ShutterbugWorld() {
                       <image key={"relief" + off} href={`${BASE}relief-world-hyp2.jpg`} xlinkHref={`${BASE}relief-world-hyp2.jpg`}
                         x={off} y="0" width="360" height="180" preserveAspectRatio="none" />
                     ))}
+                    {/* The country's sharp plate over the world one, at exactly the
+                        ground it covers. Drawn after the world plate and before the
+                        borders, so the outlines still sit on top of the terrain. The
+                        world plate stays underneath rather than being replaced: it is
+                        already loaded and it is what shows while this one is still
+                        arriving over the network, so the map never flashes empty. */}
+                    {countryPlate && (
+                      <image href={`${BASE}relief/${countryPlate.f}`} xlinkHref={`${BASE}relief/${countryPlate.f}`}
+                        x={countryPlate.x} y={countryPlate.y} width={countryPlate.w} height={countryPlate.h}
+                        preserveAspectRatio="none" />
+                    )}
                     {/* country borders over the relief */}
                     {(plateMode === "wrap" ? [0, 360] : [0]).map((off) => (
                       <g key={off} transform={off ? `translate(${off} 0)` : undefined}>
@@ -8476,6 +8479,43 @@ function CountryCard({ country }) {
           </div>
         </div>
       )}
+      <CurrencyLine country={country} />
+    </div>
+  );
+}
+
+// What money they use here — and, more to the point, how BIG a number of it is.
+//
+// The lesson this exists for is orders of magnitude. A child who reads "1,500 yen"
+// has no way to know whether that is bus fare or a bicycle until someone tells them
+// roughly how many yen a dollar is worth, and once they know, they can work out the
+// rest themselves for every country in the game. So the rate is the content here,
+// not decoration; the name and symbol are what make it stick.
+//
+// The number is deliberately approximate and says so, and it is phrased from
+// whichever end reads naturally: a dollar buys 160 yen, but a pound buys 1.34
+// dollars, and "a dollar buys 0.75 pounds" is the sort of sentence that teaches a
+// child that money is confusing rather than that it is countable.
+function CurrencyLine({ country }) {
+  const c = COUNTRY_CURRENCY[country];
+  if (!c) return null;
+  const strong = c.perUsd < 1;                 // worth MORE than a dollar
+  const per = strong ? Math.round((1 / c.perUsd) * 100) / 100 : c.perUsd;
+  const money = (n) => n.toLocaleString("en-US");
+  return (
+    <div style={{ marginTop: 6, fontSize: 12, color: INK, lineHeight: 1.5 }}>
+      <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.06em", color: OCEAN, fontWeight: 700 }}>
+        <span aria-hidden="true">🪙 </span>Money: {c.name} ({c.code})
+        {c.symbol !== c.code && <span style={{ opacity: 0.75 }}> · {c.symbol}</span>}
+      </div>
+      <div style={{ fontSize: 11.5, opacity: 0.8, marginTop: 1 }}>
+        {c.perUsd === 1
+          ? "They use US dollars here."
+          : strong
+            // ISO's own capitalisation, left alone: lowercasing it read "1 swiss franc".
+            ? `1 ${c.name} is worth about $${per} (${CURRENCY_AS_OF}).`
+            : `About ${money(per)} to the US dollar (${CURRENCY_AS_OF}).`}
+      </div>
     </div>
   );
 }

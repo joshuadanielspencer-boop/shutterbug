@@ -86,6 +86,13 @@ export default defineConfig({
         // The per-file cap must stay above it or it silently drops from the offline
         // precache and those maps go blank on an installed iPad with no network.
         globPatterns: ["**/*.{js,css,html,svg,png,jpg,ico,woff2}"],
+        // The 106 per-country relief plates (~11 MB) are deliberately NOT precached.
+        // Precaching them would put the whole set on the iPad at install time for a
+        // child who may visit six countries — the same reasoning that already leaves
+        // landmark photos to runtime caching below. They are cached the first time a
+        // country's map is opened, so a place you have actually been works offline,
+        // and a country you have never visited falls back to the world plate.
+        globIgnores: ["relief/**"],
         maximumFileSizeToCacheInBytes: 6 * 1024 * 1024,
         cleanupOutdatedCaches: true,
         clientsClaim: true,
@@ -105,6 +112,18 @@ export default defineConfig({
             options: {
               cacheName: "landmark-photos",
               expiration: { maxEntries: 400, maxAgeSeconds: 60 * 60 * 24 * 180 },
+              cacheableResponse: { statuses: [0, 200] },
+            },
+          },
+          {
+            // The per-country relief plates excluded from the precache above. Same
+            // deal as the photos: cache-first, so the second visit to a country is
+            // instant and offline, while a fresh install stays small.
+            urlPattern: ({ url }) => /\/relief\/[^/]+\.jpg$/.test(url.pathname),
+            handler: "CacheFirst",
+            options: {
+              cacheName: "country-relief",
+              expiration: { maxEntries: 120, maxAgeSeconds: 60 * 60 * 24 * 365 },
               cacheableResponse: { statuses: [0, 200] },
             },
           },

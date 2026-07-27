@@ -170,6 +170,51 @@ export const fitBox = (cx, cy, contentW, contentH, { margin = 1.08, min = 4.5, m
   return { x: cx - w / 2, y: cy - h / 2, w, h };
 };
 
+// A few location country names differ from the world-map polygon names, so the
+// outline can still be found. (Singapore has no polygon — a tiny island — and
+// simply shows a marker with no border.)
+export const WC_ALIAS = { "United States": "United States of America" };
+
+// A box at the atlas frame's own aspect, centred on (cx, cy) and `w` wide.
+const box145 = (cx, cy, w) => ({ x: cx - w / 2, y: cy - (w / FRAME_AR) / 2, w, h: w / FRAME_AR });
+
+// HAND-SET country boxes, for the countries the derivation above cannot size.
+//
+// Two different problems land here. Some countries are so far-flung that a box
+// holding all their landmarks spans a hemisphere (the USA's Denali and Kīlauea blew
+// its box out to 120°, so its "country map" showed the Arctic, both oceans and half
+// of South America). Others are sized wrong by their BORDER path, because a distant
+// territory sits just inside the clip their landmarks earn — Chile's Easter Island,
+// Spain's Canaries, South Africa's Prince Edward Islands each dragged the box out to
+// sea and left the mainland small in a corner.
+//
+// Landmarks falling OUTSIDE an override still work: when a run's options include one,
+// optionsFitCountry() sends that run to the wider continent view instead.
+//
+// Lives here rather than in the map component because it is map GEOMETRY, and because
+// scripts/make-country-relief.mjs has to derive exactly the same boxes to know what
+// ground each country's relief plate must cover.
+export const COUNTRY_BOX_OVERRIDE = {
+  // Zoomed out and centred WEST of the country, so the contiguous 48 sit in the RIGHT
+  // of the frame and the left is a wide band of open Pacific — room for the Alaska and
+  // Hawaiʻi locator boxes to stack clear of the mainland (Joshua asked for more Pacific
+  // here). The right edge stays past the Atlantic coast (x 114 ≈ lon −66) so Maine and
+  // Florida keep their east coast.
+  "North America|United States": box145(77, 51.5, 78),
+  // The mainland: lon −84…−58, lat −14…−58. Without this, Chile's border path carries
+  // Easter Island (lon −109) and its map was really a map of the south Pacific.
+  "South America|Chile": { x: 96, y: 104, w: 26, h: 44 },
+  // The derived box carried ~5° of margin a side, so the islands sat small in a lot of
+  // North Sea and Atlantic. Hug them.
+  "Europe|United Kingdom": { x: 171, y: 29.5, w: 12, h: 12 },
+  // The peninsula — lon −9.4…3.9, lat 35.6…44.2 — without the Canary Islands pulling
+  // the box south-west into the Atlantic.
+  "Europe|Spain": box145(177, 50.2, 13.4),
+  // The mainland — lon 16.5…33, lat −22…−35 — without the Prince Edward Islands, 1,200
+  // miles out in the Southern Ocean, sliding the box south.
+  "Africa|South Africa": box145(204.7, 118.7, 21),
+};
+
 // Where on a map a pointer event actually landed, in the game's equirectangular
 // coords. getScreenCTM is the browser's own answer to "how is this svg currently
 // laid out", so it survives the frame being any size and the viewBox being
