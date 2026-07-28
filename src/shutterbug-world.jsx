@@ -3839,10 +3839,12 @@ export default function ShutterbugWorld() {
   // Assignments, but there is no target count to finish — the score IS how far you
   // got — and you set off with a bag Jonah packed (see src/data/kit.js).
   const isLongTrip = gameMode === "longtrip";
-  // The rail holds four tools in the Long Trip (the camera bag joins the three), so
-  // the tiles shrink to keep them all on the desk without scrolling; three tools keep
-  // the roomier size.
-  const railToolMax = isLongTrip ? 150 : 200;
+  // The rail has to fit on the desk without scrolling, so the tiles shrink as tools
+  // are added. Pickles's wardrobe joined the rail (it was buried in the settings
+  // gear), which makes FOUR the normal case and five in the Long Trip, where the
+  // camera bag also rides along. 150 is the size the Long Trip already proved
+  // carries four; five needs another step down.
+  const railToolMax = isLongTrip ? 120 : 150;
   // Travel modes (hubs + last-leg transport + a money budget) run on the two higher
   // Grand Tour tiers only.
   const travelModes = isTour && (difficulty === "medium" || difficulty === "hard");
@@ -6614,6 +6616,21 @@ export default function ShutterbugWorld() {
           })()}
           <ToolButton img="photo-album.png" maxWidth={railToolMax} label="Photo Album" onClick={() => setAlbumOpen(true)} />
           <ToolButton img="passport.png" maxWidth={railToolMax} label="Passport" onClick={() => { setGearOpen(false); setPassportOpen(true); }} />
+          {/* Pickles herself opens her wardrobe. It was reachable only from the
+              settings gear and a small link on the start screen, which is where
+              Joshua found it and said it should be somewhere more obvious — and he
+              is right: it is a reward for exploring, and rewards buried in a
+              settings menu may as well not exist. Clicking the dog is the one
+              placement a child will find without being told.
+              She is drawn in her own fur here rather than the current outfit: the
+              rail must not change under the player mid-trip, and this is the icon
+              for the wardrobe, not a readout of it. A dedicated rail illustration
+              (a basket, a bone, a peg of little coats) would sit better beside the
+              other four objects than a cut-out of the dog — worth asking for in the
+              next art batch. */}
+          <ToolButton img="dog/dog_pose_02_sitting_paw_up.png" maxHeight={railToolMax * 0.9}
+            label="Pickles's wardrobe — dress your traveling dog"
+            onClick={() => { setGearOpen(false); setWardrobeOpen(true); }} />
         </div>
       </div>
 
@@ -7060,13 +7077,20 @@ function Itinerary({ reqs, here }) {
 // used for a tool that doesn't apply to this mode, whose tap opens an explanation
 // rather than the tool. A dimmed image plus its "not used in this mode" label carry
 // the state without relying on colour alone (rule 4).
-function ToolButton({ img, label, onClick, disabled, dim, maxWidth = 200 }) {
+// `maxHeight` exists for exactly one caller. Every other rail tool is a landscape
+// object — a bag, a book, a wallet — so capping the WIDTH gives them all the same
+// visual weight. Pickles is a portrait cut-out of a dog: at the same width she came
+// out 352px tall against everyone else's 200, which broke the rail's rhythm and ate
+// the vertical budget the desk needs to fit one screen without scrolling. Capping
+// her height instead puts her on the same line as the rest.
+function ToolButton({ img, label, onClick, disabled, dim, maxWidth = 200, maxHeight }) {
   const faded = disabled || dim;
   return (
     <button onClick={onClick} disabled={disabled} aria-label={label} title={label} className="sbw-tool"
       style={{ display: "flex", alignItems: "center", justifyContent: "center", background: "transparent",
         border: "none", padding: 0, cursor: disabled ? "default" : "pointer", opacity: faded ? 0.4 : 1, width: "100%" }}>
-      <img src={`${UI}${img}`} alt="" style={{ width: "100%", maxWidth, display: "block",
+      <img src={`${UI}${img}`} alt="" style={{
+        width: maxHeight ? "auto" : "100%", maxWidth, maxHeight, display: "block",
         filter: dim ? "grayscale(1) drop-shadow(0 5px 7px rgba(0,0,0,0.45))" : "drop-shadow(0 5px 7px rgba(0,0,0,0.45))" }} />
     </button>
   );
@@ -7378,8 +7402,17 @@ function QuitRunModal({ mode, step, total, onQuit, onClose }) {
 // have her wear that one everywhere. Locked outfits show how to earn them.
 function WardrobeModal({ unlocked, mode, pick, onSet, onClose }) {
   const earnedCount = ALL_OUTFITS.filter((o) => unlocked.has(o)).length;
+  // Each mode says what it DOES, not just what it is called. "Dress for the region"
+  // and "Just Pickles" are the names of two settings, and a child (or a parent
+  // reading over their shoulder) has no way to tell from those names that one of
+  // them is the whole point of the feature and the other turns it off — Joshua
+  // asked what the difference was, which is the answer.
+  const MODES_HELP = {
+    auto: "She changes outfit to suit wherever you've just been — a parka in the Arctic, a safari kit in Kenya. Only regions you've earned.",
+    basic: "No costume. She travels as herself, in her own fur.",
+  };
   const modeBtn = (active) => ({
-    flex: "1 1 auto", background: active ? OCEAN : "transparent", color: active ? "#fff" : INK,
+    flex: "1 1 0", textAlign: "left", background: active ? OCEAN : "transparent", color: active ? "#fff" : INK,
     border: `2px solid ${OCEAN}`, borderRadius: 10, padding: "9px 12px", fontWeight: 800, fontSize: 13, cursor: "pointer",
   });
   return (
@@ -7389,12 +7422,22 @@ function WardrobeModal({ unlocked, mode, pick, onSet, onClose }) {
         <h2 style={{ fontFamily: "ui-sans-serif, system-ui", fontWeight: 900, fontSize: 20, color: INK, margin: "3px 0 2px" }}>Dress your traveling dog</h2>
         <p style={{ margin: 0, fontSize: 12.5, color: INK, opacity: 0.75 }}>{earnedCount} of {ALL_OUTFITS.length} outfits earned — travel to new regions to unlock more.</p>
       </div>
-      <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
-        <button onClick={() => onSet("auto")} style={modeBtn(mode === "auto")}>🌍 Dress for the region</button>
-        <button onClick={() => onSet("basic")} style={modeBtn(mode === "basic")}>🐕 Just Pickles</button>
+      <div style={{ display: "flex", gap: 8, marginBottom: 12, alignItems: "stretch" }}>
+        <button onClick={() => onSet("auto")} style={modeBtn(mode === "auto")} aria-pressed={mode === "auto"}>
+          <span style={{ display: "block" }}>{mode === "auto" ? "✓ " : ""}🌍 Dress for the region</span>
+          <span style={{ display: "block", fontWeight: 500, fontSize: 11.5, lineHeight: 1.35, marginTop: 3, opacity: mode === "auto" ? 0.92 : 0.72 }}>
+            {MODES_HELP.auto}
+          </span>
+        </button>
+        <button onClick={() => onSet("basic")} style={modeBtn(mode === "basic")} aria-pressed={mode === "basic"}>
+          <span style={{ display: "block" }}>{mode === "basic" ? "✓ " : ""}🐕 Just Pickles</span>
+          <span style={{ display: "block", fontWeight: 500, fontSize: 11.5, lineHeight: 1.35, marginTop: 3, opacity: mode === "basic" ? 0.92 : 0.72 }}>
+            {MODES_HELP.basic}
+          </span>
+        </button>
       </div>
       <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 10, letterSpacing: "0.14em", color: CORAL, fontWeight: 800, marginBottom: 8 }}>
-        {mode === "always" ? "ALWAYS WEARING — TAP ANOTHER TO SWITCH" : "OR TAP AN EARNED OUTFIT TO ALWAYS WEAR IT"}
+        {mode === "always" ? "✓ ALWAYS WEARING THIS ONE — TAP ANOTHER TO SWITCH" : "OR PICK ONE OUTFIT FOR HER TO WEAR EVERYWHERE"}
       </div>
       {/* The tiles grew with her (87px art, up from 58), so the columns had to grow too
           or the names would wrap under a picture wider than its cell. */}
