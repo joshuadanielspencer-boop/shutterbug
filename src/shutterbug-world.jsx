@@ -6103,38 +6103,7 @@ export default function ShutterbugWorld() {
                     </g>
                   );
                 });
-                // Second pass: the ONE hovered/focused country's name, drawn on top of
-                // every region so nothing can cover it. Hidden entirely in Hard mode.
-                const hov = showLabels && hoverCountry && list.includes(hoverCountry)
-                  ? COUNTRY_META[countryKey(pickedContinent, hoverCountry)] : null;
-                const labels = hov ? (() => {
-                  // The label is centred on the country, which is fine until the
-                  // country sits against the edge of the frame: French Polynesia is
-                  // the last thing in the Pacific, so half of its name was being cut
-                  // off by the atlas border. Keep the whole word inside the map by
-                  // sliding it back in — a name that has to move is still readable,
-                  // where half a name is not.
-                  //
-                  // Monospace, so the width is honestly estimable: ~0.6em a character.
-                  const label = displayCountry(hoverCountry);
-                  const fs = 0.055 * box.h;
-                  const halfW = label.length * fs * 0.3;
-                  const pad = 0.012 * box.w;
-                  const lx = Math.min(Math.max(hov.cx, box.x + halfW + pad),
-                                      box.x + box.w - halfW - pad);
-                  return [(
-                    // unstretchAt: this text lives inside the vertically-stretched map
-                    // group, and without the counter-scale its letters came out
-                    // 31% too tall on the Europe map (that plate is stretched 1.31).
-                    // Same fix the pins use. Pivoted about the label's own y so it
-                    // stays put while un-squashing.
-                    <g key={"lbl" + hoverCountry} transform={unstretchAt(baseY(hov))} style={{ pointerEvents: "none" }}>
-                      <text x={lx} y={baseY(hov)} fontSize={fs} fontFamily="ui-monospace, monospace" fontWeight="800" fill={INK} textAnchor="middle"
-                        style={{ paintOrder: "stroke", stroke: PAPER, strokeWidth: 0.02 * box.h }}>{label}</text>
-                    </g>
-                  )];
-                })() : [];
-                return regions.concat(labels);
+                return regions;
               })()}
 
               {/* departure city marker on the world map (Robinson coords) */}
@@ -6433,6 +6402,45 @@ export default function ShutterbugWorld() {
                   </g>
                 );
               })}
+
+              {/* The hovered/focused country's name — LAST of the map layers, because
+                  SVG has no z-index and paint order is the only thing that decides what
+                  covers what. It used to be drawn immediately after the regions, which
+                  put it under the blue "already photographed" stars: hover a country
+                  you'd shot in and its name came out with a star sitting on the letters.
+                  A label you can't read is worse than no label, so it goes on top of
+                  everything the map draws. Hidden entirely in Hard mode. */}
+              {(() => {
+                // A stale hoverCountry from a previously-viewed continent simply
+                // misses in COUNTRY_META, which is the guard.
+                const hov = showLabels && hoverCountry
+                  ? COUNTRY_META[countryKey(pickedContinent, hoverCountry)] : null;
+                if (!hov) return null;
+                // The label is centred on the country, which is fine until the country
+                // sits against the edge of the frame: French Polynesia is the last thing
+                // in the Pacific, so half of its name was being cut off by the atlas
+                // border. Keep the whole word inside the map by sliding it back in — a
+                // name that has to move is still readable, where half a name is not.
+                //
+                // Monospace, so the width is honestly estimable: ~0.6em a character.
+                const label = displayCountry(hoverCountry);
+                const fs = 0.055 * box.h;
+                const halfW = label.length * fs * 0.3;
+                const pad = 0.012 * box.w;
+                const lx = Math.min(Math.max(hov.cx, box.x + halfW + pad),
+                                    box.x + box.w - halfW - pad);
+                return (
+                  // unstretchAt: this text lives inside the vertically-stretched map
+                  // group, and without the counter-scale its letters came out 31% too
+                  // tall on the Europe map (that plate is stretched 1.31). Same fix the
+                  // pins use. Pivoted about the label's own y so it stays put while
+                  // un-squashing.
+                  <g key={"lbl" + hoverCountry} transform={unstretchAt(baseY(hov))} style={{ pointerEvents: "none" }}>
+                    <text x={lx} y={baseY(hov)} fontSize={fs} fontFamily="ui-monospace, monospace" fontWeight="800" fill={INK} textAnchor="middle"
+                      style={{ paintOrder: "stroke", stroke: PAPER, strokeWidth: 0.02 * box.h }}>{label}</text>
+                  </g>
+                );
+              })()}
 
               {/* Overseas-territory locator insets — only on a country plate that has
                   far-flung territories off-frame (France: Guiana, the Antilles, Réunion,
