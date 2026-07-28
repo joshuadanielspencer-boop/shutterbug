@@ -39,7 +39,7 @@ import { robinson, eqToRobinson, robinsonToEq, ROBINSON_W, ROBINSON_H,
 import { FRAME_AR, countryKey, pathBBox, pathBBoxCached as PATH_BBOX_CACHE, isSpeckIn,
   wrapPathPacific, trimWrappedSubpaths, trimFarSubpaths, toFrameAspect, fitBox,
   eqPointFromEvent, milesPerLonDegree, niceScaleMiles,
-  WC_ALIAS, COUNTRY_BOX_OVERRIDE } from "./map-geometry.js";
+  WC_ALIAS, COUNTRY_BOX_OVERRIDE, placeLabels, labelCorner, LABEL_FS, LABEL_DX, LABEL_DY } from "./map-geometry.js";
 import { rnd, shuffled, withSeed, randInt, pickOne } from "./rng.js";
 import { flightDays, kmBetween, tourPar as par, routeCost as legCost } from "./routes.js";
 import { dayNumber, dailySeed, dailyKey, shareText, DAILY_ASSIGNMENTS } from "./daily.js";
@@ -5533,12 +5533,16 @@ export default function ShutterbugWorld() {
         p.y = clamp(bBottomPlate, loY, hiY);   // drop it just under the banner
       }
     }
+    // Where each pin's NAME goes — see placeLabels in src/map-geometry.js for why
+    // this is not simply "up and to the right" any more.
+    const corner = placeLabels(pts, WoverS, PIN_K);
+
     const pos = {}, moved = {};
     for (const p of pts) {
       pos[p.id] = { x: p.x, y: p.y };
       if (Math.hypot(p.x - p.tx, p.y - p.ty) > 0.25 * PIN_K * WoverS) moved[p.id] = { x: p.tx, y: p.ty };
     }
-    return { pos, moved };
+    return { pos, moved, corner };
   })();
   const busy = !!flying || !!pending || !!riddle || !!mrO || !!mrOBeats || (!isExplore && days <= 0);
   // Whose typewriter is it? When Mr O (or a riddle) is on screen, HIS text is the one
@@ -6381,7 +6385,21 @@ export default function ShutterbugWorld() {
                     <ellipse cx={px} cy={py} {...pinR(isCurrent ? 0.033 : 0.028)} fill={isCurrent ? "rgba(233,92,66,0.22)" : "rgba(255,255,255,0.82)"} stroke={isCurrent ? CORAL : INK} strokeWidth={isCurrent ? "1.1" : "0.8"} vectorEffect="non-scaling-stroke" />
                     {isCurrent && <ellipse cx={px} cy={py} {...pinR(0.043)} fill="none" stroke="#FFFFFF" strokeWidth="2" vectorEffect="non-scaling-stroke" className="sbw-ping" />}
                     <text x={px} y={py} fontSize={0.044 * WoverS} textAnchor="middle" dominantBaseline="central" style={{ pointerEvents: "none" }}>{emoji}</text>
-                    <text className="sbw-label" x={px + 0.033 * WoverS} y={py - 0.024 * WoverS} fontSize={0.017 * WoverS} fontFamily="ui-monospace, monospace" fill={INK} style={{ paintOrder: "stroke", stroke: PAPER, strokeWidth: 0.0048 * WoverS }}>{l.city}</text>
+                    {/* Which corner this name sits in was decided by the layout pass
+                        (cityPinLayout), so two names near each other don't run through
+                        one another. Anchor flips with the side so the text always
+                        grows AWAY from its pin. */}
+                    {(() => {
+                      const [right, above] = labelCorner(cityPinLayout.corner?.[id] ?? 0);
+                      return (
+                        <text className="sbw-label"
+                          x={px + (right ? LABEL_DX : -LABEL_DX) * WoverS}
+                          y={py + (above ? -LABEL_DY : LABEL_DY + LABEL_FS) * WoverS}
+                          textAnchor={right ? "start" : "end"}
+                          fontSize={LABEL_FS * WoverS} fontFamily="ui-monospace, monospace" fill={INK}
+                          style={{ paintOrder: "stroke", stroke: PAPER, strokeWidth: 0.0048 * WoverS }}>{l.city}</text>
+                      );
+                    })()}
                     </g>
                   </g>
                 );
@@ -6411,6 +6429,13 @@ export default function ShutterbugWorld() {
                   A label you can't read is worse than no label, so it goes on top of
                   everything the map draws. Hidden entirely in Hard mode. */}
               {(() => {
+                // Hard mode hides country names entirely (tell them apart by shape and
+                // the hover highlight). Both of these were loop-local to the region
+                // pass this label used to live inside, so they are recomputed here
+                // rather than reached for — the same two expressions, not a copy of a
+                // value that could drift.
+                const showLabels = plateMode === "wrap" || mode.clue !== "hard";
+                const baseY = (cm) => cm.cy - 0.032 * box.h;   // just above the country
                 // A stale hoverCountry from a previously-viewed continent simply
                 // misses in COUNTRY_META, which is the guard.
                 const hov = showLabels && hoverCountry

@@ -284,3 +284,74 @@ export const pathArea = (() => {
 // scale and an unfilled outline is a few hairlines on open blue.
 export const isSpeckIn = (d, box, threshold = 0.02) =>
   !!d && !!box && pathArea(d) / (box.w * box.h) < threshold;
+
+// ---------------------------------------------------------------------------
+// Where a landmark pin's NAME goes.
+//
+// The pin de-overlap solver in the map component spaces the DISCS, and it does
+// that well — swept across all 108 countries there are no crowded discs left.
+// The names were another matter: every label was pinned to the same corner (up
+// and to the right), so as soon as two pins sat near each other their names ran
+// straight through one another. 43 pairs did, from "Toronto"/"Ottawa" to
+// "Fez"/"Volubilis". A disc a child can tell apart is no use if the two words
+// printed over it are illegible.
+//
+// Each label is offered four corners and takes the first that is clear of the
+// labels already placed AND of every pin disc. Greedy in the pins' own order,
+// which is stable, so a label doesn't hop between renders. If all four collide
+// it keeps the default — better a clash than a name flung far from its pin.
+//
+// Lives here rather than in the component so the sweep that proved the problem
+// can run as a test. Everything is in the same WoverS plate units the pin radii
+// use, so it is resolution- and zoom-independent.
+export const LABEL_FS = 0.017;    // font size, fraction of frame width
+export const LABEL_DX = 0.033;    // horizontal stand-off from the pin centre
+export const LABEL_DY = 0.024;    // vertical stand-off
+const LABEL_CHAR_W = 0.6;         // monospace: ~0.6em a character
+
+// The four corners, as (right?, above?).
+const CORNERS = [[true, true], [true, false], [false, true], [false, false]];
+
+export function labelBoxFor(pin, corner, WoverS) {
+  const [right, above] = CORNERS[corner] || CORNERS[0];
+  const w = String(pin.city || "").length * LABEL_FS * LABEL_CHAR_W * WoverS;
+  const h = LABEL_FS * WoverS * 1.15;
+  const x0 = right ? pin.x + LABEL_DX * WoverS : pin.x - LABEL_DX * WoverS - w;
+  const yc = above ? pin.y - LABEL_DY * WoverS : pin.y + (LABEL_DY + LABEL_FS) * WoverS;
+  return { x0, x1: x0 + w, y0: yc - h * 0.8, y1: yc + h * 0.2 };
+}
+
+export const labelCorner = (corner) => CORNERS[corner] || CORNERS[0];
+
+const boxesHit = (a, b) => a.x0 < b.x1 && b.x0 < a.x1 && a.y0 < b.y1 && b.y0 < a.y1;
+
+// pins: [{ id, city, x, y }] already de-overlapped. pinK is the disc radius as a
+// fraction of the frame width. Returns { [id]: cornerIndex }.
+export function placeLabels(pins, WoverS, pinK) {
+  const discR = pinK * WoverS;
+  const hitsDisc = (bx, q) =>
+    bx.x0 < q.x + discR && q.x - discR < bx.x1 && bx.y0 < q.y + discR && q.y - discR < bx.y1;
+  const placed = [], corner = {};
+  for (const p of pins) {
+    let chosen = 0;
+    for (let c = 0; c < CORNERS.length; c++) {
+      const bx = labelBoxFor(p, c, WoverS);
+      const clear = !placed.some((q) => boxesHit(bx, q)) &&
+        !pins.some((q) => q.id !== p.id && hitsDisc(bx, q));
+      if (clear) { chosen = c; break; }
+    }
+    corner[p.id] = chosen;
+    placed.push(labelBoxFor(p, chosen, WoverS));
+  }
+  return corner;
+}
+
+// How many label pairs still collide for a given placement — the measure the
+// sweep and the test both report.
+export function labelClashes(pins, corner, WoverS) {
+  const boxes = pins.map((p) => labelBoxFor(p, corner[p.id] ?? 0, WoverS));
+  let n = 0;
+  for (let i = 0; i < boxes.length; i++)
+    for (let j = i + 1; j < boxes.length; j++) if (boxesHit(boxes[i], boxes[j])) n++;
+  return n;
+}
