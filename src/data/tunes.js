@@ -106,10 +106,68 @@ export const TUNES = {
     ["D4",1],["E4",0.5],["F4",1.5],["E4",0.5],["F4",0.5],["A4",2],["G4",1],["F4",1],["E4",1],["D4",2],["r",1],
     ["A4",1],["Bb4",0.5],["C5",1.5],["Bb4",0.5],["A4",0.5],["G4",2],["F4",1],["E4",1],["F4",1],["E4",1],["D4",3],
   ] },
-  // Middle East / North Africa — oud, hijaz scale (D Eb F# G A Bb C).
+  // ---- The Arab world and Turkey, four ways --------------------------------
+  //
+  // These were ONE motif until 2026-07-28, when Joshua said the Islamic countries
+  // all sounded the same. They did: eight of the game's nineteen Muslim-majority
+  // countries — Morocco, Algeria, Tunisia, Egypt, Jordan, Saudi Arabia, the UAE and
+  // Sudan — shared `mideast`, and Turkey was lumped in with Iran on `persian`,
+  // which is a different musical tradition entirely.
+  //
+  // What is claimed here, and what is not. Each motif is written in a named MAQAM,
+  // and the scale content of a maqam is a checkable fact (rule 2) — Hijaz really is
+  // D Eb F# G A Bb C, Kurd really is Phrygian, Nahawand really is the natural minor.
+  // What is NOT claimed is that any of these is a particular song: they are style
+  // motifs in a mode, the same footing as the koto pentatonic for East Asia.
+  //
+  // The honest caveat, worth knowing before anyone "corrects" these: real maqam
+  // practice uses quarter tones that 12-tone equal temperament cannot play. Saba's
+  // third and Bayati's second both sit between our notes. These are 12-TET
+  // approximations of a modal COLOUR, not transcriptions, and the synth has no way
+  // to be otherwise.
+  //
+  // Naming a real public-domain folk melody for each country would be better still —
+  // Turkey's "Kâtibim" is 19th-century and long out of copyright — but writing one
+  // down from memory in a teaching tool is exactly the way a wrong note ships, so
+  // that wants a score in hand rather than a confident guess.
+
+  // The Levant — oud, maqam Hijaz (D Eb F# G A Bb C). The original motif, now
+  // carrying only the countries it fits closest.
   mideast: { timbre: "oud", spb: 0.3, seq: [
     ["D4",1],["Eb4",0.5],["F#4",1.5],["G4",1],["F#4",0.5],["Eb4",1.5],["D4",2],["A4",1],["G4",1],["F#4",1],["Eb4",1],["D4",2],["r",1],
     ["A4",1],["Bb4",0.5],["C5",1.5],["Bb4",1],["A4",1],["G4",2],["F#4",1],["Eb4",1],["F#4",1],["G4",1],["F#4",1],["D4",3],
+  ] },
+  // The Maghreb — maqam Kurd on D (D Eb F G A Bb C: Phrygian), the mode that runs
+  // through the Andalusian nūba repertoire of Morocco, Algeria and Tunisia. Lighter
+  // and quicker on its feet than the Hijaz above.
+  maghreb: { timbre: "oud", spb: 0.27, seq: [
+    ["D4",1],["Eb4",0.5],["F4",0.5],["G4",1],["F4",0.5],["Eb4",0.5],["D4",1.5],["r",0.5],
+    ["A4",1],["Bb4",0.5],["A4",0.5],["G4",1],["F4",1],["Eb4",0.5],["F4",0.5],["D4",2],["r",0.5],
+    ["F4",0.5],["G4",0.5],["A4",1],["Bb4",0.5],["A4",0.5],["G4",1],["F4",0.5],["Eb4",0.5],["D4",2.5],
+  ] },
+  // The Gulf — maqam Nahawand on C (the natural minor), taken slowly and squarely.
+  // Statelier than the Maghreb motif and a whole tone lower, so the two never read
+  // as the same phrase transposed.
+  gulf: { timbre: "oud", spb: 0.34, seq: [
+    ["C4",1],["D4",0.5],["Eb4",1],["F4",0.5],["G4",1.5],["F4",0.5],["Eb4",1],["D4",1],["C4",1.5],["r",0.5],
+    ["G4",1],["Ab4",0.5],["G4",0.5],["F4",1],["Eb4",1],["F4",0.5],["D4",0.5],["C4",2.5],
+  ] },
+  // The Nile — maqam Saba on D, the mode Egyptian and Sudanese music reaches for
+  // when it wants to sound wistful. Its third is a quarter-flat in practice; Gb is
+  // the nearest thing 12-TET has, and the drooping shape survives the compromise.
+  // On a reed, standing in for the ney.
+  nile: { timbre: "reed", spb: 0.32, seq: [
+    ["D4",1],["Eb4",0.5],["F4",0.5],["Gb4",1.5],["F4",0.5],["Eb4",1],["D4",1.5],["r",0.5],
+    ["F4",1],["Gb4",0.5],["A4",1],["Bb4",1],["A4",0.5],["Gb4",1],["F4",1],["Eb4",0.5],["D4",2.5],
+  ] },
+  // Turkey — maqam Hicaz on A (A Bb C# D E F G), the Turkish spelling of the same
+  // family the Levant motif uses but a fifth up and on a plucked string, for the
+  // bağlama. Turkey had been sharing Iran's motif, which is a different tradition:
+  // Ottoman/Turkish makam and Persian dastgāh are related but not interchangeable.
+  anatolia: { timbre: "sitar", spb: 0.25, seq: [
+    ["A4",1],["Bb4",0.5],["C#5",1],["D5",1],["C#5",0.5],["Bb4",1],["A4",1.5],["r",0.5],
+    ["E5",1],["F5",0.5],["E5",0.5],["D5",1],["C#5",1],["Bb4",0.5],["C#5",0.5],["A4",2],["r",0.5],
+    ["D5",0.5],["C#5",0.5],["Bb4",1],["A4",1],["G4",0.5],["A4",0.5],["Bb4",1],["A4",2.5],
   ] },
   // Latin America — bright guitar, major with a lilt.
   latin: { timbre: "guitar", spb: 0.26, seq: [
@@ -300,10 +358,12 @@ export const COUNTRY_MOTIF = {
   // Arabic-speaking North Africa and the Gulf keep the hijaz oud bed. Turkey, Iran
   // and the Central Asian republics get their own: lumping a Kazakh dombra in with a
   // Moroccan oud was the clearest case of "everything over there sounds the same".
-  "Saudi Arabia": "mideast", "United Arab Emirates": "mideast", "Jordan": "mideast",
-  "Egypt": "mideast", "Morocco": "mideast", "Tunisia": "mideast", "Algeria": "mideast",
-  "Sudan": "mideast",
-  "Iran": "persian", "Turkey": "persian",
+  // Four motifs across the Arab world instead of one — see the block above TUNES.mideast.
+  "Jordan": "mideast",                                                        // Levant, Hijaz
+  "Morocco": "maghreb", "Algeria": "maghreb", "Tunisia": "maghreb",           // Andalusian, Kurd
+  "Saudi Arabia": "gulf", "United Arab Emirates": "gulf",                     // Khaliji, Nahawand
+  "Egypt": "nile", "Sudan": "nile",                                           // Saba, on a ney
+  "Iran": "persian", "Turkey": "anatolia",                                    // NOT the same tradition
   "Uzbekistan": "centralasia", "Kazakhstan": "centralasia",
   // Mediterranean Europe
   "Greece": "mediterranean", "Italy": "mediterranean", "Spain": "mediterranean", "Portugal": "mediterranean",
