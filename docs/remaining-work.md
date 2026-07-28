@@ -52,6 +52,34 @@ Last updated **2026-07-28**.
 >
 > Recommendation: do (1) now — it costs a minute and it is the biggest single jump —
 > and treat (2) as a content project of the same shape as the culture-photo audit.
+>
+> **UPDATE, same day: (2) is DONE for the country names.** The audit came back far
+> better than expected — see below — so it was built rather than filed.
+>
+> ### The audit result
+>
+> | | coverage | verdict |
+> |---|---|---|
+> | **Country names (English)** | **106 / 108** | built |
+> | **Greetings (right language)** | **16 / 79** | not built, and shouldn't be |
+>
+> Country names: one speaker, "Soundguys", had recorded 102 of them, which mattered
+> more than the coverage number — 106 different volunteers would have sounded like a
+> ransom note. Two more speakers fill the gaps. **All 106 are CC0.** Commons
+> auto-generates MP3 transcodes, so no encoder was needed and the set is 2.3 MB.
+> Only French Polynesia and New Caledonia have nothing, and they fall back to
+> synthesis. `node scripts/gen-voices.mjs` rebuilds the set.
+>
+> Greetings: 16 of 79 in the RIGHT language. Another 19 exist with the same spelling
+> recorded in some OTHER language — "Hola" by a Polish speaker, "Bonjour" by a
+> Malagasy one — which would teach exactly the wrong sound, which is the thing this
+> whole exercise is about. Not worth a pipeline at 16/79, and half human / half robot
+> on the same UI element would be worse than either. They stay on synthesis, now with
+> the voice ranking picking the plain voice rather than a character one.
+>
+> If greetings are wanted later, the route is Lingua Libre's own recording studio —
+> it takes requests, and a speaker of a given language can record a word list in one
+> sitting. That is a community ask, not a code change.
 
 
 > ### ⚠ 2026-07-27: a sixth mode landed

@@ -20,6 +20,7 @@
 // ===========================================================================
 import { LOCATIONS } from "./locations.js";
 import { COUNTRY_PEOPLE } from "./culture.js";
+import { COUNTRY_VOICE } from "./voices.js";
 
 const LANDMARK_PHOTOS = LOCATIONS.filter((l) => l.photo && l.photo.src).length;
 const CULTURE_PHOTOS = Object.values(COUNTRY_PEOPLE)
@@ -31,6 +32,10 @@ const CULTURE_PHOTOS = Object.values(COUNTRY_PEOPLE)
 export const COPYRIGHT_HOLDER = "Lotus Creative Studios";
 export const COPYRIGHT_YEAR = 2026;
 export const COPYRIGHT_LINE = `© ${COPYRIGHT_YEAR} ${COPYRIGHT_HOLDER}`;
+
+// Counted from the data rather than typed, so the credits can't drift from what
+// actually ships (the same reason LANDMARK_PHOTOS and CULTURE_PHOTOS are derived).
+const SPOKEN_COUNTRIES = Object.keys(COUNTRY_VOICE).length;
 
 export const CREDIT_SECTIONS = [
   {
@@ -72,6 +77,21 @@ export const CREDIT_SECTIONS = [
         license: "CC BY · CC BY-SA · CC0 · public domain", url: "https://commons.wikimedia.org/" },
       { name: `${CULTURE_PHOTOS} culture and traditional-dress photographs`, detail: "Wikimedia Commons contributors",
         license: "CC BY · CC BY-SA · CC0 · public domain", url: "https://commons.wikimedia.org/" },
+    ],
+  },
+  {
+    id: "voices",
+    title: "The spoken country names",
+    body:
+      "When you land somewhere, the country's name is said aloud by a real person, not by " +
+      "a computer. The recordings come from Lingua Libre, a Wikimedia project where volunteers " +
+      "record themselves saying single words, and nearly all of them are by one speaker so the " +
+      "game keeps one voice. Two countries have no recording yet and are read by the device's " +
+      "own speech synthesis, as are all of the greetings — those are in fifty languages, and a " +
+      "recording in the wrong language would teach the wrong sound.",
+    items: [
+      { name: `${SPOKEN_COUNTRIES} spoken country names`, detail: "Lingua Libre volunteers (Wikimedia)",
+        license: "CC0 · public domain", url: "https://lingualibre.org/" },
     ],
   },
   {

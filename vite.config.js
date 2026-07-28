@@ -85,7 +85,12 @@ export default defineConfig({
         // Earth so small countries like Jordan aren't a pixel mush at high zoom).
         // The per-file cap must stay above it or it silently drops from the offline
         // precache and those maps go blank on an installed iPad with no network.
-        globPatterns: ["**/*.{js,css,html,svg,png,jpg,ico,woff2}"],
+        // mp3 is in here for the country-name recordings (public/voices, ~2.3 MB for
+        // all 106). Unlike the relief plates below, these DO belong in the precache:
+        // they are small, they are the game's voice, and an installed iPad with no
+        // network falling back to a robot reading "Kazakhstan" is exactly the thing
+        // the recordings exist to prevent.
+        globPatterns: ["**/*.{js,css,html,svg,png,jpg,ico,woff2,mp3}"],
         // The 106 per-country relief plates (~11 MB) are deliberately NOT precached.
         // Precaching them would put the whole set on the iPad at install time for a
         // child who may visit six countries — the same reasoning that already leaves

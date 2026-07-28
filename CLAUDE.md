@@ -42,6 +42,7 @@ npm run build    # production build to dist/ (also generates the PWA service wor
 npm run preview  # serve the production build locally → http://localhost:4173/
 node scripts/gen-icons.mjs   # re-rasterize app/PWA icons from assets-src/icon.svg
 node scripts/gen-geography.mjs           # rebuild src/data/geography.js from Natural Earth
+node scripts/gen-voices.mjs              # re-fetch the spoken country names (Lingua Libre)
 node scripts/make-relief.mjs <NE1.tif> --width 8192 --out public/relief-world.jpg
 node scripts/optimize-ui-art.mjs         # palette-quantize new badge art (run after a batch lands)
 ```

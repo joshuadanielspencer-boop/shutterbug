@@ -7,6 +7,10 @@
 // unchanged. Each guards every call so an audio hiccup can never break gameplay.
 // ===========================================================================
 import { TUNES, tuneKeyFor } from "./data/tunes.js";
+// A real person saying each country's name — see scripts/gen-voices.mjs. BASE so the
+// files resolve under a GitHub Pages subpath as well as at a domain root.
+import { COUNTRY_VOICE } from "./data/voices.js";
+import { BASE } from "./theme.js";
 
 export const SFX = (() => {
   let ctx = null;
@@ -949,6 +953,44 @@ const utter = (text, opts = {}) => {
   u.volume = SPEECH_VOLUME;
   return u;
 };
+// ---------------------------------------------------------------------------
+// A REAL PERSON saying a country's name
+// ---------------------------------------------------------------------------
+// 106 of the 108 countries have a human recording from Wikimedia's Lingua Libre
+// (see scripts/gen-voices.mjs), nearly all by one speaker so the game doesn't
+// sound like a relay of strangers. Everything below falls back to the browser's
+// synthesis for the two that don't, and for any failure at all — a missing file,
+// a codec the device won't play, autoplay policy. A country announcement is a
+// nice-to-have and must never be able to stall the arrival sequence.
+const VOICE_VOLUME = 0.85;   // recordings are quieter than TTS at the same number
+let _voiceAudio = null;
+export const hasRecording = (country) => !!COUNTRY_VOICE[country];
+
+// Play the recording. Resolves TRUE when it actually played to the end, FALSE the
+// instant anything is wrong — the caller uses that to decide whether to fall back,
+// so it must never resolve true on a silent failure.
+function playRecording(country) {
+  return new Promise((resolve) => {
+    const file = COUNTRY_VOICE[country];
+    if (!file || typeof Audio === "undefined") return resolve(false);
+    try {
+      if (_voiceAudio) { _voiceAudio.pause(); _voiceAudio = null; }
+      const a = new Audio(`${BASE}voices/${file}`);
+      _voiceAudio = a;
+      a.volume = VOICE_VOLUME;
+      let settled = false;
+      const finish = (ok) => { if (!settled) { settled = true; resolve(ok); } };
+      a.onended = () => finish(true);
+      a.onerror = () => finish(false);
+      // A backstop, because `ended` never fires if the element is paused or the tab
+      // is hidden mid-play. These clips are about a second; three is generous.
+      setTimeout(() => finish(false), 3000);
+      const p = a.play();
+      if (p && p.catch) p.catch(() => finish(false));
+    } catch { resolve(false); }
+  });
+}
+
 // Speak a short English announcement aloud ("France") — used on map arrivals.
 // A nice-to-have; never breaks anything if speech is unavailable.
 export function speakEn(text) {
@@ -1041,19 +1083,37 @@ export function announceArrival(country, continent, greeting, opts = {}) {
     at(secs * 1000 + gapMs, hello);
   };
   const nameThenTune = () => {
-    if (!speech || !speechAvailable) { tuneThenHello(); return; }
-    try {
-      window.speechSynthesis.cancel();
-      const name = utter(saidAs, { pitch: 1.05 });
-      // `once` because onend is unreliable across browsers (and never fires on a
-      // cancelled utterance), so a 4s backstop races it — whichever lands first wins
-      // and the other becomes a no-op. Without the guard the tune could start twice.
-      let started = false;
-      const go = () => { if (!started) { started = true; tuneThenHello(); } };
-      name.onend = go;
-      window.speechSynthesis.speak(name);
-      at(4000, go);
-    } catch { tuneThenHello(); }
+    if (!speech) { tuneThenHello(); return; }
+    // `started` guards the hand-off to the tune. onend is unreliable across browsers
+    // (and never fires on a cancelled utterance or a paused <audio>), so a timeout
+    // races it — whichever lands first wins and the other becomes a no-op. Without
+    // the guard the country tune could start twice.
+    let started = false;
+    const go = () => { if (!started) { started = true; tuneThenHello(); } };
+
+    const synth = () => {
+      if (!speechAvailable) { go(); return; }
+      try {
+        window.speechSynthesis.cancel();
+        const name = utter(saidAs, { pitch: 1.05 });
+        name.onend = go;
+        window.speechSynthesis.speak(name);
+        at(4000, go);
+      } catch { go(); }
+    };
+
+    // A real voice if we have one for this country, the browser's if not. The
+    // recording is keyed by the country, not by `saidAs`: `spokenName` exists to
+    // help a synthesizer pronounce something, and the recording already says it
+    // correctly.
+    if (hasRecording(country)) {
+      // Stop any synthesis still running, or the two overlap.
+      try { if (speechAvailable) window.speechSynthesis.cancel(); } catch { /* ignore */ }
+      playRecording(country).then((ok) => { if (ok) go(); else if (!started) synth(); });
+      at(4000, go);   // the recording's own backstop can't cover a hung promise
+      return;
+    }
+    synth();
   };
   at(leadMs, nameThenTune);
   return cancel;
