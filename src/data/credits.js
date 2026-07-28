@@ -69,8 +69,8 @@ export const CREDIT_SECTIONS = [
       "The landmark and culture photographs are the work of hundreds of photographers who " +
       "published them on Wikimedia Commons. Most are licensed CC BY or CC BY-SA, which means " +
       "crediting the photographer is a condition of use, not a courtesy — so every photograph " +
-      "in the game carries an ⓘ button naming its photographer, its licence and a link to the " +
-      "original. Photographs shared under a share-alike licence remain under that licence; they " +
+      "in the game carries an ⓘ button naming its photographer, its license and a link to the " +
+      "original. Photographs shared under a share-alike license remain under that license; they " +
       "are used here alongside this game's own work, not absorbed into it.",
     items: [
       { name: `${LANDMARK_PHOTOS} landmark photographs`, detail: "Wikimedia Commons contributors",
@@ -130,7 +130,7 @@ export const CREDIT_SECTIONS = [
     id: "software",
     title: "Software",
     body:
-      "Shutterbug is built with open-source tools, each used under its own licence.",
+      "Shutterbug is built with open-source tools, each used under its own license.",
     items: [
       { name: "React", detail: "the interface library", license: "MIT", url: "https://react.dev/" },
       { name: "Vite", detail: "the build tool", license: "MIT", url: "https://vitejs.dev/" },

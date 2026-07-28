@@ -129,10 +129,10 @@ export function nigelFace(key, beat = 0) {
 export const INTRO_BEATS = [
   "Come in, come in — pull up a chair beside me a moment.",
   "When I was young I took this camera everywhere — buses to the edge of the map, strange skies overhead, my pockets full of pictures every time I came home.",
-  "But no one sees all of it in one life, and these days I do my travelling from this chair. There's a whole wide world still out there I never reached.",
+  "But no one sees all of it in one life, and these days I do my traveling from this chair. There's a whole wide world still out there I never reached.",
   "You, though — young legs and a sharp pair of eyes. So here's my plan, if you'll hear an old traveler out.",
   "Take my camera. It's older than your mother and it still uses real film, so make every shot count. No telephones, no glowing screens — just you and the wide world.",
-  "Oh — and this is Pickles. My travelling companion for years, and restless as anything since I stopped. She will go with you now, and she will let you know when you have done something worth a wag.",
+  "Oh — and this is Pickles. My traveling companion for years, and restless as anything since I stopped. She will go with you now, and she will let you know when you have done something worth a wag.",
   "Go and find the places I loved, and the ones I never got to. Then hurry home, show me every picture, and tell me all about it. Bring the world back to me.",
 ];
 
@@ -216,7 +216,7 @@ export const END_LOSE = [
 // Antarctica is the one he never reached — which is the whole reason he lends you
 // the camera, so it reads as a wish rather than a memory.
 export const JONAH_JOURNALS = {
-  "Asia": "Asia I knew before I knew the word for it — the smell of the markets, the mountains breathing mist at dawn. I carried this very camera up switchback roads and along rivers the colour of tea, and every picture taught me my own continent was far bigger than I had ever dreamed.",
+  "Asia": "Asia I knew before I knew the word for it — the smell of the markets, the mountains breathing mist at dawn. I carried this very camera up switchback roads and along rivers the color of tea, and every picture taught me my own continent was far bigger than I had ever dreamed.",
   "Europe": "Ah, Europe. I was young and nearly broke and slept more than one night in a train station — and I would not trade a minute of it. I photographed old cathedrals until my neck ached, and I learned that every worn stone has a story, if you stand still long enough to hear it.",
   "Africa": "Africa took my breath clean away. The light there is like nowhere else on Earth — gold in the morning, copper by dusk — and I would lie awake to the sound of the wide land humming and think: I must find a way to bring this home. This camera was how I tried.",
   "North America": "North America does not sit still. I rode buses from grey cities out to red canyons so vast the far wall went blue with distance, and I filled roll after roll trying to fit even a corner of it in the frame. You never quite manage it — but oh, the joy of trying.",

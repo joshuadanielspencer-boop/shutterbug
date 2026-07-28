@@ -755,14 +755,14 @@ export const JOURNEYS = [
         id: "south-pass", name: "South Pass", place: "Wyoming", when: "Day 5",
         ...at(42.3303, -108.9738),
         prompt: "The crossing of the Continental Divide — so broad and gentle that riders could miss the moment they crossed it.",
-        fact: "South Pass is the reason the American West could be crossed at all. At 7,412 feet (2,259 m) it is a wide, gentle saddle over the Continental Divide — so gradual that travellers often could not tell where the climb ended. Rain falling east of it reaches the Atlantic; west of it, the Pacific.",
+        fact: "South Pass is the reason the American West could be crossed at all. At 7,412 feet (2,259 m) it is a wide, gentle saddle over the Continental Divide — so gradual that travelers often could not tell where the climb ended. Rain falling east of it reaches the Atlantic; west of it, the Pacific.",
         source: "https://en.wikipedia.org/wiki/South_Pass_(Wyoming)",
       },
       {
         id: "fort-bridger", name: "Fort Bridger", place: "Wyoming", when: "Day 6",
         ...at(41.31778, -110.39194),
         prompt: "A trading post built by a famous mountain man, where the trails to Oregon, California and Utah parted.",
-        fact: "Fort Bridger was built by the mountain man Jim Bridger as a supply stop for emigrants. It sat at the junction where travellers chose their destination — Oregon, California, or the Salt Lake valley.",
+        fact: "Fort Bridger was built by the mountain man Jim Bridger as a supply stop for emigrants. It sat at the junction where travelers chose their destination — Oregon, California, or the Salt Lake valley.",
         source: "https://en.wikipedia.org/wiki/Fort_Bridger",
       },
       {
@@ -917,8 +917,8 @@ export const JOURNEYS = [
       {
         id: "mount-sinai", name: "Mount Sinai", place: "the southern Sinai Peninsula", when: "the heart of the journey", certainty: "traditional",
         ...at(28.53942, 33.97542),
-        prompt: "The mountain at the centre of the whole story — though which mountain it is has been argued about for centuries.",
-        fact: "This peak, Jebel Musa, has been honoured as Mount Sinai since at least the 4th century AD, and Saint Catherine's Monastery has stood at its foot since the 6th — one of the oldest working monasteries on earth. Other mountains in Sinai, in Arabia and in the Negev have all been proposed instead; there is no archaeological proof for any of them.",
+        prompt: "The mountain at the center of the whole story — though which mountain it is has been argued about for centuries.",
+        fact: "This peak, Jebel Musa, has been honored as Mount Sinai since at least the 4th century AD, and Saint Catherine's Monastery has stood at its foot since the 6th — one of the oldest working monasteries on earth. Other mountains in Sinai, in Arabia and in the Negev have all been proposed instead; there is no archaeological proof for any of them.",
         source: "https://en.wikipedia.org/wiki/Mount_Sinai",
       },
       {

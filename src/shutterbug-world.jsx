@@ -84,6 +84,16 @@ import { Confetti, Stamp, GradualText, TypeLine, TALKING_CPS } from "./component
 // asset guide). `UI + "name.png"` builds a URL for an <img> or CSS background.
 const UI = `${BASE}assets/shutterbug-ui/`;
 
+// How big the traveler's portrait rides in the gameplay header. It is not a status
+// chip — it is the one thing on that bar the child made themselves, and the painted
+// avatar has a face worth seeing.
+//
+// It crosses the avatar's FACE_BELOW threshold (96), which would silently flip the
+// framing from a face crop to the whole waist-up bust — and inside a circular chip
+// that makes the FACE smaller even as the chip grows. So the header asks for the
+// face crop explicitly rather than inheriting it from the size.
+const HEADER_AVATAR = 112;
+
 // The build this bundle came from — date and commit, stamped in by vite.config.js
 // and printed faintly in the splash's corner. Guarded so the dev server (and tests,
 // which don't run through Vite's define) still render something sensible.
@@ -1257,7 +1267,7 @@ const MODE_CARDS = [
   // Every other mode runs clue → place. This one runs place → clue, which is the
   // half of geography the game never asked for. See src/mystery.js.
   { id: "mystery", name: "Mystery Photos", emoji: "📷",
-    blurb: "Jonah never labelled the photographs from his travelling years. He hands you five of them, one at a time, with no clue and no caption — just the picture. Read it, and put a pin on the world map where you think he was standing. The closer you get, the more it's worth; being on the right continent always counts for something." },
+    blurb: "Jonah never labelled the photographs from his traveling years. He hands you five of them, one at a time, with no clue and no caption — just the picture. Read it, and put a pin on the world map where you think he was standing. The closer you get, the more it's worth; being on the right continent always counts for something." },
 ];
 // Quiz and the Daily Expedition are no longer modes you pick. The review quiz now
 // happens on its own at the END of every scored run (the homecoming — see
@@ -1831,6 +1841,9 @@ export default function ShutterbugWorld() {
   // dress for the region where the outfit is unlocked; "basic" = never; "always" = one
   // chosen favourite everywhere it's unlocked. Persisted per traveler.
   const [wardrobeOpen, setWardrobeOpen] = useState(false);
+  // "Back to the title screen" mid-run. There is no save, so this is destructive and
+  // asks first — see the gear menu and abandonRun().
+  const [confirmQuit, setConfirmQuit] = useState(false);
   const [dogMode, setDogMode] = useState("auto");
   const [dogPick, setDogPick] = useState(null);
   useEffect(() => {
@@ -2711,6 +2724,25 @@ export default function ShutterbugWorld() {
       setMsg({ type: "info", text: "Pick a continent to explore." });
     }
   }
+  // Walk out of a run from the gear menu. There is no mid-run save in this game —
+  // scores, stamps and renown are all banked at the END of a run — so leaving early
+  // genuinely throws the run away, and the caller must have confirmed first.
+  //
+  // Explore is the exception and is deliberately routed through doneExplore()
+  // instead: everywhere you visited while roaming IS stamped into the passport, so
+  // quitting Explore has something to save and losing it would be a bug, not a
+  // warning.
+  function abandonRun() {
+    setConfirmQuit(false);
+    if (gameMode === "explore") { doneExplore(); return; }
+    MUSIC.stopCountry();
+    setQuiz(null);
+    setExpedition(null);
+    setCondition(null);
+    setGameMode("assignments");
+    setScreen("start");
+  }
+
   // Explore: finish and stamp everywhere visited into the passport.
   function doneExplore() {
     if (profileName && visitedIds.length) recordExplore(profileName, visitedIds);
@@ -5581,19 +5613,22 @@ export default function ShutterbugWorld() {
           <span style={{ position: "absolute", left: "50%", top: "50%", transform: "translate(-50%,-50%)",
             fontFamily: "ui-monospace, monospace", fontSize: 16, fontWeight: 800 }} title="Places discovered">📸 {album.length} discovered</span>
         )}
-        {/* Avatar + greeting — doubled in size; marginRight keeps it clear of the gear.
-            A saved traveler's avatar is a button: tapping it opens the Customize
-            Traveler editor (a guest has no saved avatar to customise). */}
+        {/* Avatar + greeting. marginRight keeps it clear of the gear. A saved
+            traveler's avatar is a button: tapping it opens the Customize Traveler
+            editor (a guest has no saved avatar to customise).
+            The portrait is the child's own character and the one thing on this bar
+            that is THEIRS, so it is sized to be looked at rather than to be a
+            status chip — see HEADER_AVATAR in the theme block above. */}
         <div style={{ display: "flex", alignItems: "center", gap: 14, marginRight: 18 }}>
           {profileName ? (
             <button onClick={() => setAvatarEdit(true)} title="Customize traveler" aria-label="Customize traveler"
-              style={{ width: 84, height: 84, borderRadius: "50%", border: `4px solid ${GOLD}`, background: PAPER,
+              style={{ width: HEADER_AVATAR + 8, height: HEADER_AVATAR + 8, borderRadius: "50%", border: `4px solid ${GOLD}`, background: PAPER,
                 overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", flex: "0 0 auto",
                 padding: 0, cursor: "pointer", boxShadow: "0 2px 5px rgba(0,0,0,0.4)" }}>
-              <Avatar spec={avatarFor(getProfile(profileName))} size={76} />
+              <Avatar spec={avatarFor(getProfile(profileName))} size={HEADER_AVATAR} face />
             </button>
           ) : (
-            <div style={{ width: 84, height: 84, borderRadius: "50%", border: `4px solid ${GOLD}`, background: PAPER,
+            <div style={{ width: HEADER_AVATAR + 8, height: HEADER_AVATAR + 8, borderRadius: "50%", border: `4px solid ${GOLD}`, background: PAPER,
               overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", flex: "0 0 auto",
               boxShadow: "0 2px 5px rgba(0,0,0,0.4)" }}>
               <img src={`${UI}player-portrait.png`} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
@@ -5618,6 +5653,12 @@ export default function ShutterbugWorld() {
               <button onClick={() => setMusicOn((m) => { const v = !m; if (v) MUSIC.start(); else MUSIC.stop(); return v; })} role="menuitemcheckbox" aria-checked={musicOn} style={gearItem}>🎵 Music: {musicOn ? "On" : "Off"}</button>
               <button onClick={() => setAnimOn((v) => !v)} role="menuitemcheckbox" aria-checked={animOn} style={gearItem}>✨ Animations: {animOn ? "On" : "Off"}</button>
               <button onClick={() => { setGearOpen(false); setWardrobeOpen(true); }} role="menuitem" style={gearItem}>🐾 Pickles's wardrobe</button>
+              {/* Leaving mid-run throws the run away, so it asks first — and it sits
+                  below a divider because it is the one item here that isn't a
+                  toggle you can undo. */}
+              <div style={{ borderTop: `1px solid ${PAPER_LINE}`, margin: "2px 0" }} />
+              <button onClick={() => { setGearOpen(false); setConfirmQuit(true); }} role="menuitem"
+                style={{ ...gearItem, color: CORAL }}>← Back to the title screen</button>
             </div>
           )}
         </div>
@@ -6550,6 +6591,8 @@ export default function ShutterbugWorld() {
       {bagOpen && isLongTrip && <KitBagModal condition={condition} kit={kit} onClose={() => setBagOpen(false)} />}
       {wardrobeOpen && <WardrobeModal unlocked={dogUnlocked} mode={dogMode} pick={dogPick}
         onSet={saveWardrobe} onClose={() => setWardrobeOpen(false)} />}
+      {confirmQuit && <QuitRunModal mode={gameMode} step={step} total={assignments.length}
+        onQuit={abandonRun} onClose={() => setConfirmQuit(false)} />}
       {albumOpen && <AlbumModal album={album} onPick={(p) => { setAlbumOpen(false); setAlbumView(p); }} onClose={() => setAlbumOpen(false)} />}
       {guideOpen && <FieldGuideModal note={researched[step]} spent={guideFresh && researchCost > 0} onClose={() => setGuideOpen(false)} />}
       {pending && <ResultModal data={pending} onContinue={continueFromResult} reduced={prefersReduced} />}
@@ -7251,6 +7294,51 @@ function KitBagModal({ condition, kit, onClose }) {
   );
 }
 
+// "Back to the title screen", asked properly. Nothing in this game saves mid-run —
+// points, stamps, best times and renown are all banked when a run ENDS — so walking
+// out really does throw the trip away, and a child who meant to close a menu should
+// not be able to do it with one stray tap.
+//
+// Two things make the warning concrete rather than scary boilerplate: it says how
+// far into the run they are, and the destructive button is the SECOND one, so the
+// reflexive first press is the safe one.
+function QuitRunModal({ mode, step, total, onQuit, onClose }) {
+  const shots = Math.max(0, step);
+  const isExplore = mode === "explore";
+  return (
+    <ModalShell label="Leave this trip?" onClose={onClose} accent={CORAL} maxWidth={430}>
+      <div style={{ textAlign: "center", padding: "4px 4px 2px" }}>
+        <div style={{ fontSize: 34, lineHeight: 1 }} aria-hidden="true">✈</div>
+        <h3 style={{ margin: "10px 0 6px", color: INK, fontSize: 19 }}>Leave this trip?</h3>
+        {isExplore ? (
+          <p style={{ margin: "0 0 14px", color: INK, opacity: 0.85, fontSize: 14, lineHeight: 1.5 }}>
+            You're just roaming, so everywhere you've been is already stamped in your
+            passport. You can head back to the title screen safely.
+          </p>
+        ) : (
+          <p style={{ margin: "0 0 14px", color: INK, opacity: 0.85, fontSize: 14, lineHeight: 1.5 }}>
+            This trip <b>can't be saved</b>. If you go back to the title screen now,
+            {shots > 0
+              ? <> the <b>{shots} photograph{shots === 1 ? "" : "s"}</b> you've taken{total ? ` of ${total}` : ""} won't count, and your score won't be recorded.</>
+              : <> this trip ends and nothing is recorded.</>}
+            {" "}You'd start a fresh trip next time.
+          </p>
+        )}
+        <div style={{ display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap" }}>
+          <button onClick={onClose} autoFocus
+            style={{ padding: "10px 18px", borderRadius: 9, border: "none", background: GREEN, color: "#fff", fontWeight: 800, cursor: "pointer", fontSize: 14 }}>
+            Keep traveling
+          </button>
+          <button onClick={onQuit}
+            style={{ padding: "10px 16px", borderRadius: 9, border: `2px solid ${CORAL}`, background: "transparent", color: CORAL, fontWeight: 800, cursor: "pointer", fontSize: 14 }}>
+            {isExplore ? "Back to the title screen" : "End the trip and leave"}
+          </button>
+        </div>
+      </div>
+    </ModalShell>
+  );
+}
+
 // Pickles's wardrobe (rewards phase 3). Choose how she dresses on the travel desk:
 // "auto" dresses her for whatever region she's celebrating in (the default and the
 // star of the feature), "basic" keeps her in her own fur, or tap an EARNED outfit to
@@ -7265,7 +7353,7 @@ function WardrobeModal({ unlocked, mode, pick, onSet, onClose }) {
     <ModalShell label="Pickles's wardrobe" onClose={onClose} accent={OCEAN} maxWidth={760}>
       <div style={{ textAlign: "center", marginBottom: 10 }}>
         <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.16em", color: OCEAN, fontWeight: 800 }}>🐾 PICKLES'S WARDROBE</div>
-        <h2 style={{ fontFamily: "ui-sans-serif, system-ui", fontWeight: 900, fontSize: 20, color: INK, margin: "3px 0 2px" }}>Dress your travelling dog</h2>
+        <h2 style={{ fontFamily: "ui-sans-serif, system-ui", fontWeight: 900, fontSize: 20, color: INK, margin: "3px 0 2px" }}>Dress your traveling dog</h2>
         <p style={{ margin: 0, fontSize: 12.5, color: INK, opacity: 0.75 }}>{earnedCount} of {ALL_OUTFITS.length} outfits earned — travel to new regions to unlock more.</p>
       </div>
       <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
@@ -7420,7 +7508,7 @@ function HowToPlayModal({ onClose }) {
         style={{ ...CARD_SURFACE, borderRadius: 16, border: `3px solid ${OCEAN}`, boxShadow: "0 14px 44px rgba(0,0,0,0.35)",
           maxWidth: 560, width: "100%", maxHeight: "92vh", overflowY: "auto", padding: "22px 24px" }}>
         <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.18em", color: OCEAN, fontWeight: 700 }}>HOW TO PLAY</div>
-        <h2 style={{ margin: "4px 0 14px", color: INK, fontSize: 24, fontWeight: 900 }}>You're a travelling photographer.</h2>
+        <h2 style={{ margin: "4px 0 14px", color: INK, fontSize: 24, fontWeight: 900 }}>You're a traveling photographer.</h2>
         <div style={{ display: "grid", gap: 12 }}>
           {STEPS.map(([img, title, body], i) => (
             <div key={title} style={{ display: "flex", gap: 12, alignItems: "flex-start", textAlign: "left" }}>
@@ -7433,7 +7521,7 @@ function HowToPlayModal({ onClose }) {
           ))}
         </div>
         <p style={{ margin: "14px 0 0", fontSize: 13, color: INK, opacity: 0.8, lineHeight: 1.5, textAlign: "left" }}>
-          Pick a difficulty to match the traveller: <b>Scout</b> reads the clues aloud and names the country;
+          Pick a difficulty to match the traveler: <b>Scout</b> reads the clues aloud and names the country;
           <b> Expert</b> tells you nothing but the place itself.
         </p>
         <div style={{ display: "flex", justifyContent: "center", marginTop: 16 }}>
@@ -8070,9 +8158,11 @@ function CreateTravelerModal({ onSubmit, onClose }) {
   return (
     <div ref={ref} role="dialog" aria-modal="true" aria-label="Create a new traveler"
       style={{ position: "fixed", inset: 0, background: "rgba(16,38,46,0.62)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 70, padding: 16 }}>
-      <div className="sbw-pop" style={{ background: PAPER, borderRadius: 12, padding: 20, width: "min(92vw, 380px)", maxHeight: "92vh", overflowY: "auto", textAlign: "center", border: `1px solid ${PAPER_LINE}` }}>
+      <div className="sbw-pop" style={{ background: PAPER, borderRadius: 12, padding: 20, width: "min(92vw, 420px)", maxHeight: "92vh", overflowY: "auto", textAlign: "center", border: `1px solid ${PAPER_LINE}` }}>
         <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.2em", color: CORAL }}>🧳 CREATE NEW TRAVELER</div>
-        <div style={{ margin: "12px 0 4px" }}><Avatar spec={spec} size={104} title="Your new traveler" /></div>
+        {/* Same size as the Customize preview — this is the same decision, made for
+            the first time, and it deserves at least as much room. */}
+        <div style={{ margin: "12px 0 4px" }}><Avatar spec={spec} size={230} title="Your new traveler" /></div>
         <div style={{ margin: "6px 0 8px", textAlign: "left" }}>
           <label htmlFor="sbw-newname" style={{ fontFamily: "ui-monospace, monospace", fontSize: 10, letterSpacing: "0.14em", color: INK, opacity: 0.6 }}>NAME</label>
           <input id="sbw-newname" value={name} maxLength={20} autoFocus placeholder="Traveler's name"

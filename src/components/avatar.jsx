@@ -49,44 +49,50 @@ function Avatar({ spec, size = 24, title, face }) {
   );
 }
 
-// One part's row of choices. Real radio inputs, so arrow keys move through the
-// options and the whole row is one tab stop — better than the ◀ ▶ steppers this
-// replaces, which needed two clicks per step and gave no overview.
+// One part, as a ◀ ▶ stepper. Joshua asked for cycling rather than a grid of every
+// option, and the grid does not survive the art growing anyway: five hair colours
+// fit on one row, but the next delivery adds female styles and more garments, and
+// a wall of forty boxes is not a choice a child can make. A stepper stays one row
+// wide however much art lands.
 //
-// Rule 4: the chosen option is never marked by colour alone. It gains a ring, a
-// tinted background AND a ✓ before its name.
+// Rule 4: the current option is named in text beside its thumbnail, never signalled
+// by the picture alone, and the arrows are real buttons with their own labels. The
+// count ("3 / 7") is there so a child knows the list is finite and where they are.
+const arrowStyle = {
+  width: 38, height: 38, borderRadius: 10, border: `2px solid ${INK}`,
+  background: "transparent", color: INK, fontWeight: 800, fontSize: 15,
+  cursor: "pointer", flex: "0 0 auto", lineHeight: 1,
+};
+
 function PartRow({ dim, value, onPick }) {
+  const step = (d) => onPick((value + d + dim.n) % dim.n);
+  const opt = dim.options[value];
   return (
-    <fieldset style={{ border: "none", margin: 0, padding: "8px 0 4px", borderTop: `1px solid ${PAPER_LINE}` }}>
-      <legend style={{ fontFamily: "ui-monospace, monospace", fontSize: 10, letterSpacing: "0.14em",
-                       color: INK, opacity: 0.6, padding: 0 }}>
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10,
+                  padding: "9px 0", borderTop: `1px solid ${PAPER_LINE}` }}>
+      <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 10, letterSpacing: "0.14em",
+                     color: INK, opacity: 0.6, width: 62, textAlign: "left", flex: "0 0 auto" }}>
         {dim.label.toUpperCase()}
-      </legend>
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 6, justifyContent: "center", marginTop: 6 }}>
-        {dim.options.map((opt, i) => {
-          const on = i === value;
-          return (
-            <label key={opt.file} style={{ position: "relative", cursor: "pointer" }}>
-              <input type="radio" name={`sbw-av-${dim.key}`} checked={on} onChange={() => onPick(i)}
-                style={{ position: "absolute", inset: 0, width: "100%", height: "100%", opacity: 0, margin: 0, cursor: "pointer" }} />
-              <span style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 3,
-                             width: 62, padding: "4px 2px", borderRadius: 9,
-                             border: `2px solid ${on ? OCEAN : "transparent"}`,
-                             background: on ? "rgba(21,96,110,0.12)" : "transparent" }}>
-                <span style={{ ...DISC, borderRadius: 7, width: 44, height: 44, position: "relative", overflow: "hidden" }}>
-                  <img src={thumbSrc(dim.key, i)} alt="" draggable="false"
-                    style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "contain",
-                             ...focusStyle(FOCUS[dim.key], 1.18) }} />
-                </span>
-                <span style={{ fontSize: 10, lineHeight: 1.2, color: INK, textAlign: "center" }}>
-                  {on ? "✓ " : ""}{opt.label}
-                </span>
-              </span>
-            </label>
-          );
-        })}
+      </span>
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <button type="button" onClick={() => step(-1)} style={arrowStyle}
+          aria-label={`Previous ${dim.label.toLowerCase()}`}>◀</button>
+        <span style={{ ...DISC, borderRadius: 9, width: 52, height: 52, position: "relative",
+                       overflow: "hidden", flex: "0 0 auto" }}>
+          <img src={thumbSrc(dim.key, value)} alt="" draggable="false"
+            style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "contain",
+                     ...focusStyle(FOCUS[dim.key], 1.18) }} />
+        </span>
+        <span style={{ width: 96, textAlign: "center" }}>
+          <span style={{ display: "block", fontSize: 12.5, fontWeight: 700, color: INK, lineHeight: 1.2 }}>{opt.label}</span>
+          <span style={{ display: "block", fontSize: 10, color: INK, opacity: 0.55, fontFamily: "ui-monospace, monospace" }}>
+            {value + 1} / {dim.n}
+          </span>
+        </span>
+        <button type="button" onClick={() => step(1)} style={arrowStyle}
+          aria-label={`Next ${dim.label.toLowerCase()}`}>▶</button>
       </div>
-    </fieldset>
+    </div>
   );
 }
 
@@ -125,9 +131,13 @@ function AvatarEditor({ name, initial, onSave, onClose, onRename, onRemove }) {
   return (
     <div ref={ref} role="dialog" aria-modal="true" aria-label={`Customize ${name}'s traveler`}
       style={{ position: "fixed", inset: 0, background: "rgba(16,38,46,0.62)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 70, padding: 16 }}>
-      <div className="sbw-pop" style={{ background: PAPER, borderRadius: 12, padding: 20, width: "min(92vw, 420px)", maxHeight: "90vh", overflowY: "auto", textAlign: "center", border: `1px solid ${PAPER_LINE}` }}>
+      <div className="sbw-pop" style={{ background: PAPER, borderRadius: 12, padding: 20, width: "min(92vw, 420px)", maxHeight: "92vh", overflowY: "auto", textAlign: "center", border: `1px solid ${PAPER_LINE}` }}>
         <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.2em", color: CORAL }}>🧳 CUSTOMIZE TRAVELER</div>
-        <div style={{ margin: "12px 0 4px" }}><Avatar spec={spec} size={132} title={`${name}'s traveler`} /></div>
+        {/* The preview is the point of this screen — a child is deciding what they
+            look like, and the steppers below only make sense if the thing they
+            change is big enough to read. Above FACE_BELOW, so this shows the whole
+            bust: the jacket is one of the four things being chosen. */}
+        <div style={{ margin: "12px 0 4px" }}><Avatar spec={spec} size={230} title={`${name}'s traveler`} /></div>
         {/* Rename */}
         {onRename && (
           <div style={{ margin: "8px 0 4px", textAlign: "left" }}>

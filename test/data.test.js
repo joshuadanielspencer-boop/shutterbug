@@ -1309,3 +1309,46 @@ describe("Pickles's lines", () => {
     }
   });
 });
+
+// ---------------------------------------------------------------------------
+// Spelling. The game teaches American homeschoolers, the same reason rule 3 puts
+// imperial units first, so player-facing prose reads in American English. This is
+// not pedantry about one letter: a child reading "colour" in their own schoolwork
+// is reading a spelling their spelling test will mark wrong.
+//
+// PROPER NOUNS ARE EXEMPT AND MUST STAY. "Victoria Harbour", the "Historic Centre
+// of Porto" (UNESCO's own registered name) and Canada's "Centre Block" are the
+// names of real things; Americanising them would make the game wrong in the way
+// rule 2 actually cares about. That is why this matches lowercase only — a
+// capitalised Harbour or Centre is part of a name.
+// ---------------------------------------------------------------------------
+describe("player-facing prose is American English", () => {
+  const BRITISH = /\b(travelling|traveller|travellers|colour|colours|coloured|colourful|favourite|favourites|honour|honoured|honours|neighbour|neighbours|harbour|harbours|theatre|theatres|labour|jewellery|licence|licences|practise|organise|organised|recognise|recognised|realise|realised|metre|metres|kilometre|kilometres|centimetre|centimetres|grey)\b/;
+
+  // Hyphenated compounds ("honey-coloured") don't start at a word boundary the way
+  // \b expects after a hyphen, so check those too.
+  const HYPHENATED = /-(coloured|colour|centre|harbour|honoured)\b/;
+
+  const strings = [];
+  for (const l of LOCATIONS)
+    for (const k of ["easy", "medium", "hard", "fact", "subject"])
+      if (typeof l[k] === "string") strings.push([`${l.id}.${k}`, l[k]]);
+  for (const [country, info] of Object.entries(COUNTRY_INFO))
+    if (info.blurb) strings.push([`${country}.blurb`, info.blurb]);
+  for (const j of JOURNEYS) {
+    strings.push([`${j.id}.intro`, j.intro]);
+    for (const s of j.stops) strings.push([`${j.id}/${s.id}.fact`, s.fact], [`${j.id}/${s.id}.prompt`, s.prompt]);
+  }
+  for (const d of CURIOSITY_DECKS)
+    for (const c of d.cards) strings.push([`curio/${c.id}.title`, c.title], [`curio/${c.id}.body`, c.body]);
+
+  it("uses American spellings in every clue, fact and blurb", () => {
+    const bad = [];
+    for (const [where, text] of strings) {
+      if (typeof text !== "string") continue;
+      const m = text.match(BRITISH) || text.match(HYPHENATED);
+      if (m) bad.push(`${where}: "${m[0]}" — ${text.slice(Math.max(0, text.indexOf(m[0]) - 30), text.indexOf(m[0]) + 40)}`);
+    }
+    expect(bad, `British spellings in player-facing text:\n  ${bad.join("\n  ")}`).toEqual([]);
+  });
+});

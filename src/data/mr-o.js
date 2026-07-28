@@ -141,7 +141,7 @@ export const MR_O_RIDDLES = [
   // ---- Africa ----
   { q: "In which country would you find the ancient desert city of Timbuktu, once famed for its libraries and gold?",
     choices: ["Mali", "Egypt", "Kenya", "Morocco"], correct: "Mali", where: "Africa",
-    explain: "Timbuktu, in Mali, was a great centre of trade and learning, with libraries full of handwritten books." },
+    explain: "Timbuktu, in Mali, was a great center of trade and learning, with libraries full of handwritten books." },
   { q: "Victoria Falls, one of the world's largest waterfalls, roars on the border of Zambia and which country?",
     choices: ["Zimbabwe", "Kenya", "Nigeria", "Egypt"], correct: "Zimbabwe", where: "Africa",
     explain: "Victoria Falls, on the Zambezi River, straddles the border between Zambia and Zimbabwe." },
