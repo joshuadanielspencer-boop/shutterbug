@@ -5657,7 +5657,11 @@ export default function ShutterbugWorld() {
       {/* ===== Desk header bar (teal leather chrome) ===== */}
       {/* sbw-dark: the focus ring's ink band is invisible on this teal, so the
           class swaps that band for white for everything inside the bar. */}
-      <header className="sbw-dark" style={{ position: "relative", display: "flex", alignItems: "center", gap: 14, flexWrap: "nowrap",
+      {/* zIndex: the furniture on this bar deliberately hangs below it, and the atlas
+          frame comes LATER in the document — so without a stacking order the map
+          painted over the traveler's portrait and clipped it. The bar is positioned
+          already; this just says it wins. */}
+      <header className="sbw-dark" style={{ position: "relative", zIndex: 6, display: "flex", alignItems: "center", gap: 14, flexWrap: "nowrap",
         background: `linear-gradient(${OCEAN}, ${OCEAN_DEEP})`, border: `2px solid ${INK}`, borderRadius: 12,
         padding: "4px 20px", marginBottom: 18, boxShadow: "0 6px 0 rgba(16,38,46,0.28)", color: "#F4ECD8",
         // The teal is a RIBBON, not a container: the logo, the calendar and the
@@ -5683,9 +5687,9 @@ export default function ShutterbugWorld() {
         {!isExplore ? (
           <button onClick={() => openCurio("calendar")} title="Travel & time" aria-label="Travel and time — a fact to learn" className="sbw-wiggle"
             style={{ position: "absolute", left: "50%", top: "62%", transform: "translate(-50%, -50%)", zIndex: 2,
-            display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", width: 168, height: 160,
+            display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", width: 168, height: 132,
             background: "transparent", border: "none", cursor: "pointer",
-            backgroundImage: `url("${UI}days-calendar-blank-no-clock.png")`, backgroundSize: "contain",
+            backgroundImage: `url("${UI}days-calendar-blank-no-clock.png")`, backgroundSize: "100% 100%",
             backgroundRepeat: "no-repeat", backgroundPosition: "center", filter: "drop-shadow(0 4px 5px rgba(0,0,0,0.35))" }}>
             {/* A half-day reading ("2.5") is three glyphs wide and used to crowd the
                 calendar's edges, so tuck the tracking in (and trim the size a hair)
@@ -5760,8 +5764,15 @@ export default function ShutterbugWorld() {
       </header>
       {/* ===== Desk grid: letter panel | atlas map | tool rail ===== */}
       <div style={{ display: "flex", gap: 16, alignItems: "flex-start", flexWrap: "wrap", flex: "1 1 auto", minHeight: 0 }}>
-        {/* Field journal panel */}
-        <div style={{ flex: "1 1 322px", minWidth: 322 }}>
+        {/* Field journal panel. It stretches to the desk's full height and spreads
+            its contents down it — Jonah's note at the top, the four steps filling
+            the rest — so the last step ("PHOTOGRAPH") ends up level with the ribbon
+            in the middle and the passport on the right, instead of stopping short
+            and leaving the column hanging. The small marginTop drops the whole
+            panel a touch below the atlas's top edge, which reads better against a
+            map that starts higher than it does. */}
+        <div style={{ flex: "1 1 322px", minWidth: 322, alignSelf: "stretch", marginTop: 10,
+          display: "flex", flexDirection: "column" }}>
           {/* The mode + counter now live in the desk header; the panel opens
               straight into the assignment letter / itinerary. */}
           {isExplore ? (
@@ -7183,7 +7194,11 @@ const PHASE_STEPS = [
 ];
 function PhaseTracker({ stepIdx, onCurio, continentName, countryName, onCountryInfo }) {
   return (
-    <ol style={{ listStyle: "none", margin: "12px 0 0", padding: 0, display: "flex", flexDirection: "column", gap: 7 }}>
+    // flex:1 + space-between is what makes the four steps spread down the column
+    // instead of bunching under the note. `gap` stays as the MINIMUM spacing for
+    // short windows, where there is no slack to distribute.
+    <ol style={{ listStyle: "none", margin: "14px 0 0", padding: 0, display: "flex", flexDirection: "column",
+      gap: 10, flex: "1 1 auto", justifyContent: "space-between" }}>
       {PHASE_STEPS.map((s, i) => {
         const active = i === stepIdx, done = i < stepIdx;
         // Once a step is completed, its sub-line stops nagging ("Pick the correct
