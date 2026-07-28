@@ -421,8 +421,16 @@ describe("water features", () => {
 // wrong number in it. This stops a metric-only figure creeping back in later.
 // ---------------------------------------------------------------------------
 describe("measurements read imperial first", () => {
-  const METRIC = /\b\d[\d,.]*\s?(?:km|kilometres|kilometers|metres|meters|cm|centimetres|kg|tonnes|hectares)\b/i;
-  const SPELLED = /\b(?:one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|fifteen|sixteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundred|thousand)[- ](?:metres|meters|kilometres|kilometers|km)\b/i;
+  // `[\s-]?` and the optional trailing `s` are both load-bearing. The first
+  // version of this allowed a space but not a hyphen, and only plural units, so
+  // "a 508-meter tower" and "a 660-tonne block" sailed past a test whose whole
+  // job was to catch them — a compound adjective is exactly how a measurement
+  // gets written in a clue. Widening it surfaced 22 metric-only figures that
+  // had been shipping in a teaching tool.
+  const METRIC = /\b\d[\d,.]*[\s-]?(?:km|kilometres?|kilometers?|metres?|meters?|cm|centimetres?|centimeters?|kg|kilograms?|tonnes?|hectares?)\b/i;
+  // Singular units here for the same reason as in METRIC: "a five-kilometer-wide
+  // river of ice" is the compound-adjective form, and it read as unitless.
+  const SPELLED = /\b(?:one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|fifteen|sixteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundred|thousand)[- ](?:metres?|meters?|kilometres?|kilometers?|km)\b/i;
   // "a mile" and "half a mile" count as imperial figures just as much as "1.2 miles".
   const IMPERIAL = /\b(?:[\d][\d,.]*|a|an|half|quarter|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundred|thousand)[- ]?(?:miles?|feet|foot|ft|inch|inches|pounds?|lb|tons?|acres?)\b/i;
 
