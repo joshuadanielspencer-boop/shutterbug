@@ -168,6 +168,20 @@ export const COUNTRY_LAYER_CONTINENTS = new Set(["North America", "South America
 //
 // Keep this SHORT. A ring on everything is a ring on nothing, and the point is to
 // rescue the handful a child would otherwise never find.
+//
+// WHAT THE MAP CAN ACTUALLY SEE. A continent map draws only the countries that
+// have landmarks in the game — LAYER_COUNTRY_LIST is built from LOCATIONS — so an
+// entry naming a country with no landmarks can never fire. Fifteen of the
+// twenty-four entries here were in that state when this note was written, which
+// made the list look twice as considered as it was: a future reader would have
+// believed Montenegro was handled. They are kept, because the judgement in them is
+// real and the day one of those countries gets a landmark it should ring on sight
+// — but they are moved below the divider so the live list stays honest.
+//
+// Names are matched against the OUTLINE name, not a display name. "Eswatini" sat
+// here for months and could never have matched, because Natural Earth spells it
+// "eSwatini" (the country's own styling). test/locator-rings.test.js now checks
+// every entry resolves to something real, which is the only way to catch that.
 export const ALWAYS_RING = new Set([
   // Scattered archipelagos. A bounding box is the wrong measure for these: Fiji's
   // spans nearly 5% of the Oceania frame while the LAND inside it is a scatter of
@@ -179,8 +193,24 @@ export const ALWAYS_RING = new Set([
   "Vanuatu",
   "New Caledonia",
   "Solomon Is.",
-  // Small countries wedged among same-coloured neighbours (see the note above).
+  // Two islands and not much else. Joshua found this one unringed, and measuring
+  // the whole set says it is the ONLY in-game country smaller than Jamaica that
+  // wasn't — smaller by area (0.36 vs 0.91 square degrees) AND by longer side
+  // (1.35° vs 2.15°). Jamaica is the agreed floor for "a child can find this
+  // unaided", so anything under it belongs here. The automatic span test misses it
+  // because that test takes the LARGER of width/frame-width and height/frame-height,
+  // and against North America's short frame height a 1.25° island clears the bar on
+  // the vertical ratio while being invisible on screen.
+  "Trinidad and Tobago",
+  // Small countries wedged among same-colored neighbours (see the note above).
   "Malta",
+  "Rwanda",
+
+  // ---- Below here: NOT IN THE GAME YET, so none of these can currently fire. ----
+  // Pre-registered so that adding a landmark to any of them rings it immediately
+  // rather than waiting for someone to notice. Every one is a country a child would
+  // hunt for on a crowded continent map: the Balkan notches, the Gulf states, the
+  // West African slivers.
   "Montenegro",
   "Slovenia",
   "North Macedonia",
@@ -190,13 +220,15 @@ export const ALWAYS_RING = new Set([
   "Israel",
   "Kuwait",
   "Qatar",
-  "Bahrain",
   "Brunei",
-  "Eswatini",
+  // Natural Earth's spelling, lowercase e, which is also the country's own. Listed
+  // as "Eswatini" until 2026-07-28, where it matched nothing.
+  "eSwatini",
   "Djibouti",
   "Gambia",
-  "Rwanda",
   "Burundi",
+  // Bahrain is deliberately absent: it is too small to appear in the outline set at
+  // all, and a country with no outline already rings automatically (`tiny = !d`).
 ]);
 
 // ---- What a country is CALLED on screen -------------------------------------
