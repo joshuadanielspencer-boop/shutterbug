@@ -97,6 +97,9 @@ const HEADER_AVATAR = 112;
 // How tall the teal bar itself is. It is sized to the GREETING — the one thing in
 // it that is really text — and everything larger overruns it on purpose.
 const HEADER_BAR = 58;
+// How tall the atlas plate sits on the desk — NOT the aspect the country zoom boxes
+// are built at (that is FRAME_AR, in map-geometry.js). See frameAspect below.
+const DESK_ATLAS_AR = 1.2;
 // The desk's frame padding. The top is real headroom: the calendar, the logo and the
 // portrait all break the top edge of the teal ribbon on purpose, and the calendar
 // reaches highest. Exported as a constant because the desk column's own min-height
@@ -5463,7 +5466,23 @@ export default function ShutterbugWorld() {
     : countryBox ? 0.01
     : (contMeta && contMeta.pad != null) ? contMeta.pad
     : VB_PAD;
-  const frameAspect = String(FRAME_AR);
+  // The atlas PLATE is taller than the 1.45 the country boxes are built at. Those
+  // are two different jobs and were sharing one number: FRAME_AR shapes the zoom
+  // BOXES (rule 5 — a country should fill its frame), while this is how much desk
+  // the atlas actually occupies. At 1.45 the plate stopped well short of the ribbon
+  // and left a band of bare desk under the map, which is what Joshua saw.
+  //
+  // Safe to widen the gap between them because the two maps already handle it: the
+  // world map is drawn with preserveAspectRatio="none" so it simply STRETCHES to
+  // fill (and pinR already scales pin radii by box.h * FRAME_AR to keep pins round
+  // under that stretch), while every zoom uses "meet" and letterboxes over ocean,
+  // which is the behaviour the frame was designed around from the start. The
+  // compass, the brass corners and the flight plane are HTML positioned OVER the
+  // plate, not inside the SVG, so none of them stretches with it.
+  //
+  // Constant across world and zoomed views on purpose: making it conditional would
+  // resize the atlas every time a child clicked into a continent.
+  const frameAspect = String(DESK_ATLAS_AR);
   const par = zoomed ? "xMidYMid meet" : "none";
   const viewBox = zoomed
     ? `${box.x - vbPad * box.w} ${box.y - vbPad * box.h} ${box.w * (1 + 2 * vbPad)} ${box.h * (1 + 2 * vbPad)}`
@@ -5617,7 +5636,7 @@ export default function ShutterbugWorld() {
   //
   // Measured, not estimated: with this value a 1280x900 window renders the desk at
   // exactly the viewport height and document.scrollHeight stops exceeding it.
-  const MAP_CAP = "min(calc(100vh - 380px), 560px)";
+  const MAP_CAP = "min(calc(100vh - 300px), 620px)";
   // A short live instruction for the bottom ribbon, matched to the current phase.
   // It used to name the vehicle while an overland hop was running; that hop is gone
   // and the naming moved to the arrival card, where the same sentence does the same
@@ -5742,7 +5761,7 @@ export default function ShutterbugWorld() {
       {/* ===== Desk grid: letter panel | atlas map | tool rail ===== */}
       <div style={{ display: "flex", gap: 16, alignItems: "flex-start", flexWrap: "wrap", flex: "1 1 auto", minHeight: 0 }}>
         {/* Field journal panel */}
-        <div style={{ flex: "1 1 340px", minWidth: 300 }}>
+        <div style={{ flex: "1 1 322px", minWidth: 322 }}>
           {/* The mode + counter now live in the desk header; the panel opens
               straight into the assignment letter / itinerary. */}
           {isExplore ? (
@@ -5928,12 +5947,12 @@ export default function ShutterbugWorld() {
         </div>
 
         {/* Map */}
-        <div style={{ flex: "3 1 640px", minWidth: 440, display: "flex", flexDirection: "column" }}>
+        <div style={{ flex: "3 1 640px", minWidth: 440, display: "flex", flexDirection: "column", alignSelf: "stretch" }}>
           {/* Atlas plate: the code-rendered map, framed as an adventure-atlas page
               with brass corners, a compass rose, and a faint ink-distress wash.
               All the decoration is pointer-events:none so the map stays clickable.
               The wide world map fills the plate; zoomed square maps stay height-capped. */}
-          <div style={{ position: "relative", width: "100%", maxWidth: 940, margin: "0 auto", padding: 12, borderRadius: 16,
+          <div style={{ position: "relative", width: "100%", maxWidth: 940, margin: "3px auto 0", padding: 12, borderRadius: 16,
             border: `4px solid ${OCEAN_DEEP}`, boxShadow: "0 8px 0 rgba(16,38,46,0.22)",
             background: `url("${UI}atlas-paper-texture.png") center / cover, ${PAPER}` }}>
           <div style={{ position: "relative", aspectRatio: frameAspect, width: "100%", maxWidth: "100%", maxHeight: MAP_CAP, margin: "0 auto", borderRadius: 8, overflow: "hidden", border: `2px solid ${INK}` }}>
@@ -6635,11 +6654,14 @@ export default function ShutterbugWorld() {
                   It used to be position:fixed across the whole screen bottom, which
                   meant it sat under the step rail and needed the column to reserve
                   78px of padding for it. ===== */}
-          {/* The ribbon rides up close under the atlas (small top margin) and is kept
-              short, so its BOTTOM edge lands about level with the last itinerary step
-              on the left and the passport on the right. Its text is sized down and
-              held to a single line — a wrapped clue broke the hand-drawn ribbon art. */}
-          <div style={{ width: "100%", maxWidth: 940, margin: "8px auto 0", minHeight: 132, display: "flex",
+          {/* The ribbon sits at the BOTTOM of the map column, which stretches to the
+              desk's full height — so its lower edge lands level with the last
+              itinerary step on the left (Joshua asked for it flush with PHOTOGRAPH)
+              rather than floating wherever the atlas happened to end. `marginTop:
+              auto` is what does it; the column's alignSelf:stretch is what gives it
+              something to push against. Text stays one line — a wrapped clue breaks
+              the hand-drawn ribbon art. */}
+          <div style={{ width: "100%", maxWidth: 940, margin: "auto auto 0", minHeight: 132, display: "flex",
             alignItems: "center", justifyContent: "center", textAlign: "center", padding: "22px 78px", boxSizing: "border-box",
             background: `url("${UI}instruction-ribbon.png") center / 100% 100% no-repeat` }}>
             <span style={{ display: "inline-flex", alignItems: "center", gap: 10, fontFamily: HAND, fontWeight: 700, fontSize: "clamp(15px, 1.9vw, 21px)", lineHeight: 1.2, color: INK, whiteSpace: "nowrap" }}>
