@@ -97,6 +97,13 @@ const HEADER_AVATAR = 112;
 // How tall the teal bar itself is. It is sized to the GREETING — the one thing in
 // it that is really text — and everything larger overruns it on purpose.
 const HEADER_BAR = 58;
+// The desk's frame padding. The top is real headroom: the calendar, the logo and the
+// portrait all break the top edge of the teal ribbon on purpose, and the calendar
+// reaches highest. Exported as a constant because the desk column's own min-height
+// has to subtract exactly this — it was hard-coded as "100vh - 40px" against an
+// older 18px padding, so raising the headroom silently made the page scroll by the
+// difference.
+const DESK_PAD_TOP = 54, DESK_PAD_BOTTOM = 18;
 // What a piece of header furniture needs as a negative margin to overrun the bar
 // instead of stretching it. Derived, so changing HEADER_AVATAR can't reintroduce
 // the thick bar this was written to fix.
@@ -4513,7 +4520,15 @@ export default function ShutterbugWorld() {
                   </button>
                 </div>
 
-                {/* The selected traveler, shown full-size. */}
+                {/* The selected traveler, shown full-size — inside a slot that is
+                    always the same height. Everything on this screen sits on a
+                    cover-sized background photo in a min-height box, so any content
+                    that appears on selection grew the box and made the whole flat-lay
+                    visibly resize behind the child. Same fix as the "pick a traveler"
+                    nudge above: reserve the space, then fill it. 268px is the tallest
+                    of the three states (avatar 140 + its 8px ring, the name, and the
+                    button row wrapping to two lines on a narrow column). */}
+                <div style={{ minHeight: 268 }}>
                 {selected && (
                   <div style={{ marginTop: 16, display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
                     <div style={{ background: "rgba(255,255,255,0.62)", borderRadius: "50%", padding: 8, boxShadow: "0 4px 14px rgba(0,0,0,0.24)" }}>
@@ -4550,6 +4565,7 @@ export default function ShutterbugWorld() {
                     <div style={{ fontWeight: 800, fontSize: 20, color: INK }}>Guest</div>
                   </div>
                 )}
+                </div>
                 {!canSave && (
                   <p style={{ fontSize: 12, color: INK, opacity: 0.7, margin: "10px 2px 0", background: "rgba(255,255,255,0.7)", borderRadius: 8, padding: "5px 10px" }}>
                     This browser can't save progress, so games won't be recorded.
@@ -5618,7 +5634,7 @@ export default function ShutterbugWorld() {
           The instruction ribbon now sits inside the desk grid, under the atlas — so
           the 78px of bottom padding that used to reserve room for a fixed bar is
           gone with it. */}
-      <div style={{ display: "flex", flexDirection: "column", minHeight: "calc(100vh - 40px)", boxSizing: "border-box" }}>
+      <div style={{ display: "flex", flexDirection: "column", minHeight: `calc(100vh - ${DESK_PAD_TOP + DESK_PAD_BOTTOM}px)`, boxSizing: "border-box" }}>
       {/* ===== Desk header bar (teal leather chrome) ===== */}
       {/* sbw-dark: the focus ring's ink band is invisible on this teal, so the
           class swaps that band for white for everything inside the bar. */}
@@ -5637,22 +5653,18 @@ export default function ShutterbugWorld() {
             tap-to-learn target (what the game is / how to play). */}
         <button onClick={() => openCurio("logo")} title="About the game" aria-label="About the game" className="sbw-jiggle"
           style={{ background: "transparent", border: "none", padding: 0, margin: 0, cursor: "pointer", flex: "0 0 auto", lineHeight: 0 }}>
-          {/* Deliberately ASYMMETRIC. The logo is meant to break both edges of the
-              teal, but the space above it is scarce — the desk's headroom is the only
-              thing there — while below it merely overlaps the map's own margin. So it
-              leans down: 14px over the top edge, 80 over the bottom. Sharing the
-              overrun evenly (what overrun() does for the avatar and gear, which are
-              small enough not to care) needed 47px of headroom and pushed the whole
-              desk past one screen. */}
-          <img src={`${UI}shutterbug-logo.png`} alt="Shutterbug" style={{ height: 164, width: "auto",
-            marginTop: -18, marginBottom: -76, filter: "drop-shadow(0 3px 4px rgba(0,0,0,0.4))" }} />
+          {/* Centred on the ribbon, breaking it equally top and bottom — Joshua's
+              call, and the reason the desk now carries real headroom above the bar.
+              overrun() derives the margins from HEADER_BAR, so the two can't drift. */}
+          <img src={`${UI}shutterbug-logo.png`} alt="Shutterbug" style={{ height: 150, width: "auto",
+            ...overrun(150), filter: "drop-shadow(0 3px 4px rgba(0,0,0,0.4))" }} />
         </button>
         <div style={{ flex: 1, minWidth: 8 }} />
         {/* Travel-days calendar — centered over the bar, oversized, overruns the teal. */}
         {!isExplore ? (
           <button onClick={() => openCurio("calendar")} title="Travel & time" aria-label="Travel and time — a fact to learn" className="sbw-wiggle"
-            style={{ position: "absolute", left: "50%", top: "54%", transform: "translate(-50%, -50%)", zIndex: 2,
-            display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", width: 176, height: 168,
+            style={{ position: "absolute", left: "50%", top: "62%", transform: "translate(-50%, -50%)", zIndex: 2,
+            display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", width: 168, height: 160,
             background: "transparent", border: "none", cursor: "pointer",
             backgroundImage: `url("${UI}days-calendar-blank-no-clock.png")`, backgroundSize: "contain",
             backgroundRepeat: "no-repeat", backgroundPosition: "center", filter: "drop-shadow(0 4px 5px rgba(0,0,0,0.35))" }}>
@@ -6781,13 +6793,15 @@ function DeskBoard({ children, maxWidth = 1180, pad }) {
 
 function Frame({ children, desk = false }) {
   return (
-    // A little headroom on the DESK only, for the furniture that breaks the top edge
-    // of the teal bar (the logo, the calendar, the traveler's portrait). Once the bar
-    // slimmed to HEADER_BAR the logo ran clean off the top of the page and lost its
-    // upper 36px. Kept small on purpose: the tool rail is the tallest column on this
-    // screen at ~772px, so every pixel spent up here comes straight out of the
-    // one-screen budget.
-    <div style={{ minHeight: "100%", position: "relative", padding: desk ? "20px 18px 18px" : 18, fontFamily: "ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif" }}>
+    // Headroom on the DESK only, for the furniture that breaks the top edge of the
+    // teal bar — the logo, the calendar and the traveler's portrait all overrun it on
+    // purpose. The calendar reaches highest, so it sets this number, and Joshua asked
+    // for a little daylight above it rather than having it graze the window edge.
+    //
+    // Every pixel spent here comes out of the one-screen budget, and the TOOL RAIL —
+    // not the map — is the tallest column on this screen, so the rail shrinks to pay
+    // for it (see railToolMax).
+    <div style={{ minHeight: "100%", position: "relative", padding: desk ? `${DESK_PAD_TOP}px 18px ${DESK_PAD_BOTTOM}px` : 18, fontFamily: "ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif" }}>
       <style>{`
         /* ---- Keyboard focus, everywhere ------------------------------------
            A visible focus state is a hard requirement (rule 4), and the browser
