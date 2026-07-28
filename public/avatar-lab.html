@@ -1,0 +1,312 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Avatar lab — layering prototype</title>
+<!--
+  A standalone prototype for the new avatar art. Nothing in the game imports it;
+  it reads public/assets/shutterbug-ui/avatar-v2/manifest.json, which
+  scripts/build-avatar-layers.mjs writes, so a new art batch shows up here the
+  moment that script is re-run — no edits to this page.
+
+  Served at /avatar-lab.html by `npm run dev`.
+-->
+<style>
+  :root {
+    --ink: #F4ECD8; --bg: #2f1d0f; --panel: #3d2715; --amber: #F0A500; --dim: rgba(244,236,216,.6);
+  }
+  * { box-sizing: border-box; }
+  body { font: 15px/1.5 system-ui, sans-serif; background: var(--bg); color: var(--ink); margin: 0; padding: 24px 28px 60px; }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  h2 { font-size: 13px; letter-spacing: .12em; text-transform: uppercase; color: var(--amber); margin: 0 0 10px; }
+  p.lede { margin: 0 0 22px; color: var(--dim); max-width: 70ch; }
+
+  .lab { display: grid; grid-template-columns: minmax(320px, 460px) 1fr; gap: 32px; align-items: start; }
+
+  /* ---- the avatar itself ---- */
+  .stage { background: #F4ECD8; border: 4px solid var(--amber); border-radius: 18px; overflow: hidden; }
+  .avatar { position: relative; aspect-ratio: 1; }
+  .avatar img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
+
+  .sizes { display: flex; align-items: flex-end; gap: 18px; margin-top: 18px; flex-wrap: wrap; }
+  .sizes figure { margin: 0; text-align: center; }
+  .sizes figcaption { font-size: 11px; color: var(--dim); margin-top: 6px; }
+  .sizes .stage { border-width: 2px; border-radius: 50%; }
+
+  /* ---- the pickers ---- */
+  fieldset { border: 1px solid rgba(244,236,216,.22); border-radius: 12px; padding: 12px 14px 16px; margin: 0 0 16px; background: var(--panel); }
+  legend { font-size: 12px; letter-spacing: .1em; text-transform: uppercase; color: var(--amber); padding: 0 6px; }
+  .swatches { display: flex; flex-wrap: wrap; gap: 8px; }
+  .swatches label { position: relative; cursor: pointer; }
+  .swatches input { position: absolute; opacity: 0; width: 100%; height: 100%; margin: 0; cursor: pointer; }
+  .chip {
+    display: flex; flex-direction: column; align-items: center; gap: 5px;
+    width: 78px; padding: 6px 4px; border-radius: 10px;
+    border: 2px solid transparent; background: rgba(0,0,0,.22);
+  }
+  .chip .thumb { width: 58px; height: 58px; background: #F4ECD8; border-radius: 8px; position: relative; overflow: hidden; }
+  .chip .thumb img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+  .chip span { font-size: 11px; text-align: center; line-height: 1.25; }
+  /* Rule 4: selection is never colour alone — the chip gains a border, a tint
+     AND a ✓ glyph, so it reads for a colourblind child and in high contrast. */
+  .swatches input:checked + .chip { border-color: var(--amber); background: rgba(240,165,0,.2); }
+  .swatches input:checked + .chip span::before { content: "✓ "; color: var(--amber); font-weight: 700; }
+  .swatches input:focus-visible + .chip { outline: 3px solid #7EC8E3; outline-offset: 2px; }
+
+  .toolbar { display: flex; gap: 10px; flex-wrap: wrap; margin: 0 0 18px; align-items: center; }
+  .toggle { display: flex; align-items: center; gap: 8px; background: var(--panel); border: 1px solid rgba(244,236,216,.3);
+            border-radius: 9px; padding: 8px 14px; cursor: pointer; }
+  .toggle input { width: 16px; height: 16px; accent-color: var(--amber); cursor: pointer; }
+  .toggle:focus-within { outline: 3px solid #7EC8E3; outline-offset: 2px; }
+  button { font: inherit; color: var(--ink); background: var(--panel); border: 1px solid rgba(244,236,216,.3);
+           border-radius: 9px; padding: 8px 14px; cursor: pointer; }
+  button:hover { background: #4d3119; }
+  button:focus-visible { outline: 3px solid #7EC8E3; outline-offset: 2px; }
+
+  /* ---- contact sheet ---- */
+  .sheet { margin-top: 34px; }
+  .grid { display: flex; flex-wrap: wrap; gap: 12px; }
+  .grid figure { margin: 0; text-align: center; width: 132px; }
+  .grid figcaption { font-size: 11px; color: var(--dim); margin-top: 5px; }
+
+  code { background: rgba(0,0,0,.3); padding: 1px 5px; border-radius: 4px; font-size: 13px; }
+  @media (max-width: 900px) { .lab { grid-template-columns: 1fr; } }
+</style>
+
+<h1>Avatar lab</h1>
+<p class="lede">
+  The new plates stack with no anchoring or scaling at all — every delivery is the same
+  1200×1200 canvas and, within a family, the same alpha mask. Z-order is
+  <strong>outfit → head → brow → eyes → hair</strong>. The eyebrow layer is not delivered
+  art: it is lifted out of the head plates and recoloured to match the hair, so five
+  small files cover every combination. Built by
+  <code>node scripts/build-avatar-layers.mjs</code>.
+</p>
+
+<div class="lab">
+  <div>
+    <div class="stage"><div class="avatar" id="avatar"></div></div>
+    <div class="sizes" id="sizes"></div>
+    <p class="lede" style="margin-top:14px;font-size:13px" id="stats"></p>
+  </div>
+
+  <div>
+    <div class="toolbar">
+      <button type="button" id="random">🎲 Surprise me</button>
+      <button type="button" id="reset">Reset</button>
+      <label class="toggle"><input type="checkbox" id="brows" checked> Eyebrows follow the hair colour</label>
+    </div>
+    <div id="pickers"></div>
+  </div>
+</div>
+
+<div class="sheet">
+  <h2>Every skin tone, current outfit and hair</h2>
+  <div class="grid" id="sheet-head"></div>
+  <h2 style="margin-top:26px">Every hair, current head and outfit</h2>
+  <div class="grid" id="sheet-hair"></div>
+  <h2 style="margin-top:26px">Every outfit colour, current head and hair</h2>
+  <div class="grid" id="sheet-outfit"></div>
+</div>
+
+<script type="module">
+const BASE = "assets/shutterbug-ui/avatar-v2/";
+const manifest = await (await fetch(BASE + "manifest.json")).json();
+const { order, parts } = manifest;
+
+const PART_LABEL = { head: "Skin tone", eyes: "Eye colour", hair: "Hair", outfit: "Outfit", brow: "Eyebrows" };
+// Parts the player never picks: the manifest says which choice drives them.
+// Brows follow the hair colour.
+const DERIVED = manifest.derived ?? {};
+const PICKABLE = order.filter((p) => !(p in DERIVED));
+
+const DEFAULTS = Object.fromEntries(PICKABLE.map((p) => [p, 0]));
+const choice = { ...DEFAULTS };
+let browsOn = true;
+
+// Resolve a full layer stack from the parts the player actually chose.
+function resolve(pick) {
+  const full = { ...pick };
+  for (const [part, from] of Object.entries(DERIVED)) {
+    const want = parts[from][pick[from]]?.colour;
+    const i = parts[part].findIndex((o) => o.colour === want);
+    full[part] = i;
+  }
+  return full;
+}
+
+const optionOf = (part, i) => parts[part][i];
+
+// Zoom a thumbnail onto the rectangle the part's ink actually occupies. The
+// rectangle is measured at build time and lives in the manifest, so the swatches
+// re-frame themselves when new art arrives instead of needing new CSS.
+function thumbCrop(part, pad = 1.18) {
+  return boxCrop(manifest.focus?.[part], pad);
+}
+
+// Head and hair together, dropped a little to catch the collar. The full plate
+// is a waist-up bust: shrink that to a 44px header chip and the face — the only
+// part that says whose avatar it is — is about eight pixels across. Small round
+// slots want this crop instead.
+const PORTRAIT = (() => {
+  const h = manifest.focus?.head, r = manifest.focus?.hair;
+  if (!h || !r) return null;
+  const x = Math.min(h.x, r.x), y = Math.min(h.y, r.y);
+  const w = Math.max(h.x + h.w, r.x + r.w) - x;
+  return { x, y, w, h: Math.max(h.y + h.h, r.y + r.h) - y + 0.04 };
+})();
+
+function boxCrop(box, pad = 1.18) {
+  if (!box) return {};
+  const scale = 1 / (Math.max(box.w, box.h) * pad);
+  const cx = box.x + box.w / 2, cy = box.y + box.h / 2;
+  return {
+    transformOrigin: `${cx * 100}% ${cy * 100}%`,
+    // Scale about the ink's centre, then slide that centre to the thumb's centre.
+    transform: `translate(${(0.5 - cx) * 100}%, ${(0.5 - cy) * 100}%) scale(${scale.toFixed(3)})`,
+  };
+}
+
+// One avatar = one absolutely-positioned <img> per part, in manifest order.
+// Nothing is offset or resized: object-fit:contain on identical square plates
+// keeps the registration the artwork already has.
+function paint(node, pick, { crop = null } = {}) {
+  const full = resolve(pick);
+  node.replaceChildren();
+  for (const part of order) {
+    if (part === "brow" && !browsOn) continue;
+    const opt = optionOf(part, full[part]);
+    if (!opt) continue;
+    const img = document.createElement("img");
+    img.src = BASE + opt.file;
+    img.alt = "";
+    img.loading = "lazy";
+    if (crop) Object.assign(img.style, boxCrop(crop, 1.06));
+    node.appendChild(img);
+  }
+  node.setAttribute(
+    "role", "img",
+  );
+  node.setAttribute(
+    "aria-label",
+    PICKABLE.map((p) => `${PART_LABEL[p]}: ${optionOf(p, pick[p])?.label ?? "none"}`).join(", "),
+  );
+}
+
+function makeAvatar(px, round = false) {
+  const stage = document.createElement("div");
+  stage.className = "stage";
+  if (round) stage.style.borderRadius = "50%";
+  stage.style.width = stage.style.height = px + "px";
+  const av = document.createElement("div");
+  av.className = "avatar";
+  stage.appendChild(av);
+  return { stage, av };
+}
+
+// --- pickers -----------------------------------------------------------------
+const pickers = document.getElementById("pickers");
+for (const part of PICKABLE) {
+  const fs = document.createElement("fieldset");
+  const lg = document.createElement("legend");
+  lg.textContent = `${PART_LABEL[part]} — ${parts[part].length}`;
+  fs.appendChild(lg);
+  const row = document.createElement("div");
+  row.className = "swatches";
+  parts[part].forEach((opt, i) => {
+    const label = document.createElement("label");
+    const input = document.createElement("input");
+    input.type = "radio";
+    input.name = part;
+    input.value = i;
+    input.checked = i === choice[part];
+    input.addEventListener("change", () => { choice[part] = i; render(); });
+    const chip = document.createElement("div");
+    chip.className = "chip";
+    const thumb = document.createElement("div");
+    thumb.className = "thumb";
+    const img = document.createElement("img");
+    img.src = BASE + opt.file;
+    img.alt = "";
+    img.loading = "lazy";
+    Object.assign(img.style, thumbCrop(part));
+    thumb.appendChild(img);
+    const name = document.createElement("span");
+    name.textContent = opt.label;
+    chip.append(thumb, name);
+    label.append(input, chip);
+    row.appendChild(label);
+  });
+  fs.appendChild(row);
+  pickers.appendChild(fs);
+}
+
+// --- the three preview sizes the game actually uses ---------------------------
+const SIZES = [
+  { px: 132, label: "passport 132px", round: false, crop: null },
+  { px: 72, label: "profile list 72px", round: true, crop: PORTRAIT },
+  { px: 44, label: "header chip 44px", round: true, crop: PORTRAIT },
+  { px: 44, label: "44px, uncropped", round: true, crop: null },
+];
+const sizeNodes = SIZES.map(({ px, label, round, crop }) => {
+  const fig = document.createElement("figure");
+  const { stage, av } = makeAvatar(px, round);
+  const cap = document.createElement("figcaption");
+  cap.textContent = label;
+  fig.append(stage, cap);
+  document.getElementById("sizes").appendChild(fig);
+  return { av, crop };
+});
+
+// --- contact sheets -----------------------------------------------------------
+const SHEETS = [["head", "sheet-head"], ["hair", "sheet-hair"], ["outfit", "sheet-outfit"]];
+const sheetNodes = SHEETS.map(([part, id]) => {
+  const box = document.getElementById(id);
+  const nodes = parts[part].map((opt) => {
+    const fig = document.createElement("figure");
+    const { stage, av } = makeAvatar(132);
+    const cap = document.createElement("figcaption");
+    cap.textContent = opt.label;
+    fig.append(stage, cap);
+    box.appendChild(fig);
+    return av;
+  });
+  return { part, nodes };
+});
+
+// --- render -------------------------------------------------------------------
+const main = document.getElementById("avatar");
+function render() {
+  paint(main, choice);
+  for (const { av, crop } of sizeNodes) paint(av, choice, { crop });
+  for (const { part, nodes } of sheetNodes) {
+    nodes.forEach((av, i) => paint(av, { ...choice, [part]: i }));
+  }
+  const combos = PICKABLE.reduce((n, p) => n * Math.max(parts[p].length, 1), 1);
+  document.getElementById("stats").textContent =
+    `${PICKABLE.map((p) => `${parts[p].length} ${p}`).join(" · ")} — ${combos.toLocaleString()} distinct avatars from ${
+      order.reduce((n, p) => n + parts[p].length, 0)} files.`;
+}
+
+document.getElementById("random").addEventListener("click", () => {
+  for (const part of PICKABLE) choice[part] = Math.floor(Math.random() * parts[part].length);
+  syncInputs();
+  render();
+});
+document.getElementById("brows").addEventListener("change", (e) => {
+  browsOn = e.target.checked;
+  render();
+});
+document.getElementById("reset").addEventListener("click", () => {
+  Object.assign(choice, DEFAULTS);
+  syncInputs();
+  render();
+});
+function syncInputs() {
+  for (const part of PICKABLE) {
+    const input = document.querySelector(`input[name="${part}"][value="${choice[part]}"]`);
+    if (input) input.checked = true;
+  }
+}
+
+render();
+</script>

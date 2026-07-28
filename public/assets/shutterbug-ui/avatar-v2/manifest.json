@@ -1,0 +1,321 @@
+{
+  "canvas": 600,
+  "order": [
+    "outfit",
+    "head",
+    "brow",
+    "eyes",
+    "hair"
+  ],
+  "derived": {
+    "brow": "hair"
+  },
+  "focus": {
+    "outfit": {
+      "x": 0.1533,
+      "y": 0.5667,
+      "w": 0.6817,
+      "h": 0.4017
+    },
+    "head": {
+      "x": 0.2667,
+      "y": 0.145,
+      "w": 0.49,
+      "h": 0.5767
+    },
+    "brow": {
+      "x": 0.3467,
+      "y": 0.305,
+      "w": 0.2917,
+      "h": 0.0967
+    },
+    "eyes": {
+      "x": 0.3517,
+      "y": 0.3367,
+      "w": 0.29,
+      "h": 0.125
+    },
+    "hair": {
+      "x": 0.1767,
+      "y": 0.0283,
+      "w": 0.5917,
+      "h": 0.4133
+    }
+  },
+  "parts": {
+    "outfit": [
+      {
+        "part": "outfit",
+        "sex": "any",
+        "variant": "1",
+        "style": "jacket",
+        "colour": "red",
+        "id": "outfit_1_red_jacket",
+        "file": "outfit_1_red_jacket.webp",
+        "label": "Red",
+        "swatch": "#9b1919"
+      },
+      {
+        "part": "outfit",
+        "sex": "any",
+        "variant": "2",
+        "style": "jacket",
+        "colour": "orange",
+        "id": "outfit_2_orange_jacket",
+        "file": "outfit_2_orange_jacket.webp",
+        "label": "Orange",
+        "swatch": "#b64e0f"
+      },
+      {
+        "part": "outfit",
+        "sex": "any",
+        "variant": "3",
+        "style": "jacket",
+        "colour": "yellow",
+        "id": "outfit_3_yellow_jacket",
+        "file": "outfit_3_yellow_jacket.webp",
+        "label": "Yellow",
+        "swatch": "#b68e17"
+      },
+      {
+        "part": "outfit",
+        "sex": "any",
+        "variant": "4",
+        "style": "jacket",
+        "colour": "green",
+        "id": "outfit_4_green_jacket",
+        "file": "outfit_4_green_jacket.webp",
+        "label": "Green",
+        "swatch": "#6b6d2a"
+      },
+      {
+        "part": "outfit",
+        "sex": "any",
+        "variant": "5",
+        "style": "jacket",
+        "colour": "blue",
+        "id": "outfit_5_blue_jacket",
+        "file": "outfit_5_blue_jacket.webp",
+        "label": "Blue",
+        "swatch": "#1f3f9f"
+      },
+      {
+        "part": "outfit",
+        "sex": "any",
+        "variant": "6",
+        "style": "jacket",
+        "colour": "purple",
+        "id": "outfit_6_purple_jacket",
+        "file": "outfit_6_purple_jacket.webp",
+        "label": "Purple",
+        "swatch": "#592979"
+      },
+      {
+        "part": "outfit",
+        "sex": "any",
+        "variant": "7",
+        "style": "jacket",
+        "colour": "pink",
+        "id": "outfit_7_pink_jacket",
+        "file": "outfit_7_pink_jacket.webp",
+        "label": "Pink",
+        "swatch": "#d56494"
+      }
+    ],
+    "head": [
+      {
+        "part": "head",
+        "sex": "any",
+        "variant": "1",
+        "style": "head",
+        "colour": "light",
+        "id": "head_1_light_skin",
+        "file": "head_1_light_skin.webp",
+        "label": "Light",
+        "swatch": "#f3d0b9"
+      },
+      {
+        "part": "head",
+        "sex": "any",
+        "variant": "2",
+        "style": "head",
+        "colour": "tan",
+        "id": "head_2_tan_skin",
+        "file": "head_2_tan_skin.webp",
+        "label": "Tan",
+        "swatch": "#fbad6e"
+      },
+      {
+        "part": "head",
+        "sex": "any",
+        "variant": "3",
+        "style": "head",
+        "colour": "medium",
+        "id": "head_3_medium_skin",
+        "file": "head_3_medium_skin.webp",
+        "label": "Medium",
+        "swatch": "#b58762"
+      },
+      {
+        "part": "head",
+        "sex": "any",
+        "variant": "4",
+        "style": "head",
+        "colour": "dark",
+        "id": "head_4_dark_skin",
+        "file": "head_4_dark_skin.webp",
+        "label": "Dark",
+        "swatch": "#8b6145"
+      }
+    ],
+    "brow": [
+      {
+        "part": "brow",
+        "sex": "any",
+        "variant": "1",
+        "style": "brow",
+        "colour": "blonde",
+        "id": "brow_blonde",
+        "file": "brow_blonde.webp",
+        "label": "Blonde",
+        "swatch": "#d19036"
+      },
+      {
+        "part": "brow",
+        "sex": "any",
+        "variant": "2",
+        "style": "brow",
+        "colour": "brown",
+        "id": "brow_brown",
+        "file": "brow_brown.webp",
+        "label": "Brown",
+        "swatch": "#805428"
+      },
+      {
+        "part": "brow",
+        "sex": "any",
+        "variant": "3",
+        "style": "brow",
+        "colour": "light chestnut",
+        "id": "brow_light_chestnut",
+        "file": "brow_light_chestnut.webp",
+        "label": "Light Chestnut",
+        "swatch": "#89522e"
+      },
+      {
+        "part": "brow",
+        "sex": "any",
+        "variant": "4",
+        "style": "brow",
+        "colour": "black",
+        "id": "brow_black",
+        "file": "brow_black.webp",
+        "label": "Black",
+        "swatch": "#2f2f36"
+      },
+      {
+        "part": "brow",
+        "sex": "any",
+        "variant": "5",
+        "style": "brow",
+        "colour": "red",
+        "id": "brow_red",
+        "file": "brow_red.webp",
+        "label": "Red",
+        "swatch": "#bd4223"
+      }
+    ],
+    "eyes": [
+      {
+        "part": "eyes",
+        "sex": "male",
+        "variant": "1",
+        "style": "eyes",
+        "colour": "blue",
+        "id": "eyes_male_blue",
+        "file": "eyes_male_blue.webp",
+        "label": "Blue",
+        "swatch": "#1d61bd"
+      },
+      {
+        "part": "eyes",
+        "sex": "male",
+        "variant": "1",
+        "style": "eyes",
+        "colour": "brown",
+        "id": "eyes_male_brown",
+        "file": "eyes_male_brown.webp",
+        "label": "Brown",
+        "swatch": "#945326"
+      },
+      {
+        "part": "eyes",
+        "sex": "male",
+        "variant": "1",
+        "style": "eyes",
+        "colour": "green",
+        "id": "eyes_male_green",
+        "file": "eyes_male_green.webp",
+        "label": "Green",
+        "swatch": "#338630"
+      }
+    ],
+    "hair": [
+      {
+        "part": "hair",
+        "sex": "any",
+        "variant": "1",
+        "style": "hair",
+        "colour": "blonde",
+        "id": "hair_1_blonde",
+        "file": "hair_1_blonde.webp",
+        "label": "Blonde",
+        "swatch": "#d19036"
+      },
+      {
+        "part": "hair",
+        "sex": "any",
+        "variant": "2",
+        "style": "hair",
+        "colour": "brown",
+        "id": "hair_2_brown",
+        "file": "hair_2_brown.webp",
+        "label": "Brown",
+        "swatch": "#805428"
+      },
+      {
+        "part": "hair",
+        "sex": "any",
+        "variant": "3",
+        "style": "hair",
+        "colour": "light chestnut",
+        "id": "hair_3_light_chestnut",
+        "file": "hair_3_light_chestnut.webp",
+        "label": "Light Chestnut",
+        "swatch": "#89522e"
+      },
+      {
+        "part": "hair",
+        "sex": "any",
+        "variant": "4",
+        "style": "hair",
+        "colour": "black",
+        "id": "hair_4_black",
+        "file": "hair_4_black.webp",
+        "label": "Black",
+        "swatch": "#2f2f36"
+      },
+      {
+        "part": "hair",
+        "sex": "any",
+        "variant": "5",
+        "style": "hair",
+        "colour": "red",
+        "id": "hair_5_red",
+        "file": "hair_5_red.webp",
+        "label": "Red",
+        "swatch": "#bd4223"
+      }
+    ]
+  }
+}
