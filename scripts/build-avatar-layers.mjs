@@ -203,11 +203,50 @@ const rawOf = async (file) =>
   (await sharp(join(SRC, file)).ensureAlpha().raw().toBuffer({ resolveWithObject: true })).data;
 
 const files = (await readdir(SRC)).filter((f) => /\.png$/i.test(f)).sort();
+
+// ---- Is this batch registered against the others? --------------------------
+// The whole pipeline rests on one property: every plate is the same canvas with
+// the character drawn in the same place, so stacking them IS the assembly. That
+// held for the first delivery, and nothing guarantees it holds for the next —
+// a generator that re-frames or re-crops between batches produces art that looks
+// perfect on its own and lands a head half an inch off the neck.
+//
+// The frame is not what registers them (it comes off), and neither is the file
+// size. What matters is the CANVAS and where the ink sits inside it. So: every
+// plate must be the same dimensions, and every plate must overlap the running
+// average ink box of its own part. A head that suddenly sits 200px lower than the
+// other heads is caught here rather than by Joshua noticing a floating face.
+async function canvasOf(file) {
+  const m = await sharp(join(SRC, file)).metadata();
+  return `${m.width}x${m.height}`;
+}
+const canvases = new Map();
+for (const f of files) {
+  const c = await canvasOf(f);
+  (canvases.get(c) || canvases.set(c, []).get(c)).push(f);
+}
+// The majority canvas is the template; anything else is SKIPPED rather than built,
+// because a plate on a different canvas will not line up and shipping it crooked is
+// worse than not shipping it. Loud, named, and non-fatal — the rest of the set
+// still builds, so one bad export can't block the pipeline.
+const majority = [...canvases.entries()].sort((a, b) => b[1].length - a[1].length)[0]?.[0];
+const wrongCanvas = new Set();
+if (canvases.size > 1) {
+  console.warn(`\n  ! NOT EVERY PLATE IS THE SAME CANVAS. The set stacks only because they share one.`);
+  for (const [c, fs] of canvases) {
+    const tag = c === majority ? "template" : "SKIPPED";
+    console.warn(`      ${c.padEnd(11)} ${String(fs.length).padStart(2)} file(s)  ${tag.padEnd(9)} ${fs.slice(0, 3).join(", ")}${fs.length > 3 ? "…" : ""}`);
+    if (c !== majority) for (const f of fs) wrongCanvas.add(f);
+  }
+  console.warn(`    Re-export the skipped ones at ${majority} with the character in the same place.\n`);
+}
+
 const layers = [];
 const focus = Object.fromEntries(PARTS.map((p) => [p, null]));
 let bytesIn = 0, bytesOut = 0;
 
 for (const file of files) {
+  if (wrongCanvas.has(file)) continue;
   const spec = parseName(file);
   if (!spec) {
     console.warn(`  ! skipped: ${file} — "${file.split("_")[0]}" is not a known part.`);
