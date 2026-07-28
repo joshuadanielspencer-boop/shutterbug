@@ -31,14 +31,17 @@ Last updated **2026-07-28**.
 > Melina, Turkish Yelda. Persian, Swahili and Māori correctly report no voice.
 >
 > **English is still Samantha, because on that machine she is genuinely the best there
-> is.** Three ways forward, cheapest first:
+> is.** Ways forward:
 >
-> 1. **Free, one action, no code.** Apple's Enhanced/Premium and Siri voices are a free
->    download: System Settings → Accessibility → Spoken Content → System Voice →
->    Manage Voices. Install an Enhanced English voice and the ranking picks it up with
->    no change here — that path is already tested. Same on iPad (Settings →
->    Accessibility → Spoken Content → Voices), which matters more since the iPad is
->    the real device.
+> 1. ~~**Install a better system voice.**~~ **RULED OUT by Joshua, 2026-07-28:** *"I only
+>    want us to utilize things that can be done in-game. If someone is playing this game
+>    on their browser or downloads an app, I won't be having them search their computer
+>    to download a new voice."* This is a product constraint, not a preference — the
+>    game ships to players who will never be told to configure anything. Do not
+>    re-propose it. It also retires the whole category: nothing that depends on what
+>    the player's device happens to have installed counts as a fix. `rankVoices()` in
+>    src/audio.js stays as the graceful fallback for whatever voice IS there, but it
+>    can never be the plan.
 > 2. **Pre-rendered audio, human.** Wikimedia's **Lingua Libre** holds tens of
 >    thousands of free-licensed recordings of real speakers saying single words,
 >    including country names and greetings, under CC BY-SA / CC0 — the same licensing
@@ -50,8 +53,11 @@ Last updated **2026-07-28**.
 >    any browser voice, worse than a human, and a build-step dependency. Only worth it
 >    if Lingua Libre's coverage turns out to be thin.
 >
-> Recommendation: do (1) now — it costs a minute and it is the biggest single jump —
-> and treat (2) as a content project of the same shape as the culture-photo audit.
+> Recommendation: (2) is the only real path, treated as a content project of the same
+> shape as the culture-photo audit. Everything the game says aloud that is NOT a
+> country name — Mr O's facts, the Scout read-aloud, hover labels, every greeting —
+> is still on the device synthesizer, and bundling audio is the only way to change
+> that for a player who configures nothing.
 >
 > **UPDATE, same day: (2) is DONE for the country names.** The audit came back far
 > better than expected — see below — so it was built rather than filed.

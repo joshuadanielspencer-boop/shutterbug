@@ -886,10 +886,12 @@ export const speechAvailable = typeof window !== "undefined" && "speechSynthesis
 // So: rank the voices ourselves and set `u.voice` explicitly.
 //
 // This cannot conjure a good voice out of a machine that has none — on a stock Mac
-// the best available for English really is Samantha. The genuinely good ones
-// (Apple's "Enhanced"/"Premium" and the Siri voices) are a FREE download in
-// System Settings → Accessibility → Spoken Content → Manage Voices, and the moment
-// one is installed the ranking below picks it up with no further change here.
+// the best available for English really is Samantha. The ranking picks up Apple's
+// "Enhanced"/"Premium"/Siri voices when a device happens to have them, but that is
+// a bonus, never a plan: asking a player to install a voice is explicitly off the
+// table (Joshua, 2026-07-28 — the game ships to people who configure nothing). The
+// only real lever is bundling audio, which is what public/voices already does for
+// the country names.
 const NOVELTY = /\b(albert|bad news|bahh|bells|boing|bubbles|cellos|deranged|good news|hysterical|jester|junior|kathy|organ|pipe organ|princess|ralph|superstar|trinoids|whisper|wobble|zarvox|fred|agnes|bruce|victoria|grandma|grandpa|rocko|shelley|sandy|flo|eddy|reed)\b/i;
 // The ones worth having, best first. "Enhanced"/"Premium"/Siri are Apple's neural
 // voices; "Google"/"Natural"/"Online" are Chrome's and Edge's.
