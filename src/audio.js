@@ -863,6 +863,73 @@ const SPEECH_LANG = {
   "Nigerian Pidgin": "en",
 };
 export const speechAvailable = typeof window !== "undefined" && "speechSynthesis" in window;
+
+// ---------------------------------------------------------------------------
+// CHOOSING A VOICE
+// ---------------------------------------------------------------------------
+// Setting `u.lang` and leaving it there hands the choice to the browser, and the
+// browser's choice is often the oldest voice it has. On macOS the default en-US
+// voice is Samantha — the pre-Siri one — which is what a player heard reading the
+// country names aloud and reasonably called atrocious.
+//
+// Worse, the list a browser will pick from includes voices that are jokes. macOS
+// ships Bad News, Bahh, Bells, Boing, Bubbles, Cellos, Jester, Organ, Superstar,
+// Trinoids, Whisper, Wobble and Zarvox, all as en-US; and for French, German,
+// Japanese, Spanish and Chinese the list is DOMINATED by the character voices
+// (Grandma, Grandpa, Rocko, Jester…), which is how a greeting ends up being read
+// by a cartoon. None of them may ever be chosen to teach a child how a word sounds.
+//
+// So: rank the voices ourselves and set `u.voice` explicitly.
+//
+// This cannot conjure a good voice out of a machine that has none — on a stock Mac
+// the best available for English really is Samantha. The genuinely good ones
+// (Apple's "Enhanced"/"Premium" and the Siri voices) are a FREE download in
+// System Settings → Accessibility → Spoken Content → Manage Voices, and the moment
+// one is installed the ranking below picks it up with no further change here.
+const NOVELTY = /\b(albert|bad news|bahh|bells|boing|bubbles|cellos|deranged|good news|hysterical|jester|junior|kathy|organ|pipe organ|princess|ralph|superstar|trinoids|whisper|wobble|zarvox|fred|agnes|bruce|victoria|grandma|grandpa|rocko|shelley|sandy|flo|eddy|reed)\b/i;
+// The ones worth having, best first. "Enhanced"/"Premium"/Siri are Apple's neural
+// voices; "Google"/"Natural"/"Online" are Chrome's and Edge's.
+const GOOD = [/siri/i, /premium|enhanced/i, /neural|natural/i, /google/i, /online/i];
+
+// Pure, and exported so it can be tested without a browser: given a voice list and
+// a BCP-47 code, which voice should speak? Returns null when nothing matches.
+export function rankVoices(voices, code) {
+  const want = String(code || "en-US").toLowerCase();
+  const base = want.split("-")[0];
+  const matches = (voices || []).filter((v) => (v.lang || "").toLowerCase().replace("_", "-").startsWith(base));
+  if (!matches.length) return null;
+  const score = (v) => {
+    const name = v.name || "";
+    // A joke voice is never acceptable, even as the only match — silence teaches
+    // less than a wrong sound, but a comedy sound teaches WRONGLY.
+    if (NOVELTY.test(name)) return -1;
+    let s = 10;
+    for (let i = 0; i < GOOD.length; i++) if (GOOD[i].test(name)) { s += (GOOD.length - i) * 10; break; }
+    // Prefer the exact region ("fr-CA" for Québec) over the bare language.
+    if ((v.lang || "").toLowerCase().replace("_", "-") === want) s += 5;
+    if (v.default) s += 1;             // a tiebreak only, never a reason on its own
+    return s;
+  };
+  const best = matches.map((v) => ({ v, s: score(v) })).filter((x) => x.s >= 0)
+    .sort((a, b) => b.s - a.s)[0];
+  return best ? best.v : null;
+}
+
+// Memoized per code; cleared when the browser finishes loading its voice list,
+// which several browsers do asynchronously after first paint.
+let _voiceCache = {};
+if (speechAvailable) {
+  try { window.speechSynthesis.addEventListener("voiceschanged", () => { _voiceCache = {}; }); } catch { /* older engines */ }
+}
+function bestVoice(code) {
+  const key = code || "en-US";
+  if (key in _voiceCache) return _voiceCache[key];
+  let picked = null;
+  try { picked = rankVoices(window.speechSynthesis.getVoices(), key); } catch { picked = null; }
+  // Don't cache a miss while the list is still empty — it fills in a moment.
+  try { if ((window.speechSynthesis.getVoices() || []).length) _voiceCache[key] = picked; } catch { /* ignore */ }
+  return picked;
+}
 // SpeechSynthesis output does not pass through the Web Audio graph, so none of the
 // gain nodes above can duck it — its volume can only be set per-utterance, here. At
 // the default 1.0 the announcement drowned the arrival music; this is the speech half
@@ -873,6 +940,10 @@ const SPEECH_VOLUME = 0.55;
 const utter = (text, opts = {}) => {
   const u = new SpeechSynthesisUtterance(String(text));
   u.lang = opts.lang || "en-US";
+  // Pick the voice rather than letting the browser default to its oldest one.
+  // Setting `voice` also pins `lang`, so it stays consistent either way.
+  const v = bestVoice(u.lang);
+  if (v) u.voice = v;
   u.rate = opts.rate ?? 0.95;
   if (opts.pitch != null) u.pitch = opts.pitch;
   u.volume = SPEECH_VOLUME;
@@ -894,8 +965,11 @@ function hasVoiceFor(code) {
   try {
     const voices = window.speechSynthesis.getVoices() || [];
     if (!voices.length) return null;
-    const base = String(code).split("-")[0].toLowerCase();
-    return voices.some((v) => (v.lang || "").toLowerCase().startsWith(base));
+    // Deliberately asks the RANKING, not "does any voice claim this language" — a
+    // language whose only match is Jester or Bubbles has no usable voice, and the
+    // romanization read plainly in English teaches the sound better than a joke
+    // voice reading the native script.
+    return rankVoices(voices, code) !== null;
   } catch { return null; }
 }
 function greetingUtterance(g) {

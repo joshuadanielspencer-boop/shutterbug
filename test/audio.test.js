@@ -168,3 +168,89 @@ describe("country tunes", () => {
     }
   });
 });
+
+// ===========================================================================
+// Which voice reads a word aloud.
+//
+// Setting `utterance.lang` and stopping there hands the choice to the browser,
+// and the browser hands it to its oldest voice: on macOS the en-US default is
+// Samantha, the pre-Siri one, which is what a player heard and called atrocious.
+//
+// The sharper problem is what ELSE is in that list. macOS ships Bad News, Bahh,
+// Boing, Bubbles, Cellos, Jester, Organ, Superstar, Trinoids, Whisper, Wobble and
+// Zarvox as ordinary en-US voices, and for French, German, Japanese and Spanish the
+// list is dominated by the character voices. This game says foreign words out loud
+// to teach a child how they sound; a comedy voice doing that teaches the wrong
+// sound, which is worse than silence.
+// ===========================================================================
+import { rankVoices } from "../src/audio.js";
+
+const V = (name, lang, extra = {}) => ({ name, lang, default: false, localService: true, ...extra });
+
+describe("choosing a voice", () => {
+  // The real macOS en-US list, near enough.
+  const MAC_EN = [
+    V("Samantha", "en-US", { default: true }), V("Albert", "en-US"), V("Bad News", "en-US"),
+    V("Bahh", "en-US"), V("Bells", "en-US"), V("Boing", "en-US"), V("Bubbles", "en-US"),
+    V("Cellos", "en-US"), V("Fred", "en-US"), V("Good News", "en-US"), V("Jester", "en-US"),
+    V("Junior", "en-US"), V("Kathy", "en-US"), V("Organ", "en-US"), V("Ralph", "en-US"),
+    V("Superstar", "en-US"), V("Trinoids", "en-US"), V("Whisper", "en-US"),
+    V("Wobble", "en-US"), V("Zarvox", "en-US"), V("Daniel", "en-GB"),
+  ];
+
+  it("never picks a joke voice, even when most of the list is jokes", () => {
+    for (let i = 0; i < 20; i++) {
+      const got = rankVoices(MAC_EN, "en-US");
+      expect(got, "nothing was chosen at all").toBeTruthy();
+      expect(got.name).toBe("Samantha");
+    }
+  });
+
+  it("prefers a downloaded Enhanced or Siri voice the moment one exists", () => {
+    // This is the whole upgrade path: the good Apple voices are a free download,
+    // and when one is installed it must be picked with no code change.
+    const withGood = [...MAC_EN, V("Samantha (Enhanced)", "en-US"), V("Siri Voice 4", "en-US")];
+    expect(rankVoices(withGood, "en-US").name).toMatch(/Siri/);
+    expect(rankVoices([...MAC_EN, V("Samantha (Enhanced)", "en-US")], "en-US").name).toMatch(/Enhanced/);
+  });
+
+  it("prefers Chrome's and Edge's better voices over the system default", () => {
+    const chrome = [V("Samantha", "en-US", { default: true }), V("Google US English", "en-US", { localService: false })];
+    expect(rankVoices(chrome, "en-US").name).toMatch(/Google/);
+    const edge = [V("Microsoft David", "en-US", { default: true }), V("Microsoft Ava Online (Natural)", "en-US")];
+    expect(rankVoices(edge, "en-US").name).toMatch(/Natural/);
+  });
+
+  it("picks the plain voice over the character ones for a foreign greeting", () => {
+    // Amélie should read "Bonjour", not Grandpa.
+    const fr = [V("Grandma (French (France))", "fr-FR"), V("Grandpa (French (France))", "fr-FR"),
+      V("Rocko (French (France))", "fr-FR"), V("Amélie", "fr-FR"), V("Jacques", "fr-FR")];
+    expect(["Amélie", "Jacques"]).toContain(rankVoices(fr, "fr-FR").name);
+    const ja = [V("Grandma (Japanese (Japan))", "ja-JP"), V("Rocko (Japanese (Japan))", "ja-JP"), V("Kyoko", "ja-JP")];
+    expect(rankVoices(ja, "ja-JP").name).toBe("Kyoko");
+  });
+
+  it("prefers the exact region but accepts the language", () => {
+    const fr = [V("Amélie", "fr-CA"), V("Thomas", "fr-FR")];
+    expect(rankVoices(fr, "fr-CA").name).toBe("Amélie");
+    expect(rankVoices(fr, "fr-FR").name).toBe("Thomas");
+    expect(rankVoices(fr, "fr")).toBeTruthy();   // bare language still matches
+  });
+
+  it("says NOTHING rather than something silly when only jokes are available", () => {
+    // This is what makes the greeting layer fall back to reading the romanization
+    // in English, which is the right answer for a language the device can't speak.
+    const only = [V("Jester", "xx-XX"), V("Bubbles", "xx-XX")];
+    expect(rankVoices(only, "xx-XX")).toBe(null);
+    expect(rankVoices([], "en-US")).toBe(null);
+    expect(rankVoices(null, "en-US")).toBe(null);
+  });
+
+  it("returns null for a language the device has no voice for at all", () => {
+    expect(rankVoices(MAC_EN, "fa-IR")).toBe(null);   // Persian: no macOS voice
+  });
+
+  it("handles the underscore form some engines report", () => {
+    expect(rankVoices([V("Anna", "de_DE")], "de-DE").name).toBe("Anna");
+  });
+});

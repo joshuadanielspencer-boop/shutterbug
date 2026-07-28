@@ -4,7 +4,55 @@ A handoff document. Everything here is written so a **new session with no memory
 the previous ones** can pick up a task and finish it. Read `CLAUDE.md` first (the
 three project rules are hard requirements), then the task you're doing.
 
-Last updated **2026-07-27**.
+Last updated **2026-07-28**.
+
+> ### ⚠ 2026-07-28: the speech voice, and what would actually fix it
+>
+> Joshua: *"The voice pronouncing some of the countries is the old school atrocious
+> pre-Siri voice."* He was right, and the cause is not our code choosing badly — it
+> was our code not choosing at all.
+>
+> `utterance.lang = "en-US"` hands the pick to the browser, and the browser hands it
+> to its oldest voice. On macOS that is **Samantha**, the pre-Siri one. Measured on
+> Joshua's Mac: 180 voices installed, **zero** Enhanced/Premium/Siri among them.
+>
+> Worse than the default: macOS ships *Bad News, Bahh, Bells, Boing, Bubbles, Cellos,
+> Jester, Organ, Superstar, Trinoids, Whisper, Wobble* and *Zarvox* as ordinary en-US
+> voices, and for French, German, Japanese, Spanish and Chinese the list is DOMINATED
+> by the character voices (Grandma, Grandpa, Rocko…). The game says foreign words
+> aloud to teach a child how they sound, so a comedy voice doing it is worse than
+> silence. `rankVoices()` in `src/audio.js` now scores the list and sets `u.voice`
+> explicitly; joke voices are never eligible, and a language whose ONLY match is a
+> joke voice counts as having no voice, which makes the greeting layer fall back to
+> reading the romanization plainly in English.
+>
+> Measured result: French now gets Jacques (was liable to be Grandpa), Japanese Kyoko,
+> German Anna, Spanish Mónica, Chinese Tingting, Russian Milena, Korean Yuna, Greek
+> Melina, Turkish Yelda. Persian, Swahili and Māori correctly report no voice.
+>
+> **English is still Samantha, because on that machine she is genuinely the best there
+> is.** Three ways forward, cheapest first:
+>
+> 1. **Free, one action, no code.** Apple's Enhanced/Premium and Siri voices are a free
+>    download: System Settings → Accessibility → Spoken Content → System Voice →
+>    Manage Voices. Install an Enhanced English voice and the ranking picks it up with
+>    no change here — that path is already tested. Same on iPad (Settings →
+>    Accessibility → Spoken Content → Voices), which matters more since the iPad is
+>    the real device.
+> 2. **Pre-rendered audio, human.** Wikimedia's **Lingua Libre** holds tens of
+>    thousands of free-licensed recordings of real speakers saying single words,
+>    including country names and greetings, under CC BY-SA / CC0 — the same licensing
+>    lane and the same API the photo work already uses. Best possible quality, and it
+>    removes the dependence on the player's device entirely. Cost is a coverage audit
+>    (108 country names + ~100 greetings) and about 5–10 MB of audio in the PWA.
+> 3. **Pre-rendered audio, synthesized.** **Piper** (rhasspy/piper) is MIT-licensed
+>    neural TTS that runs offline; output is licence-clean to redistribute. Better than
+>    any browser voice, worse than a human, and a build-step dependency. Only worth it
+>    if Lingua Libre's coverage turns out to be thin.
+>
+> Recommendation: do (1) now — it costs a minute and it is the biggest single jump —
+> and treat (2) as a content project of the same shape as the culture-photo audit.
+
 
 > ### ⚠ 2026-07-27: a sixth mode landed
 >
