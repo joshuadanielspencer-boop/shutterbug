@@ -65,7 +65,7 @@ import { CURIOSITY_DECK_BY_ID, CURIOSITY_TOTAL } from "./data/curiosities.js";
 import MysteryPhotos from "./components/mystery.jsx";
 import { KIT_ITEMS, KIT_BY_ID, KIT_OFFERED, KIT_TAKEN } from "./data/kit.js";
 import { CONDITIONS } from "./data/conditions.js";
-import { OUTFIT_POSE_FILE, OUTFIT_REGIONS, outfitRegionFor,
+import { OUTFIT_POSE_FILE, OUTFIT_REGIONS, outfitRegionFor, pickDogOutfit,
   unlockedOutfits, OUTFIT_NAME, OUTFIT_UNLOCK, ALL_OUTFITS, outfitUnlockLabel } from "./data/dog-outfits.js";
 import { cityMissLesson, categoryMissLesson, continentMissLesson } from "./data/misses.js";
 import { DIFFICULTY_ART, MODE_ART, THEME_ART, CATEGORY_ART, ACHIEVEMENT_ART,
@@ -3080,7 +3080,11 @@ export default function ShutterbugWorld() {
           const newModes = seenU ? nowU.filter((k) => !seenU.includes(k)) : [];
           const visitedNow = progressByContinent(updated).filter((c) => c.mastered > 0).map((c) => c.continent);
           const seenJ = Array.isArray(updated.seenJournals) ? updated.seenJournals : [];
-          const newJournals = visitedNow.filter((c) => JONAH_JOURNALS[c] && !seenJ.includes(c));
+          // ONE journal per trip. A run that stamps three new continents used to hand
+          // over three of Jonah's journals at once, which turns the best writing in the
+          // game into a wall to click past. The rest are not lost — they are simply not
+          // marked seen, so the next trip that unlocks nothing new still has one waiting.
+          const newJournals = visitedNow.filter((c) => JONAH_JOURNALS[c] && !seenJ.includes(c)).slice(0, 1);
           // Newly-earned outfits for Pickles (phase 2). Same seen-flag pattern.
           const outfitsNow = [...unlockedOutfits(updated)];
           const seenO = Array.isArray(updated.seenOutfits) ? updated.seenOutfits : null;
@@ -3088,7 +3092,9 @@ export default function ShutterbugWorld() {
           if (newModes.length || newJournals.length || newOutfits.length) {
             setUnlockBeat({ modes: newModes, journals: newJournals, outfits: newOutfits });
             setProfileFlag(profileName, "seenUnlocks", nowU);
-            setProfileFlag(profileName, "seenJournals", visitedNow);
+            // Only the journal actually SHOWN is marked seen — not every continent
+            // stamped — or the held-back ones would be silently consumed.
+            setProfileFlag(profileName, "seenJournals", [...seenJ, ...newJournals]);
             setProfileFlag(profileName, "seenOutfits", outfitsNow);
           } else {
             // Keep the outfit baseline current even on a run that unlocked nothing new,
@@ -3827,8 +3833,9 @@ export default function ShutterbugWorld() {
   // stamped. Reached from the results screen; returns to it. ----------
   if (screen === "unlock" && unlockBeat) {
     const { modes = [], journals = [], outfits = [] } = unlockBeat;
-    const shownJournals = journals.slice(0, 3);
-    const moreJ = journals.length - shownJournals.length;
+    // `journals` now arrives capped at one (see the run-record block), so the
+    // slice-and-count-the-rest that used to live here has nothing left to do.
+    const shownJournals = journals;
     const done = () => { setUnlockBeat(null); setScreen("end"); };
     return (
       <Frame>
@@ -3860,11 +3867,6 @@ export default function ShutterbugWorld() {
                   <p style={{ margin: 0, fontSize: 14.5, lineHeight: 1.5, color: INK, fontStyle: "italic" }}>{JONAH_JOURNALS[cont]}</p>
                 </div>
               ))}
-              {moreJ > 0 && (
-                <div style={{ fontSize: 13.5, color: INK, opacity: 0.8, textAlign: "center" }}>
-                  …and {moreJ} more journal{moreJ === 1 ? "" : "s"} — read them any time in your passport.
-                </div>
-              )}
               {outfits.map((o) => (
                 <div key={o} style={{ display: "flex", alignItems: "center", gap: 14, background: "#F1E9F6", border: `2px solid ${OCEAN}`, borderRadius: 14, padding: "10px 16px" }}>
                   <img src={`${UI}dog-outfits/${o}_seated_smile.png`} alt="" aria-hidden="true"
@@ -4312,8 +4314,14 @@ export default function ShutterbugWorld() {
                 style={{ position: "absolute", left: `${HELLO_SPOTS[i].x}%`, top: `${HELLO_SPOTS[i].y}%`,
                   width: `${HELLO_SPOTS[i].w}%`, transform: `translate(-50%, -50%) rotate(${HELLO_SPOTS[i].rot}deg)`,
                   background: "none", border: "none", padding: 0, cursor: "pointer" }}>
-                <img src={`${UI}hello/${b.file}`} alt="" aria-hidden="true"
-                  style={{ width: "100%", height: "auto", display: "block", filter: "drop-shadow(0 3px 6px rgba(0,0,0,0.3))" }} />
+                {/* The wiggle lives on this wrapper, not on the button: the button's
+                    own transform is what positions and tilts the bubble, and an
+                    animation on the same property would discard it mid-keyframe and
+                    fling the bubble into the corner. */}
+                <span className="sbw-bubble" style={{ display: "block", transformOrigin: "50% 92%" }}>
+                  <img src={`${UI}hello/${b.file}`} alt="" aria-hidden="true"
+                    style={{ width: "100%", height: "auto", display: "block", filter: "drop-shadow(0 3px 6px rgba(0,0,0,0.3))" }} />
+                </span>
               </button>
             ))}
             {/* The caption for whichever bubble is being pointed at. Sits just under
@@ -6784,6 +6792,16 @@ function Frame({ children, desk = false }) {
            hover ping), signalling "poke me for a fact" without a schoolroom question mark. */
         .sbw-jiggle:hover, .sbw-jiggle:focus-visible{ animation: sbw-jiggle 0.45s ease-in-out infinite }
         @keyframes sbw-jiggle{ 0%,100%{ transform: rotate(-4deg) } 50%{ transform: rotate(4deg) } }
+        /* A splash greeting bubble, nudged when you point at it. Pivoted near the
+           bubble's TAIL (92% down) so it swings like something hanging rather than
+           spinning about its middle, and gentle — three degrees, because there are
+           three of these on screen at once over a painted sky. */
+        button:hover > .sbw-bubble, button:focus-visible > .sbw-bubble{ animation: sbw-bubble 0.6s ease-in-out infinite }
+        @keyframes sbw-bubble{
+          0%,100%{ transform: rotate(-3deg) scale(1.04) }
+          50%{ transform: rotate(3deg) scale(1.04) }
+        }
+        body.sbw-no-anim .sbw-bubble{ animation: none !important }
         /* A whole ROW that wiggles — the itinerary steps. Pointing anywhere on the step
            tilts the whole card, because the whole card is the button; wiggling only the
            little icon inside it told a child the icon was the target when the row was.
@@ -8655,27 +8673,6 @@ const DOG_POSES = {
   lying: "dog_pose_06_lying_down.png",
   sit: "dog_pose_02_sitting_paw_up.png", // a paw up — "well done, you"
 };
-// Pick Pickles's OUTFIT for the country she's celebrating in: her region's primary
-// outfit ~2/3 of the time and the alternate ~1/3 (when both are unlocked; otherwise
-// whichever is). Returns an outfit id, or null for basic (no region / nothing
-// unlocked). `isUnlocked` gates by what the player has earned — it defaults to
-// "everything unlocked", which is what Phase 1 shows before the earning layer lands.
-const OUTFIT_PRIMARY_ODDS = 2 / 3;
-function pickDogOutfit(country, isUnlocked = () => true) {
-  const reg = OUTFIT_REGIONS[outfitRegionFor(country)];
-  if (!reg) return null;
-  const primary = isUnlocked(reg.primary) ? reg.primary : null;
-  const alt = reg.alt && isUnlocked(reg.alt) ? reg.alt : null;
-  if (primary && alt) return rnd() < OUTFIT_PRIMARY_ODDS ? primary : alt;
-  if (primary || alt) return primary || alt;
-  // Neither of THIS region's outfits is earned yet — so wear something else she owns
-  // rather than nothing. Joshua hit this in India: the South Asian kit opens at three
-  // mastered places there, so an early visit showed a plain dog with no explanation,
-  // which reads as a missing costume rather than as one still to be earned. Any earned
-  // outfit is better than bare fur; if she genuinely owns none, she stays as she is.
-  const owned = ALL_OUTFITS.filter(isUnlocked);
-  return owned.length ? pickOne(owned) : null;
-}
 // What she is feeling, in words. Her face does the work, but a child shouldn't have
 // to INFER why she turned up, and rule 4 forbids leaving meaning to the picture alone
 // — so every visit says out loud what she's excited about.

@@ -140,6 +140,7 @@ export const outfitRegionFor = (country) => COUNTRY_REGION[country] || null;
 
 // ---- Earning (phase 2) -----------------------------------------------------
 import { LOCATIONS } from "./locations.js";
+import { rnd, pickOne } from "../rng.js";
 
 // Friendly names for the beat and the wardrobe.
 export const REGION_NAME = {
@@ -155,6 +156,29 @@ export const REGION_NAME = {
   russia_siberia_centralasia: "Russia, Siberia & Central Asia",
   oceania: "Oceania", antarctica: "Antarctica",
 };
+// Regions whose PRIMARY outfit is the geography lesson — it encodes the climate or
+// the landscape, and swapping in the alternate reads to a player as a bug rather
+// than as variety. Joshua saw Pickles turn up in icy Sweden dressed as a
+// photographer (the alt, "out shooting the northern lights" — charming, and it
+// still looked wrong) and asked whether it shouldn't be the parka. It should.
+// Everywhere else the alternate still rides, because there the alternate is a joke
+// about the place rather than a claim about it: a detective in London, a train
+// conductor in Japan, a pirate in the Caribbean.
+export const CLIMATE_SIGNATURE = new Set([
+  "nordic_arctic", "mena", "alpine_europe", "safari_africa", "andean_highlands",
+  "antarctica", "southeast_asian_tropical",
+]);
+
+// The outfits that are about a JOB rather than a place. When a region's own kit
+// isn't earned yet these are the acceptable stand-ins, because a photographer or a
+// hiker makes sense anywhere on Earth. The regional kits are NOT: putting the
+// Andean outfit on a dog in India is exactly as wrong as putting her in a spacesuit,
+// which is what the old "wear any earned outfit" fallback actually did.
+export const NEUTRAL_OUTFITS = [
+  "photographer", "mountain_hiker", "rainy_day_explorer", "aviator",
+  "train_conductor", "detective",
+];
+
 export const OUTFIT_NAME = {
   scottish_highlands: "the Highlands kit", nordic_arctic: "the Arctic parka",
   alpine_europe: "the Alpine outfit", mediterranean: "the Mediterranean look",
@@ -238,4 +262,40 @@ export function unlockedOutfits(profile) {
     if (ok) out.add(outfit);
   }
   return out;
+}
+
+// ---- Which outfit she wears where ------------------------------------------
+// Lives here rather than in the game component so it can be tested: it is pure
+// logic over the data in this file, and it had two bugs a player found before a
+// test could (a spacesuit in India, a photographer in Arctic Sweden).
+// Pick Pickles's OUTFIT for the country she's celebrating in: her region's primary
+// outfit ~2/3 of the time and the alternate ~1/3 (when both are unlocked; otherwise
+// whichever is). Returns an outfit id, or null for basic (no region / nothing
+// unlocked). `isUnlocked` gates by what the player has earned — it defaults to
+// "everything unlocked", which is what Phase 1 shows before the earning layer lands.
+export const OUTFIT_PRIMARY_ODDS = 2 / 3;
+export function pickDogOutfit(country, isUnlocked = () => true) {
+  const regionId = outfitRegionFor(country);
+  const reg = OUTFIT_REGIONS[regionId];
+  if (!reg) return null;
+  const primary = isUnlocked(reg.primary) ? reg.primary : null;
+  const alt = reg.alt && isUnlocked(reg.alt) ? reg.alt : null;
+  // Where the region's own kit IS the lesson — the parka in the Arctic, the desert
+  // robes in the Sahara — she always wears it when she has it. See CLIMATE_SIGNATURE.
+  if (primary && CLIMATE_SIGNATURE.has(regionId)) return primary;
+  if (primary && alt) return rnd() < OUTFIT_PRIMARY_ODDS ? primary : alt;
+  if (primary || alt) return primary || alt;
+  // Neither of THIS region's outfits is earned yet — so wear something else she owns
+  // rather than nothing. Joshua hit the empty version of this in India: the South
+  // Asian kit opens at three mastered places there, so an early visit showed a plain
+  // dog with no explanation, which reads as a missing costume rather than one still
+  // to be earned.
+  //
+  // But the first fix — any earned outfit at random — was worse than the problem. It
+  // put her in INDIA IN A SPACESUIT, and it could just as easily have put her in the
+  // Andean kit, which is not a neutral costume but a claim about where she is. The
+  // stand-ins are now only the job outfits, which make sense anywhere; if she owns
+  // none of those she stays in her own fur, which is honest.
+  const owned = NEUTRAL_OUTFITS.filter(isUnlocked);
+  return owned.length ? pickOne(owned) : null;
 }
