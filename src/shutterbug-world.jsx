@@ -7439,6 +7439,8 @@ function FieldGuideModal({ note, spent, onClose }) {
 // accomplishment spreads (country stamps + keepsakes), paged with arrows.
 function PassportModal({ profile, onClose }) {
   const [page, setPage] = useState(0);
+  // Which trophy the child is pointing at (or has tapped). One at a time.
+  const [shelfPick, setShelfPick] = useState(null);
   const ref = useRef(null);
   useModalFocus(ref, onClose);   // Escape now lives in the hook, with the trap
   useEffect(() => {
@@ -7446,6 +7448,11 @@ function PassportModal({ profile, onClose }) {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, []);
+  // How far each column sits in from the edge of the book art, and how wide it runs.
+  // Named because six places used the same two magic numbers and Joshua asked for all
+  // of them to move together: at 15.5% the text ran close enough to the printed edge
+  // that a journal entry looked like it was falling off the page.
+  const LEFT_IN = "18.5%", COL_W = "24%";
   const pp = profile ? passportData(profile) : null;
   const rank = profile ? careerRank(profile) : null;
   const earned = profile ? achievements(profile).filter((b) => b.earned) : [];
@@ -7456,17 +7463,26 @@ function PassportModal({ profile, onClose }) {
   ];
   const PER = 12; // items per two-page spread (6 a page)
   const spreads = Math.max(1, Math.ceil(items.length / PER));
-  // page 0 = profile, 1 = PROGRESS, 2 = TROPHY SHELF, 3..(spreads+2) = accomplishments.
+  const allAch = profile ? achievements(profile) : [];
+  // The shelf now runs over SEVERAL spreads. All 24 trophies on one page was, in
+  // Joshua's words, overwhelming to read; eight to a spread (four a page) gives each
+  // one room to be looked at, which is the point of a shelf.
+  const SHELF_PER = 8;
+  const shelfSpreads = Math.max(1, Math.ceil(allAch.length / SHELF_PER));
+  // page 0 = profile, 1 = PROGRESS, 2..(1+shelfSpreads) = TROPHY SHELF,
+  // then JOURNALS, then the accomplishment spreads.
   // Progress sits second on purpose: it's the page a parent opens the passport FOR.
   // The shelf sits third: it shows every achievement as a silhouette so the child can
   // see the SHAPE of what's left, the same way the world map fills in.
-  const PROGRESS_PAGE = 1, SHELF_PAGE = 2, JOURNAL_PAGE = 3, ACCOMPLISH_START = 4;
-  const lastPage = spreads + 3;
+  const PROGRESS_PAGE = 1, SHELF_START = 2;
+  const JOURNAL_PAGE = SHELF_START + shelfSpreads, ACCOMPLISH_START = JOURNAL_PAGE + 1;
+  const lastPage = ACCOMPLISH_START + spreads - 1;
   const isProfile = page === 0;
   const isProgress = page === PROGRESS_PAGE;
-  const isShelf = page === SHELF_PAGE;
+  const isShelf = page >= SHELF_START && page < SHELF_START + shelfSpreads;
   const isJournal = page === JOURNAL_PAGE;
-  const allAch = profile ? achievements(profile) : [];
+  const shelfIdx = isShelf ? page - SHELF_START : 0;
+  const shelfItems = allAch.slice(shelfIdx * SHELF_PER, (shelfIdx + 1) * SHELF_PER);
   const bookImg = isProfile ? "passport-open-profile-blank.png" : "passport-open-pages-blank.png";
   const spreadItems = (isProfile || isProgress || isShelf || isJournal) ? [] : items.slice((page - ACCOMPLISH_START) * PER, (page - ACCOMPLISH_START + 1) * PER);
   const leftItems = spreadItems.slice(0, PER / 2), rightItems = spreadItems.slice(PER / 2);
@@ -7490,23 +7506,47 @@ function PassportModal({ profile, onClose }) {
       {list.map((it, i) => <Cell key={i} it={it} />)}
     </div>
   );
-  // The trophy shelf: every achievement listed, earned ones bright with a ✓, the rest
-  // dimmed to a silhouette with their progress — so a child sees the shape of what's
-  // still to earn, not just what they've got.
-  const shelfCol = (list) => (
-    <div style={{ display: "flex", flexDirection: "column", gap: 5, overflow: "hidden" }}>
-      {list.map((b) => (
-        <div key={b.id} style={{ display: "flex", alignItems: "center", gap: 7, minWidth: 0 }}>
-          <ArtBadge art={b.art} emoji={b.emoji} size={22} dim={!b.earned} />
-          <span style={{ fontSize: 11, fontWeight: 700, color: INK, opacity: b.earned ? 1 : 0.6, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>{b.name}</span>
-          <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 9.5, fontWeight: 700, whiteSpace: "nowrap", color: b.earned ? GREEN : INK, opacity: b.earned ? 1 : 0.5 }}>
-            {b.earned ? "✓" : `${b.have}/${b.need}`}
-          </span>
-        </div>
-      ))}
+  // The trophy shelf: the BADGES, and nothing else. It used to be a two-column list
+  // of twenty-four name-and-count rows, which Joshua found overwhelming — and which
+  // wasted the art, since the badges were 22px next to the words. Now they are the
+  // page, four to a side, and the words arrive when you ask for one.
+  //
+  // "Ask for one" has to mean tap as well as point: the game's main device is an
+  // iPad, which has no hover at all, so each trophy is a real button that latches
+  // its own detail open. Hover and keyboard focus open the same panel.
+  const shelfTile = (b) => {
+    const on = shelfPick === b.id;
+    return (
+      <button key={b.id} onClick={() => setShelfPick((v) => (v === b.id ? null : b.id))}
+        onMouseEnter={() => setShelfPick(b.id)} onMouseLeave={() => setShelfPick((v) => (v === b.id ? null : v))}
+        onFocus={() => setShelfPick(b.id)} onBlur={() => setShelfPick((v) => (v === b.id ? null : v))}
+        aria-pressed={on}
+        aria-label={`${b.name} — ${b.what}. ${b.earned ? "Earned." : `${b.have} of ${b.need} so far.`}`}
+        style={{ position: "relative", background: on ? "rgba(240,165,0,0.16)" : "none",
+          border: on ? `2px solid ${GOLD}` : "2px solid transparent", borderRadius: 10,
+          padding: 3, cursor: "pointer", lineHeight: 0, transition: "background .15s" }}>
+        <ArtBadge art={b.art} emoji={b.emoji} size={66} dim={!b.earned} />
+        {/* Earned is marked by a TICK as well as by full colour — a dimmed badge and
+            a bright one differ only in value, and value alone is exactly what rule 4
+            says not to lean on. */}
+        {b.earned && (
+          <span aria-hidden="true" style={{ position: "absolute", right: -1, bottom: -1, background: GREEN, color: "#fff",
+            borderRadius: "50%", width: 16, height: 16, fontSize: 11, fontWeight: 900, lineHeight: "16px", textAlign: "center",
+            boxShadow: "0 1px 3px rgba(0,0,0,0.3)" }}>✓</span>
+        )}
+      </button>
+    );
+  };
+  // Two across, spread down the page. Four big badges to a page reads as a display
+  // case; the same four crowded into the top corner read as the start of a list that
+  // had been cut off.
+  const shelfGrid = (list) => (
+    <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", rowGap: "12%", columnGap: 4,
+      justifyItems: "center", alignContent: "start", paddingTop: "5%" }}>
+      {list.map(shelfTile)}
     </div>
   );
-  const shelfHalf = Math.ceil(allAch.length / 2);
+  const picked = allAch.find((b) => b.id === shelfPick) || null;
   return (
     <div ref={ref} role="dialog" aria-modal="true" aria-label="Passport" onClick={onClose}
       style={{ position: "fixed", inset: 0, background: "rgba(16,38,46,0.66)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 10, padding: 16, zIndex: 56 }}>
@@ -7558,7 +7598,7 @@ function PassportModal({ profile, onClose }) {
                 PLACE level. The country-level number flatters a big country — one
                 photo in Brazil marks it "mastered" while 90% of South America is
                 unseen — and "14 of 34 places" is the number you can teach from. */}
-            <div style={{ position: "absolute", left: "15.5%", top: "13%", width: "27%", bottom: "14%", color: INK }}>
+            <div style={{ position: "absolute", left: LEFT_IN, top: "13%", width: COL_W, bottom: "14%", color: INK }}>
               <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 10, letterSpacing: "0.16em", color: OCEAN, fontWeight: 700, marginBottom: 8 }}>🌍 HOW THE WORLD IS GOING</div>
               <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
                 {byCont.map((c) => {
@@ -7581,7 +7621,7 @@ function PassportModal({ profile, onClose }) {
             {/* RIGHT: the places he's been given and never yet got right. This is the
                 same signal the spaced-repetition weighting already uses to resurface
                 a place (its highest weight) — it just wasn't visible to anyone. */}
-            <div style={{ position: "absolute", right: "15.5%", top: "13%", width: "27%", bottom: "14%", color: INK, overflow: "hidden" }}>
+            <div style={{ position: "absolute", right: LEFT_IN, top: "13%", width: COL_W, bottom: "14%", color: INK, overflow: "hidden" }}>
               <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 10, letterSpacing: "0.16em", color: CORAL, fontWeight: 700, marginBottom: 8 }}>🔁 WORTH ANOTHER LOOK</div>
               {trouble.length === 0 ? (
                 <div style={{ fontSize: 12.5, opacity: 0.75, lineHeight: 1.5 }}>
@@ -7611,18 +7651,37 @@ function PassportModal({ profile, onClose }) {
           </>
         ) : isShelf ? (
           <>
-            <div style={{ position: "absolute", left: "15.5%", top: "13%", width: "27%", bottom: "14%" }}>
+            <div style={{ position: "absolute", left: LEFT_IN, top: "13%", width: COL_W, bottom: "14%" }}>
               <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 10, letterSpacing: "0.16em", color: "#B8860B", fontWeight: 700, marginBottom: 8 }}>🏆 TROPHY SHELF · {earned.length}/{allAch.length}</div>
-              {shelfCol(allAch.slice(0, shelfHalf))}
+              {shelfGrid(shelfItems.slice(0, Math.ceil(shelfItems.length / 2)))}
             </div>
-            <div style={{ position: "absolute", right: "15.5%", top: "13%", width: "27%", bottom: "14%" }}>
+            <div style={{ position: "absolute", right: LEFT_IN, top: "13%", width: COL_W, bottom: "14%" }}>
               <div style={{ height: 18, marginBottom: 8 }} />
-              {shelfCol(allAch.slice(shelfHalf))}
+              {shelfGrid(shelfItems.slice(Math.ceil(shelfItems.length / 2)))}
+            </div>
+            {/* The detail for whichever trophy is being pointed at, across the foot of
+                the spread so it never reflows the grid above it. A fixed height for
+                the same reason: without it the page jumped every time the pointer
+                crossed a badge. */}
+            <div aria-hidden="true" style={{ position: "absolute", left: "22%", right: "22%", top: "58%", height: "16%",
+              display: "flex", flexDirection: "column", justifyContent: "center", textAlign: "center", pointerEvents: "none" }}>
+              {picked ? (
+                <>
+                  <div style={{ fontWeight: 900, fontSize: 14, color: INK }}>
+                    {picked.name}
+                    <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, fontWeight: 700, marginLeft: 7,
+                      color: picked.earned ? GREEN : CORAL }}>{picked.earned ? "✓ earned" : `${picked.have} / ${picked.need}`}</span>
+                  </div>
+                  <div style={{ fontSize: 12, color: INK, opacity: 0.82, lineHeight: 1.35 }}>To earn it: {picked.what}.</div>
+                </>
+              ) : (
+                <div style={{ fontSize: 12, color: INK, opacity: 0.6, fontStyle: "italic" }}>Point at a trophy to see what it's for.</div>
+              )}
             </div>
           </>
         ) : isJournal ? (
           <>
-            <div style={{ position: "absolute", left: "15.5%", top: "13%", width: "27%", bottom: "14%", overflowY: "auto", paddingRight: 5 }}>
+            <div style={{ position: "absolute", left: LEFT_IN, top: "13%", width: COL_W, bottom: "14%", overflowY: "auto", paddingRight: 5 }}>
               <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 10, letterSpacing: "0.16em", color: OCEAN, fontWeight: 700, marginBottom: 8 }}>📖 JONAH'S JOURNALS · {unlockedJournals.length}/{journalConts.length}</div>
               {unlockedJournals.length === 0 ? (
                 <div style={{ fontSize: 12, opacity: 0.72, lineHeight: 1.5, color: INK }}>Earn a stamp on a continent and Jonah will tell you the story of when <i>he</i> went there — young, with this very camera.</div>
@@ -7635,7 +7694,7 @@ function PassportModal({ profile, onClose }) {
                 ))
               )}
             </div>
-            <div style={{ position: "absolute", right: "15.5%", top: "13%", width: "27%", bottom: "14%" }}>
+            <div style={{ position: "absolute", right: LEFT_IN, top: "13%", width: COL_W, bottom: "14%" }}>
               <div style={{ height: 18, marginBottom: 8 }} />
               <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 10, letterSpacing: "0.16em", color: "#B8860B", fontWeight: 700, marginBottom: 9 }}>THE SEVEN CONTINENTS</div>
               <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
@@ -7656,11 +7715,11 @@ function PassportModal({ profile, onClose }) {
             {/* 14%, not 11%: the book art's printed page starts inside its cover, and
                 at 11% the first column of flags sat on the spine and the heading ran
                 off the left edge of the paper. */}
-            <div style={{ position: "absolute", left: "15.5%", top: "13%", width: "27%", bottom: "14%" }}>
+            <div style={{ position: "absolute", left: LEFT_IN, top: "13%", width: COL_W, bottom: "14%" }}>
               <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 10, letterSpacing: "0.16em", color: OCEAN, fontWeight: 700, marginBottom: 8 }}>📖 STAMPS & KEEPSAKES</div>
               {pageCol(leftItems)}
             </div>
-            <div style={{ position: "absolute", right: "15.5%", top: "13%", width: "27%", bottom: "14%" }}>
+            <div style={{ position: "absolute", right: LEFT_IN, top: "13%", width: COL_W, bottom: "14%" }}>
               <div style={{ height: 18, marginBottom: 8 }} />
               {pageCol(rightItems)}
               {spreadItems.length === 0 && <div style={{ fontSize: 13, color: INK, opacity: 0.7 }}>No stamps yet — photograph places to fill your passport!</div>}
@@ -7673,7 +7732,9 @@ function PassportModal({ profile, onClose }) {
         <button onClick={() => setPage((p) => Math.max(0, p - 1))} disabled={page === 0} aria-label="Previous page"
           style={{ background: "rgba(255,255,255,0.14)", border: "1.5px solid rgba(244,236,216,0.5)", color: "#F4ECD8", borderRadius: 8, width: 40, height: 34, fontSize: 18, cursor: page === 0 ? "default" : "pointer", opacity: page === 0 ? 0.4 : 1 }}>‹</button>
         <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 13, fontWeight: 700, minWidth: 150, textAlign: "center" }}>
-          {isProfile ? "Profile" : isProgress ? "Progress" : isShelf ? "Trophy Shelf" : isJournal ? "Journals" : `Page ${page - 3} of ${spreads}`}
+          {isProfile ? "Profile" : isProgress ? "Progress"
+            : isShelf ? `Trophy Shelf${shelfSpreads > 1 ? ` · ${shelfIdx + 1} of ${shelfSpreads}` : ""}`
+            : isJournal ? "Journals" : `Page ${page - ACCOMPLISH_START + 1} of ${spreads}`}
         </span>
         <button onClick={() => setPage((p) => Math.min(lastPage, p + 1))} disabled={page >= lastPage} aria-label="Next page"
           style={{ background: "rgba(255,255,255,0.14)", border: "1.5px solid rgba(244,236,216,0.5)", color: "#F4ECD8", borderRadius: 8, width: 40, height: 34, fontSize: 18, cursor: page >= lastPage ? "default" : "pointer", opacity: page >= lastPage ? 0.4 : 1 }}>›</button>
@@ -8380,8 +8441,12 @@ function MrOBubble({ fact, beats, onClose, reduced }) {
 // The card order is shuffled with Math.random on purpose: this is presentation, never
 // mission generation, so it must NOT touch the seedable RNG that the Daily depends on.
 function CuriosityCard({ deck, seen, onSeen, onClose, reduced }) {
-  const narratorTrivia = deck.narrator === "trivia";
-  const accent = narratorTrivia ? OCEAN : GOLD;
+  // Every field note is Mr O's now — see the note at the top of data/curiosities.js.
+  const accent = OCEAN;
+  // A fresh pose each time the card opens, from the same queue his fact bubble and
+  // his riddles draw from, so he never strikes the same pose twice running.
+  const [img] = useState(() => nextMrOImage("fact"));
+  const [imgOk, setImgOk] = useState(true);
   const [order] = useState(() => {
     const idx = deck.cards.map((_, i) => i);
     for (let i = idx.length - 1; i > 0; i--) {
@@ -8399,11 +8464,22 @@ function CuriosityCard({ deck, seen, onSeen, onClose, reduced }) {
 
   return (
     <ModalShell label={`${deck.label} — field note`} onClose={onClose} accent={accent} maxWidth={520}>
-      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
+      {/* Mr O himself, at the top of his own note. He is the one talking on every
+          one of these cards, and until now the only sign of that was four words of
+          monospace — the same voice that gets a whole boy leaning into frame when he
+          brings a fact or a riddle. He is inline here rather than standing outside
+          the card the way he does for those: this is a note the child ASKED for by
+          tapping something, not Mr O interrupting, so he leans in at the top rather
+          than filling the screen. */}
+      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12, flexWrap: "wrap" }}>
+        {imgOk
+          ? <img src={`${UI}${img}`} alt="" aria-hidden="true" onError={() => setImgOk(false)}
+              style={{ height: 74, width: "auto", flex: "none", objectFit: "contain", objectPosition: "bottom", marginBottom: -6 }} />
+          : <span aria-hidden="true" style={{ fontSize: 34, flex: "none" }}>{MR_O.emoji}</span>}
         <span aria-hidden="true" style={{ fontSize: 26 }}>{deck.emoji}</span>
         <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 12, letterSpacing: "0.14em",
           color: accent, fontWeight: 800 }}>
-          {narratorTrivia ? "MR O · THE EDITOR" : "UNCLE JONAH"}
+          MR O · THE EDITOR
         </span>
         {wasNew && (
           <span style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: "0.1em", color: "#fff",

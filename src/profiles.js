@@ -389,12 +389,25 @@ export function passportData(profile) {
 // drawn yet — the 14 category badges have art; the ranks, mega-badges and medals
 // still render `emoji`. Both fields stay populated so a render site can prefer
 // the art and fall back without knowing which batch has landed.
+// [name, emoji, what it is]. The third entry is what the trophy shelf shows when you
+// point at a trophy: the shelf is images only now (Joshua: the text overwhelmed the
+// page), so a child who can't remember what "Rockhound" was for has to be able to
+// find out by hovering rather than by guessing from a badge.
 const ACH_CATNAME = {
-  mountain: ["Peak Bagger", "🏔️"], volcano: ["Volcano Hunter", "🌋"], waterfall: ["Waterfall Chaser", "💦"],
-  waterway: ["River Runner", "🏞️"], desert: ["Desert Wanderer", "🏜️"], ice: ["Polar Explorer", "🧊"],
-  coast: ["Island Hopper", "🏝️"], rock: ["Rockhound", "🪨"], wildlife: ["Safari Ranger", "🦁"],
-  ruins: ["Time Traveler", "🏛️"], temple: ["Pilgrim", "⛪"], palace: ["Royal Guest", "🏰"],
-  monument: ["Monument Hunter", "🗽"], cityscape: ["City Slicker", "🏙️"],
+  mountain: ["Peak Bagger", "🏔️", "photograph every mountain in the collection"],
+  volcano: ["Volcano Hunter", "🌋", "photograph every volcano in the collection"],
+  waterfall: ["Waterfall Chaser", "💦", "photograph every waterfall in the collection"],
+  waterway: ["River Runner", "🏞️", "photograph every river, lake and waterway in the collection"],
+  desert: ["Desert Wanderer", "🏜️", "photograph every desert in the collection"],
+  ice: ["Polar Explorer", "🧊", "photograph every glacier and ice place in the collection"],
+  coast: ["Island Hopper", "🏝️", "photograph every coast and island in the collection"],
+  rock: ["Rockhound", "🪨", "photograph every great rock and canyon in the collection"],
+  wildlife: ["Safari Ranger", "🦁", "photograph every wildlife place in the collection"],
+  ruins: ["Time Traveler", "🏛️", "photograph every ancient ruin in the collection"],
+  temple: ["Pilgrim", "⛪", "photograph every temple, church and mosque in the collection"],
+  palace: ["Royal Guest", "🏰", "photograph every palace and castle in the collection"],
+  monument: ["Monument Hunter", "🗽", "photograph every monument in the collection"],
+  cityscape: ["City Slicker", "🏙️", "photograph every great cityscape in the collection"],
 };
 const SUPERLATIVES = new Set(["highest", "tallest", "largest", "deepest", "longest", "driest", "oldest", "lowest", "most-active", "widest", "biggest"]);
 
@@ -418,19 +431,19 @@ export function achievements(profile) {
     }
   }
   const list = [];
-  const add = (id, name, emoji, have, need, art = ACHIEVEMENT_ART[id] || null) =>
-    list.push({ id, name, emoji, art, have, need, earned: have >= need });
-  for (const c of Object.keys(ACH_CATNAME)) add("cat_" + c, ACH_CATNAME[c][0], ACH_CATNAME[c][1], catHave[c] || 0, catTotal[c] || 0, CATEGORY_ART[c] || null);
-  add("kind_built", "Master Builder", "🏛️", kindHave.built || 0, kindTotal.built || 0);
-  add("kind_natural", "Force of Nature", "⛰️", kindHave.natural || 0, kindTotal.natural || 0);
-  add("kind_living", "Life Lister", "🦁", kindHave.living || 0, kindTotal.living || 0);
-  add("summits", "Continental Giants", "🗻", summitHave, summitTotal);
-  add("unesco", "World Heritage", "🌐", unescoHave, 20);
-  add("globe", "Globetrotter", "🌍", contSet.size, 7);
-  add("record", "Record Breaker", "🏅", superHave, 8);
-  add("m25", "Shutterbug", "📸", distinct, 25);
-  add("m50", "Seasoned Traveler", "🧳", distinct, 50);
-  add("m100", "Around the World", "🗺️", distinct, 100);
+  const add = (id, name, emoji, have, need, what, art = ACHIEVEMENT_ART[id] || null) =>
+    list.push({ id, name, emoji, art, have, need, what, earned: have >= need });
+  for (const c of Object.keys(ACH_CATNAME)) add("cat_" + c, ACH_CATNAME[c][0], ACH_CATNAME[c][1], catHave[c] || 0, catTotal[c] || 0, ACH_CATNAME[c][2], CATEGORY_ART[c] || null);
+  add("kind_built", "Master Builder", "🏛️", kindHave.built || 0, kindTotal.built || 0, "photograph everything people BUILT — every ruin, temple, palace, monument and city");
+  add("kind_natural", "Force of Nature", "⛰️", kindHave.natural || 0, kindTotal.natural || 0, "photograph everything the EARTH made — every mountain, volcano, waterfall, desert, coast and canyon");
+  add("kind_living", "Life Lister", "🦁", kindHave.living || 0, kindTotal.living || 0, "photograph every living place in the collection — the wildlife and the forests");
+  add("summits", "Continental Giants", "🗻", summitHave, summitTotal, "photograph the highest mountain on every single continent");
+  add("unesco", "World Heritage", "🌐", unescoHave, 20, "photograph 20 places that UNESCO has named World Heritage Sites");
+  add("globe", "Globetrotter", "🌍", contSet.size, 7, "photograph at least one place on all seven continents — Antarctica included");
+  add("record", "Record Breaker", "🏅", superHave, 8, "photograph 8 record-holders: the highest, longest, deepest, driest, oldest things on Earth");
+  add("m25", "Shutterbug", "📸", distinct, 25, "photograph 25 different places");
+  add("m50", "Seasoned Traveler", "🧳", distinct, 50, "photograph 50 different places");
+  add("m100", "Around the World", "🗺️", distinct, 100, "photograph 100 different places");
   return list;
 }
 

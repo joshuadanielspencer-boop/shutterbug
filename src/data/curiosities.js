@@ -16,13 +16,19 @@
 //  • Rule 3 — measurements read imperial first, metric in parentheses. The units
 //    test walks these cards too.
 //
-// `narrator` themes the card: "trivia" is Mr O the editor; "story" is Uncle.
+// `narrator` is kept on every deck for the shape of the data, but they are ALL Mr O
+// now. Two of these (the logo and the photography decks) used to be attributed to
+// Uncle Jonah, which made the tap-to-learn notes feel like two different features
+// wearing the same card; Joshua asked for one voice, and Mr O is the one whose job
+// this is — he is the eager kid who turns up to tell you a thing. The cards were
+// already written in the third person, so nothing had to be rewritten for the
+// change (see the two stale lines fixed below, which were wrong either way).
 // ===========================================================================
 
 export const CURIOSITY_DECKS = [
   // -----------------------------------------------------------------------
   {
-    id: "logo", label: "About the game", emoji: "📷", narrator: "story",
+    id: "logo", label: "About the game", emoji: "📷", narrator: "trivia",
     cards: [
       {
         id: "logo-how",
@@ -35,9 +41,9 @@ export const CURIOSITY_DECKS = [
       {
         id: "logo-nigel",
         title: "Why you're doing this",
-        body: "Your grandpa spent his whole life reading about the world and never got to see it. So you "
-          + "took his old film camera to go and photograph it for him — every place he only ever read about, "
-          + "brought home one picture at a time.",
+        body: "Uncle Jonah travelled all over when he was young, with the very camera you're carrying. "
+          + "He's too old for it now, so you're going for him — every place he never reached, and a few he "
+          + "wants to see again, brought home one picture at a time.",
         source: null,
       },
       {
@@ -362,14 +368,14 @@ export const CURIOSITY_DECKS = [
 
   // -----------------------------------------------------------------------
   {
-    id: "photograph", label: "Photography", emoji: "📸", narrator: "story",
+    id: "photograph", label: "Photography", emoji: "📸", narrator: "trivia",
     cards: [
       {
         id: "photo-word",
         title: "Drawing with light",
         body: "The word \"photograph\" is Greek for \"drawing with light.\" That's exactly what a camera "
           + "does: it lets light in through a lens for a fraction of a second and captures the picture that "
-          + "light paints — on film, the way your grandpa's camera does, or on a digital sensor.",
+          + "light paints — on film, the way Uncle Jonah's camera does, or on a digital sensor.",
         source: "https://en.wikipedia.org/wiki/Photography",
       },
       {

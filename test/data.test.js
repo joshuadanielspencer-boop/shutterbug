@@ -574,7 +574,12 @@ describe("curiosity layer", () => {
   it("every card is well-formed and has a source (or is deliberately source-free)", () => {
     for (const d of CURIOSITY_DECKS) {
       expect(d.label && d.emoji, `${d.id}: deck missing label/emoji`).toBeTruthy();
-      expect(["trivia", "story"], `${d.id}: unknown narrator`).toContain(d.narrator);
+      // Every field note is Mr O's. Two decks used to be Uncle Jonah's, which made
+      // the tap-to-learn cards feel like two features sharing a shape; Joshua asked
+      // for one voice. Pinned rather than left as a convention, because adding a
+      // "story" deck back would quietly split it again — and if that's ever wanted,
+      // CuriosityCard has to grow a second narrator's staging to match.
+      expect(d.narrator, `${d.id}: every field note is Mr O's`).toBe("trivia");
       expect(d.cards.length, `${d.id}: needs at least one card`).toBeGreaterThanOrEqual(1);
       for (const c of d.cards) {
         expect(c.title && c.body, `${d.id}/${c.id}: incomplete`).toBeTruthy();
