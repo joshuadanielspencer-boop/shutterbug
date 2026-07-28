@@ -8,7 +8,7 @@
 // The bug this exists to prevent: a player asked for "any desert in Africa" was
 // shown Algeria as a country option and told they were wrong. Algeria genuinely
 // contains the Sahara — but the game's Algeria entry is a rock formation, not a
-// desert. The mission means "any desert ON THE EDITOR'S LIST". So the country
+// desert. The mission means "any desert ON JONAH'S LIST". So the country
 // step must only ever offer countries that really hold one, and the clue must
 // say how many there are.
 // ===========================================================================

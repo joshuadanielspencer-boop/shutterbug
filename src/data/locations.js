@@ -24,7 +24,7 @@
 //   y           number   0..180  = 90 − latitude    (0 = North Pole, 180 = South).
 //                         Tip: x ≈ longitude + 180, y ≈ 90 − latitude.
 //
-//   subject     string   What the editor asks you to photograph
+//   subject     string   What Uncle Jonah asks you to photograph
 //                         (e.g. "The Eiffel Tower").
 //   icon        string   Which hand-drawn placeholder drawing to show. Must be
 //                         one of the known keys (see ICON KEYS below). Used only

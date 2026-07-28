@@ -42,7 +42,15 @@ export const OUTFIT_REGIONS = {
   nordic_arctic:              { primary: "nordic_arctic",            alt: "photographer" },       // out shooting the northern lights
   alpine_europe:              { primary: "alpine_europe",            alt: "train_conductor" },    // the Swiss mountain railways
   mediterranean:              { primary: "mediterranean",            alt: "pirate_captain" },     // an old sea of sailors
-  mena:                       { primary: "desert_traveler",          alt: "aviator" },            // the desert airmail routes
+  // No alternate. Joshua found Pickles dressed as a PILOT in Iran and asked why.
+  // The answer was "the desert airmail routes" — a justification that lives in a
+  // code comment and reaches the player as a dog in a flying cap in Tehran. Every
+  // other region's alternate is something a child can join up (a deerstalker in
+  // London, a train conductor where the bullet trains are); this one was a stretch,
+  // and the region already has the outfit that belongs here. So MENA wears the
+  // Desert Traveler, full stop. A single-outfit region is fine — the fallback below
+  // handles it, and one right costume beats two of which one is wrong.
+  mena:                       { primary: "desert_traveler",          alt: null },
   safari_africa:              { primary: "safari_africa",            alt: "photographer" },       // the wildlife photographer
   south_asian:                { primary: "south_asian",              alt: "mountain_hiker" },     // the Himalaya
   east_asian:                 { primary: "east_asian",               alt: "train_conductor" },    // the bullet trains

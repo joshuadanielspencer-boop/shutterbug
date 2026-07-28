@@ -33,7 +33,7 @@ export const CURIOSITY_DECKS = [
       {
         id: "logo-how",
         title: "How the game works",
-        body: "You are a traveling photographer. Read the editor's clue, fly to the right city, "
+        body: "You are a traveling photographer. Read Uncle Jonah's clue, fly to the right city, "
           + "and photograph the right subject before your travel days run out. Every correct shot "
           + "teaches a real fact about a real place.",
         source: null,

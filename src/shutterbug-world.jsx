@@ -161,7 +161,7 @@ function nextMrOImage(kind = "fact") {
 /*
   SHUTTERBUG — A World Photo Safari  (working vertical slice)
   A spiritual successor to "Jonah's World: Adventures in Geography" (1991).
-  Loop: read your editor's clue -> fly to the right city -> photograph the right
+  Loop: read Uncle Jonah's clue -> fly to the right city -> photograph the right
   subject before your days run out. Every correct shot teaches a geography fact.
 
   The world map is a real vector map (Natural Earth country outlines, public
@@ -1695,7 +1695,7 @@ export default function ShutterbugWorld() {
   const [condition, setCondition] = useState(null);
   const hasCond = (effect) => !!condition && condition.effect === effect;
   // The Long Trip's route-choice board (roguelike slice 3): before each new
-  // assignment the editor wires THREE briefs and you pick which to chase — a
+  // assignment Jonah wires THREE briefs and you pick which to chase — a
   // decision, not a fixed queue. `{ atStep, idxs }` while the board is up, else null.
   // The chosen brief is swapped into `assignments[atStep]`, so the rest of the play
   // loop keeps reading `assignments[step]` with no idea a choice was ever offered.
@@ -2527,7 +2527,7 @@ export default function ShutterbugWorld() {
     setAssignments(assignmentObjs);
     setOptionsByStep(options);
     setStep(0);
-    // The Long Trip opens on a choice, not a fixed brief: the editor wires the first
+    // The Long Trip opens on a choice, not a fixed brief: Jonah wires the first
     // three assignments and you pick which to chase (slice 3). Every other mode takes
     // assignment 1 exactly as dealt, so no board is offered. The debrief is cleared
     // here so a fresh run never shows the last one's banked renown.
@@ -3204,7 +3204,7 @@ export default function ShutterbugWorld() {
   // Jonah's send-you-off line on the results screen: proud on a clean sweep,
   // encouraging when the days ran out. Picked ONCE when the screen opens so it
   // doesn't reshuffle on every re-render.
-  // Did the trip bring home everything the editor asked for? Jonah's closing
+  // Did the trip bring home everything Jonah asked for? His closing
   // line and the results music both hang off this, so it's computed in one place.
   // A function declaration, not a const: the music effect above calls it, and by
   // the time any effect runs the state it reads is initialized.
@@ -3586,7 +3586,7 @@ export default function ShutterbugWorld() {
   }
 
   // ---- Research: spend half a travel day to have the newsroom look up exactly ----
-  // where the editor's subject is. It all but hands the player the answer (naming
+  // where Jonah's subject is. It all but hands the player the answer (naming
   // the place a hard clue withholds) — the cost is the trade-off. Once per
   // assignment; the note stays pinned under the telegram for the rest of the trip.
   const researchCost = MODES[difficulty].research === "free" ? 0 : SHOT_COST; // Easy: free
@@ -5293,7 +5293,7 @@ export default function ShutterbugWorld() {
 
   // play screen
   const mode = MODES[difficulty];
-  // The editor's telegram adapts to the mission type: a specific subject, or
+  // Jonah's note adapts to the mission type: a specific subject, or
   // "any {category} in {continent}" for a category mission (the player chooses).
   // In Grand Tour there's no single clue — the itinerary panel replaces it.
   const catMeta = (!isTour && isCatAsg) ? CATEGORIES[asg.category] : null;
@@ -5859,7 +5859,7 @@ export default function ShutterbugWorld() {
                     <b style={{ color: CORAL }}>Did you know?</b> <TypeLine text={currentLoc.fact} reduced={prefersReduced} mute={typingElsewhere} inline style={{ display: "inline" }} />
                   </div>
                   <details style={{ marginTop: 8, fontSize: 12, color: INK }}>
-                    <summary style={{ cursor: "pointer", color: OCEAN, fontWeight: 700 }}>How the editor might clue this place</summary>
+                    <summary style={{ cursor: "pointer", color: OCEAN, fontWeight: 700 }}>How Jonah might clue this place</summary>
                     <div style={{ marginTop: 6, lineHeight: 1.5 }}>
                       <div><b>Easy:</b> {currentLoc.easy}</div>
                       <div style={{ marginTop: 4 }}><b>Medium:</b> {currentLoc.medium}</div>
@@ -6377,7 +6377,7 @@ export default function ShutterbugWorld() {
               {/* city pins (city phase): the target + same-continent decoys. Each pin
                   carries its subject's CATEGORY EMOJI on a light disc — a color-blind-
                   safe, at-a-glance clue to what kind of place it is (mountain, temple…),
-                  so the player can match it against the editor's clue. */}
+                  so the player can match it against Jonah's clue. */}
               {/* Hairline leaders from any nudged pin back to its TRUE spot, drawn
                   UNDER the pins so the disc always sits on top of its own line.
 
@@ -7060,7 +7060,7 @@ function CategoryBadge({ category, size = "md", style }) {
     </span>
   );
 }
-// Grand Tour itinerary: the editor's checklist of targets. Ticks off as you file
+// Grand Tour itinerary: Jonah's checklist of targets. Ticks off as you file
 // each one; targets on the continent you're standing on are flagged "here now".
 // The route you committed to, on screen for the whole trip — because you're being
 // scored against it, and a plan you can't see is a plan you can't fly. The stop
@@ -7098,7 +7098,7 @@ function Itinerary({ reqs, here }) {
   const doneN = reqs.filter((r) => r.done).length;
   return (
     <div style={{ background: PAPER, border: `1px dashed ${CORAL}`, borderRadius: 6, padding: "14px 16px" }}>
-      <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.22em", color: CORAL, marginBottom: 10 }}>✎ THE EDITOR'S ITINERARY</div>
+      <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.22em", color: CORAL, marginBottom: 10 }}>✎ UNCLE JONAH'S ITINERARY</div>
       <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
         {reqs.map((r) => {
           const onHere = here && r.continent === here && !r.done;
@@ -7232,8 +7232,8 @@ function RouteBoard({ cards, onPick, condition, atStart, hasCover, reduced }) {
           </h2>
           <p style={{ color: INK, opacity: 0.75, fontSize: 13.5, margin: "5px auto 0", maxWidth: 560, lineHeight: 1.45 }}>
             {hasCover
-              ? "The editor's holding the front page — chase the ★ Cover Story for double points and a fat renown bonus, or play it safe. Your call."
-              : "The editor has assignments on offer. Pick the one to chase — the days it costs to get there are on each card. The briefs you pass over stay out there for later."}
+              ? "Jonah's holding the front page — chase the ★ Cover Story for double points and a fat renown bonus, or play it safe. Your call."
+              : "Jonah has assignments on offer. Pick the one to chase — the days it costs to get there are on each card. The briefs you pass over stay out there for later."}
           </p>
         </div>
 
@@ -7612,7 +7612,7 @@ function AlbumModal({ album, onPick, onClose }) {
 // seconds and get out.
 function HowToPlayModal({ onClose }) {
   const STEPS = [
-    ["itinerary-continent.png", "Read the editor's clue", "Jonah's note tells you about a place — but not its name. Work out where in the world it is."],
+    ["itinerary-continent.png", "Read Jonah's clue", "Jonah's note tells you about a place — but not its name. Work out where in the world it is."],
     ["itinerary-country.png", "Fly there", "Pick the continent, then the country. Every flight costs travel days, so guessing wildly is expensive."],
     ["itinerary-photograph.png", "Take the photograph", "Find the right subject and shoot it. Every correct shot teaches you something true about a real place."],
     ["passport.png", "Fill your passport", "Stamps, badges and keepsakes pile up across every trip. The more you travel, the more of the world you keep."],

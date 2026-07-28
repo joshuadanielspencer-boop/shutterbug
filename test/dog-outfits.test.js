@@ -41,16 +41,26 @@ describe("every country and outfit is wired up", () => {
     expect(ALL_OUTFITS.length).toBe(18);
   });
 
-  // Every region shuffles between TWO looks. A region that quietly lost its alternate
-  // would still render — Pickles would just wear one outfit forever in that part of
-  // the world, which reads as a missing costume rather than a bug.
-  it("every region has a primary and a DIFFERENT alternate", () => {
+  // Every region needs a primary, and an alternate that is genuinely different if it
+  // has one at all. A region that quietly lost its alternate to a typo would still
+  // render — Pickles would wear one outfit forever there — so `alt` must be either a
+  // real second outfit or an explicit null.
+  //
+  // MENA is the deliberate null: its alternate was the Aviator, on the reasoning
+  // that the desert had airmail routes, and what reached the player was a dog in a
+  // flying cap in Tehran. Joshua asked why, which is the answer. One right costume
+  // beats two of which one is wrong.
+  it("every region has a primary, and any alternate is a different outfit", () => {
     for (const [region, r] of Object.entries(OUTFIT_REGIONS)) {
       expect(r.primary, `${region} has no primary`).toBeTruthy();
-      expect(r.alt, `${region} has no alternate`).toBeTruthy();
-      expect(r.alt, `${region} wears the same outfit twice`).not.toBe(r.primary);
+      expect(r.alt === null || typeof r.alt === "string", `${region}'s alt must be an outfit id or an explicit null`).toBe(true);
+      if (r.alt) expect(r.alt, `${region} wears the same outfit twice`).not.toBe(r.primary);
     }
     expect(Object.keys(OUTFIT_REGIONS).length).toBe(20);
+    // Keep the exception rare: if most regions stop shuffling, the wardrobe has
+    // quietly become one costume per place.
+    const single = Object.values(OUTFIT_REGIONS).filter((r) => !r.alt).length;
+    expect(single, "too many regions with only one look").toBeLessThanOrEqual(2);
   });
 
   // Each of the 18 outfits has to be reachable — an outfit a player can earn but
