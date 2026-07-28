@@ -4,7 +4,37 @@ A handoff document. Everything here is written so a **new session with no memory
 the previous ones** can pick up a task and finish it. Read `CLAUDE.md` first (the
 three project rules are hard requirements), then the task you're doing.
 
-Last updated **2026-07-18**.
+Last updated **2026-07-27**.
+
+> ### ⚠ 2026-07-27: a sixth mode landed
+>
+> **Mystery Photos** is in — Uncle Jonah's unsorted archive. It shows one of the 464
+> existing landmark photographs with no caption and asks the child to put a pin on
+> the world map; scoring is by distance with the right continent as a floor, and
+> nothing scores zero. It is the only mode in the game that runs place → knowledge
+> instead of clue → place, which was the largest pedagogical gap in the loop.
+>
+> - Pure logic (slide choice, distance scoring, the player-facing strings):
+>   `src/mystery.js`, tested in `test/mystery.test.js` (23 tests).
+> - Screen: `src/components/mystery.jsx`. Its own file deliberately —
+>   `shutterbug-world.jsx` is the engineering debt named below, and this did not
+>   have to add to it.
+> - It has **no badge art yet** (it falls back to the 📷 emoji, the same way The
+>   Long Trip does). `MODE_ART` in `src/data/art.js` and `MODE_KEYS` in
+>   `test/art.test.js` both still list the two dead modes (`quiz`, `daily`) and
+>   neither lists `longtrip` or `mystery`. Worth a tidy when the next art batch lands.
+>
+> Two things learned building it that the next map feature will want:
+> - A country's centre is NOT its path's bounding-box centre. France's box takes in
+>   French Guiana and Réunion and centres on **Mali**; the USA's centres on southern
+>   **France**. The mode derives centres from the game's own landmark coordinates
+>   with a circular mean for longitude (Fiji straddles the antimeridian and a plain
+>   mean puts it in the Gulf of Guinea), then snaps to the nearest real landmark.
+> - `SVGGeometryElement.isPointInFill` answers "which country is this point in"
+>   exactly, against the real geometry. But a country's centre is usually a coastal
+>   city, and against these simplified outlines 16 of 177 hit-test as open sea — so
+>   where the country is already known, pass it rather than hit-testing it.
+
 
 > ### ⚠ Read this before anything below
 >

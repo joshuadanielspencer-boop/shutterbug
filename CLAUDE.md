@@ -18,10 +18,18 @@ Read this before trusting any older prose in this file or in `docs/`.
   His painted expressions live in `public/assets/shutterbug-ui/jonah2/`.
 - **Mr O** is the eager-kid foil who rides along with a fact or a double-points
   riddle. He never appears during assignment 1.
-- **Four modes:** Assignments, Grand Tour, Explore, Journeys. The standalone
-  **Quiz mode and the Daily Expedition mode were removed** — the review quiz now
-  runs at the end of every scored run (the "homecoming"), and there is no
-  once-a-day mode. Anything describing either as a mode is stale.
+- **Six modes:** Assignments, Grand Tour, Explore, The Long Trip, Journeys, and
+  **Mystery Photos**. The standalone **Quiz mode and the Daily Expedition mode were
+  removed** — the review quiz now runs at the end of every scored run (the
+  "homecoming"), and there is no once-a-day mode. Anything describing either as a
+  mode is stale, and anything saying there are four modes predates the Long Trip
+  and Mystery Photos.
+- **Mystery Photos runs the game backwards.** Every other mode goes clue → place;
+  this one shows an unlabelled photograph from the existing 464 and asks the child
+  to pin it on the world map. It is the only mode that exercises recognition rather
+  than recall. Logic in `src/mystery.js` (tested), screen in
+  `src/components/mystery.jsx`. It adds no content — it re-uses the photographs
+  that were already there.
 - **The passport is always the booklet popup**, never its own screen.
 - **Target device is a desktop window** (see rule 4).
 

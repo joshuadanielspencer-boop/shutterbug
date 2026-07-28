@@ -60,6 +60,9 @@ import { listProfiles, lastProfileName, getProfile, createProfile, setLastProfil
   recordLongTrip, renownRank, longTripStats,
   progressByContinent, troubleSpots } from "./profiles.js";
 import { CURIOSITY_DECK_BY_ID, CURIOSITY_TOTAL } from "./data/curiosities.js";
+// Mystery Photos — the recognition mode. Its own file because it is a whole
+// screen with its own map, and this one is already 8,700 lines.
+import MysteryPhotos from "./components/mystery.jsx";
 import { KIT_ITEMS, KIT_BY_ID, KIT_OFFERED, KIT_TAKEN } from "./data/kit.js";
 import { CONDITIONS } from "./data/conditions.js";
 import { OUTFIT_POSE_FILE, OUTFIT_REGIONS, outfitRegionFor,
@@ -1238,6 +1241,10 @@ const MODE_CARDS = [
     blurb: "One trip that keeps going. There's no list to finish — assignments arrive one after another until your travel days run out, and how far you got IS the score. Before you leave, Jonah digs through his old bag and offers you three things; you can only carry two, and which two you take changes the whole trip." },
   { id: "journey", name: "Journeys", emoji: "🛶",
     blurb: "Retrace a real expedition, stop by stop, in the order it actually happened. No day budget and no score to chase — the order IS the story, and you can't skip ahead. Start with Lewis and Clark's crossing of North America." },
+  // Every other mode runs clue → place. This one runs place → clue, which is the
+  // half of geography the game never asked for. See src/mystery.js.
+  { id: "mystery", name: "Mystery Photos", emoji: "📷",
+    blurb: "Jonah never labelled the photographs from his travelling years. He hands you five of them, one at a time, with no clue and no caption — just the picture. Read it, and put a pin on the world map where you think he was standing. The closer you get, the more it's worth; being on the right continent always counts for something." },
 ];
 // Quiz and the Daily Expedition are no longer modes you pick. The review quiz now
 // happens on its own at the END of every scored run (the homecoming — see
@@ -2430,6 +2437,7 @@ export default function ShutterbugWorld() {
     const u = unlocks(profileName ? getProfile(profileName) : null);
     if (gameMode === "journey") return startJourney(journeyId);
     if (gameMode === "explore") return startExplore();
+    if (gameMode === "mystery") return startMystery();
     if (gameMode === "tour" && u.tour) {
       const themed = tourTheme !== "classic" && u.expeditions;
       return themed ? startExpedition(EXPEDITIONS.find((e) => e.id === tourTheme)) : startTour();
@@ -2646,6 +2654,18 @@ export default function ShutterbugWorld() {
   // ---- Explore mode: no timer, no score, no losing. Fly anywhere, drill into any
   // country, click any place to read its full story (fact, culture card, all three
   // clue tiers). Everywhere you visit is stamped into the passport. ----
+  // Mystery Photos: no day budget, no assignments, no map state of its own — the
+  // screen owns everything. This only has to leave the run state clean so quitting
+  // back to the desk doesn't land on a half-built expedition.
+  function startMystery() {
+    setGameMode("mystery"); setExpedition(null);
+    setTourReqs([]); setTourOptions({}); setTourPlan(null);
+    setAssignments([]); setOptionsByStep([]); setStep(0);
+    setCurrent(null); setDays(0); setScore(0); setAlbum([]); setVisitedIds([]);
+    setRevealed(false); setLastResult(null); setPending(null); setFlying(null);
+    setScreen("mystery");
+  }
+
   function startExplore() {
     // music continues from the splash/meet screen and fades out at the map
     setGameMode("explore"); setExpedition(null);
@@ -3776,6 +3796,20 @@ export default function ShutterbugWorld() {
   // Grand Tour tiers only.
   const travelModes = isTour && (difficulty === "medium" || difficulty === "hard");
 
+  // ---------- MYSTERY PHOTOS (Uncle Jonah's unsorted archive) ----------
+  // Deliberately early in the dispatch and completely self-contained: it shares no
+  // map, phase or day state with the expedition screens below, and giving it none
+  // is what keeps it from having to be threaded through all of them.
+  if (screen === "mystery") {
+    return (
+      <Frame>
+        <MysteryPhotos locations={LOCATIONS} profile={profileName ? getProfile(profileName) : null}
+          reduced={prefersReduced} sfx={sfx}
+          onExit={() => { setGameMode("assignments"); setScreen("start"); }} />
+      </Frame>
+    );
+  }
+
   // ---------- STORY / INTRO SCREEN (Uncle Jonah's send-off) ----------
   if (screen === "intro") {
     return <StoryScreen beats={INTRO_BEATS} reduced={prefersReduced} mood="intro" cta="bag"
@@ -3969,6 +4003,7 @@ export default function ShutterbugWorld() {
     const DIFF_NA_WHY = {
       explore: "Explore has no timer and no score — you just roam and read, so there's no difficulty to set.",
       journey: "A Journey retraces a real expedition stop by stop, in the order it happened — there's no day budget to make harder or easier.",
+      mystery: "Mystery Photos scores by how close your pin lands, so the photograph itself sets the difficulty — there's no tier to pick.",
     };
     return (
       <Frame>
@@ -6715,6 +6750,10 @@ function Frame({ children, desk = false }) {
         @keyframes sbw-trot{ 0%{ transform: translateX(-120%) } 70%{ transform: translateX(6%) } 100%{ transform: translateX(0) } }
         .sbw-pop{ animation: sbw-pop 0.22s cubic-bezier(.2,.8,.3,1.2); }
         @keyframes sbw-pop{ 0%{ transform: scale(0.82); opacity: 0 } 100%{ transform: scale(1); opacity: 1 } }
+        /* Sentence-case a subject that starts with an article ("the Qutang Gorge")
+           without touching the rest of it. text-transform: capitalize would also
+           give "Christ The Redeemer". Used by the Mystery Photos summary. */
+        .sbw-cap::first-letter{ text-transform: uppercase }
         /* The splash's one button, breathing so a first-time player sees where to
            go. A glow that swells and fades rather than a hard blink — this is the
            first thing a child meets, and it should beckon, not nag. The button

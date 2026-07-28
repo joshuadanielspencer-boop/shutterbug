@@ -5,9 +5,15 @@ can clearly see the faces of people, relatively close."*
 
 All **118** culture photos in `src/data/culture.js` were downloaded and reviewed on
 contact sheets. **51 failed that bar** — the first version of this doc said "roughly
-40", which was an undercount of its own Category C table. **31 have now been
-replaced.** The remaining 20 are listed at the bottom, each with what was searched
+40", which was an undercount of its own Category C table. **40 have now been
+replaced.** The remaining 11 are listed at the bottom, each with what was searched
 and why nothing beat what is already there.
+
+The last nine came after Joshua relaxed the brief: *"if you can't find ones you're
+happy with, then don't worry about getting traditional garb. Just a photo of typical
+demographics is good."* That is what unlocked Mali, which is now four boys in Bamako
+in ordinary clothes — after two rounds of searching turned up no close, free photo of
+Malian traditional dress that was actually taken in Mali.
 
 ## How to work through this list
 
@@ -73,7 +79,23 @@ above the entry in `src/data/culture.js`. The notable ones: Tanzania lost the ka
 and its Swahili sayings, Madagascar lost the hira gasy, the UAE lost Al Ayyala, and
 Greece lost the Evzones.
 
-## Still failing — searched, nothing better found (7 countries)
+## Fixed in the second pass (9 countries)
+
+Cuba (the Havana performer Joshua approved, cigar and all), Russia, Switzerland,
+Mongolia, Mali, Brazil (Afro-Brazilian), Guyana, Venezuela, Canada (First Nations).
+
+Where to look, since it worked: **festival-by-year categories, not costume
+categories.** Commons files folk costume under 19th-century studio plates and files
+the living tradition under the event — `Category:Maslenitsa in Russia, 2024`,
+`Category:Alpabzug in Urnäsch`, `Category:Mashramani`, `Category:Naadam`. Every one
+of the nine came from an event category.
+
+One rejection worth keeping: the closest joropo photo found is filed by its own
+uploader under `Category:Folk dance of Colombia`, and its description
+("los Llanos en Colombia y Venezuela") settles nothing. Venezuela got the Diablos
+Danzantes de Yare instead.
+
+## Still failing — searched, nothing better found (8 countries)
 
 Each of these got at least two rounds of category and free-text searching. The
 existing photo is still the best freely-licensed option found.
@@ -86,16 +108,27 @@ existing photo is still the best freely-licensed option found.
 | Russia | every folk-costume category is pre-1917 black and white | `Category:Maslenitsa`; named modern ensembles |
 | Norway | bunad categories are Hardanger postcards | `Category:Syttende mai` by year and city |
 | Chile | the cueca category is almost empty | Fiestas Patrias by year |
-| Zimbabwe | the Shona category is museum objects | Jerusarema/Mbende by year |
+| Zimbabwe | the Shona category is museum objects; `Category:Harare` is signage and street furniture | Jerusarema/Mbende by year |
+| Micronesia | `Category:Yap` and the FSM people categories are almost entirely aid-flight and shipwreck photos | Yap Day / Pohnpei by year |
 
-## Still failing — a decision for Joshua (13 countries)
+## Still failing — deliberate, and settled (3 countries)
 
 | Country | The situation |
 |---|---|
-| Benin, Haiti, Jamaica | The face is behind a **mask** — Egungun, Kanaval, Jonkonnu. In each case the mask *is* the tradition, so replacing it would teach less, not more. Left alone deliberately. |
-| Cuba | A close, joyful, well-lit photo of a Havana folklore performer exists and clears the bar easily — but she has a lit cigar in her mouth. Not shipped without a yes. `File:Folklore Lady in Havanna, Cuba.jpg` |
-| Nigeria (Nupe & Hausa-Fulani) | The close durbar photos found are from Ilorin and Kanem-Borno, i.e. different communities from the card's label. Replacing the photo means relabelling the card. |
-| Mongolia, Micronesia, Guyana, Mali, Canada (First Nations), USA (Scottish American), Brazil (Afro-Brazilian), Venezuela | Close candidates exist but each has one disqualifier — too small a source (Mongolia 700px), wrong country (a "Canada" powwow shot taken in Minnesota), or a US diaspora festival standing in for the country itself. Worth another pass rather than a compromise. |
+| Benin, Haiti, Jamaica | The face is behind a **mask** — Egungun, Kanaval, Jonkonnu. In each case the mask *is* the tradition, so replacing it would teach less, not more. Flagged to Joshua and **kept on purpose**. Do not "fix" these. |
+
+Two other calls Joshua has now made, recorded so they aren't re-litigated:
+- **Cuba** — the Havana performer with the lit cigar is approved and shipped.
+- **Saudi Arabia** — the Ardha frame is a 2014 Saudi Press Agency photo, so King
+  Salman is in the row. Approved; the caption describes the dress and the dance.
+
+## Still open — one relabelling decision
+
+**Nigeria (Nupe & Hausa-Fulani).** The current photo is out of focus. The two close
+durbar photos found are from **Ilorin** and **Kanem-Borno** — different communities
+from the card's label, so taking either means relabelling the card. The Ilorin one
+also crops badly: its subjects sit low in the frame and the 16:9 crop at 50%/30%
+takes their heads off.
 
 ## Tooling
 

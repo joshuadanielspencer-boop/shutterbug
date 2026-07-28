@@ -574,7 +574,7 @@ export const UNLOCK_REQ = {
   longtrip: "Photograph 20 places",
 };
 export function unlocks(profile) {
-  if (!profile) return { assignments: true, daily: true, journey: true, explore: true, quiz: true, tour: true, scout: true, easy: true, medium: true, hard: true, expeditions: true };
+  if (!profile) return { assignments: true, daily: true, journey: true, explore: true, quiz: true, mystery: true, tour: true, scout: true, easy: true, medium: true, hard: true, expeditions: true };
   const mastered = distinctMastered(profile);
   const games = profile.games || 0;
   const contTouched = Object.values(continentTotals(passportData(profile).countries)).filter((v) => v.mastered > 0).length;
@@ -583,6 +583,10 @@ export function unlocks(profile) {
     daily: true,     // always available — the whole point is that it is there every day
     journey: true,   // a guided history route: never gated, it's the gentlest way in
     explore: true,
+    // Mystery Photos is review, and review should never be behind a gate. It also
+    // works on day one: a traveler who has been nowhere gets slides from the whole
+    // collection instead of from their own passport (see pickSlides).
+    mystery: true,
     scout: true,
     easy: true,
     quiz: games >= 1,
