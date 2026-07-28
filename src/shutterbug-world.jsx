@@ -23,14 +23,13 @@ import { ArtBadge, withWidth, Photo, PhotoCredit, DevelopImg } from "./component
 // The popup plumbing every dialog in here shares — see src/components/modal.jsx.
 // useModalFocus is not optional decoration: it is what makes aria-modal true.
 import { useModalFocus, ModalShell, OpenBook } from "./components/modal.jsx";
-// The traveler portrait and its editor. Kept apart because it is the piece most
-// likely to be replaced wholesale — see the note at the top of that file.
-// The palettes come across too: CreateTravelerModal's "surprise me" rolls a random
-// index into each of them. Nothing but a click would have found that — the bundler
-// is happy to build a reference to a name that no longer exists.
-import { defaultAvatar, avatarFor, Avatar, AvatarEditor,
-  AVATAR_SKIN, AVATAR_HAIR, AVATAR_HAIRC, AVATAR_GLASSES, AVATAR_HAT, AVATAR_SHIRT,
-  AVATAR_DIMS } from "./components/avatar.jsx";
+// The traveler portrait and its editor — now Joshua's painted plates, stacked.
+// The old palette exports are gone: CreateTravelerModal used to roll a random
+// index into each of them and lay out its own copy of the editor's controls, and
+// both jobs now belong to the avatar module (randomAvatar, AvatarControls). The
+// spec itself lives in src/avatar-spec.js, which is where the migration of
+// already-saved avatars onto the new art is tested.
+import { avatarFor, randomAvatar, Avatar, AvatarControls, AvatarEditor } from "./components/avatar.jsx";
 import { categoryCountries, categoryMissionOK as missionOK } from "./missions.js";
 import { robinson, eqToRobinson, robinsonToEq, ROBINSON_W, ROBINSON_H,
   flightLegs, legPath } from "./robinson.js";
@@ -4509,7 +4508,10 @@ export default function ShutterbugWorld() {
                       <div key={r.name + i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, padding: "7px 2px", borderTop: i ? `1px solid ${PAPER_LINE}` : "none" }}>
                         <span style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
                           <span style={{ fontFamily: "ui-monospace, monospace", fontWeight: 800, fontSize: 14, color: i === 0 ? GOLD : INK, opacity: i === 0 ? 1 : 0.6, width: 16, textAlign: "right", flex: "none" }}>{i + 1}</span>
-                          <Avatar spec={r.avatar || defaultAvatar(r.name)} size={28} />
+                          {/* A leaderboard row carries {name, avatar}, which is
+                              the shape avatarFor wants — so a row saved before
+                              the art changed gets migrated here too. */}
+                          <Avatar spec={avatarFor(r)} size={28} />
                           <span style={{ minWidth: 0 }}>
                             <span style={{ fontWeight: 700, color: INK, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "block" }}>{r.name}</span>
                             <span style={{ fontSize: 11, color: INK, opacity: 0.6, lineHeight: 1.3 }}>{bits.join(" · ")}</span>
@@ -8059,19 +8061,7 @@ function CreateTravelerModal({ onSubmit, onClose }) {
   const [err, setErr] = useState("");
   const ref = useRef(null);
   useModalFocus(ref, onClose);
-  const [spec, setSpec] = useState(() => defaultAvatar(String(Math.random())));
-  const bump = (key, n, dir) => setSpec((sp) => ({ ...sp, [key]: (((sp[key] || 0) + dir) % n + n) % n }));
-  const roll = () => setSpec({
-    skin: Math.floor(Math.random() * AVATAR_SKIN.length), hair: Math.floor(Math.random() * AVATAR_HAIR.length),
-    hairColor: Math.floor(Math.random() * AVATAR_HAIRC.length), glasses: Math.floor(Math.random() * AVATAR_GLASSES.length),
-    hat: Math.floor(Math.random() * AVATAR_HAT.length), shirt: Math.floor(Math.random() * AVATAR_SHIRT.length),
-  });
-  const arrow = (label, onClick) => (
-    <button onClick={onClick} aria-label={label}
-      style={{ width: 30, height: 30, borderRadius: 8, border: `1.5px solid ${INK}`, background: "transparent", color: INK, fontWeight: 800, cursor: "pointer", fontSize: 14 }}>
-      {label.startsWith("Previous") ? "◀" : "▶"}
-    </button>
-  );
+  const [spec, setSpec] = useState(() => randomAvatar());
   const begin = () => {
     if (!name.trim()) { setErr("Give your traveler a name first."); return; }
     const ok = onSubmit(name.trim(), spec);
@@ -8091,21 +8081,9 @@ function CreateTravelerModal({ onSubmit, onClose }) {
             style={{ display: "block", width: "100%", boxSizing: "border-box", marginTop: 4, padding: "9px 11px", borderRadius: 8, border: `1.5px solid ${PAPER_LINE}`, fontSize: 15, background: "#fff", color: INK }} />
           {err && <p role="alert" style={{ color: CORAL, fontSize: 12, fontWeight: 700, margin: "5px 0 0" }}>{err}</p>}
         </div>
-        {AVATAR_DIMS.map((d) => (
-          <div key={d.key} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, padding: "6px 0", borderTop: `1px solid ${PAPER_LINE}` }}>
-            <span style={{ fontWeight: 700, color: INK, fontSize: 13, width: 86, textAlign: "left" }}>{d.label}</span>
-            <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              {arrow(`Previous ${d.label.toLowerCase()}`, () => bump(d.key, d.n, -1))}
-              <span style={{ width: 58, fontSize: 12, color: INK, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 5 }}>
-                {d.swatch && <span aria-hidden="true" style={{ width: 15, height: 15, borderRadius: "50%", background: d.swatch(((spec[d.key] || 0) % d.n + d.n) % d.n), border: `1px solid ${INK}` }} />}
-                {d.name ? d.name(((spec[d.key] || 0) % d.n + d.n) % d.n) : `${((spec[d.key] || 0) % d.n + d.n) % d.n + 1}/${d.n}`}
-              </span>
-              {arrow(`Next ${d.label.toLowerCase()}`, () => bump(d.key, d.n, 1))}
-            </span>
-          </div>
-        ))}
+        <AvatarControls spec={spec} setSpec={setSpec} />
         <div style={{ display: "flex", gap: 8, justifyContent: "center", marginTop: 12, flexWrap: "wrap" }}>
-          <button onClick={roll} style={{ padding: "9px 14px", borderRadius: 8, border: `1.5px solid ${INK}`, background: "transparent", color: INK, fontWeight: 700, cursor: "pointer" }}>🎲 Surprise me</button>
+          <button onClick={() => setSpec(randomAvatar())} style={{ padding: "9px 14px", borderRadius: 8, border: `1.5px solid ${INK}`, background: "transparent", color: INK, fontWeight: 700, cursor: "pointer" }}>🎲 Surprise me</button>
           <button onClick={onClose} style={{ padding: "9px 14px", borderRadius: 8, border: `1.5px solid ${INK}`, background: "transparent", color: INK, fontWeight: 700, cursor: "pointer" }}>Cancel</button>
         </div>
         <button onClick={begin} style={{ ...primaryBtn, marginTop: 14, width: "100%" }}>Begin your adventure ✈</button>

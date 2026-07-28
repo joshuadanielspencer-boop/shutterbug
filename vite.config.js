@@ -90,7 +90,11 @@ export default defineConfig({
         // they are small, they are the game's voice, and an installed iPad with no
         // network falling back to a robot reading "Kazakhstan" is exactly the thing
         // the recordings exist to prevent.
-        globPatterns: ["**/*.{js,css,html,svg,png,jpg,ico,woff2,mp3}"],
+        // webp is here for the avatar plates (~610 KB for all 24). The traveler's
+        // portrait is in the header on every screen, so an installed iPad with no
+        // network must have it — a missing avatar is not a graceful degradation,
+        // it is a hole where the child's own character was.
+        globPatterns: ["**/*.{js,css,html,svg,png,jpg,webp,ico,woff2,mp3}"],
         // The 106 per-country relief plates (~11 MB) are deliberately NOT precached.
         // Precaching them would put the whole set on the iPad at install time for a
         // child who may visit six countries — the same reasoning that already leaves

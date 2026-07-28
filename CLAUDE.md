@@ -45,6 +45,7 @@ node scripts/gen-geography.mjs           # rebuild src/data/geography.js from Na
 node scripts/gen-voices.mjs              # re-fetch the spoken country names (Lingua Libre)
 node scripts/make-relief.mjs <NE1.tif> --width 8192 --out public/relief-world.jpg
 node scripts/optimize-ui-art.mjs         # palette-quantize new badge art (run after a batch lands)
+node scripts/build-avatar-layers.mjs     # rebuild the avatar plates + src/data/avatar.js from "Images/Avatar designs/"
 ```
 
 ```bash
@@ -98,12 +99,16 @@ assets-src/icon.svg        # source art for the app icon (edit here, then gen-ic
 scripts/gen-icons.mjs      # rasterizes icon.svg → public/*.png (needs sharp)
 scripts/gen-geography.mjs  # builds src/data/geography.js from Natural Earth vectors
 scripts/make-relief.mjs    # builds the relief plates (keys the ocean to the game palette)
+scripts/build-avatar-layers.mjs  # avatar plates + src/data/avatar.js from "Images/Avatar designs/"
+scripts/avatar-brows.mjs   # lifts the eyebrows out of the head art and recolours them to the hair
 public/                    # static assets copied as-is + precached by the PWA
   relief-world.jpg         #   equirectangular shaded-relief plate (8192x4096, continent zooms)
   relief-antarctica.jpg    #   polar relief plate for the Antarctica map
   *.png / icon.svg         #   generated PWA + favicon + apple-touch icons
+  avatar-lab.html          #   standalone review page for the avatar art (reads the manifest)
   assets/shutterbug-ui/    #   the illustrated UI art (map furniture, passport, Mr O…)
     badges|modes|themes|difficulty/  #     badge art, mapped to game keys by src/data/art.js
+    avatar-v2/             #     GENERATED — the traveler's layered portrait plates
 src/
   main.jsx                 # React entry; renders <ShutterbugWorld /> into #root
   index.css                # global reset / base styles
@@ -113,12 +118,15 @@ src/
   daily.js                 # day number + seed helpers (the Daily MODE is gone; the
                            #   seeding primitives are still used and still tested)
   robinson.js              # Robinson projection helpers for the world map
+  avatar-spec.js           # avatar logic — defaults, randomize, and the legacy migration
+  components/avatar.jsx    # the layered portrait and its editor
   data/
     locations.js           # game content: 457 places in 108 countries — clues, facts, photos, greetings, category
     categories.js          # the 14 subject categories + kinds + display metadata
     art.js                 # UI art registry — game key → badge/icon/crest file
     worldmap.js            # country outline paths + COUNTRY_CONTINENT colour map
     geography.js           # GENERATED — rivers, lakes, seas, oceans, bays, gulfs
+    avatar.js              # GENERATED — which avatar plate is which, and how they stack
 .claude/                   # Claude Code project config (launch.json is shared)
 claude-code-game-build-guide.md   # design/build notes
 ```
@@ -157,6 +165,11 @@ reviewable, correctable, and expandable without touching UI code.
 > `src/data/geography.js` (rivers, lakes, seas, oceans, bays, gulfs) is **generated**
 > — don't hand-edit it. Curate *which* features appear, and their display names, in
 > `scripts/gen-geography.mjs`, then re-run it.
+>
+> `src/data/avatar.js` (which traveler-portrait plate is which, and their z-order) is
+> **generated** too. The filenames in `Images/Avatar designs/` ARE the content spec —
+> a new hair colour or garment is a correctly-named PNG plus
+> `node scripts/build-avatar-layers.mjs`, with no code change anywhere.
 
 ### 2. Every fact and foreign-language greeting must be accurate and verifiable
 

@@ -232,7 +232,7 @@ This document is long enough that things get lost in it. Every section, in order
 
 | § | | |
 |---|---|---|
-| [1](#1-finish-the-avatar-redesign-wiring) | Avatar redesign (wiring) | paused — needs Joshua's art |
+| [1](#1-the-avatar-redesign--done-2026-07-28) | Avatar redesign | ✅ done |
 | [2](#2-rotating-people-cards--done-2026-07-15) | Rotating people cards | ✅ done |
 | [3](#3-the-roguelike-layer) | The roguelike layer | biggest unstarted build |
 | [4](#4-the-tap-to-learn-curiosity-layer) | Curiosity layer | ✅ done |
@@ -268,9 +268,10 @@ This document is long enough that things get lost in it. Every section, in order
    hold-for-the-light odds, condition/kit strengths), and decide whether guests should
    be able to reach the mode at all.
 
-**Then, in Joshua's stated order:** the graphics pass (§1 avatar redesign — §6 badges
-are done) once his art lands, and the **desktop executable + final single-screen fit** (§8) as
-the capstone. The Supabase backend (§7) sits off to the side whenever he wants it.
+**Then, in Joshua's stated order:** the graphics pass is now done — §1 avatar redesign
+landed 2026-07-28 and §6 badges before it — leaving the **desktop executable + final
+single-screen fit** (§8) as the capstone. The Supabase backend (§7) sits off to the
+side whenever he wants it.
 
 ### Recently shipped
 
@@ -359,28 +360,51 @@ Journeys, and the Grandpa Nigel story frame.
 
 ---
 
-## 1. Finish the avatar redesign (wiring)
+## 1. The avatar redesign — ✅ DONE (2026-07-28)
 
-**Status: PAUSED at Joshua's request.** He is regenerating the graphics from ChatGPT
-first. **Do not start this until he says the new art has landed** — the current
-sprite sheets are the ones he wants to replace.
+Joshua's painted plates replaced the procedural SVG everywhere it appeared: the
+header, the passport photo frame, the traveler picker, the leaderboard rows, the
+customize popup and the create-traveler popup.
 
-When it unpauses, the work is:
+The old sprite sheets are **gone** (`public/assets/shutterbug-ui/avatar/`,
+`public/avatar-preview.html`, `scripts/slice-avatar.mjs`, 2.5 MB), and with them
+the hard part of this task. The old brief was to calibrate a per-layer anchor and
+scale because the sheets were not mutually registered. The new delivery needs
+none of it: every plate is the same 1200×1200 canvas and, verified by comparing
+alpha masks, they are recolours of one drawing. Stacking them IS the assembly —
+no offsets, no scaling.
 
-- 74 transparent PNGs already sliced into `public/assets/shutterbug-ui/avatar/`,
-  with a `manifest.json` giving each part's in-cell bbox. Sheets: heads 3×2 (skin),
-  eyes 3×2 (3 colours × 2 lash styles), hats 4×3, hair-short 4×4 and hair-long 4×4
-  (4 styles × 4 colours), outfits 6×3 (3 styles × 6 colours).
-- The sheets are **not mutually registered** (different canvases and grids), so the
-  real work is calibrating a per-layer anchor and scale so head, eyes, hair, hat and
-  outfit stack into a correctly-assembled person.
-- Rebuild `Avatar` in `src/shutterbug-world.jsx` (currently a procedural SVG) to
-  composite the PNG layers; update `AvatarEditor` to offer skin, hat, hair style,
-  hair colour, eye colour, outfit, outfit colour.
-- Keep the saved-avatar spec compatible with `profiles.js`, or migrate it.
-- A review page exists at `public/avatar-preview.html`.
-- **Show Joshua a screenshot of assembled avatars before replacing the live one.**
-  The avatar appears in the header, the passport and the profile list.
+**How it fits together now:**
+
+- **`Images/Avatar designs/*.png`** — Joshua's deliveries. Outside the build.
+- **`node scripts/build-avatar-layers.mjs`** — de-frames, scales, writes WebP to
+  `public/assets/shutterbug-ui/avatar-v2/` **and** generates `src/data/avatar.js`.
+  10.7 MB of PNG becomes 610 KB. A new colour or garment is a correctly-named
+  file plus a re-run; a new *kind* of part (a hat) is one line in `PARTS`.
+- **`scripts/avatar-brows.mjs`** — the eyebrows are painted into the head plates
+  in one fixed brown, so they are lifted out and recoloured to match the hair.
+  Five small files cover every combination. Hand-drawn `brow_<colour>.png` in a
+  future delivery would win outright and switch the synthesis off.
+- **`src/avatar-spec.js`** — the pure logic, tested in `test/avatar.test.js`.
+- **`src/components/avatar.jsx`** — `<Avatar>`, `<AvatarControls>`, `<AvatarEditor>`.
+- **`public/avatar-lab.html`** — the standalone review page, still live. It reads
+  the generated manifest, so a new art batch shows up there with no code change.
+
+**Two things a future session should know:**
+
+- **Saved avatars are migrated on read, not in storage.** A spec written by the
+  old scheme is detected by its legacy-only keys and matched onto the nearest new
+  plate by colour, so a child's dark skin stays dark and their blonde hair stays
+  blonde. `hair` is the one key BOTH schemes use, meaning different things, which
+  is exactly the trap the detection is written around. Hat, glasses and hair
+  style have no successor and are dropped; the old fantasy hair colours land on
+  whichever real colour is nearest.
+- **The plates are waist-up busts.** Anything under 96px renders a face crop
+  (`FACE_BELOW` in the component) or the face is a few pixels across.
+
+**Still to come from Joshua:** male/female variants (different eyelashes and hair
+options — the filename grammar already parses a `male`/`female` token) and more
+garment kinds in the same colour range.
 
 ---
 
