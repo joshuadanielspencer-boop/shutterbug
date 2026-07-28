@@ -194,4 +194,29 @@ export function focusStyle(box, pad = 1.06) {
   };
 }
 
+// The band the drawing actually occupies top to bottom: the crown of the hair
+// down to the hem of the jacket. The plates carry a margin below the jacket, so a
+// portrait fitted whole leaves a wedge of empty disc under the outfit — which is
+// fine at 44px and looks like a mistake at 230.
+export const BODY_BAND = (() => {
+  const hair = FOCUS.hair, outfit = FOCUS.outfit, head = FOCUS.head;
+  if (!hair || !outfit) return null;
+  return { top: Math.min(hair.y, head?.y ?? 1), bottom: outfit.y + outfit.h };
+})();
+
+// Scale a plate so that band fills the frame HEIGHT exactly, letting the width
+// overflow — the disc crops it anyway, and cropping the shoulders is the right
+// trade for the outfit reaching the bottom edge. Deliberately not focusStyle:
+// that fits the LONGER side, which is what leaves the gap here.
+export function fillHeightStyle(band = BODY_BAND) {
+  if (!band) return {};
+  const h = band.bottom - band.top;
+  if (!(h > 0)) return {};
+  const cy = (band.top + band.bottom) / 2;
+  return {
+    transformOrigin: `50% ${cy * 100}%`,
+    transform: `translate(0, ${(0.5 - cy) * 100}%) scale(${(1 / h).toFixed(3)})`,
+  };
+}
+
 export { PARTS, ORDER, FOCUS, AVATAR_CANVAS };

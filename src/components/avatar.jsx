@@ -16,8 +16,8 @@ import React, { useState, useRef } from "react";
 import { INK, OCEAN, CORAL, GREEN, PAPER, PAPER_LINE } from "../theme.js";
 import { useModalFocus } from "./modal.jsx";
 import {
-  AVATAR_DIMS, PARTS, FOCUS, PORTRAIT,
-  defaultAvatar, avatarFor, randomAvatar, normalizeAvatar, avatarLayers, focusStyle,
+  AVATAR_DIMS, PARTS, PORTRAIT,
+  defaultAvatar, avatarFor, randomAvatar, normalizeAvatar, avatarLayers, focusStyle, fillHeightStyle,
 } from "../avatar-spec.js";
 
 // Below this, show the face rather than the whole bust. The plates are waist-up,
@@ -29,10 +29,12 @@ const FACE_BELOW = 96;
 // rim the procedural avatar used, so every board it appears on is unchanged.
 const DISC = { background: "#DCE9EC", border: `1.5px solid ${INK}`, borderRadius: "50%" };
 
-function Avatar({ spec, size = 24, title, face }) {
+// `fill` is for the customize/create previews only: it drops the plate's bottom
+// margin so the jacket meets the rim of the disc instead of floating above it.
+function Avatar({ spec, size = 24, title, face, fill }) {
   const layers = avatarLayers(spec);
   const crop = (face ?? size < FACE_BELOW) ? PORTRAIT : null;
-  const cropCss = crop ? focusStyle(crop) : null;
+  const cropCss = fill ? fillHeightStyle() : crop ? focusStyle(crop) : null;
   return (
     <div
       role={title ? "img" : undefined}
@@ -49,56 +51,45 @@ function Avatar({ spec, size = 24, title, face }) {
   );
 }
 
-// One part, as a ◀ ▶ stepper. Joshua asked for cycling rather than a grid of every
-// option, and the grid does not survive the art growing anyway: five hair colours
-// fit on one row, but the next delivery adds female styles and more garments, and
-// a wall of forty boxes is not a choice a child can make. A stepper stays one row
-// wide however much art lands.
-//
-// Rule 4: the current option is named in text beside its thumbnail, never signalled
-// by the picture alone, and the arrows are real buttons with their own labels. The
-// count ("3 / 7") is there so a child knows the list is finite and where they are.
+// Joshua asked for cycling rather than a grid of every option, and the grid does
+// not survive the art growing anyway: five hair colours fit on one row, but the
+// next delivery adds female styles and more garments, and a wall of forty boxes is
+// not a choice a child can make. A stepper stays one row wide however much art
+// lands.
 const arrowStyle = {
   width: 38, height: 38, borderRadius: 10, border: `2px solid ${INK}`,
   background: "transparent", color: INK, fontWeight: 800, fontSize: 15,
   cursor: "pointer", flex: "0 0 auto", lineHeight: 1,
 };
 
+// Just ◀ SKIN ▶. No swatch, no option name, no "2 / 4".
+//
+// Joshua's call, and it is the right one for what this screen is: the child is
+// looking at the BIG portrait above and pressing arrows until they like what they
+// see. A thumbnail of a disembodied ear, the word "Tan", and a counter are three
+// things competing with the only thing that matters, and none of them tells you
+// anything the portrait doesn't show better.
+//
+// Rule 4 is still satisfied, and by a better route than before: the choice is
+// announced to a screen reader through the portrait's own aria-label, which names
+// every part, so the information is present without being clutter on screen. The
+// arrows keep their own labels.
 function PartRow({ dim, value, onPick }) {
   const step = (d) => onPick((value + d + dim.n) % dim.n);
-  const opt = dim.options[value];
   return (
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10,
-                  padding: "9px 0", borderTop: `1px solid ${PAPER_LINE}` }}>
-      <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 10, letterSpacing: "0.14em",
-                     color: INK, opacity: 0.6, width: 62, textAlign: "left", flex: "0 0 auto" }}>
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 14,
+                  padding: "7px 0", borderTop: `1px solid ${PAPER_LINE}` }}>
+      <button type="button" onClick={() => step(-1)} style={arrowStyle}
+        aria-label={`Previous ${dim.label.toLowerCase()}`}>◀</button>
+      <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 13, letterSpacing: "0.18em",
+                     fontWeight: 800, color: INK, width: 116, textAlign: "center" }}>
         {dim.label.toUpperCase()}
       </span>
-      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-        <button type="button" onClick={() => step(-1)} style={arrowStyle}
-          aria-label={`Previous ${dim.label.toLowerCase()}`}>◀</button>
-        <span style={{ ...DISC, borderRadius: 9, width: 52, height: 52, position: "relative",
-                       overflow: "hidden", flex: "0 0 auto" }}>
-          <img src={thumbSrc(dim.key, value)} alt="" draggable="false"
-            style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "contain",
-                     ...focusStyle(FOCUS[dim.key], 1.18) }} />
-        </span>
-        <span style={{ width: 96, textAlign: "center" }}>
-          <span style={{ display: "block", fontSize: 12.5, fontWeight: 700, color: INK, lineHeight: 1.2 }}>{opt.label}</span>
-          <span style={{ display: "block", fontSize: 10, color: INK, opacity: 0.55, fontFamily: "ui-monospace, monospace" }}>
-            {value + 1} / {dim.n}
-          </span>
-        </span>
-        <button type="button" onClick={() => step(1)} style={arrowStyle}
-          aria-label={`Next ${dim.label.toLowerCase()}`}>▶</button>
-      </div>
+      <button type="button" onClick={() => step(1)} style={arrowStyle}
+        aria-label={`Next ${dim.label.toLowerCase()}`}>▶</button>
     </div>
   );
 }
-
-// A thumbnail shows ONE plate, not an assembled avatar — that is the point of
-// picking a part. avatarLayers() would stack the whole person, so go direct.
-const thumbSrc = (part, i) => avatarLayers({ [part]: i }).find((l) => l.part === part)?.src;
 
 // The stack of part rows plus a randomize button. Shared by the editor and the
 // create-traveler popup, which used to carry two copies of the same layout.
@@ -137,7 +128,7 @@ function AvatarEditor({ name, initial, onSave, onClose, onRename, onRemove }) {
             look like, and the steppers below only make sense if the thing they
             change is big enough to read. Above FACE_BELOW, so this shows the whole
             bust: the jacket is one of the four things being chosen. */}
-        <div style={{ margin: "12px 0 4px" }}><Avatar spec={spec} size={230} title={`${name}'s traveler`} /></div>
+        <div style={{ margin: "12px 0 4px" }}><Avatar spec={spec} size={230} fill title={`${name}'s traveler`} /></div>
         {/* Rename */}
         {onRename && (
           <div style={{ margin: "8px 0 4px", textAlign: "left" }}>
