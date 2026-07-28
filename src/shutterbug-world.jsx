@@ -60,6 +60,9 @@ import { listProfiles, lastProfileName, getProfile, createProfile, setLastProfil
   recordLongTrip, renownRank, longTripStats,
   progressByContinent, troubleSpots } from "./profiles.js";
 import { CURIOSITY_DECK_BY_ID, CURIOSITY_TOTAL } from "./data/curiosities.js";
+// What the clock and the calendar are doing where you just landed, and how that
+// differs from where you left. See src/localtime.js — the comparison IS the lesson.
+import { countryArrivalLines } from "./localtime.js";
 // Mystery Photos — the recognition mode. Its own file because it is a whole
 // screen with its own map, and this one is already 8,700 lines.
 import MysteryPhotos from "./components/mystery.jsx";
@@ -6545,7 +6548,11 @@ export default function ShutterbugWorld() {
       {/* A photo is only ever opened FROM the album, so closing it returns there
           (not to the map behind it). */}
       {albumView && <LandmarkModal p={albumView} onClose={() => { setAlbumView(null); setAlbumOpen(true); }} reduced={prefersReduced} />}
-      {countryPopup && <CountryPopup country={countryPopup} ride={arrivalRide} onClose={() => setCountryPopup(null)} reduced={prefersReduced} />}
+      {countryPopup && <CountryPopup country={countryPopup} ride={arrivalRide} onClose={() => setCountryPopup(null)} reduced={prefersReduced}
+        /* Where they were standing a moment ago — the last place actually
+           photographed. Without it the time and season lines are facts; with it
+           they are a comparison, which is the half that teaches. */
+        from={album.length ? BY_ID[album[album.length - 1].id] || null : null} />}
       {travelChoice && <TravelChooser choice={travelChoice} money={money} onConfirm={confirmTravel} onCancel={() => setTravelChoice(null)} />}
       {/* Customize Traveler, reachable mid-trip by tapping the header avatar. No
           remove option here (deleting the traveler you're playing as would end the
@@ -8315,7 +8322,26 @@ function CurrencyLine({ country }) {
 // often before the photo has even painted. Three seconds is enough to look up.
 const COUNTRY_CARD_DWELL_MS = 3000;
 
-function CountryPopup({ country, ride, onClose, reduced }) {
+// The time-and-season pair on the arrival card. Its own component so the `now`
+// snapshot is taken once, when the card appears: recomputing on every render would
+// let the minute roll over while a child is still reading the sentence about it.
+function ArrivalWorld({ country, from }) {
+  const [lines] = useState(() => countryArrivalLines(country, LOCATIONS, from, new Date(), displayCountry(country)));
+  if (!lines.length) return null;
+  return (
+    <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 7 }}>
+      {lines.map((l) => (
+        <div key={l.kind} style={{ display: "flex", gap: 8, alignItems: "flex-start",
+          background: "#fff", border: `1px solid ${PAPER_LINE}`, borderRadius: 8, padding: "8px 10px" }}>
+          <span aria-hidden="true" style={{ fontSize: 17, lineHeight: 1.25, flex: "none" }}>{l.icon}</span>
+          <span style={{ fontSize: 13, color: INK, lineHeight: 1.5 }}>{l.text}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function CountryPopup({ country, ride, onClose, reduced, from = null }) {
   // Deliberately NOT keyed off `country`: the timer belongs to this popup opening,
   // and the popup is mounted fresh per arrival.
   const [canGo, setCanGo] = useState(false);
@@ -8339,6 +8365,10 @@ function CountryPopup({ country, ride, onClose, reduced }) {
         style={{ background: PAPER, borderRadius: 16, border: `3px solid ${CORAL}`, boxShadow: "0 14px 44px rgba(0,0,0,0.35)", maxWidth: 420, width: "100%", padding: "16px 18px", maxHeight: "88vh", overflowY: "auto" }}>
         <div style={{ textAlign: "center", fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.18em", color: CORAL }}>✈ YOU'VE ARRIVED IN…</div>
         <CountryCard country={country} />
+        {/* Two lines of live geography: what time it is here, and what season —
+            each said against where the player just came from. Computed on mount
+            (not on every render) so the clock doesn't tick under a child reading it. */}
+        <ArrivalWorld country={country} from={from} />
         {ride && <LocalTransport mode={ride} />}
         {/* Greyed rather than absent, and it keeps its size and its words the whole
             time: a button that appears late moves the layout under a thumb already on
