@@ -15,7 +15,7 @@ it says so.
 | **Scout** (3 shots, 1 decoy, no real time pressure) | Clue names the country; every pin labelled; read-aloud on; wrong guess flashes the right answer | Maximum | **Recognition with help** |
 | **Explorer** (5 shots, 2 decoys) | Clue **names the country**; every pin labelled; category badge; warm/cold hints; cheap research | Very high | **Recognition** — match a named place on the map |
 | **Adventurer** (9 shots, 3 decoys) | Clue **names the country but hides the continent** — you must know where in the world it sits; labels on hover only | Medium | **Inference** — country → continent, recognise shapes/positions |
-| **Expert** (14 shots, 4 decoys, 2 days each) | **Pure-context clues** — no place names, no labels, no badge, no hints, no research; time pressure | None | **Recall + synthesis** under a clock |
+| **Expert** (14 shots, 4 decoys) | **Pure-context clues** — no place names, no labels, no badge, no warm/cold hints; research available at ½ a day; time pressure | Minimal | **Recall + synthesis** under a clock |
 
 ### Grade-band fit (US homeschool, approximate)
 - **Scout** → K–2 (ages ~5–7)
@@ -247,7 +247,7 @@ it says so.
 | **Scout** (3 shots, 1 decoy, no real time pressure) | Clue names the country; every pin labelled; read-aloud on; wrong guess flashes the right answer | Maximum | **Recognition with help** |
 | **Explorer** (5 shots, 2 decoys) | Clue **names the country**; every pin labelled; category badge; warm/cold hints; cheap research | Very high | **Recognition** — match a named place on the map |
 | **Adventurer** (9 shots, 3 decoys) | Clue **names the country but hides the continent** — you must know where in the world it sits; labels on hover only | Medium | **Inference** — country → continent, recognise shapes/positions |
-| **Expert** (14 shots, 4 decoys, 2 days each) | **Pure-context clues** — no place names, no labels, no badge, no hints, no research; time pressure | None | **Recall + synthesis** under a clock |
+| **Expert** (14 shots, 4 decoys) | **Pure-context clues** — no place names, no labels, no badge, no warm/cold hints; research available at ½ a day; time pressure | Minimal | **Recall + synthesis** under a clock |
 
 ### Grade-band fit (US homeschool, approximate)
 - **Scout** → K–2 (ages ~5–7)
@@ -437,3 +437,28 @@ locked/greyed state is generated in code.
 - **Unlock gates** — Adventurer, Quiz, Tour, Expert, Expeditions. *Art: one reusable
   "UNLOCKED" wax seal.*
 </content>
+
+---
+
+## 2026-07-28 — Expert, eased
+
+Playtest verdict from Joshua: *"Expert is a little too hard. The other difficulty
+tiers seem appropriate."* Two changes, and deliberately neither of them touches the
+clues — the pure-context ladder IS the tier, and making it give more away would have
+turned Expert into Adventurer with more shots.
+
+What was wrong was that a mistake had nowhere to go:
+
+- **Research is back on**, at the same ½-day cost Explorer and Adventurer pay. It had
+  been off entirely, which removed the only safety net at exactly the tier where the
+  clue gives the least away — one misread and the run was gone with no way back into
+  it. Costing half a day keeps it a real decision rather than a free answer.
+- **Two more spare travel days** (`slack` 5 → 7). One wasted flight across the world
+  is now a setback rather than the end of the expedition.
+
+Both are single numbers in `MODES.hard`, so this is easy to walk back or push further
+after the next playtest.
+
+Removed while in there: `daysPer`, which sat in all four tiers and was read nowhere —
+the budget has been clean-route + slack for a long time. A number in a balance table
+that turns nothing is a trap for whoever tunes it next.

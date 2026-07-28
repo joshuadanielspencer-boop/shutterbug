@@ -173,6 +173,9 @@ function nextMrOImage(kind = "fact") {
 // `slack` = spare travel days baked into the budget on top of the clean-route
 // cost (distance flights + one shot each); banking them at the end is the day
 // bonus, and it shrinks with difficulty.
+// (There was a `daysPer` here too. Nothing read it — the budget has been
+// clean-route + slack for a long time — so it was a number that looked like a
+// balance knob and turned nothing. Removed rather than left to mislead.)
 // `research` gates the ½-day Research hint by tier: "free" (Easy — a leg-up for
 // young players, no day cost), "half" (Medium — costs SHOT_COST), "off" (Hard —
 // no hand-holding). `blurb` is the one-line explainer on the start screen.
@@ -187,14 +190,22 @@ function nextMrOImage(kind = "fact") {
 // (so saved best scores keep working); `scout` is the new gentlest tier. The
 // player-facing names are Scout / Explorer / Adventurer / Expert.
 const MODES = {
-  scout:  { label: "Scout",    ages: "K–2 · ages 5–7",    assignments: 3, cityDecoys: 1, daysPer: 5, points: 3, slack: 10, labels: "all", clue: "easy",   catShare: 0.12, countryOpts: 4, research: "free", hints: true, readAloud: true, flashOnWrong: true, sayOnHover: true,
+  scout:  { label: "Scout",    ages: "K–2 · ages 5–7",    assignments: 3, cityDecoys: 1, points: 3, slack: 10, labels: "all", clue: "easy",   catShare: 0.12, countryOpts: 4, research: "free", hints: true, readAloud: true, flashOnWrong: true, sayOnHover: true,
             blurb: "A gentle 3-shot outing for the youngest travelers. Clues name the country, every pin is labelled, clues are read aloud, wrong guesses gently flash the right answer, and there's no real time pressure." },
-  easy:   { label: "Explorer", ages: "grades 3–5 · ages 8–10", assignments: 5, cityDecoys: 2, daysPer: 3, points: 3, slack: 6, labels: "all",   clue: "easy",   catShare: 0.10, countryOpts: 5, research: "half", hints: true, sayOnHover: true,
+  easy:   { label: "Explorer", ages: "grades 3–5 · ages 8–10", assignments: 5, cityDecoys: 2, points: 3, slack: 6, labels: "all",   clue: "easy",   catShare: 0.10, countryOpts: 5, research: "half", hints: true, sayOnHover: true,
             blurb: "A short 5-shot trip. Clues name the country, every pin is labelled, a category badge tells you what kind of place it is, wrong guesses get warm/cold hints, and Research for a Clue costs just ½ a day." },
-  medium: { label: "Adventurer", ages: "grades 6–8 · ages 11–13", assignments: 9, cityDecoys: 3, daysPer: 3, points: 2, slack: 6, labels: "smart", clue: "medium", catShare: 0.05, countryOpts: 5, research: "half", hints: true,
+  medium: { label: "Adventurer", ages: "grades 6–8 · ages 11–13", assignments: 9, cityDecoys: 3, points: 2, slack: 6, labels: "smart", clue: "medium", catShare: 0.05, countryOpts: 5, research: "half", hints: true,
             blurb: "A 9-shot expedition. Clues name the country but hide the continent, so you must know where in the world it sits; labels appear on hover; a category badge still helps; Research costs ½ a day." },
-  hard:   { label: "Expert",   ages: "high school & up", assignments: 14, cityDecoys: 4, daysPer: 2, points: 1, slack: 5, labels: "smart", clue: "hard",   catShare: 0.03, countryOpts: 7, research: "off",  hints: false,
-            blurb: "A long 14-shot grand expedition for experts. Pure-context clues — no place names, no country labels on the map, no category badge, no warm/cold hints, and no Research. You're on your own." },
+  // Expert eased on Joshua's playtest: it was "a little too hard". Two changes, both
+  // about giving a wrong turn somewhere to go rather than making the clues easier —
+  // the pure-context clues ARE the tier and they stay exactly as they were.
+  //   • Research is back on, at the same ½-day cost the middle tiers pay. Turning it
+  //     off removed the only safety net at precisely the tier where the clues give
+  //     the least away, so a single misread cost the whole run with no way back.
+  //   • slack 5 → 7: two more spare travel days, so one wasted flight across the
+  //     world is a setback instead of the end of the expedition.
+  hard:   { label: "Expert",   ages: "high school & up", assignments: 14, cityDecoys: 4, points: 1, slack: 7, labels: "smart", clue: "hard",   catShare: 0.03, countryOpts: 7, research: "half", hints: false,
+            blurb: "A long 14-shot grand expedition for experts. Pure-context clues — no place names, no country labels on the map, no category badge and no warm/cold hints. Research for a Clue is there if you're truly stuck, at ½ a day." },
 };
 // The flight across the world map, in milliseconds, and how long the plane token
 // spends growing out of its origin (and shrinking onto its destination) at each
@@ -6505,12 +6516,15 @@ export default function ShutterbugWorld() {
           )}
           {/* All three tools show in every mode. The Field Guide researches a CLUE, so
               it only works where there is one to solve — greyed (not gone) on the Grand
-              Tour, on Explore, and on Expert, with a tap explaining why. Keeping the
-              rail identical across modes means a child always knows where each tool is. */}
+              Tour and on Explore, with a tap explaining why. Keeping the rail identical
+              across modes means a child always knows where each tool is.
+              Expert used to be greyed here too; it isn't any more (see MODES.hard), but
+              the `research: "off"` branch stays because it is the general rule and a
+              future tier may want it. */}
           {(() => {
             const guideReason = isTour ? "The Grand Tour shows you every place up front — there's no clue to research, so the Field Guide sits this trip out."
               : isExplore ? "You're free to roam — there's no clue to solve here, so the Field Guide isn't needed."
-              : mode.research === "off" ? "On Expert you're on your own: no research. Try an easier tier to use the Field Guide."
+              : mode.research === "off" ? "This tier is a solo run — no research. Try an easier one to use the Field Guide."
               : null;
             const guideUsable = !guideReason;
             return (
