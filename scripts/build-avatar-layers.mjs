@@ -34,7 +34,7 @@
 // new colour or a new outfit means dropping a correctly-named PNG in the
 // delivery folder and re-running this; no code change.
 import sharp from "sharp";
-import { readdir, mkdir, writeFile, stat } from "node:fs/promises";
+import { readdir, mkdir, writeFile, stat, unlink } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { join } from "node:path";
 import { extractBrows, hairTone, recolourBrows, rgb2hsl, hsl2rgb } from "./avatar-brows.mjs";
@@ -412,6 +412,24 @@ const manifest = {
     ]),
   ),
 };
+
+// Sweep out plates the manifest no longer names. The build writes into a folder
+// it does not own the history of, and every rename leaves the old file sitting
+// there — renaming the ids for the colour palette orphaned 23 plates and 651 KB,
+// all of it still precached by the PWA and shipped to every iPad. Nothing reads
+// them, so nothing fails; the set just quietly gets heavier every time the
+// naming moves.
+const live = new Set(Object.values(manifest.parts).flat().map((l) => l.file));
+const onDisk = (await readdir(DEST)).filter((f) => f.endsWith(".webp"));
+const orphans = onDisk.filter((f) => !live.has(f));
+if (orphans.length) {
+  let freed = 0;
+  for (const f of orphans) {
+    freed += (await stat(join(DEST, f))).size;
+    await unlink(join(DEST, f));
+  }
+  console.log(`\n  swept ${orphans.length} plate(s) the manifest no longer names — ${(freed / 1024).toFixed(0)} KB`);
+}
 
 await writeFile(join(DEST, "manifest.json"), JSON.stringify(manifest, null, 2) + "\n");
 
