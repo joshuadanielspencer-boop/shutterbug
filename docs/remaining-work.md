@@ -6,6 +6,45 @@ three project rules are hard requirements), then the task you're doing.
 
 Last updated **2026-07-28**.
 
+> ### ⚠ 2026-07-28 (evening): the rest of the tune-sameness pass, and four questions
+>
+> **Shipped:** the four beds still carrying 7–8 countries each — `southeastasia`,
+> `tropical`, `latin`, `westafrica` — plus `mediterranean`, which was carrying six
+> and was the worst of the lot for what it flattened (a Greek bouzouki standing in
+> for flamenco, fado and a tarantella). Seventeen new beds. §11 has the recount:
+> **11 regional beds became 43, and the biggest is now 6, down from 19.** The last
+> one at six is `caribbean`, and the ceiling in `test/tunes.test.js` stays there
+> until it's split. Also: `MUSIC.timbres` now exists purely so a test can catch a
+> tune naming a timbre the synth doesn't have — the one failure mode here that
+> neither throws nor falls silent, it just plays the wrong instrument.
+>
+> **Nobody has heard any of them but a synthesizer.** See §11 item 2.
+>
+> **Four things need Joshua and were not started:**
+> 1. **`Images/Avatar designs/eyes_female_brown.png.png`** is 1024×1024 where every
+>    other plate is 1200×1200 (and has a doubled `.png`). The build SKIPS it with a
+>    named warning rather than ship it crooked. Needs a re-export at 1200×1200 with
+>    the character in the same position. The frame is NOT the registration reference
+>    — it is stripped and identical on every plate. Canvas size and character
+>    position are the whole contract.
+> 2. **Currency PRICE anchors** ("a loaf of bread costs about 45 córdobas") — the
+>    part of his spec that teaches orders of magnitude and never shipped. The culture
+>    card already carries currency name/code/symbol and a dated exchange-rate anchor
+>    for 55 of 106 countries. Every figure needs a source under rule 2, so the
+>    question is whether he wants all 55 or a handful first to see how it reads.
+> 3. **Trinidad and Tobago's map.** The plate is already at the source raster's
+>    native 60 px/degree, so it cannot be sharpened. The problem is framing: every
+>    small country is floored at the same 7.3° box by `fitBox`'s minimum, so Trinidad
+>    fills 25% of its own frame (Malta 6%, Jamaica 29%, Hungary 83%). Filling the
+>    frame means more magnification and more blur. His call, and rule 5 pulls one way
+>    while the blur pulls the other.
+> 4. **Mr O's "checkered background"** could not be reproduced: all ten shipped images
+>    have genuine alpha, live and local are byte-identical, and no UI asset contains a
+>    checkerboard. BUT four of the ORIGINALS in `Images/Mr O complete/` (considering,
+>    explaining, sharing, teaching) are fully opaque with a white-and-grey
+>    checkerboard baked in, which is almost certainly what he is looking at. Ask which
+>    SCREEN he sees it on before touching files that measure correct.
+
 > ### ⚠ 2026-07-28: the speech voice, and what would actually fix it
 >
 > Joshua: *"The voice pronouncing some of the countries is the old school atrocious
@@ -248,7 +287,7 @@ This document is long enough that things get lost in it. Every section, in order
 | [8](#8-optionally-package-a-desktop-app) | Desktop app | recommended against |
 | [9](#9-travel-modes--built-2026-07-15-balance-wants-a-playtest) | Travel modes | built; balance wants Joshua's feel |
 | [10](#10-rewards-progression-and-the-dog-brainstorm-2026-07-19) | **Rewards, progression, and the dog** | brainstorm — decisions needed |
-| [11](#11-the-music-honestly-2026-07-19) | **The music, honestly** | the tune-by-tune count and what more would cost |
+| [11](#11-the-music-honestly-2026-07-19-recounted-2026-07-28) | **The music, honestly** | recounted 2026-07-28 — 11 regional beds became 43; `caribbean` is the last one left at six |
 
 ### THE THREE THINGS TO DO NEXT (start here)
 
@@ -858,7 +897,51 @@ Ideas, best first:
 > shipped. **His name is still unwritten** — that's Joshua's call, and naming him is
 > what would turn him from set-dressing into a character.
 
-## 11. The music, honestly (2026-07-19)
+## 11. The music, honestly (2026-07-19, recounted 2026-07-28)
+
+> ### ⚠ 2026-07-28 — the numbers below are stale. These are the current ones.
+>
+> The section as written counts how many countries have their OWN MELODY, and by
+> that measure nothing has changed: still six, still Germany, France, the USA, the
+> UK, Mexico and Australia, and everything under "cost of doing dozens properly" is
+> still true and still the reason. **Read it for that. Ignore its second number.**
+>
+> What changed is the shape of the other 102. The complaint was never really "not
+> enough countries have their own tune" — it was Joshua saying *the Islamic
+> countries all sound the same*, which was a complaint about how much of the world
+> one bed was carrying. That is a different problem with a much cheaper fix, because
+> a regional bed is an ORIGINAL phrase and can be written freely, where a national
+> melody needs notation in hand (rule 2).
+>
+> | | 2026-07-19 | now |
+> |---|---|---|
+> | Countries with their own real melody | 6 | 6 |
+> | Countries on a regional bed | 100 | 102 |
+> | **How many distinct beds those are spread across** | **11** | **43** |
+> | Biggest single bed | 19 countries | **6** |
+> | Countries on the flavourless `generic` bed | 18 | **0** |
+>
+> Three passes got there, all the same shape: 2026-07-20 (Africa, the Middle East
+> and `generic` broken up), 2026-07-28 morning (the maqam split — four Arab beds
+> plus Turkey, after Joshua's report), 2026-07-28 evening (the four beds still at
+> 7–8, plus the Mediterranean). The median bed now carries **two** countries.
+>
+> **What is left of this, in order:**
+> 1. **`caribbean` is the last bed at six** — Cuba, Jamaica, Haiti, Trinidad, Belize
+>    and Guyana on one steel drum, when a Cuban tres, a Haitian méringue and a
+>    Garifuna punta are four traditions and three languages. `test/tunes.test.js`
+>    holds the ceiling at 6 and names this as the reason; tighten it to 4 when it's
+>    done. Five beds are at five (`eastafrica`, `southasia`, `slavic`,
+>    `southernafrica`, `centralamerica`, `nordic`) and none is as indefensible.
+> 2. **Nobody has heard these but a synthesizer.** Every bed is checked by test for
+>    note grammar, playable range, length, timbre and how many countries it carries
+>    — and none of that says whether it sounds good. That is Joshua's ear and only
+>    his. `scripts/` has no renderer; a session that wants to hand him something to
+>    listen to can render the tunes offline (naive oscillators + an RBJ lowpass
+>    matching `TIMBRE` in src/audio.js gets close enough to compare beds).
+> 3. **The six real melodies are still the ceiling on authenticity**, and the section
+>    below is still the honest account of what more would cost.
+
 
 Joshua asked which countries have their own tune, and what it would cost to write
 "dozens" more. The numbers, counted by resolving every country in `locations.js`
