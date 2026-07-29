@@ -199,10 +199,195 @@ export const TUNES = {
     ["E4",0.5],["F4",0.5],["G4",1],["A4",0.5],["G4",0.5],["F4",1],["E4",1],["D4",0.5],["E4",0.5],["F4",1],["E4",2],["r",1],
     ["A4",0.5],["B4",0.5],["C5",1],["B4",0.5],["A4",0.5],["G4",1],["F4",1],["G4",0.5],["F4",0.5],["E4",1],["D4",1],["E4",3],
   ] },
-  // Pacific / island — mellow ukulele major.
+  // The Pacific STRING BAND — the small high-strung ukulele and guitar line-up that
+  // is the everyday popular music of Tahiti and of Fiji alike, and the continent's
+  // fallback bed. It used to carry all eight of the game's Oceanian countries; the
+  // three beds below took the Melanesian, Micronesian and Māori ones off it.
   tropical: { timbre: "uke", spb: 0.3, seq: [
     ["C4",0.5],["E4",0.5],["G4",1],["A4",1],["G4",1],["E4",1],["F4",0.5],["A4",0.5],["G4",1.5],["C4",1],["E4",2],["r",1],
     ["G4",0.5],["A4",0.5],["C5",1],["A4",1],["G4",1],["E4",1],["D4",0.5],["F4",0.5],["E4",1.5],["G4",1],["C4",2.5],
+  ] },
+  // ---- The four crowded beds, split (added 2026-07-28) -----------------------
+  //
+  // The same complaint Joshua made about the Islamic countries, applied to the four
+  // beds that were left carrying seven or eight countries each:
+  //
+  //   southeastasia  8  Thailand Cambodia Myanmar Vietnam Malaysia Singapore Indonesia Philippines
+  //   tropical       8  New Zealand French Polynesia Fiji Vanuatu PNG Solomon Is. New Caledonia Micronesia
+  //   latin          7  Brazil Argentina Uruguay Paraguay Colombia Venezuela Guyana
+  //   westafrica     7  Mali Senegal Ghana Côte d'Ivoire Nigeria Benin Cameroon
+  //
+  // Each of those is not a musical region, it is a shape on a map. A gamelan and a
+  // Filipino rondalla have nothing in common; a Māori waiata and a Tahitian string
+  // band have nothing in common; a tango and a joropo have nothing in common. A child
+  // who flies Bangkok → Manila → Jakarta and hears one tune three times learns that
+  // "over there" is one place, which is the opposite of what this game is for.
+  //
+  // The same discipline as the maqam block above: every bed names a real tradition and
+  // a real instrument, and the SCALE and RHYTHM it is written in are checkable facts —
+  // the kundiman really does turn from minor to its parallel major, the standard bell
+  // of Ewe and Yoruba drumming really is the seven-stroke 12/8 pattern, tango really is
+  // built on the habanera cell. What is NOT claimed is that any of these is a
+  // particular song. They are original phrases evoking a mode and a timbre, which is
+  // exactly why they can be written here at all: a real national melody would need
+  // notation in hand (rule 2), and this project has already declined to reconstruct
+  // two of those from memory.
+  //
+  // Two caveats worth keeping, both the same shape as the maqam quarter-tone one:
+  // Thai and Khmer classical tuning is seven near-EQUIDISTANT steps to the octave,
+  // which 12-TET cannot play at all, and traditional Māori waiata move through
+  // intervals smaller than a semitone. Both are approximations of a colour.
+
+  // Mainland South-East Asia — Thailand, Cambodia, Myanmar: the three Theravada court
+  // ensembles (Thai piphat, Khmer pinpeat, Burmese hsaing waing), all built around a
+  // tuned gong-circle and a hardwood xylophone (ranat ek / roneat ek / pattala). The
+  // ranat's voice is continuous rapid motion in a high register, which is what this
+  // is: an unbroken running line, no rests until the phrase ends.
+  piphat: { timbre: "kalimba", spb: 0.18, seq: [
+    ["C5",1],["D5",1],["F5",1],["D5",1],["C5",1],["A4",1],["G4",1],["A4",1],
+    ["C5",1],["A4",1],["G4",1],["F4",1],["G4",1],["A4",1],["C5",2],["r",1],
+    ["F5",1],["D5",1],["C5",1],["D5",1],["F5",1],["G5",1],["F5",1],["D5",1],
+    ["C5",1],["A4",1],["G4",1],["A4",1],["C5",1],["A4",1],["G4",1],["F4",2],
+  ] },
+  // Vietnam — the one mainland South-East Asian country whose court music (nhã nhạc)
+  // was modelled on Chinese practice rather than on the Indianized ensembles above,
+  // and whose instruments are Sinitic: the đàn tranh zither and the đàn bầu monochord.
+  // A zither timbre, and a MINOR pentatonic (A C D E G) where the East Asian bed is
+  // major, so Vietnam and China don't collapse into each other either. The 0.5-beat
+  // neighbours stand in for the pitch-bending ornament the real instruments live on
+  // and a fixed-pitch synth cannot do.
+  vietnam: { timbre: "koto", spb: 0.3, seq: [
+    ["A4",1],["C5",0.5],["D5",1.5],["C5",0.5],["A4",1.5],["G4",1],["A4",2],["r",0.5],
+    ["E5",1],["D5",0.5],["C5",1.5],["D5",1],["C5",0.5],["A4",1.5],["G4",1],["E4",1],["G4",1],["A4",2.5],
+  ] },
+  // The Malay world — Malaysia and Singapore. The thread is the GAMBUS, a lute
+  // descended from the Arab oud and carried into the archipelago by Hadhrami traders,
+  // and the zapin it accompanies: a brisk duple dance. Written on a major scale with a
+  // flattened seventh, which keeps it clearly apart from the four Arab beds above
+  // (Hijaz, Kurd, Nahawand and Saba are all minor-coloured) while owning the lineage.
+  // Singapore's population is majority Chinese; Malay is still its national language
+  // and the Malay world is the one both countries sit in, which is what this evokes.
+  nusantara: { timbre: "oud", spb: 0.22, seq: [
+    ["G4",0.5],["A4",0.5],["B4",1],["D5",1],["B4",0.5],["A4",0.5],["G4",1],["F4",1],["G4",1.5],["r",0.5],
+    ["D5",0.5],["E5",0.5],["D5",1],["C5",1],["B4",0.5],["C5",0.5],["D5",1],["B4",1],
+    ["A4",0.5],["G4",0.5],["F4",1],["G4",2],
+    ["A4",1],["G4",1],["F4",1],["G4",2.5],
+  ] },
+  // The Philippines — the RONDALLA, the plucked-string ensemble (bandurria, laúd,
+  // octavina, guitar) the country inherited from three centuries of Spanish rule, and
+  // with it European harmony rather than any of the modes around it.
+  //
+  // The structure is the KUNDIMAN's: the form's defining trait is that it opens in a
+  // minor key and turns into the parallel major. Phrase one is D minor, phrase two is
+  // D major on the same tonic. That turn is the tune's whole identity, and it is a
+  // documented fact about the form rather than a flourish.
+  rondalla: { timbre: "guitar", spb: 0.3, seq: [
+    ["D4",1],["F4",1],["A4",1],["Bb4",1.5],["A4",0.5],["G4",1],
+    ["F4",1],["E4",1],["D4",1],["E4",2],["r",0.5],
+    ["D5",1],["A4",1],["F#4",1],["G4",1.5],["A4",0.5],["B4",1],
+    ["A4",1],["F#4",1],["E4",1],["D4",2.5],
+  ] },
+  // Melanesia — Papua New Guinea, the Solomon Islands, Vanuatu, New Caledonia. The
+  // sound is interlocking BAMBOO: the 'Are'are panpipe ensembles of Malaita, the
+  // stamping tubes of Vanuatu and Kanak New Caledonia, the slit gongs everywhere. The
+  // technique is hocket — a melody nobody plays, assembled from parts that alternate —
+  // which is why this leaps between two registers instead of walking through one.
+  // Nothing like the long single breath of the Andean pan flute, on the same timbre.
+  melanesia: { timbre: "flute", spb: 0.26, seq: [
+    ["G4",0.5],["D5",0.5],["G4",0.5],["D5",0.5],["A4",0.5],["E5",0.5],["A4",0.5],["E5",0.5],
+    ["B4",0.5],["G5",0.5],["B4",0.5],["G5",0.5],["A4",1],["G4",1],["r",0.5],
+    ["D5",0.5],["G4",0.5],["E5",0.5],["A4",0.5],["D5",0.5],["G4",0.5],["B4",1],
+    ["A4",0.5],["G4",0.5],["E4",0.5],["G4",0.5],["A4",1],["G4",2],
+  ] },
+  // Micronesia — chant, not song. The traditional music of the Caroline Islands is
+  // overwhelmingly vocal: stick-dance and sitting chants that move through a very
+  // narrow band of pitch, with the rhythm carrying what melody does elsewhere. So this
+  // is four notes inside a fourth, held long, with air between them. Writing Micronesia
+  // a tune with a tune in it would be inventing one.
+  micronesia: { timbre: "flute", spb: 0.5, seq: [
+    ["D4",2],["E4",1],["D4",2],["r",1],["F4",2],["E4",1],["D4",2],
+    ["E4",1],["F4",1],["G4",2],["F4",1],["E4",2],["D4",3],
+  ] },
+  // Aotearoa New Zealand — Māori waiata. The documented trait is the narrow compass:
+  // a waiata moves around a central tone within a few steps, and its expression is in
+  // rhythm and in intervals finer than a semitone rather than in melodic range. This
+  // sits inside a sixth and keeps a firm tread. The reed stands in for the pūtōrino,
+  // whose voice is buzzy rather than airy — which is also what keeps it off the flute
+  // the Pacific beds above use.
+  maori: { timbre: "reed", spb: 0.32, seq: [
+    ["A4",1],["A4",0.5],["G4",0.5],["A4",1],["B4",1],["A4",1.5],["G4",0.5],["E4",2],["r",0.5],
+    ["G4",1],["A4",0.5],["B4",0.5],["A4",1],["G4",1],["E4",1],["G4",0.5],["A4",0.5],["G4",1],["E4",2.5],
+  ] },
+  // Brazil — nylon-string violão, and the 3+3+2 division of the bar that runs under
+  // samba, choro and everything descended from them. Every bar here is a dotted
+  // quarter, a dotted quarter and a quarter; minor, with the choro's chromatic
+  // passing note. Portuguese-speaking, and it should not sound like its neighbours.
+  brazil: { timbre: "guitar", spb: 0.24, seq: [
+    ["A4",1.5],["C5",1.5],["B4",1],["A4",1.5],["G4",1.5],["E4",1],
+    ["F4",1.5],["E4",1.5],["D4",1],["E4",2],["r",1],
+    ["E5",1.5],["D5",1.5],["C5",1],["B4",1.5],["A4",1.5],["G#4",1],
+    ["A4",1.5],["C5",1.5],["B4",1],["A4",3],
+  ] },
+  // The Río de la Plata — Argentina and Uruguay. TANGO, which UNESCO inscribed in 2009
+  // as the shared heritage of both countries, not of one. The bandoneón is a free-reed
+  // instrument, so the reed timbre is the literal one; the rhythm is the habanera cell
+  // (dotted quarter, eighth, quarter, quarter) that every bar here is built on; minor,
+  // with the raised seventh of the harmonic minor leaning on the cadence.
+  riodelaplata: { timbre: "reed", spb: 0.28, seq: [
+    ["A4",1.5],["A4",0.5],["C5",1],["B4",1],["A4",1.5],["G#4",0.5],["B4",1],["A4",1],
+    ["F4",1.5],["E4",0.5],["D4",1],["E4",1],["A4",2],["r",1],
+    ["E5",1.5],["E5",0.5],["D5",1],["C5",1],["B4",1.5],["A4",0.5],["G#4",1],["A4",1],
+    ["C5",1.5],["B4",0.5],["A4",1],["G#4",1],["A4",3],
+  ] },
+  // The Llanos — Colombia and Venezuela. The JOROPO of the Orinoco plains, which is
+  // the music of a region that straddles the border rather than of either country:
+  // arpa llanera (a diatonic harp), cuatro and maracas, fast, and built on the
+  // sesquiáltera — six beats heard first as 3+3 and then as 2+2+2, in the same phrase.
+  // Both groupings are written out below; that flip is the whole feel of it.
+  llanero: { timbre: "pluck", spb: 0.22, seq: [
+    ["D5",0.5],["C#5",0.5],["B4",0.5],["A4",0.5],["G4",0.5],["F#4",0.5],
+    ["E4",1],["G4",1],["B4",1],["A4",1.5],["r",0.5],
+    ["A4",0.5],["B4",0.5],["C#5",0.5],["D5",0.5],["E5",0.5],["F#5",0.5],
+    ["E5",1],["C#5",1],["A4",1],["B4",1],["A4",1],["G4",1],
+    ["F#4",1.5],["E4",0.5],["D4",2],
+  ] },
+  // Paraguay — the Paraguayan HARP and the polca paraguaya, which carries the same
+  // 6/8-against-3/4 cross-rhythm as the joropo above but at a lyrical walk instead of
+  // a gallop, and in a warmer major. The two are cousins; taken at the same speed on
+  // the same timbre they would be indistinguishable, which is why they aren't.
+  paraguay: { timbre: "music", spb: 0.3, seq: [
+    ["D5",1.5],["B4",0.5],["G4",1],["A4",1.5],["B4",0.5],["C5",1],
+    ["B4",1],["A4",1],["G4",1],["A4",2],["r",0.5],
+    ["B4",1.5],["D5",0.5],["G5",1],["F#5",1.5],["E5",0.5],["D5",1],
+    ["C5",1],["B4",1],["A4",1],["G4",3],
+  ] },
+  // The Gulf of Guinea — Ghana and Côte d'Ivoire. Balafon country: the gyil of northern
+  // Ghana, the Senufo and Baule balafons across the border, low and wooden where the
+  // Mande kora is high and bright.
+  //
+  // The rhythm is the thing. Every four bars below place their notes on the SEVEN-STROKE
+  // STANDARD BELL — the 12/8 timeline (onsets on eighths 1, 3, 5, 6, 8, 10, 12) that
+  // Ewe and Akan drumming is organised around, and that crossed the Atlantic to become
+  // the bembé bell. It is a documented pattern, not a feel, so it can be written down
+  // exactly: the durations here are that pattern and nothing else.
+  guineacoast: { timbre: "kalimba", spb: 0.2, seq: [
+    ["E3",1],["G3",1],["A3",0.5],["B3",1],["A3",1],["G3",1],["E3",0.5],
+    ["B3",1],["D4",1],["B3",0.5],["A3",1],["G3",1],["A3",1],["B3",0.5],
+    ["D4",1],["E4",1],["D4",0.5],["B3",1],["A3",1],["G3",1],["E3",0.5],
+    ["G3",1],["A3",1],["B3",0.5],["D4",1],["B3",1],["A3",1],["E3",0.5],
+  ] },
+  // Yorubaland — Nigeria and Benin, which is one culture across a colonial border
+  // (Yoruba in south-western Nigeria and south-eastern Benin, Fon beside it). The
+  // AGOGÔ is an iron double bell, so the bell timbre is the literal instrument, and
+  // the two alternating pitches at the top and tail are what a double bell does.
+  // Between them the line moves the way the dùndún talking drum does — in small steps
+  // around a repeated tone, because it is imitating the tones of speech, which is also
+  // why it stays inside a fifth.
+  yoruba: { timbre: "bell", spb: 0.28, seq: [
+    ["G4",0.5],["C5",0.5],["G4",0.5],["C5",1],["G4",0.5],["C5",0.5],["C5",0.5],["G4",1],["r",0.5],
+    ["A4",0.5],["A4",0.5],["C5",1],["A4",0.5],["G4",0.5],["A4",1],
+    ["C5",0.5],["D5",0.5],["C5",1],["A4",0.5],["G4",0.5],["A4",1.5],
+    ["G4",0.5],["C5",0.5],["G4",0.5],["C5",1],["A4",0.5],["G4",0.5],["A4",0.5],["G4",2],
   ] },
   // ---- Finer regional beds (added 2026-07-20) --------------------------------
   // Four buckets were doing far too much work: one "africa" bed covered nineteen
@@ -217,8 +402,14 @@ export const TUNES = {
   // what lets them be written freely, where a national melody would need notation
   // off a score (rule 2).
 
-  // West Africa — balafon/kora, bright major pentatonic with an off-beat lilt.
-  westafrica: { timbre: "kalimba", spb: 0.24, seq: [
+  // The Mande world — Mali and Senegal, and the kora/balafon of the jeli (griot)
+  // tradition that runs through Mali, Senegal, the Gambia and Guinea. Bright major
+  // pentatonic with an off-beat lilt.
+  //
+  // This bed used to be called `westafrica` and carried seven countries — the whole
+  // coast from Senegal to Cameroon. It now carries the two it actually describes; see
+  // the block below TUNES.tropical for the Gulf-of-Guinea beds that took the rest.
+  mande: { timbre: "kalimba", spb: 0.24, seq: [
     ["C5",0.5],["G4",0.5],["A4",0.5],["C5",0.5],["D5",1],["C5",0.5],["A4",0.5],["G4",1],
     ["A4",0.5],["C5",0.5],["D5",0.5],["E5",0.5],["D5",1],["C5",0.5],["A4",0.5],["G4",1.5],["r",0.5],
     ["G5",0.5],["E5",0.5],["D5",0.5],["C5",0.5],["A4",1],["G4",0.5],["A4",0.5],["C5",1],
@@ -348,9 +539,13 @@ export const COUNTRY_MOTIF = {
   // Asia don't sound remotely alike and shouldn't here either.
   "Japan": "japan",
   "China": "eastasia", "Taiwan": "eastasia", "South Korea": "eastasia",
-  "Vietnam": "southeastasia", "Thailand": "southeastasia", "Cambodia": "southeastasia",
-  "Myanmar": "southeastasia", "Malaysia": "southeastasia", "Singapore": "southeastasia",
-  "Indonesia": "southeastasia", "Philippines": "southeastasia",
+  // South-East Asia — one gamelan bed used to cover all eight of these. Five now.
+  // `southeastasia` IS the gamelan bed, so it keeps the country gamelan is from.
+  "Indonesia": "southeastasia",                                               // gamelan
+  "Thailand": "piphat", "Cambodia": "piphat", "Myanmar": "piphat",            // gong-circle + xylophone
+  "Vietnam": "vietnam",                                                       // zither, Sinitic sphere
+  "Malaysia": "nusantara", "Singapore": "nusantara",                          // gambus + zapin
+  "Philippines": "rondalla",                                                  // plucked strings, kundiman
   "Mongolia": "centralasia",
   // South Asia
   "India": "southasia", "Nepal": "southasia", "Pakistan": "southasia", "Sri Lanka": "southasia",
@@ -379,22 +574,47 @@ export const COUNTRY_MOTIF = {
   "Austria": "alpine", "Switzerland": "alpine",
   "Ireland": "celtic",
   "Netherlands": "alpine", "Belgium": "alpine",
-  // Africa — one bed for nineteen countries became four. Madagascar and DR Congo
-  // keep the original central/Indian-Ocean bed.
-  "Senegal": "westafrica", "Mali": "westafrica", "Ghana": "westafrica", "Nigeria": "westafrica",
-  "Benin": "westafrica", "Côte d'Ivoire": "westafrica", "Cameroon": "westafrica",
+  // Africa — one bed for nineteen countries became four in 2026-07, and six now. The
+  // old `westafrica` bed ran from Senegal to Cameroon, which is three musical worlds
+  // and one UN sub-region. Cameroon is Middle Africa in the UN geoscheme and a CEMAC
+  // member, and it goes to the central bed where it belongs; Madagascar and DR Congo
+  // were already there.
+  "Mali": "mande", "Senegal": "mande",                                        // kora/balafon, jeli
+  "Ghana": "guineacoast", "Côte d'Ivoire": "guineacoast",                     // gyil, the 12/8 bell
+  "Nigeria": "yoruba", "Benin": "yoruba",                                     // agogô, talking drum
+  "Cameroon": "africa",
   "Ethiopia": "eastafrica", "Kenya": "eastafrica", "Tanzania": "eastafrica",
   "Uganda": "eastafrica", "Rwanda": "eastafrica",
   "South Africa": "southernafrica", "Namibia": "southernafrica", "Botswana": "southernafrica",
   "Zimbabwe": "southernafrica", "Zambia": "southernafrica",
   // Andes
   "Peru": "andes", "Bolivia": "andes", "Ecuador": "andes", "Chile": "andes",
-  // Caribbean
+  // The rest of South America — the `latin` bed carried these seven and is now the
+  // continent's fallback only. Brazil is its own language and its own music; the tango
+  // belongs to two countries and the joropo to two others; Paraguay's harp is neither.
+  "Brazil": "brazil",                                                         // violão, 3+3+2
+  "Argentina": "riodelaplata", "Uruguay": "riodelaplata",                     // tango, habanera cell
+  "Colombia": "llanero", "Venezuela": "llanero",                              // joropo, arpa llanera
+  "Paraguay": "paraguay",                                                     // Paraguayan harp
+  // Caribbean. Guyana is on the South American mainland and in the Caribbean
+  // everywhere else that counts — English-speaking, CARICOM, and its music is
+  // calypso, soca and chutney. It was on the Latin bed, which fits it worst of all.
   "Cuba": "caribbean", "Jamaica": "caribbean", "Haiti": "caribbean", "Trinidad and Tobago": "caribbean",
-  "Belize": "caribbean",
+  "Belize": "caribbean", "Guyana": "caribbean",
   // Central America — marimba country, and nothing like the Caribbean steel drum.
   "Guatemala": "centralamerica", "Honduras": "centralamerica", "Nicaragua": "centralamerica",
   "Costa Rica": "centralamerica", "Panama": "centralamerica",
+  // Oceania — the continent fallback (`tropical`, the string band) was carrying all
+  // eight countries. The three cultural regions of the Pacific are not a judgement
+  // call, they are the standard division of it, and they do not sound alike.
+  "Papua New Guinea": "melanesia", "Solomon Is.": "melanesia",                // Melanesia
+  "Vanuatu": "melanesia", "New Caledonia": "melanesia",
+  "Micronesia": "micronesia",                                                 // Micronesia
+  "New Zealand": "maori",                                                     // Aotearoa
+  // French Polynesia and Fiji stay on the string band, which is genuinely the
+  // everyday music of both. Fiji is Melanesian by geography and long Polynesian by
+  // contact; the panpipe-and-stamping-tube bed above is the Solomons and Vanuatu, not
+  // Fiji, so putting it there to tidy the map would have been the wrong claim.
   // The ice. See the note on the `polar` bed.
   "Antarctica": "polar", "Greenland": "polar",
   // Canada gets its own paddling bed rather than the continent's fallback.

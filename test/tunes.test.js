@@ -85,11 +85,35 @@ describe("arrival tunes", () => {
     expect(key("Turkey")).not.toBe(key("Iran"));
   });
 
-  // The general version of Joshua's complaint. The ceiling is 8 rather than
-  // something tighter because FOUR motifs are still at 7-8 and are the same problem
-  // waiting to be done: southeastasia (8), tropical (8), latin (7), westafrica (7).
-  // This holds the line at today's worst so it cannot quietly get worse, and should
-  // be tightened as those are split.
+  // The four that were next, split 2026-07-28 for the same reason. Each row is the
+  // set of countries that shared ONE motif, and the number of motifs they must now
+  // span. Written out by name, like the block above, so that moving a country between
+  // beds is a decision someone has to make here rather than something that happens
+  // quietly.
+  it.each([
+    ["South-East Asia", ["Thailand", "Cambodia", "Myanmar", "Vietnam", "Malaysia",
+      "Singapore", "Indonesia", "Philippines"], 5],
+    ["Oceania", ["New Zealand", "French Polynesia", "Fiji", "Vanuatu",
+      "Papua New Guinea", "Solomon Is.", "New Caledonia", "Micronesia"], 4],
+    ["South America", ["Brazil", "Argentina", "Uruguay", "Paraguay", "Colombia",
+      "Venezuela", "Guyana"], 5],
+    ["West Africa", ["Mali", "Senegal", "Ghana", "Côte d'Ivoire", "Nigeria", "Benin",
+      "Cameroon"], 4],
+  ])("keeps %s spread across several motifs", (_region, countries, least) => {
+    const keys = new Set(countries.map((c) => {
+      const l = LOCATIONS.find((x) => x.country === c);
+      expect(l, `${c} is not in the game any more — update this list`).toBeTruthy();
+      return tuneKeyFor(c, l.continent);
+    }));
+    expect(keys.size, `these ${countries.length} share ${keys.size} motif(s): ${[...keys].join(", ")}`)
+      .toBeGreaterThanOrEqual(least);
+  });
+
+  // The general version of Joshua's complaint. The ceiling was 8 while four motifs
+  // were still at 7-8; those are split, and the two worst left are `mediterranean`
+  // (Italy, Greece, Spain, Portugal, Croatia, Malta) and `caribbean` — so it comes
+  // down to 6. Both are defensible groupings and neither is urgent, but a Greek
+  // bouzouki standing in for Portuguese fado is the next one of these to do.
   it("no single tune carries more of the world than today's worst", () => {
     const byTune = {};
     for (const country of new Set(LOCATIONS.map((l) => l.country))) {
@@ -97,8 +121,8 @@ describe("arrival tunes", () => {
       (byTune[key] = byTune[key] || []).push(country);
     }
     const hogs = Object.entries(byTune)
-      .filter(([, cs]) => cs.length > 8)
+      .filter(([, cs]) => cs.length > 6)
       .map(([k, cs]) => `${k}: ${cs.length} countries (${cs.join(", ")})`);
-    expect(hogs, `tunes carrying more than eight countries:\n  ${hogs.join("\n  ")}`).toEqual([]);
+    expect(hogs, `tunes carrying more than six countries:\n  ${hogs.join("\n  ")}`).toEqual([]);
   });
 });
