@@ -30,7 +30,7 @@ import { useModalFocus, ModalShell, OpenBook } from "./components/modal.jsx";
 // both jobs now belong to the avatar module (randomAvatar, AvatarControls). The
 // spec itself lives in src/avatar-spec.js, which is where the migration of
 // already-saved avatars onto the new art is tested.
-import { avatarFor, randomAvatar, Avatar, AvatarControls, AvatarEditor } from "./components/avatar.jsx";
+import { avatarFor, randomAvatar, Avatar, AvatarControls, AvatarTwoCol, AvatarEditor } from "./components/avatar.jsx";
 import { categoryCountries, categoryMissionOK as missionOK } from "./missions.js";
 import { robinson, eqToRobinson, robinsonToEq, ROBINSON_W, ROBINSON_H,
   flightLegs, legPath } from "./robinson.js";
@@ -8403,20 +8403,25 @@ function CreateTravelerModal({ onSubmit, onClose }) {
   return (
     <div ref={ref} role="dialog" aria-modal="true" aria-label="Create a new traveler"
       style={{ position: "fixed", inset: 0, background: "rgba(16,38,46,0.62)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 70, padding: 16 }}>
-      <div className="sbw-pop" style={{ background: PAPER, borderRadius: 12, padding: 20, width: "min(92vw, 420px)", maxHeight: "92vh", overflowY: "auto", textAlign: "center", border: `1px solid ${PAPER_LINE}` }}>
-        <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.2em", color: CORAL }}>🧳 CREATE NEW TRAVELER</div>
-        {/* Same size as the Customize preview — this is the same decision, made for
-            the first time, and it deserves at least as much room. */}
-        <div style={{ margin: "12px 0 4px" }}><Avatar spec={spec} size={230} fill title="Your new traveler" /></div>
-        <div style={{ margin: "6px 0 8px", textAlign: "left" }}>
-          <label htmlFor="sbw-newname" style={{ fontFamily: "ui-monospace, monospace", fontSize: 10, letterSpacing: "0.14em", color: INK, opacity: 0.6 }}>NAME</label>
-          <input id="sbw-newname" value={name} maxLength={20} autoFocus placeholder="Traveler's name"
-            onChange={(e) => { setName(e.target.value); setErr(""); }}
-            onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); begin(); } }}
-            style={{ display: "block", width: "100%", boxSizing: "border-box", marginTop: 4, padding: "9px 11px", borderRadius: 8, border: `1.5px solid ${PAPER_LINE}`, fontSize: 15, background: "#fff", color: INK }} />
-          {err && <p role="alert" style={{ color: CORAL, fontSize: 12, fontWeight: 700, margin: "5px 0 0" }}>{err}</p>}
-        </div>
-        <AvatarControls spec={spec} setSpec={setSpec} />
+      <div className="sbw-pop" style={{ background: PAPER, borderRadius: 12, padding: 20, width: "min(94vw, 620px)", maxHeight: "92vh", overflowY: "auto", textAlign: "center", border: `1px solid ${PAPER_LINE}` }}>
+        <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.2em", color: CORAL, marginBottom: 12 }}>🧳 CREATE NEW TRAVELER</div>
+        {/* Preview and name BESIDE the steppers, not above them — see AvatarTwoCol.
+            The preview is the same size as Customize's: this is the same decision,
+            made for the first time, and it deserves as much room. */}
+        <AvatarTwoCol
+          left={<>
+            <Avatar spec={spec} size={210} fill title="Your new traveler" />
+            <div style={{ marginTop: 10 }}>
+              <label htmlFor="sbw-newname" style={{ fontFamily: "ui-monospace, monospace", fontSize: 10, letterSpacing: "0.14em", color: INK, opacity: 0.6 }}>NAME</label>
+              <input id="sbw-newname" value={name} maxLength={20} autoFocus placeholder="Traveler's name"
+                onChange={(e) => { setName(e.target.value); setErr(""); }}
+                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); begin(); } }}
+                style={{ display: "block", width: "100%", boxSizing: "border-box", marginTop: 4, padding: "9px 11px", borderRadius: 8, border: `1.5px solid ${PAPER_LINE}`, fontSize: 15, background: "#fff", color: INK }} />
+              {err && <p role="alert" style={{ color: CORAL, fontSize: 12, fontWeight: 700, margin: "5px 0 0" }}>{err}</p>}
+            </div>
+          </>}
+          right={<AvatarControls spec={spec} setSpec={setSpec} />}
+        />
         <div style={{ display: "flex", gap: 8, justifyContent: "center", marginTop: 12, flexWrap: "wrap" }}>
           <button onClick={() => setSpec(randomAvatar())} style={{ padding: "9px 14px", borderRadius: 8, border: `1.5px solid ${INK}`, background: "transparent", color: INK, fontWeight: 700, cursor: "pointer" }}>🎲 Surprise me</button>
           <button onClick={onClose} style={{ padding: "9px 14px", borderRadius: 8, border: `1.5px solid ${INK}`, background: "transparent", color: INK, fontWeight: 700, cursor: "pointer" }}>Cancel</button>

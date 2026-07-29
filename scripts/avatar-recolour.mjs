@@ -122,14 +122,22 @@ export const PALETTE = { hair: HAIR, eyes: EYES, head: SKIN, outfit: GARMENT };
 const RULES = {
   // The whole plate. A hair plate holds nothing but hair.
   hair: { all: true },
-  // The iris only, and the band is measured rather than guessed. A lightness
-  // histogram of the saturated pixels in the delivered eyes comes back in three
-  // separated masses: 3,056 px below 0.10 (the lash line and the pupil), a broad
-  // even ramp from 0.11 to 0.55 (the iris, which is painted as a gradient — deep
-  // brown at the top, amber at the bottom), and 1,958 px above 0.80 (the sclera
-  // and the two highlights). A first attempt floored this at 0.24 and quietly
-  // left the iris's whole dark upper half brown, so a blue eye came out blue
-  // only along the bottom.
+  // The iris only. The band is wide on purpose and does almost no work: it exists
+  // to drop the near-black lash line at the bottom and the bright sclera at the
+  // top, and `compact` below identifies the iris by SHAPE. That division of labour
+  // is the second attempt, and the first one is worth recording because it failed
+  // silently and shipped.
+  //
+  // The first version measured the band off the MALE plate — where a histogram of
+  // the saturated pixels comes back in three clean masses, the iris being a broad
+  // ramp from 0.11 to 0.55 — and hard-coded 0.11-0.58. The female eyes are painted
+  // differently: heavier black lashes, and a much lighter, more muted rosy iris
+  // sitting at 0.55-0.70. That band caught 110 of her iris pixels against 2,787 of
+  // his, so all six of her "colours" came out the same brown, and nothing in the
+  // build or the tests said a word. See the dyed-fraction check in materialMask.
+  //
+  // The lesson generalises past eyes: a threshold tuned on one plate of a family
+  // is a guess about the others.
   //
   // `compact` then throws away everything that is not an iris. The eyelid CREASE
   // is painted in the same warm brown and passes every colour test there is, so
@@ -138,7 +146,7 @@ const RULES = {
   // 1,425 and 1,362 px at 0.43-0.48 of their bounding box, the creases as 231 and
   // 197 px at 0.06. Anything under a quarter of the biggest blob, or too thin to
   // be a disc, is not an iris.
-  eyes: { hueWindow: 40, satFloor: 0.40, lum: [0.11, 0.58], compact: { share: 0.25, fill: 0.25 } },
+  eyes: { hueWindow: 45, satFloor: 0.38, lum: [0.10, 0.78], compact: { share: 0.25, fill: 0.25 }, minDyed: 0.05 },
   // The whole head, ink included. See the SKIN note at the top of the file.
   head: { all: true },
   // The declared garment. The window is wide enough to hold a dyed cloth's own
@@ -235,7 +243,28 @@ export function materialMask(part, colourWord, raw, w, h) {
   }
   if (!hs.length) return null;
   if (rule.compact) keepCompactBlobs(mask, w, h, rule.compact);
-  return { mask, h: medianHueDeg(hs), s: median(ss), l: median(ls), count: hs.length, total: n };
+
+  // How much of the DRAWING this mask dyes. Not of the canvas — the plates are
+  // mostly empty square, so a fraction of the canvas says nothing.
+  //
+  // This check exists because the eyes shipped wrong once and nothing noticed: a
+  // lightness band tuned on the male plate caught 110 px of the female iris
+  // against 2,787 of his, so all six of her colours rendered identically and the
+  // build printed a tidy "✓". A mask that dyes almost none of a plate is not a
+  // subtle colour choice, it is a mask that missed, and it should say so.
+  let opaque = 0, dyed = 0;
+  for (let i = 0; i < n; i++) {
+    if (raw[i * 4 + 3] < 250) continue;
+    opaque++;
+    if (mask[i] > 0.5) dyed++;
+  }
+  const fraction = opaque ? dyed / opaque : 0;
+  if (rule.minDyed && fraction < rule.minDyed) {
+    return { mask, h: medianHueDeg(hs), s: median(ss), l: median(ls), count: hs.length, total: n,
+             tooSmall: { fraction, dyed, opaque, want: rule.minDyed } };
+  }
+  return { mask, h: medianHueDeg(hs), s: median(ss), l: median(ls), count: hs.length, total: n,
+           fraction, dyed, opaque };
 }
 
 // How much of the source's own variation survives. Hue is damped hard: real

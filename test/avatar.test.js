@@ -420,3 +420,68 @@ describe("stepping style and colour apart", () => {
     expect(PARTS.hair[restyled.hair].colour).toBe("red");
   });
 });
+
+// ===========================================================================
+// Does a colour option actually look like a different colour?
+//
+// This exists because "female eyes can't change colour" was true and shipped.
+// A lightness band in the recolour was measured off the MALE eye plate — where
+// the iris is a saturated amber-brown at lightness 0.11-0.55 — and hard-coded.
+// The female eyes are painted differently: heavier lashes, and a lighter, more
+// muted rosy iris at 0.55-0.70. The band caught 110 of her iris pixels against
+// 2,787 of his, so all six of her "colours" rendered the same brown.
+//
+// Nothing failed. The generator printed a tick for every plate, the plates all
+// existed, the manifest listed six colours, every other test passed, and the
+// only symptom was a child pressing an arrow and seeing nothing happen.
+//
+// So: within one part, one sex and one style, the swatches must be far enough
+// apart to be different colours. The swatch is measured off the built plate at
+// build time, which makes this a check on the ART rather than on the palette I
+// asked for — the two disagreeing is exactly the failure.
+// ===========================================================================
+describe("every colour option is visibly a different colour", () => {
+  // Redmean, the same cheap perceptual distance the legacy migration uses.
+  const dist = (a, b) => {
+    const [r1, g1, b1] = [1, 3, 5].map((i) => parseInt(a.slice(i, i + 2), 16));
+    const [r2, g2, b2] = [1, 3, 5].map((i) => parseInt(b.slice(i, i + 2), 16));
+    const rm = (r1 + r2) / 2, dr = r1 - r2, dg = g1 - g2, db = b1 - b2;
+    return Math.sqrt((2 + rm / 256) * dr * dr + 4 * dg * dg + (2 + (255 - rm) / 256) * db * db);
+  };
+  // Two plates a child is told are different colours should not be within this of
+  // each other. The identical female eyes were 3-6 apart; the closest real pair in
+  // the shipped set is comfortably above it.
+  const MIN_APART = 30;
+
+  it("keeps the colours of one style apart from each other", () => {
+    const tooClose = [];
+    for (const part of PICKABLE) {
+      const groups = {};
+      for (const o of PARTS[part]) ((groups[`${o.sex}/${o.variant}`] ??= [])).push(o);
+      for (const [group, opts] of Object.entries(groups)) {
+        for (let i = 0; i < opts.length; i++) {
+          for (let j = i + 1; j < opts.length; j++) {
+            const d = dist(opts[i].swatch, opts[j].swatch);
+            if (d < MIN_APART)
+              tooClose.push(`${part} ${group}: ${opts[i].colour} ${opts[i].swatch} vs ${opts[j].colour} ${opts[j].swatch} (${d.toFixed(0)} apart)`);
+          }
+        }
+      }
+    }
+    expect(tooClose, `these render as the same colour — the recolour mask missed:\n  ${tooClose.join("\n  ")}`).toEqual([]);
+  });
+
+  // The same failure seen from the other side: if a mask misses, every plate of
+  // that part collapses onto one appearance, so the count of DISTINCT swatches
+  // drops below the count of colours offered.
+  it("offers as many distinct appearances as it offers colours", () => {
+    for (const part of PICKABLE) {
+      for (const sex of [...new Set(PARTS[part].map((o) => o.sex))]) {
+        const opts = PARTS[part].filter((o) => o.sex === sex && o.variant === PARTS[part].find((x) => x.sex === sex).variant);
+        const colours = new Set(opts.map((o) => o.colour)).size;
+        const looks = new Set(opts.map((o) => o.swatch)).size;
+        expect(looks, `${part}/${sex} offers ${colours} colours but only ${looks} appearances`).toBe(colours);
+      }
+    }
+  });
+});

@@ -174,26 +174,25 @@ const round4 = (box) => box && Object.fromEntries(Object.entries(box).map(([k, v
 // the saturation — measured on saturation alone, a red jacket resolves to its
 // darkest shadow fold (#5c0f0a) and an eye to its pupil, because a very dark
 // pixel is technically very saturated.
-const COLOURFUL = { eyes: true, outfit: true };
-const LIT = [0.25, 0.75]; // lightness band a nameable colour lives in
-const TOP_SAT = 0.6;      // keep the most saturated 40% inside that band
-
-async function swatchOf(part, webp) {
-  const { data, info } = await sharp(webp).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+// Measured over the pixels the recolour actually DYES, which is the mask it just
+// used. Before this it guessed — keep the mid-lit, most-saturated 40% of the whole
+// plate — and the guess was wrong for outfit 5, where the dyed garment is a
+// T-shirt under a blue denim jacket that is 45% of the painting. Its swatch read
+// as denim whatever colour the shirt was, so its "blue" and "purple" landed 25
+// apart on a scale where everything else is 60+, and a legacy avatar migrating by
+// colour could be handed that plate in an arbitrary shirt.
+//
+// There is no heuristic to tune here any more: the mask is the answer to "which
+// pixels are the thing being chosen", and it is the same answer the recolour used.
+function swatchOfMasked(raw, mask, w, h) {
   const px = [];
-  for (let i = 0; i < info.width * info.height; i++) {
-    if (data[i * 4 + 3] < 250) continue;
-    const r = data[i * 4], g = data[i * 4 + 1], b = data[i * 4 + 2];
-    const [, s, l] = rgb2hsl(r, g, b);
-    if (COLOURFUL[part] && (l < LIT[0] || l > LIT[1])) continue;
-    px.push({ r, g, b, s });
+  for (let i = 0; i < w * h; i++) {
+    if (raw[i * 4 + 3] < 250) continue;
+    if (mask && mask[i] <= 0.5) continue;
+    px.push({ r: raw[i * 4], g: raw[i * 4 + 1], b: raw[i * 4 + 2] });
   }
   if (!px.length) return null;
-  let keep = px;
-  if (COLOURFUL[part]) {
-    keep = px.slice().sort((a, b) => a.s - b.s).slice(Math.floor(px.length * TOP_SAT));
-  }
-  const mid = (c) => keep.map((p) => p[c]).sort((a, b) => a - b)[keep.length >> 1];
+  const mid = (c) => px.map((p) => p[c]).sort((a, b) => a - b)[px.length >> 1];
   return "#" + [mid("r"), mid("g"), mid("b")].map((v) => v.toString(16).padStart(2, "0")).join("");
 }
 
@@ -295,6 +294,16 @@ for (const file of files) {
       console.warn(`  ! ${file}: nothing on this plate is "${spec.colour}" — shipping it as delivered, uncoloured.`);
       console.warn(`    The colour word in the filename names the garment that carries the colour;`);
       console.warn(`    if the art changed, the word has to change with it.`);
+    } else if (found.tooSmall) {
+      // A mask this small didn't find the material — it found a corner of it. Left
+      // alone this produces N plates that are all the same colour and a build log
+      // full of ticks, which is exactly how the female eyes shipped identical.
+      const { fraction, dyed, opaque, want } = found.tooSmall;
+      console.warn(`  ! ${file}: the "${spec.colour}" mask covers only ${(fraction * 100).toFixed(1)}% of the drawing`);
+      console.warn(`    (${dyed} of ${opaque} opaque px, expected at least ${(want * 100).toFixed(0)}%). Every colour of this`);
+      console.warn(`    plate would come out nearly identical, so it ships as delivered instead.`);
+      console.warn(`    The thresholds in RULES.${spec.part} (scripts/avatar-recolour.mjs) do not fit this painting.`);
+      found = null;
     }
   }
 
@@ -314,7 +323,8 @@ for (const file of files) {
     // `tone` and `srcFile` are build-time bookkeeping (the brow pass needs the
     // hair's target colour and the delivered head's filename); stripManifest
     // drops them before anything is written.
-    layers.push({ ...one, file: name, label: title(colour), swatch: await swatchOf(spec.part, out),
+    layers.push({ ...one, file: name, label: title(colour),
+                  swatch: swatchOfMasked(raw, found?.mask, CANVAS, CANVAS),
                   tone, srcFile: file });
     bytesOut += out.length;
     wrote += out.length;

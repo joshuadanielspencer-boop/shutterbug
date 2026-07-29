@@ -125,6 +125,26 @@ function AvatarControls({ spec, setSpec }) {
   );
 }
 
+// Preview and name on the LEFT, every stepper on the RIGHT.
+//
+// They used to be stacked, which worked while there were four steppers and stopped
+// working at seven: a 230px portrait, a name field, seven rows and three buttons
+// is taller than a laptop window, and the modal grew its own scrollbar. Splitting
+// the stack in two halves the height and costs nothing — the portrait is square
+// and the rows are short, so the two columns are close to the same height instead
+// of one long one.
+//
+// It wraps back to stacked below ~560px of modal, which is the iPad-portrait case;
+// there is no laptop that narrow and no reason to break it if there were.
+function AvatarTwoCol({ left, right }) {
+  return (
+    <div style={{ display: "flex", gap: 20, alignItems: "flex-start", flexWrap: "wrap", textAlign: "left" }}>
+      <div style={{ flex: "1 1 210px", minWidth: 200, maxWidth: 250 }}>{left}</div>
+      <div style={{ flex: "1 1 260px", minWidth: 250 }}>{right}</div>
+    </div>
+  );
+}
+
 // The "Customize Traveler" modal: rename the traveler, restyle their avatar, or
 // remove them. Everything is a real button/field, so it is keyboard-operable.
 function AvatarEditor({ name, initial, onSave, onClose, onRename, onRemove }) {
@@ -144,31 +164,34 @@ function AvatarEditor({ name, initial, onSave, onClose, onRename, onRemove }) {
   return (
     <div ref={ref} role="dialog" aria-modal="true" aria-label={`Customize ${name}'s traveler`}
       style={{ position: "fixed", inset: 0, background: "rgba(16,38,46,0.62)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 70, padding: 16 }}>
-      <div className="sbw-pop" style={{ background: PAPER, borderRadius: 12, padding: 20, width: "min(92vw, 420px)", maxHeight: "92vh", overflowY: "auto", textAlign: "center", border: `1px solid ${PAPER_LINE}` }}>
-        <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.2em", color: CORAL }}>🧳 CUSTOMIZE TRAVELER</div>
-        {/* The preview is the point of this screen — a child is deciding what they
-            look like, and the steppers below only make sense if the thing they
-            change is big enough to read. Above FACE_BELOW, so this shows the whole
-            bust: the jacket is one of the four things being chosen. */}
-        <div style={{ margin: "12px 0 4px" }}><Avatar spec={spec} size={230} fill title={`${name}'s traveler`} /></div>
-        {/* Rename */}
-        {onRename && (
-          <div style={{ margin: "8px 0 4px", textAlign: "left" }}>
-            <label htmlFor="sbw-rename" style={{ fontFamily: "ui-monospace, monospace", fontSize: 10, letterSpacing: "0.14em", color: INK, opacity: 0.6 }}>NAME</label>
-            <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
-              <input id="sbw-rename" value={renameTo} maxLength={20}
-                onChange={(e) => { setRenameTo(e.target.value); setRenameErr(""); }}
-                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); doRename(); } }}
-                style={{ flex: 1, minWidth: 0, padding: "8px 10px", borderRadius: 8, border: `1.5px solid ${PAPER_LINE}`, fontSize: 14, background: "#fff", color: INK }} />
-              <button onClick={doRename} disabled={!renameTo.trim() || renameTo.trim() === name}
-                style={{ padding: "8px 14px", borderRadius: 8, border: `1.5px solid ${OCEAN}`, background: "transparent", color: OCEAN, fontWeight: 700, fontSize: 13, cursor: renameTo.trim() && renameTo.trim() !== name ? "pointer" : "default", opacity: renameTo.trim() && renameTo.trim() !== name ? 1 : 0.5 }}>
-                Rename
-              </button>
-            </div>
-            {renameErr && <p role="alert" style={{ color: CORAL, fontSize: 12, fontWeight: 700, margin: "5px 0 0" }}>{renameErr}</p>}
-          </div>
-        )}
-        <AvatarControls spec={spec} setSpec={setSpec} />
+      <div className="sbw-pop" style={{ background: PAPER, borderRadius: 12, padding: 20, width: "min(94vw, 620px)", maxHeight: "92vh", overflowY: "auto", textAlign: "center", border: `1px solid ${PAPER_LINE}` }}>
+        <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.2em", color: CORAL, marginBottom: 12 }}>🧳 CUSTOMIZE TRAVELER</div>
+        <AvatarTwoCol
+          left={<>
+            {/* The preview is the point of this screen — a child is deciding what
+                they look like, and the steppers only make sense if the thing they
+                change is big enough to read. Above FACE_BELOW, so this shows the
+                whole bust: the outfit is one of the things being chosen. */}
+            <Avatar spec={spec} size={210} fill title={`${name}'s traveler`} />
+            {onRename && (
+              <div style={{ marginTop: 10 }}>
+                <label htmlFor="sbw-rename" style={{ fontFamily: "ui-monospace, monospace", fontSize: 10, letterSpacing: "0.14em", color: INK, opacity: 0.6 }}>NAME</label>
+                <div style={{ display: "flex", gap: 6, marginTop: 4 }}>
+                  <input id="sbw-rename" value={renameTo} maxLength={20}
+                    onChange={(e) => { setRenameTo(e.target.value); setRenameErr(""); }}
+                    onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); doRename(); } }}
+                    style={{ flex: 1, minWidth: 0, padding: "8px 10px", borderRadius: 8, border: `1.5px solid ${PAPER_LINE}`, fontSize: 14, background: "#fff", color: INK }} />
+                  <button onClick={doRename} disabled={!renameTo.trim() || renameTo.trim() === name}
+                    style={{ padding: "8px 11px", borderRadius: 8, border: `1.5px solid ${OCEAN}`, background: "transparent", color: OCEAN, fontWeight: 700, fontSize: 13, cursor: renameTo.trim() && renameTo.trim() !== name ? "pointer" : "default", opacity: renameTo.trim() && renameTo.trim() !== name ? 1 : 0.5 }}>
+                    Rename
+                  </button>
+                </div>
+                {renameErr && <p role="alert" style={{ color: CORAL, fontSize: 12, fontWeight: 700, margin: "5px 0 0" }}>{renameErr}</p>}
+              </div>
+            )}
+          </>}
+          right={<AvatarControls spec={spec} setSpec={setSpec} />}
+        />
         <div style={{ display: "flex", gap: 8, justifyContent: "center", marginTop: 14, flexWrap: "wrap" }}>
           <button onClick={() => setSpec(randomAvatar())} style={{ padding: "9px 14px", borderRadius: 8, border: `1.5px solid ${INK}`, background: "transparent", color: INK, fontWeight: 700, cursor: "pointer" }}>🎲 Surprise me</button>
           <button onClick={() => onSave(spec)} style={{ padding: "9px 18px", borderRadius: 8, border: "none", background: GREEN, color: "#fff", fontWeight: 800, cursor: "pointer" }}>Save</button>
@@ -199,4 +222,4 @@ function AvatarEditor({ name, initial, onSave, onClose, onRename, onRemove }) {
 }
 
 export { AVATAR_ROWS, PARTS, defaultAvatar, avatarFor, randomAvatar, normalizeAvatar,
-  Avatar, AvatarControls, AvatarEditor };
+  Avatar, AvatarControls, AvatarTwoCol, AvatarEditor };

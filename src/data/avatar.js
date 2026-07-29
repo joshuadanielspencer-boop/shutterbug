@@ -56,7 +56,7 @@ export const PARTS = {
       "file": "outfit_1_red.webp",
       "colour": "red",
       "label": "Red",
-      "swatch": "#9f2b21",
+      "swatch": "#a42f27",
       "style": "outfit",
       "sex": "any",
       "variant": "1"
@@ -65,7 +65,7 @@ export const PARTS = {
       "file": "outfit_1_orange.webp",
       "colour": "orange",
       "label": "Orange",
-      "swatch": "#ab5a23",
+      "swatch": "#b5622b",
       "style": "outfit",
       "sex": "any",
       "variant": "1"
@@ -74,7 +74,7 @@ export const PARTS = {
       "file": "outfit_1_yellow.webp",
       "colour": "yellow",
       "label": "Yellow",
-      "swatch": "#b68d28",
+      "swatch": "#c19a31",
       "style": "outfit",
       "sex": "any",
       "variant": "1"
@@ -83,7 +83,7 @@ export const PARTS = {
       "file": "outfit_1_green.webp",
       "colour": "green",
       "label": "Green",
-      "swatch": "#2e794b",
+      "swatch": "#2d754b",
       "style": "outfit",
       "sex": "any",
       "variant": "1"
@@ -92,7 +92,7 @@ export const PARTS = {
       "file": "outfit_1_blue.webp",
       "colour": "blue",
       "label": "Blue",
-      "swatch": "#255890",
+      "swatch": "#295c98",
       "style": "outfit",
       "sex": "any",
       "variant": "1"
@@ -101,7 +101,7 @@ export const PARTS = {
       "file": "outfit_1_purple.webp",
       "colour": "purple",
       "label": "Purple",
-      "swatch": "#723c74",
+      "swatch": "#723e83",
       "style": "outfit",
       "sex": "any",
       "variant": "1"
@@ -110,7 +110,7 @@ export const PARTS = {
       "file": "outfit_1_pink.webp",
       "colour": "pink",
       "label": "Pink",
-      "swatch": "#a13a5f",
+      "swatch": "#af4472",
       "style": "outfit",
       "sex": "any",
       "variant": "1"
@@ -119,7 +119,7 @@ export const PARTS = {
       "file": "outfit_2_red.webp",
       "colour": "red",
       "label": "Red",
-      "swatch": "#a4281f",
+      "swatch": "#a53129",
       "style": "outfit",
       "sex": "any",
       "variant": "2"
@@ -128,7 +128,7 @@ export const PARTS = {
       "file": "outfit_2_orange.webp",
       "colour": "orange",
       "label": "Orange",
-      "swatch": "#b05a20",
+      "swatch": "#b5632d",
       "style": "outfit",
       "sex": "any",
       "variant": "2"
@@ -137,7 +137,7 @@ export const PARTS = {
       "file": "outfit_2_yellow.webp",
       "colour": "yellow",
       "label": "Yellow",
-      "swatch": "#be9326",
+      "swatch": "#c39937",
       "style": "outfit",
       "sex": "any",
       "variant": "2"
@@ -146,7 +146,7 @@ export const PARTS = {
       "file": "outfit_2_green.webp",
       "colour": "green",
       "label": "Green",
-      "swatch": "#308552",
+      "swatch": "#2f754c",
       "style": "outfit",
       "sex": "any",
       "variant": "2"
@@ -155,7 +155,7 @@ export const PARTS = {
       "file": "outfit_2_blue.webp",
       "colour": "blue",
       "label": "Blue",
-      "swatch": "#235993",
+      "swatch": "#2b5c98",
       "style": "outfit",
       "sex": "any",
       "variant": "2"
@@ -164,7 +164,7 @@ export const PARTS = {
       "file": "outfit_2_purple.webp",
       "colour": "purple",
       "label": "Purple",
-      "swatch": "#74397b",
+      "swatch": "#714184",
       "style": "outfit",
       "sex": "any",
       "variant": "2"
@@ -173,7 +173,7 @@ export const PARTS = {
       "file": "outfit_2_pink.webp",
       "colour": "pink",
       "label": "Pink",
-      "swatch": "#aa3664",
+      "swatch": "#b14973",
       "style": "outfit",
       "sex": "any",
       "variant": "2"
@@ -182,7 +182,7 @@ export const PARTS = {
       "file": "outfit_3_red.webp",
       "colour": "red",
       "label": "Red",
-      "swatch": "#9f2a21",
+      "swatch": "#a52f27",
       "style": "outfit",
       "sex": "any",
       "variant": "3"
@@ -191,7 +191,7 @@ export const PARTS = {
       "file": "outfit_3_orange.webp",
       "colour": "orange",
       "label": "Orange",
-      "swatch": "#a65620",
+      "swatch": "#b5622b",
       "style": "outfit",
       "sex": "any",
       "variant": "3"
@@ -200,7 +200,7 @@ export const PARTS = {
       "file": "outfit_3_yellow.webp",
       "colour": "yellow",
       "label": "Yellow",
-      "swatch": "#ac8522",
+      "swatch": "#c29a32",
       "style": "outfit",
       "sex": "any",
       "variant": "3"
@@ -209,7 +209,7 @@ export const PARTS = {
       "file": "outfit_3_green.webp",
       "colour": "green",
       "label": "Green",
-      "swatch": "#318150",
+      "swatch": "#2d764b",
       "style": "outfit",
       "sex": "any",
       "variant": "3"
@@ -218,7 +218,7 @@ export const PARTS = {
       "file": "outfit_3_blue.webp",
       "colour": "blue",
       "label": "Blue",
-      "swatch": "#265a8f",
+      "swatch": "#295c99",
       "style": "outfit",
       "sex": "any",
       "variant": "3"
@@ -227,7 +227,7 @@ export const PARTS = {
       "file": "outfit_3_purple.webp",
       "colour": "purple",
       "label": "Purple",
-      "swatch": "#733c75",
+      "swatch": "#723e83",
       "style": "outfit",
       "sex": "any",
       "variant": "3"
@@ -236,7 +236,7 @@ export const PARTS = {
       "file": "outfit_3_pink.webp",
       "colour": "pink",
       "label": "Pink",
-      "swatch": "#9b3158",
+      "swatch": "#b04472",
       "style": "outfit",
       "sex": "any",
       "variant": "3"
@@ -245,7 +245,7 @@ export const PARTS = {
       "file": "outfit_4_red.webp",
       "colour": "red",
       "label": "Red",
-      "swatch": "#a22d24",
+      "swatch": "#a52f27",
       "style": "outfit",
       "sex": "any",
       "variant": "4"
@@ -254,7 +254,7 @@ export const PARTS = {
       "file": "outfit_4_orange.webp",
       "colour": "orange",
       "label": "Orange",
-      "swatch": "#b25f27",
+      "swatch": "#b6622b",
       "style": "outfit",
       "sex": "any",
       "variant": "4"
@@ -263,7 +263,7 @@ export const PARTS = {
       "file": "outfit_4_yellow.webp",
       "colour": "yellow",
       "label": "Yellow",
-      "swatch": "#be952d",
+      "swatch": "#c49a31",
       "style": "outfit",
       "sex": "any",
       "variant": "4"
@@ -272,7 +272,7 @@ export const PARTS = {
       "file": "outfit_4_green.webp",
       "colour": "green",
       "label": "Green",
-      "swatch": "#2b784a",
+      "swatch": "#2d764b",
       "style": "outfit",
       "sex": "any",
       "variant": "4"
@@ -281,7 +281,7 @@ export const PARTS = {
       "file": "outfit_4_blue.webp",
       "colour": "blue",
       "label": "Blue",
-      "swatch": "#265a93",
+      "swatch": "#295c99",
       "style": "outfit",
       "sex": "any",
       "variant": "4"
@@ -290,7 +290,7 @@ export const PARTS = {
       "file": "outfit_4_purple.webp",
       "colour": "purple",
       "label": "Purple",
-      "swatch": "#6f3b7d",
+      "swatch": "#723e84",
       "style": "outfit",
       "sex": "any",
       "variant": "4"
@@ -299,7 +299,7 @@ export const PARTS = {
       "file": "outfit_4_pink.webp",
       "colour": "pink",
       "label": "Pink",
-      "swatch": "#ac4068",
+      "swatch": "#b24472",
       "style": "outfit",
       "sex": "any",
       "variant": "4"
@@ -308,7 +308,7 @@ export const PARTS = {
       "file": "outfit_5_red.webp",
       "colour": "red",
       "label": "Red",
-      "swatch": "#3a4565",
+      "swatch": "#a52f27",
       "style": "outfit",
       "sex": "any",
       "variant": "5"
@@ -317,7 +317,7 @@ export const PARTS = {
       "file": "outfit_5_orange.webp",
       "colour": "orange",
       "label": "Orange",
-      "swatch": "#3e5f60",
+      "swatch": "#b5622b",
       "style": "outfit",
       "sex": "any",
       "variant": "5"
@@ -326,7 +326,7 @@ export const PARTS = {
       "file": "outfit_5_yellow.webp",
       "colour": "yellow",
       "label": "Yellow",
-      "swatch": "#716958",
+      "swatch": "#c39a31",
       "style": "outfit",
       "sex": "any",
       "variant": "5"
@@ -335,7 +335,7 @@ export const PARTS = {
       "file": "outfit_5_green.webp",
       "colour": "green",
       "label": "Green",
-      "swatch": "#2e6675",
+      "swatch": "#2d764b",
       "style": "outfit",
       "sex": "any",
       "variant": "5"
@@ -344,7 +344,7 @@ export const PARTS = {
       "file": "outfit_5_blue.webp",
       "colour": "blue",
       "label": "Blue",
-      "swatch": "#2a5c8f",
+      "swatch": "#295b99",
       "style": "outfit",
       "sex": "any",
       "variant": "5"
@@ -353,7 +353,7 @@ export const PARTS = {
       "file": "outfit_5_purple.webp",
       "colour": "purple",
       "label": "Purple",
-      "swatch": "#376490",
+      "swatch": "#723e83",
       "style": "outfit",
       "sex": "any",
       "variant": "5"
@@ -362,7 +362,7 @@ export const PARTS = {
       "file": "outfit_5_pink.webp",
       "colour": "pink",
       "label": "Pink",
-      "swatch": "#394a76",
+      "swatch": "#b14371",
       "style": "outfit",
       "sex": "any",
       "variant": "5"
@@ -373,7 +373,7 @@ export const PARTS = {
       "file": "head_2_deep.webp",
       "colour": "deep",
       "label": "Deep",
-      "swatch": "#583620",
+      "swatch": "#593621",
       "style": "head",
       "sex": "any",
       "variant": "2"
@@ -382,7 +382,7 @@ export const PARTS = {
       "file": "head_2_dark.webp",
       "colour": "dark",
       "label": "Dark",
-      "swatch": "#7f4f2d",
+      "swatch": "#804f2d",
       "style": "head",
       "sex": "any",
       "variant": "2"
@@ -391,7 +391,7 @@ export const PARTS = {
       "file": "head_2_brown.webp",
       "colour": "brown",
       "label": "Brown",
-      "swatch": "#ae6a38",
+      "swatch": "#af6a38",
       "style": "head",
       "sex": "any",
       "variant": "2"
@@ -400,7 +400,7 @@ export const PARTS = {
       "file": "head_2_medium.webp",
       "colour": "medium",
       "label": "Medium",
-      "swatch": "#d28a52",
+      "swatch": "#d38a51",
       "style": "head",
       "sex": "any",
       "variant": "2"
@@ -409,7 +409,7 @@ export const PARTS = {
       "file": "head_2_tan.webp",
       "colour": "tan",
       "label": "Tan",
-      "swatch": "#fbad6e",
+      "swatch": "#fcad6e",
       "style": "head",
       "sex": "any",
       "variant": "2"
@@ -418,7 +418,7 @@ export const PARTS = {
       "file": "head_2_light.webp",
       "colour": "light",
       "label": "Light",
-      "swatch": "#f8cfab",
+      "swatch": "#f8d0ab",
       "style": "head",
       "sex": "any",
       "variant": "2"
@@ -429,7 +429,7 @@ export const PARTS = {
       "file": "brow_black.webp",
       "colour": "black",
       "label": "Black",
-      "swatch": "#1c1814",
+      "swatch": "#1c1916",
       "style": "brow",
       "sex": "any",
       "variant": "1"
@@ -438,7 +438,7 @@ export const PARTS = {
       "file": "brow_dark-brown.webp",
       "colour": "dark brown",
       "label": "Dark Brown",
-      "swatch": "#412a1b",
+      "swatch": "#412b1d",
       "style": "brow",
       "sex": "any",
       "variant": "1"
@@ -447,7 +447,7 @@ export const PARTS = {
       "file": "brow_brown.webp",
       "colour": "brown",
       "label": "Brown",
-      "swatch": "#664122",
+      "swatch": "#654224",
       "style": "brow",
       "sex": "any",
       "variant": "1"
@@ -456,7 +456,7 @@ export const PARTS = {
       "file": "brow_light-brown.webp",
       "colour": "light brown",
       "label": "Light Brown",
-      "swatch": "#9a6832",
+      "swatch": "#986835",
       "style": "brow",
       "sex": "any",
       "variant": "1"
@@ -465,7 +465,7 @@ export const PARTS = {
       "file": "brow_blonde.webp",
       "colour": "blonde",
       "label": "Blonde",
-      "swatch": "#cf7e2e",
+      "swatch": "#d07e2c",
       "style": "brow",
       "sex": "any",
       "variant": "1"
@@ -474,7 +474,7 @@ export const PARTS = {
       "file": "brow_red.webp",
       "colour": "red",
       "label": "Red",
-      "swatch": "#8e3818",
+      "swatch": "#8c3918",
       "style": "brow",
       "sex": "any",
       "variant": "1"
@@ -485,7 +485,7 @@ export const PARTS = {
       "file": "eyes_female_1_brown.webp",
       "colour": "brown",
       "label": "Brown",
-      "swatch": "#c59373",
+      "swatch": "#d09875",
       "style": "eyes",
       "sex": "female",
       "variant": "1"
@@ -494,7 +494,7 @@ export const PARTS = {
       "file": "eyes_male_1_brown.webp",
       "colour": "brown",
       "label": "Brown",
-      "swatch": "#945326",
+      "swatch": "#753d1b",
       "style": "eyes",
       "sex": "male",
       "variant": "1"
@@ -503,7 +503,7 @@ export const PARTS = {
       "file": "eyes_female_1_blue.webp",
       "colour": "blue",
       "label": "Blue",
-      "swatch": "#c49272",
+      "swatch": "#2776af",
       "style": "eyes",
       "sex": "female",
       "variant": "1"
@@ -512,7 +512,7 @@ export const PARTS = {
       "file": "eyes_male_1_blue.webp",
       "colour": "blue",
       "label": "Blue",
-      "swatch": "#2f7eba",
+      "swatch": "#216494",
       "style": "eyes",
       "sex": "male",
       "variant": "1"
@@ -521,7 +521,7 @@ export const PARTS = {
       "file": "eyes_female_1_green.webp",
       "colour": "green",
       "label": "Green",
-      "swatch": "#c49272",
+      "swatch": "#29823f",
       "style": "eyes",
       "sex": "female",
       "variant": "1"
@@ -530,7 +530,7 @@ export const PARTS = {
       "file": "eyes_male_1_green.webp",
       "colour": "green",
       "label": "Green",
-      "swatch": "#34974c",
+      "swatch": "#226a34",
       "style": "eyes",
       "sex": "male",
       "variant": "1"
@@ -539,7 +539,7 @@ export const PARTS = {
       "file": "eyes_female_1_hazel.webp",
       "colour": "hazel",
       "label": "Hazel",
-      "swatch": "#c39170",
+      "swatch": "#828233",
       "style": "eyes",
       "sex": "female",
       "variant": "1"
@@ -548,7 +548,7 @@ export const PARTS = {
       "file": "eyes_male_1_hazel.webp",
       "colour": "hazel",
       "label": "Hazel",
-      "swatch": "#8d8e3d",
+      "swatch": "#6c6b2b",
       "style": "eyes",
       "sex": "male",
       "variant": "1"
@@ -557,7 +557,7 @@ export const PARTS = {
       "file": "eyes_female_1_amber.webp",
       "colour": "amber",
       "label": "Amber",
-      "swatch": "#c39270",
+      "swatch": "#e99f0e",
       "style": "eyes",
       "sex": "female",
       "variant": "1"
@@ -566,7 +566,7 @@ export const PARTS = {
       "file": "eyes_male_1_amber.webp",
       "colour": "amber",
       "label": "Amber",
-      "swatch": "#ecad27",
+      "swatch": "#c8880c",
       "style": "eyes",
       "sex": "male",
       "variant": "1"
@@ -575,7 +575,7 @@ export const PARTS = {
       "file": "eyes_female_1_grey.webp",
       "colour": "grey",
       "label": "Grey",
-      "swatch": "#c49172",
+      "swatch": "#5f7380",
       "style": "eyes",
       "sex": "female",
       "variant": "1"
@@ -584,7 +584,7 @@ export const PARTS = {
       "file": "eyes_male_1_grey.webp",
       "colour": "grey",
       "label": "Grey",
-      "swatch": "#a69289",
+      "swatch": "#52626d",
       "style": "eyes",
       "sex": "male",
       "variant": "1"
@@ -595,7 +595,7 @@ export const PARTS = {
       "file": "hair_male_1_black.webp",
       "colour": "black",
       "label": "Black",
-      "swatch": "#1f1a16",
+      "swatch": "#201d1b",
       "style": "hair",
       "sex": "male",
       "variant": "1"
@@ -604,7 +604,7 @@ export const PARTS = {
       "file": "hair_male_1_dark-brown.webp",
       "colour": "dark brown",
       "label": "Dark Brown",
-      "swatch": "#442d1c",
+      "swatch": "#46301f",
       "style": "hair",
       "sex": "male",
       "variant": "1"
@@ -613,7 +613,7 @@ export const PARTS = {
       "file": "hair_male_1_brown.webp",
       "colour": "brown",
       "label": "Brown",
-      "swatch": "#6a4423",
+      "swatch": "#6a4625",
       "style": "hair",
       "sex": "male",
       "variant": "1"
@@ -622,7 +622,7 @@ export const PARTS = {
       "file": "hair_male_1_light-brown.webp",
       "colour": "light brown",
       "label": "Light Brown",
-      "swatch": "#9e6d3a",
+      "swatch": "#9d6d3a",
       "style": "hair",
       "sex": "male",
       "variant": "1"
@@ -631,7 +631,7 @@ export const PARTS = {
       "file": "hair_male_1_blonde.webp",
       "colour": "blonde",
       "label": "Blonde",
-      "swatch": "#d17c36",
+      "swatch": "#d77b30",
       "style": "hair",
       "sex": "male",
       "variant": "1"
@@ -640,7 +640,7 @@ export const PARTS = {
       "file": "hair_male_1_red.webp",
       "colour": "red",
       "label": "Red",
-      "swatch": "#923b1a",
+      "swatch": "#923d19",
       "style": "hair",
       "sex": "male",
       "variant": "1"
@@ -649,7 +649,7 @@ export const PARTS = {
       "file": "hair_male_2_black.webp",
       "colour": "black",
       "label": "Black",
-      "swatch": "#1d1814",
+      "swatch": "#1d1a17",
       "style": "hair",
       "sex": "male",
       "variant": "2"
@@ -658,7 +658,7 @@ export const PARTS = {
       "file": "hair_male_2_dark-brown.webp",
       "colour": "dark brown",
       "label": "Dark Brown",
-      "swatch": "#432b1a",
+      "swatch": "#442c1c",
       "style": "hair",
       "sex": "male",
       "variant": "2"
@@ -667,7 +667,7 @@ export const PARTS = {
       "file": "hair_male_2_brown.webp",
       "colour": "brown",
       "label": "Brown",
-      "swatch": "#684221",
+      "swatch": "#684322",
       "style": "hair",
       "sex": "male",
       "variant": "2"
@@ -676,7 +676,7 @@ export const PARTS = {
       "file": "hair_male_2_light-brown.webp",
       "colour": "light brown",
       "label": "Light Brown",
-      "swatch": "#9d6931",
+      "swatch": "#9c6933",
       "style": "hair",
       "sex": "male",
       "variant": "2"
@@ -685,7 +685,7 @@ export const PARTS = {
       "file": "hair_male_2_blonde.webp",
       "colour": "blonde",
       "label": "Blonde",
-      "swatch": "#d48b3a",
+      "swatch": "#d68a37",
       "style": "hair",
       "sex": "male",
       "variant": "2"
@@ -694,7 +694,7 @@ export const PARTS = {
       "file": "hair_male_2_red.webp",
       "colour": "red",
       "label": "Red",
-      "swatch": "#903816",
+      "swatch": "#903916",
       "style": "hair",
       "sex": "male",
       "variant": "2"
@@ -703,7 +703,7 @@ export const PARTS = {
       "file": "hair_male_3_black.webp",
       "colour": "black",
       "label": "Black",
-      "swatch": "#1d1814",
+      "swatch": "#1e1916",
       "style": "hair",
       "sex": "male",
       "variant": "3"
@@ -712,7 +712,7 @@ export const PARTS = {
       "file": "hair_male_3_dark-brown.webp",
       "colour": "dark brown",
       "label": "Dark Brown",
-      "swatch": "#432a1a",
+      "swatch": "#442c1b",
       "style": "hair",
       "sex": "male",
       "variant": "3"
@@ -721,7 +721,7 @@ export const PARTS = {
       "file": "hair_male_3_brown.webp",
       "colour": "brown",
       "label": "Brown",
-      "swatch": "#694120",
+      "swatch": "#694221",
       "style": "hair",
       "sex": "male",
       "variant": "3"
@@ -730,7 +730,7 @@ export const PARTS = {
       "file": "hair_male_3_light-brown.webp",
       "colour": "light brown",
       "label": "Light Brown",
-      "swatch": "#9e692f",
+      "swatch": "#9d6930",
       "style": "hair",
       "sex": "male",
       "variant": "3"
@@ -739,7 +739,7 @@ export const PARTS = {
       "file": "hair_male_3_blonde.webp",
       "colour": "blonde",
       "label": "Blonde",
-      "swatch": "#d88e3b",
+      "swatch": "#d98d39",
       "style": "hair",
       "sex": "male",
       "variant": "3"
@@ -748,7 +748,7 @@ export const PARTS = {
       "file": "hair_male_3_red.webp",
       "colour": "red",
       "label": "Red",
-      "swatch": "#913715",
+      "swatch": "#913816",
       "style": "hair",
       "sex": "male",
       "variant": "3"
@@ -757,7 +757,7 @@ export const PARTS = {
       "file": "hair_male_4_black.webp",
       "colour": "black",
       "label": "Black",
-      "swatch": "#1f1914",
+      "swatch": "#201a15",
       "style": "hair",
       "sex": "male",
       "variant": "4"
@@ -766,7 +766,7 @@ export const PARTS = {
       "file": "hair_male_4_dark-brown.webp",
       "colour": "dark brown",
       "label": "Dark Brown",
-      "swatch": "#472b19",
+      "swatch": "#482b1a",
       "style": "hair",
       "sex": "male",
       "variant": "4"
@@ -775,7 +775,7 @@ export const PARTS = {
       "file": "hair_male_4_brown.webp",
       "colour": "brown",
       "label": "Brown",
-      "swatch": "#6d4220",
+      "swatch": "#6e4220",
       "style": "hair",
       "sex": "male",
       "variant": "4"
@@ -793,7 +793,7 @@ export const PARTS = {
       "file": "hair_male_4_blonde.webp",
       "colour": "blonde",
       "label": "Blonde",
-      "swatch": "#e09642",
+      "swatch": "#e19541",
       "style": "hair",
       "sex": "male",
       "variant": "4"
@@ -802,7 +802,7 @@ export const PARTS = {
       "file": "hair_male_4_red.webp",
       "colour": "red",
       "label": "Red",
-      "swatch": "#973516",
+      "swatch": "#973616",
       "style": "hair",
       "sex": "male",
       "variant": "4"
@@ -811,7 +811,7 @@ export const PARTS = {
       "file": "hair_female_a_black.webp",
       "colour": "black",
       "label": "Black",
-      "swatch": "#1c1814",
+      "swatch": "#1c1916",
       "style": "hair",
       "sex": "female",
       "variant": "a"
@@ -820,7 +820,7 @@ export const PARTS = {
       "file": "hair_female_a_dark-brown.webp",
       "colour": "dark brown",
       "label": "Dark Brown",
-      "swatch": "#412a1b",
+      "swatch": "#412b1d",
       "style": "hair",
       "sex": "female",
       "variant": "a"
@@ -829,7 +829,7 @@ export const PARTS = {
       "file": "hair_female_a_brown.webp",
       "colour": "brown",
       "label": "Brown",
-      "swatch": "#664122",
+      "swatch": "#654224",
       "style": "hair",
       "sex": "female",
       "variant": "a"
@@ -838,7 +838,7 @@ export const PARTS = {
       "file": "hair_female_a_light-brown.webp",
       "colour": "light brown",
       "label": "Light Brown",
-      "swatch": "#9a6832",
+      "swatch": "#986835",
       "style": "hair",
       "sex": "female",
       "variant": "a"
@@ -847,7 +847,7 @@ export const PARTS = {
       "file": "hair_female_a_blonde.webp",
       "colour": "blonde",
       "label": "Blonde",
-      "swatch": "#cf7e2e",
+      "swatch": "#d07e2c",
       "style": "hair",
       "sex": "female",
       "variant": "a"
@@ -856,7 +856,7 @@ export const PARTS = {
       "file": "hair_female_a_red.webp",
       "colour": "red",
       "label": "Red",
-      "swatch": "#8e3818",
+      "swatch": "#8c3918",
       "style": "hair",
       "sex": "female",
       "variant": "a"
@@ -865,7 +865,7 @@ export const PARTS = {
       "file": "hair_female_b_black.webp",
       "colour": "black",
       "label": "Black",
-      "swatch": "#1c1814",
+      "swatch": "#1c1916",
       "style": "hair",
       "sex": "female",
       "variant": "b"
@@ -874,7 +874,7 @@ export const PARTS = {
       "file": "hair_female_b_dark-brown.webp",
       "colour": "dark brown",
       "label": "Dark Brown",
-      "swatch": "#412a1c",
+      "swatch": "#422b1e",
       "style": "hair",
       "sex": "female",
       "variant": "b"
@@ -883,7 +883,7 @@ export const PARTS = {
       "file": "hair_female_b_brown.webp",
       "colour": "brown",
       "label": "Brown",
-      "swatch": "#674123",
+      "swatch": "#664225",
       "style": "hair",
       "sex": "female",
       "variant": "b"
@@ -892,7 +892,7 @@ export const PARTS = {
       "file": "hair_female_b_light-brown.webp",
       "colour": "light brown",
       "label": "Light Brown",
-      "swatch": "#9b6834",
+      "swatch": "#996836",
       "style": "hair",
       "sex": "female",
       "variant": "b"
@@ -901,7 +901,7 @@ export const PARTS = {
       "file": "hair_female_b_blonde.webp",
       "colour": "blonde",
       "label": "Blonde",
-      "swatch": "#ca7a29",
+      "swatch": "#cb7928",
       "style": "hair",
       "sex": "female",
       "variant": "b"
@@ -910,7 +910,7 @@ export const PARTS = {
       "file": "hair_female_b_red.webp",
       "colour": "red",
       "label": "Red",
-      "swatch": "#8f3819",
+      "swatch": "#8d3919",
       "style": "hair",
       "sex": "female",
       "variant": "b"
@@ -919,7 +919,7 @@ export const PARTS = {
       "file": "hair_female_c_black.webp",
       "colour": "black",
       "label": "Black",
-      "swatch": "#1a1714",
+      "swatch": "#1c1815",
       "style": "hair",
       "sex": "female",
       "variant": "c"
@@ -928,7 +928,7 @@ export const PARTS = {
       "file": "hair_female_c_dark-brown.webp",
       "colour": "dark brown",
       "label": "Dark Brown",
-      "swatch": "#412a1c",
+      "swatch": "#412b1d",
       "style": "hair",
       "sex": "female",
       "variant": "c"
@@ -937,7 +937,7 @@ export const PARTS = {
       "file": "hair_female_c_brown.webp",
       "colour": "brown",
       "label": "Brown",
-      "swatch": "#664124",
+      "swatch": "#664125",
       "style": "hair",
       "sex": "female",
       "variant": "c"
@@ -946,7 +946,7 @@ export const PARTS = {
       "file": "hair_female_c_light-brown.webp",
       "colour": "light brown",
       "label": "Light Brown",
-      "swatch": "#9a6834",
+      "swatch": "#9a6835",
       "style": "hair",
       "sex": "female",
       "variant": "c"
@@ -955,7 +955,7 @@ export const PARTS = {
       "file": "hair_female_c_blonde.webp",
       "colour": "blonde",
       "label": "Blonde",
-      "swatch": "#c17124",
+      "swatch": "#c27122",
       "style": "hair",
       "sex": "female",
       "variant": "c"
@@ -964,7 +964,7 @@ export const PARTS = {
       "file": "hair_female_c_red.webp",
       "colour": "red",
       "label": "Red",
-      "swatch": "#8e371a",
+      "swatch": "#8d381a",
       "style": "hair",
       "sex": "female",
       "variant": "c"
@@ -973,7 +973,7 @@ export const PARTS = {
       "file": "hair_female_d_black.webp",
       "colour": "black",
       "label": "Black",
-      "swatch": "#1c1814",
+      "swatch": "#1c1917",
       "style": "hair",
       "sex": "female",
       "variant": "d"
@@ -982,7 +982,7 @@ export const PARTS = {
       "file": "hair_female_d_dark-brown.webp",
       "colour": "dark brown",
       "label": "Dark Brown",
-      "swatch": "#412b1b",
+      "swatch": "#412c1d",
       "style": "hair",
       "sex": "female",
       "variant": "d"
@@ -991,7 +991,7 @@ export const PARTS = {
       "file": "hair_female_d_brown.webp",
       "colour": "brown",
       "label": "Brown",
-      "swatch": "#674122",
+      "swatch": "#654224",
       "style": "hair",
       "sex": "female",
       "variant": "d"
@@ -1000,7 +1000,7 @@ export const PARTS = {
       "file": "hair_female_d_light-brown.webp",
       "colour": "light brown",
       "label": "Light Brown",
-      "swatch": "#9a6832",
+      "swatch": "#976935",
       "style": "hair",
       "sex": "female",
       "variant": "d"
@@ -1009,7 +1009,7 @@ export const PARTS = {
       "file": "hair_female_d_blonde.webp",
       "colour": "blonde",
       "label": "Blonde",
-      "swatch": "#d38330",
+      "swatch": "#d4822e",
       "style": "hair",
       "sex": "female",
       "variant": "d"
@@ -1018,7 +1018,7 @@ export const PARTS = {
       "file": "hair_female_d_red.webp",
       "colour": "red",
       "label": "Red",
-      "swatch": "#8f3818",
+      "swatch": "#8c3a18",
       "style": "hair",
       "sex": "female",
       "variant": "d"

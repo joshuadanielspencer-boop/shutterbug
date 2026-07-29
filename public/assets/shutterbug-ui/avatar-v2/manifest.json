@@ -53,7 +53,7 @@
         "id": "outfit_1_red",
         "file": "outfit_1_red.webp",
         "label": "Red",
-        "swatch": "#9f2b21"
+        "swatch": "#a42f27"
       },
       {
         "part": "outfit",
@@ -64,7 +64,7 @@
         "id": "outfit_1_orange",
         "file": "outfit_1_orange.webp",
         "label": "Orange",
-        "swatch": "#ab5a23"
+        "swatch": "#b5622b"
       },
       {
         "part": "outfit",
@@ -75,7 +75,7 @@
         "id": "outfit_1_yellow",
         "file": "outfit_1_yellow.webp",
         "label": "Yellow",
-        "swatch": "#b68d28"
+        "swatch": "#c19a31"
       },
       {
         "part": "outfit",
@@ -86,7 +86,7 @@
         "id": "outfit_1_green",
         "file": "outfit_1_green.webp",
         "label": "Green",
-        "swatch": "#2e794b"
+        "swatch": "#2d754b"
       },
       {
         "part": "outfit",
@@ -97,7 +97,7 @@
         "id": "outfit_1_blue",
         "file": "outfit_1_blue.webp",
         "label": "Blue",
-        "swatch": "#255890"
+        "swatch": "#295c98"
       },
       {
         "part": "outfit",
@@ -108,7 +108,7 @@
         "id": "outfit_1_purple",
         "file": "outfit_1_purple.webp",
         "label": "Purple",
-        "swatch": "#723c74"
+        "swatch": "#723e83"
       },
       {
         "part": "outfit",
@@ -119,7 +119,7 @@
         "id": "outfit_1_pink",
         "file": "outfit_1_pink.webp",
         "label": "Pink",
-        "swatch": "#a13a5f"
+        "swatch": "#af4472"
       },
       {
         "part": "outfit",
@@ -130,7 +130,7 @@
         "id": "outfit_2_red",
         "file": "outfit_2_red.webp",
         "label": "Red",
-        "swatch": "#a4281f"
+        "swatch": "#a53129"
       },
       {
         "part": "outfit",
@@ -141,7 +141,7 @@
         "id": "outfit_2_orange",
         "file": "outfit_2_orange.webp",
         "label": "Orange",
-        "swatch": "#b05a20"
+        "swatch": "#b5632d"
       },
       {
         "part": "outfit",
@@ -152,7 +152,7 @@
         "id": "outfit_2_yellow",
         "file": "outfit_2_yellow.webp",
         "label": "Yellow",
-        "swatch": "#be9326"
+        "swatch": "#c39937"
       },
       {
         "part": "outfit",
@@ -163,7 +163,7 @@
         "id": "outfit_2_green",
         "file": "outfit_2_green.webp",
         "label": "Green",
-        "swatch": "#308552"
+        "swatch": "#2f754c"
       },
       {
         "part": "outfit",
@@ -174,7 +174,7 @@
         "id": "outfit_2_blue",
         "file": "outfit_2_blue.webp",
         "label": "Blue",
-        "swatch": "#235993"
+        "swatch": "#2b5c98"
       },
       {
         "part": "outfit",
@@ -185,7 +185,7 @@
         "id": "outfit_2_purple",
         "file": "outfit_2_purple.webp",
         "label": "Purple",
-        "swatch": "#74397b"
+        "swatch": "#714184"
       },
       {
         "part": "outfit",
@@ -196,7 +196,7 @@
         "id": "outfit_2_pink",
         "file": "outfit_2_pink.webp",
         "label": "Pink",
-        "swatch": "#aa3664"
+        "swatch": "#b14973"
       },
       {
         "part": "outfit",
@@ -207,7 +207,7 @@
         "id": "outfit_3_red",
         "file": "outfit_3_red.webp",
         "label": "Red",
-        "swatch": "#9f2a21"
+        "swatch": "#a52f27"
       },
       {
         "part": "outfit",
@@ -218,7 +218,7 @@
         "id": "outfit_3_orange",
         "file": "outfit_3_orange.webp",
         "label": "Orange",
-        "swatch": "#a65620"
+        "swatch": "#b5622b"
       },
       {
         "part": "outfit",
@@ -229,7 +229,7 @@
         "id": "outfit_3_yellow",
         "file": "outfit_3_yellow.webp",
         "label": "Yellow",
-        "swatch": "#ac8522"
+        "swatch": "#c29a32"
       },
       {
         "part": "outfit",
@@ -240,7 +240,7 @@
         "id": "outfit_3_green",
         "file": "outfit_3_green.webp",
         "label": "Green",
-        "swatch": "#318150"
+        "swatch": "#2d764b"
       },
       {
         "part": "outfit",
@@ -251,7 +251,7 @@
         "id": "outfit_3_blue",
         "file": "outfit_3_blue.webp",
         "label": "Blue",
-        "swatch": "#265a8f"
+        "swatch": "#295c99"
       },
       {
         "part": "outfit",
@@ -262,7 +262,7 @@
         "id": "outfit_3_purple",
         "file": "outfit_3_purple.webp",
         "label": "Purple",
-        "swatch": "#733c75"
+        "swatch": "#723e83"
       },
       {
         "part": "outfit",
@@ -273,7 +273,7 @@
         "id": "outfit_3_pink",
         "file": "outfit_3_pink.webp",
         "label": "Pink",
-        "swatch": "#9b3158"
+        "swatch": "#b04472"
       },
       {
         "part": "outfit",
@@ -284,7 +284,7 @@
         "id": "outfit_4_red",
         "file": "outfit_4_red.webp",
         "label": "Red",
-        "swatch": "#a22d24"
+        "swatch": "#a52f27"
       },
       {
         "part": "outfit",
@@ -295,7 +295,7 @@
         "id": "outfit_4_orange",
         "file": "outfit_4_orange.webp",
         "label": "Orange",
-        "swatch": "#b25f27"
+        "swatch": "#b6622b"
       },
       {
         "part": "outfit",
@@ -306,7 +306,7 @@
         "id": "outfit_4_yellow",
         "file": "outfit_4_yellow.webp",
         "label": "Yellow",
-        "swatch": "#be952d"
+        "swatch": "#c49a31"
       },
       {
         "part": "outfit",
@@ -317,7 +317,7 @@
         "id": "outfit_4_green",
         "file": "outfit_4_green.webp",
         "label": "Green",
-        "swatch": "#2b784a"
+        "swatch": "#2d764b"
       },
       {
         "part": "outfit",
@@ -328,7 +328,7 @@
         "id": "outfit_4_blue",
         "file": "outfit_4_blue.webp",
         "label": "Blue",
-        "swatch": "#265a93"
+        "swatch": "#295c99"
       },
       {
         "part": "outfit",
@@ -339,7 +339,7 @@
         "id": "outfit_4_purple",
         "file": "outfit_4_purple.webp",
         "label": "Purple",
-        "swatch": "#6f3b7d"
+        "swatch": "#723e84"
       },
       {
         "part": "outfit",
@@ -350,7 +350,7 @@
         "id": "outfit_4_pink",
         "file": "outfit_4_pink.webp",
         "label": "Pink",
-        "swatch": "#ac4068"
+        "swatch": "#b24472"
       },
       {
         "part": "outfit",
@@ -361,7 +361,7 @@
         "id": "outfit_5_red",
         "file": "outfit_5_red.webp",
         "label": "Red",
-        "swatch": "#3a4565"
+        "swatch": "#a52f27"
       },
       {
         "part": "outfit",
@@ -372,7 +372,7 @@
         "id": "outfit_5_orange",
         "file": "outfit_5_orange.webp",
         "label": "Orange",
-        "swatch": "#3e5f60"
+        "swatch": "#b5622b"
       },
       {
         "part": "outfit",
@@ -383,7 +383,7 @@
         "id": "outfit_5_yellow",
         "file": "outfit_5_yellow.webp",
         "label": "Yellow",
-        "swatch": "#716958"
+        "swatch": "#c39a31"
       },
       {
         "part": "outfit",
@@ -394,7 +394,7 @@
         "id": "outfit_5_green",
         "file": "outfit_5_green.webp",
         "label": "Green",
-        "swatch": "#2e6675"
+        "swatch": "#2d764b"
       },
       {
         "part": "outfit",
@@ -405,7 +405,7 @@
         "id": "outfit_5_blue",
         "file": "outfit_5_blue.webp",
         "label": "Blue",
-        "swatch": "#2a5c8f"
+        "swatch": "#295b99"
       },
       {
         "part": "outfit",
@@ -416,7 +416,7 @@
         "id": "outfit_5_purple",
         "file": "outfit_5_purple.webp",
         "label": "Purple",
-        "swatch": "#376490"
+        "swatch": "#723e83"
       },
       {
         "part": "outfit",
@@ -427,7 +427,7 @@
         "id": "outfit_5_pink",
         "file": "outfit_5_pink.webp",
         "label": "Pink",
-        "swatch": "#394a76"
+        "swatch": "#b14371"
       }
     ],
     "head": [
@@ -440,7 +440,7 @@
         "id": "head_2_deep",
         "file": "head_2_deep.webp",
         "label": "Deep",
-        "swatch": "#583620"
+        "swatch": "#593621"
       },
       {
         "part": "head",
@@ -451,7 +451,7 @@
         "id": "head_2_dark",
         "file": "head_2_dark.webp",
         "label": "Dark",
-        "swatch": "#7f4f2d"
+        "swatch": "#804f2d"
       },
       {
         "part": "head",
@@ -462,7 +462,7 @@
         "id": "head_2_brown",
         "file": "head_2_brown.webp",
         "label": "Brown",
-        "swatch": "#ae6a38"
+        "swatch": "#af6a38"
       },
       {
         "part": "head",
@@ -473,7 +473,7 @@
         "id": "head_2_medium",
         "file": "head_2_medium.webp",
         "label": "Medium",
-        "swatch": "#d28a52"
+        "swatch": "#d38a51"
       },
       {
         "part": "head",
@@ -484,7 +484,7 @@
         "id": "head_2_tan",
         "file": "head_2_tan.webp",
         "label": "Tan",
-        "swatch": "#fbad6e"
+        "swatch": "#fcad6e"
       },
       {
         "part": "head",
@@ -495,7 +495,7 @@
         "id": "head_2_light",
         "file": "head_2_light.webp",
         "label": "Light",
-        "swatch": "#f8cfab"
+        "swatch": "#f8d0ab"
       }
     ],
     "brow": [
@@ -508,7 +508,7 @@
         "id": "brow_black",
         "file": "brow_black.webp",
         "label": "Black",
-        "swatch": "#1c1814"
+        "swatch": "#1c1916"
       },
       {
         "part": "brow",
@@ -519,7 +519,7 @@
         "id": "brow_dark-brown",
         "file": "brow_dark-brown.webp",
         "label": "Dark Brown",
-        "swatch": "#412a1b"
+        "swatch": "#412b1d"
       },
       {
         "part": "brow",
@@ -530,7 +530,7 @@
         "id": "brow_brown",
         "file": "brow_brown.webp",
         "label": "Brown",
-        "swatch": "#664122"
+        "swatch": "#654224"
       },
       {
         "part": "brow",
@@ -541,7 +541,7 @@
         "id": "brow_light-brown",
         "file": "brow_light-brown.webp",
         "label": "Light Brown",
-        "swatch": "#9a6832"
+        "swatch": "#986835"
       },
       {
         "part": "brow",
@@ -552,7 +552,7 @@
         "id": "brow_blonde",
         "file": "brow_blonde.webp",
         "label": "Blonde",
-        "swatch": "#cf7e2e"
+        "swatch": "#d07e2c"
       },
       {
         "part": "brow",
@@ -563,7 +563,7 @@
         "id": "brow_red",
         "file": "brow_red.webp",
         "label": "Red",
-        "swatch": "#8e3818"
+        "swatch": "#8c3918"
       }
     ],
     "eyes": [
@@ -576,7 +576,7 @@
         "id": "eyes_female_1_brown",
         "file": "eyes_female_1_brown.webp",
         "label": "Brown",
-        "swatch": "#c59373"
+        "swatch": "#d09875"
       },
       {
         "part": "eyes",
@@ -587,7 +587,7 @@
         "id": "eyes_male_1_brown",
         "file": "eyes_male_1_brown.webp",
         "label": "Brown",
-        "swatch": "#945326"
+        "swatch": "#753d1b"
       },
       {
         "part": "eyes",
@@ -598,7 +598,7 @@
         "id": "eyes_female_1_blue",
         "file": "eyes_female_1_blue.webp",
         "label": "Blue",
-        "swatch": "#c49272"
+        "swatch": "#2776af"
       },
       {
         "part": "eyes",
@@ -609,7 +609,7 @@
         "id": "eyes_male_1_blue",
         "file": "eyes_male_1_blue.webp",
         "label": "Blue",
-        "swatch": "#2f7eba"
+        "swatch": "#216494"
       },
       {
         "part": "eyes",
@@ -620,7 +620,7 @@
         "id": "eyes_female_1_green",
         "file": "eyes_female_1_green.webp",
         "label": "Green",
-        "swatch": "#c49272"
+        "swatch": "#29823f"
       },
       {
         "part": "eyes",
@@ -631,7 +631,7 @@
         "id": "eyes_male_1_green",
         "file": "eyes_male_1_green.webp",
         "label": "Green",
-        "swatch": "#34974c"
+        "swatch": "#226a34"
       },
       {
         "part": "eyes",
@@ -642,7 +642,7 @@
         "id": "eyes_female_1_hazel",
         "file": "eyes_female_1_hazel.webp",
         "label": "Hazel",
-        "swatch": "#c39170"
+        "swatch": "#828233"
       },
       {
         "part": "eyes",
@@ -653,7 +653,7 @@
         "id": "eyes_male_1_hazel",
         "file": "eyes_male_1_hazel.webp",
         "label": "Hazel",
-        "swatch": "#8d8e3d"
+        "swatch": "#6c6b2b"
       },
       {
         "part": "eyes",
@@ -664,7 +664,7 @@
         "id": "eyes_female_1_amber",
         "file": "eyes_female_1_amber.webp",
         "label": "Amber",
-        "swatch": "#c39270"
+        "swatch": "#e99f0e"
       },
       {
         "part": "eyes",
@@ -675,7 +675,7 @@
         "id": "eyes_male_1_amber",
         "file": "eyes_male_1_amber.webp",
         "label": "Amber",
-        "swatch": "#ecad27"
+        "swatch": "#c8880c"
       },
       {
         "part": "eyes",
@@ -686,7 +686,7 @@
         "id": "eyes_female_1_grey",
         "file": "eyes_female_1_grey.webp",
         "label": "Grey",
-        "swatch": "#c49172"
+        "swatch": "#5f7380"
       },
       {
         "part": "eyes",
@@ -697,7 +697,7 @@
         "id": "eyes_male_1_grey",
         "file": "eyes_male_1_grey.webp",
         "label": "Grey",
-        "swatch": "#a69289"
+        "swatch": "#52626d"
       }
     ],
     "hair": [
@@ -710,7 +710,7 @@
         "id": "hair_male_1_black",
         "file": "hair_male_1_black.webp",
         "label": "Black",
-        "swatch": "#1f1a16"
+        "swatch": "#201d1b"
       },
       {
         "part": "hair",
@@ -721,7 +721,7 @@
         "id": "hair_male_1_dark-brown",
         "file": "hair_male_1_dark-brown.webp",
         "label": "Dark Brown",
-        "swatch": "#442d1c"
+        "swatch": "#46301f"
       },
       {
         "part": "hair",
@@ -732,7 +732,7 @@
         "id": "hair_male_1_brown",
         "file": "hair_male_1_brown.webp",
         "label": "Brown",
-        "swatch": "#6a4423"
+        "swatch": "#6a4625"
       },
       {
         "part": "hair",
@@ -743,7 +743,7 @@
         "id": "hair_male_1_light-brown",
         "file": "hair_male_1_light-brown.webp",
         "label": "Light Brown",
-        "swatch": "#9e6d3a"
+        "swatch": "#9d6d3a"
       },
       {
         "part": "hair",
@@ -754,7 +754,7 @@
         "id": "hair_male_1_blonde",
         "file": "hair_male_1_blonde.webp",
         "label": "Blonde",
-        "swatch": "#d17c36"
+        "swatch": "#d77b30"
       },
       {
         "part": "hair",
@@ -765,7 +765,7 @@
         "id": "hair_male_1_red",
         "file": "hair_male_1_red.webp",
         "label": "Red",
-        "swatch": "#923b1a"
+        "swatch": "#923d19"
       },
       {
         "part": "hair",
@@ -776,7 +776,7 @@
         "id": "hair_male_2_black",
         "file": "hair_male_2_black.webp",
         "label": "Black",
-        "swatch": "#1d1814"
+        "swatch": "#1d1a17"
       },
       {
         "part": "hair",
@@ -787,7 +787,7 @@
         "id": "hair_male_2_dark-brown",
         "file": "hair_male_2_dark-brown.webp",
         "label": "Dark Brown",
-        "swatch": "#432b1a"
+        "swatch": "#442c1c"
       },
       {
         "part": "hair",
@@ -798,7 +798,7 @@
         "id": "hair_male_2_brown",
         "file": "hair_male_2_brown.webp",
         "label": "Brown",
-        "swatch": "#684221"
+        "swatch": "#684322"
       },
       {
         "part": "hair",
@@ -809,7 +809,7 @@
         "id": "hair_male_2_light-brown",
         "file": "hair_male_2_light-brown.webp",
         "label": "Light Brown",
-        "swatch": "#9d6931"
+        "swatch": "#9c6933"
       },
       {
         "part": "hair",
@@ -820,7 +820,7 @@
         "id": "hair_male_2_blonde",
         "file": "hair_male_2_blonde.webp",
         "label": "Blonde",
-        "swatch": "#d48b3a"
+        "swatch": "#d68a37"
       },
       {
         "part": "hair",
@@ -831,7 +831,7 @@
         "id": "hair_male_2_red",
         "file": "hair_male_2_red.webp",
         "label": "Red",
-        "swatch": "#903816"
+        "swatch": "#903916"
       },
       {
         "part": "hair",
@@ -842,7 +842,7 @@
         "id": "hair_male_3_black",
         "file": "hair_male_3_black.webp",
         "label": "Black",
-        "swatch": "#1d1814"
+        "swatch": "#1e1916"
       },
       {
         "part": "hair",
@@ -853,7 +853,7 @@
         "id": "hair_male_3_dark-brown",
         "file": "hair_male_3_dark-brown.webp",
         "label": "Dark Brown",
-        "swatch": "#432a1a"
+        "swatch": "#442c1b"
       },
       {
         "part": "hair",
@@ -864,7 +864,7 @@
         "id": "hair_male_3_brown",
         "file": "hair_male_3_brown.webp",
         "label": "Brown",
-        "swatch": "#694120"
+        "swatch": "#694221"
       },
       {
         "part": "hair",
@@ -875,7 +875,7 @@
         "id": "hair_male_3_light-brown",
         "file": "hair_male_3_light-brown.webp",
         "label": "Light Brown",
-        "swatch": "#9e692f"
+        "swatch": "#9d6930"
       },
       {
         "part": "hair",
@@ -886,7 +886,7 @@
         "id": "hair_male_3_blonde",
         "file": "hair_male_3_blonde.webp",
         "label": "Blonde",
-        "swatch": "#d88e3b"
+        "swatch": "#d98d39"
       },
       {
         "part": "hair",
@@ -897,7 +897,7 @@
         "id": "hair_male_3_red",
         "file": "hair_male_3_red.webp",
         "label": "Red",
-        "swatch": "#913715"
+        "swatch": "#913816"
       },
       {
         "part": "hair",
@@ -908,7 +908,7 @@
         "id": "hair_male_4_black",
         "file": "hair_male_4_black.webp",
         "label": "Black",
-        "swatch": "#1f1914"
+        "swatch": "#201a15"
       },
       {
         "part": "hair",
@@ -919,7 +919,7 @@
         "id": "hair_male_4_dark-brown",
         "file": "hair_male_4_dark-brown.webp",
         "label": "Dark Brown",
-        "swatch": "#472b19"
+        "swatch": "#482b1a"
       },
       {
         "part": "hair",
@@ -930,7 +930,7 @@
         "id": "hair_male_4_brown",
         "file": "hair_male_4_brown.webp",
         "label": "Brown",
-        "swatch": "#6d4220"
+        "swatch": "#6e4220"
       },
       {
         "part": "hair",
@@ -952,7 +952,7 @@
         "id": "hair_male_4_blonde",
         "file": "hair_male_4_blonde.webp",
         "label": "Blonde",
-        "swatch": "#e09642"
+        "swatch": "#e19541"
       },
       {
         "part": "hair",
@@ -963,7 +963,7 @@
         "id": "hair_male_4_red",
         "file": "hair_male_4_red.webp",
         "label": "Red",
-        "swatch": "#973516"
+        "swatch": "#973616"
       },
       {
         "part": "hair",
@@ -974,7 +974,7 @@
         "id": "hair_female_a_black",
         "file": "hair_female_a_black.webp",
         "label": "Black",
-        "swatch": "#1c1814"
+        "swatch": "#1c1916"
       },
       {
         "part": "hair",
@@ -985,7 +985,7 @@
         "id": "hair_female_a_dark-brown",
         "file": "hair_female_a_dark-brown.webp",
         "label": "Dark Brown",
-        "swatch": "#412a1b"
+        "swatch": "#412b1d"
       },
       {
         "part": "hair",
@@ -996,7 +996,7 @@
         "id": "hair_female_a_brown",
         "file": "hair_female_a_brown.webp",
         "label": "Brown",
-        "swatch": "#664122"
+        "swatch": "#654224"
       },
       {
         "part": "hair",
@@ -1007,7 +1007,7 @@
         "id": "hair_female_a_light-brown",
         "file": "hair_female_a_light-brown.webp",
         "label": "Light Brown",
-        "swatch": "#9a6832"
+        "swatch": "#986835"
       },
       {
         "part": "hair",
@@ -1018,7 +1018,7 @@
         "id": "hair_female_a_blonde",
         "file": "hair_female_a_blonde.webp",
         "label": "Blonde",
-        "swatch": "#cf7e2e"
+        "swatch": "#d07e2c"
       },
       {
         "part": "hair",
@@ -1029,7 +1029,7 @@
         "id": "hair_female_a_red",
         "file": "hair_female_a_red.webp",
         "label": "Red",
-        "swatch": "#8e3818"
+        "swatch": "#8c3918"
       },
       {
         "part": "hair",
@@ -1040,7 +1040,7 @@
         "id": "hair_female_b_black",
         "file": "hair_female_b_black.webp",
         "label": "Black",
-        "swatch": "#1c1814"
+        "swatch": "#1c1916"
       },
       {
         "part": "hair",
@@ -1051,7 +1051,7 @@
         "id": "hair_female_b_dark-brown",
         "file": "hair_female_b_dark-brown.webp",
         "label": "Dark Brown",
-        "swatch": "#412a1c"
+        "swatch": "#422b1e"
       },
       {
         "part": "hair",
@@ -1062,7 +1062,7 @@
         "id": "hair_female_b_brown",
         "file": "hair_female_b_brown.webp",
         "label": "Brown",
-        "swatch": "#674123"
+        "swatch": "#664225"
       },
       {
         "part": "hair",
@@ -1073,7 +1073,7 @@
         "id": "hair_female_b_light-brown",
         "file": "hair_female_b_light-brown.webp",
         "label": "Light Brown",
-        "swatch": "#9b6834"
+        "swatch": "#996836"
       },
       {
         "part": "hair",
@@ -1084,7 +1084,7 @@
         "id": "hair_female_b_blonde",
         "file": "hair_female_b_blonde.webp",
         "label": "Blonde",
-        "swatch": "#ca7a29"
+        "swatch": "#cb7928"
       },
       {
         "part": "hair",
@@ -1095,7 +1095,7 @@
         "id": "hair_female_b_red",
         "file": "hair_female_b_red.webp",
         "label": "Red",
-        "swatch": "#8f3819"
+        "swatch": "#8d3919"
       },
       {
         "part": "hair",
@@ -1106,7 +1106,7 @@
         "id": "hair_female_c_black",
         "file": "hair_female_c_black.webp",
         "label": "Black",
-        "swatch": "#1a1714"
+        "swatch": "#1c1815"
       },
       {
         "part": "hair",
@@ -1117,7 +1117,7 @@
         "id": "hair_female_c_dark-brown",
         "file": "hair_female_c_dark-brown.webp",
         "label": "Dark Brown",
-        "swatch": "#412a1c"
+        "swatch": "#412b1d"
       },
       {
         "part": "hair",
@@ -1128,7 +1128,7 @@
         "id": "hair_female_c_brown",
         "file": "hair_female_c_brown.webp",
         "label": "Brown",
-        "swatch": "#664124"
+        "swatch": "#664125"
       },
       {
         "part": "hair",
@@ -1139,7 +1139,7 @@
         "id": "hair_female_c_light-brown",
         "file": "hair_female_c_light-brown.webp",
         "label": "Light Brown",
-        "swatch": "#9a6834"
+        "swatch": "#9a6835"
       },
       {
         "part": "hair",
@@ -1150,7 +1150,7 @@
         "id": "hair_female_c_blonde",
         "file": "hair_female_c_blonde.webp",
         "label": "Blonde",
-        "swatch": "#c17124"
+        "swatch": "#c27122"
       },
       {
         "part": "hair",
@@ -1161,7 +1161,7 @@
         "id": "hair_female_c_red",
         "file": "hair_female_c_red.webp",
         "label": "Red",
-        "swatch": "#8e371a"
+        "swatch": "#8d381a"
       },
       {
         "part": "hair",
@@ -1172,7 +1172,7 @@
         "id": "hair_female_d_black",
         "file": "hair_female_d_black.webp",
         "label": "Black",
-        "swatch": "#1c1814"
+        "swatch": "#1c1917"
       },
       {
         "part": "hair",
@@ -1183,7 +1183,7 @@
         "id": "hair_female_d_dark-brown",
         "file": "hair_female_d_dark-brown.webp",
         "label": "Dark Brown",
-        "swatch": "#412b1b"
+        "swatch": "#412c1d"
       },
       {
         "part": "hair",
@@ -1194,7 +1194,7 @@
         "id": "hair_female_d_brown",
         "file": "hair_female_d_brown.webp",
         "label": "Brown",
-        "swatch": "#674122"
+        "swatch": "#654224"
       },
       {
         "part": "hair",
@@ -1205,7 +1205,7 @@
         "id": "hair_female_d_light-brown",
         "file": "hair_female_d_light-brown.webp",
         "label": "Light Brown",
-        "swatch": "#9a6832"
+        "swatch": "#976935"
       },
       {
         "part": "hair",
@@ -1216,7 +1216,7 @@
         "id": "hair_female_d_blonde",
         "file": "hair_female_d_blonde.webp",
         "label": "Blonde",
-        "swatch": "#d38330"
+        "swatch": "#d4822e"
       },
       {
         "part": "hair",
@@ -1227,7 +1227,7 @@
         "id": "hair_female_d_red",
         "file": "hair_female_d_red.webp",
         "label": "Red",
-        "swatch": "#8f3818"
+        "swatch": "#8c3a18"
       }
     ]
   }
