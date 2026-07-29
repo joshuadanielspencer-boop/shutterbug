@@ -129,6 +129,9 @@ src/
     worldmap.js            # country outline paths + COUNTRY_CONTINENT colour map
     geography.js           # GENERATED — rivers, lakes, seas, oceans, bays, gulfs
     avatar.js              # GENERATED — which avatar plate is which, and how they stack
+    currency.js            # GENERATED — what money each country uses, and roughly how much
+    price-anchors.js       # GENERATED — what a pound of a staple costs there, and when
+    tunes.js               # arrival music: 6 real melodies + 45 regional beds, and the mapping
 .claude/                   # Claude Code project config (launch.json is shared)
 claude-code-game-build-guide.md   # design/build notes
 ```
