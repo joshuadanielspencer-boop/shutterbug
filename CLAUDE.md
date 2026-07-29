@@ -46,6 +46,7 @@ node scripts/gen-voices.mjs              # re-fetch the spoken country names (Li
 node scripts/make-relief.mjs <NE1.tif> --width 8192 --out public/relief-world.jpg
 node scripts/optimize-ui-art.mjs         # palette-quantize new badge art (run after a batch lands)
 node scripts/build-avatar-layers.mjs     # rebuild the avatar plates + src/data/avatar.js from "Images/Avatar designs/"
+node scripts/gen-price-anchors.mjs       # rebuild src/data/price-anchors.js from WFP food prices (HDX)
 ```
 
 ```bash
@@ -100,6 +101,7 @@ scripts/gen-icons.mjs      # rasterizes icon.svg → public/*.png (needs sharp)
 scripts/gen-geography.mjs  # builds src/data/geography.js from Natural Earth vectors
 scripts/make-relief.mjs    # builds the relief plates (keys the ocean to the game palette)
 scripts/build-avatar-layers.mjs  # avatar plates + src/data/avatar.js from "Images/Avatar designs/"
+scripts/gen-price-anchors.mjs    # what a country's money buys, from WFP's monitored markets
 scripts/avatar-brows.mjs   # lifts the eyebrows out of the head art and recolours them to the hair
 public/                    # static assets copied as-is + precached by the PWA
   relief-world.jpg         #   equirectangular shaded-relief plate (8192x4096, continent zooms)

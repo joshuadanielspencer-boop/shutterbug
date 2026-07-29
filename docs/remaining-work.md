@@ -31,12 +31,13 @@ Last updated **2026-07-28**.
 >    Joshua asked for all of them. See §12 for why that is not available at any
 >    price — the short version is that there is no authoritative global source of
 >    everyday retail prices, and the one good free source measures refugee camps.
-> 3. **Trinidad and Tobago's map.** The plate is already at the source raster's
->    native 60 px/degree, so it cannot be sharpened. The problem is framing: every
->    small country is floored at the same 7.3° box by `fitBox`'s minimum, so Trinidad
->    fills 25% of its own frame (Malta 6%, Jamaica 29%, Hungary 83%). Filling the
->    frame means more magnification and more blur. His call, and rule 5 pulls one way
->    while the blur pulls the other.
+> 3. ~~**Trinidad and Tobago's map.**~~ **DONE 2026-07-29.** Joshua's call: only
+>    small islands get a lower floor, so nothing trades sharpness away where it
+>    isn't buying visible shape. `boxFloorFor` in `src/map-geometry.js` — a mainland
+>    country backed off to the floor fills its frame with real neighbouring ground,
+>    an island fills it with empty sea, and the island floor is set by how many
+>    source pixels are left rather than by taste. Trinidad 28% → 78%, Jamaica 33% →
+>    92%, Fiji 46% → 93%; no mainland country moved.
 > 4. **Mr O's "checkered background"** could not be reproduced: all ten shipped images
 >    have genuine alpha, live and local are byte-identical, and no UI asset contains a
 >    checkerboard. BUT four of the ORIGINALS in `Images/Mr O complete/` (considering,
