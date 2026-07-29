@@ -194,7 +194,11 @@ export const TUNES = {
     ["A4",0.5],["B4",0.5],["C5",0.5],["A4",0.5],["B4",1],["E4",1],["A4",0.5],["B4",0.5],["C5",1],["B4",0.5],["A4",0.5],["G#4",1],["A4",2],["r",1],
     ["E5",0.5],["D5",0.5],["C5",0.5],["B4",0.5],["C5",1],["A4",1],["D5",0.5],["C5",0.5],["B4",1],["A4",0.5],["G#4",0.5],["B4",1],["A4",3],
   ] },
-  // Mediterranean — bouzouki/Greek-ish minor.
+  // Greece — bouzouki, minor. This bed used to carry the whole northern
+  // Mediterranean, which meant a Greek bouzouki stood in for flamenco, for fado and
+  // for a Neapolitan mandolin. Four of the most recognisable musics on earth, played
+  // as one. See the block below it for the four that took the rest; Malta stays here
+  // for the reason written beside it in COUNTRY_MOTIF.
   mediterranean: { timbre: "pluck", spb: 0.24, seq: [
     ["E4",0.5],["F4",0.5],["G4",1],["A4",0.5],["G4",0.5],["F4",1],["E4",1],["D4",0.5],["E4",0.5],["F4",1],["E4",2],["r",1],
     ["A4",0.5],["B4",0.5],["C5",1],["B4",0.5],["A4",0.5],["G4",1],["F4",1],["G4",0.5],["F4",0.5],["E4",1],["D4",1],["E4",3],
@@ -207,6 +211,69 @@ export const TUNES = {
     ["C4",0.5],["E4",0.5],["G4",1],["A4",1],["G4",1],["E4",1],["F4",0.5],["A4",0.5],["G4",1.5],["C4",1],["E4",2],["r",1],
     ["G4",0.5],["A4",0.5],["C5",1],["A4",1],["G4",1],["E4",1],["D4",0.5],["F4",0.5],["E4",1.5],["G4",1],["C4",2.5],
   ] },
+  // ---- The northern Mediterranean, four ways (added 2026-07-28) ---------------
+  //
+  // Same pass, same reasoning as the block below, but this one is worth naming
+  // separately because of WHAT was being flattened. Italy, Spain, Portugal, Greece
+  // and Croatia shared one bouzouki bed. Flamenco, fado, the tarantella and klapa are
+  // not obscure regional colours a game can be forgiven for rounding off — they are
+  // among the most recognisable musics in the world, and three of the five are on
+  // UNESCO's intangible-heritage list in their own right.
+  //
+  // Each one below is pinned to something checkable rather than to a vibe: flamenco
+  // to the Andalusian cadence and the Phrygian-dominant mode it lands on, fado to the
+  // octave-paired courses of the guitarra portuguesa, the tarantella to its driving
+  // 6/8, klapa to the parallel thirds of Dalmatian close harmony. As everywhere else
+  // in this file, the phrases themselves are ORIGINAL: none of them is a real tune.
+
+  // Italy — the Neapolitan mandolin and the TARANTELLA's fast 6/8, minor, with the
+  // raised seventh at the cadence. The bright plucked timbre with a high partial is
+  // standing in for the mandolin's doubled steel courses and its tremolo.
+  italy: { timbre: "steel", spb: 0.16, seq: [
+    ["A4",1],["B4",1],["C5",1],["E5",1],["C5",1],["A4",1],
+    ["B4",1],["C5",1],["D5",1],["C5",1],["B4",1],["A4",1],
+    ["E5",1],["D5",1],["C5",1],["B4",1],["A4",1],["G#4",1],
+    ["A4",2],["r",1],
+    ["E5",1],["E5",1],["F5",1],["E5",1],["D5",1],["C5",1],
+    ["B4",1],["C5",1],["D5",1],["C5",1],["B4",1],["G#4",1],
+    ["A4",3],
+  ] },
+  // Spain — FLAMENCO, on nylon strings. Two documented things carry it. The first is
+  // the Andalusian cadence, which descends A–G–F–E: phrase one is that descent, and
+  // the G is natural on the way down. The second is where it lands — the modo
+  // flamenco, Phrygian dominant on E (E F G# A B C D), whose G SHARP against that
+  // same F natural is the sound people mean when they say "Spanish". Both spellings
+  // appear below on purpose; neither is a typo.
+  flamenco: { timbre: "guitar", spb: 0.2, seq: [
+    ["A4",1],["G4",1],["F4",1],["E4",2],["r",0.5],
+    ["E4",0.5],["F4",0.5],["G#4",0.5],["A4",1],["G#4",0.5],["F4",0.5],["E4",1.5],["r",0.5],
+    ["B4",1],["C5",0.5],["B4",0.5],["A4",1],["G#4",0.5],["A4",0.5],["B4",1],["A4",1],
+    ["G4",1],["F4",1],["E4",1],["F4",0.5],["E4",0.5],["D4",1],["E4",2.5],
+  ] },
+  // Portugal — FADO, and specifically the guitarra portuguesa, a teardrop cittern
+  // with twelve strings in six courses, several of them tuned in OCTAVES. That is
+  // what the octave partial on this timbre is: not an effect, the instrument. Slow,
+  // minor, with the raised seventh leaning into every cadence.
+  fado: { timbre: "koto", spb: 0.34, seq: [
+    ["A4",1.5],["B4",0.5],["C5",1],["B4",1],["A4",1.5],["G#4",0.5],["A4",2],["r",0.5],
+    ["E5",1],["D5",0.5],["C5",1.5],["B4",1],["A4",1],["G#4",1],["A4",1],["B4",1],
+    ["C5",1],["B4",0.5],["A4",0.5],["G#4",1],["A4",2.5],
+  ] },
+  // Croatia — KLAPA, the Dalmatian close-harmony singing of Split and Dubrovnik
+  // (UNESCO, 2012), which is where two of the game's three Croatian places are. It is
+  // unaccompanied male voices moving in parallel thirds, so this is slow, major,
+  // legato and stays inside a sixth: the sustained reed is standing in for a voice,
+  // and it is the slowest thing on that timbre in the file for that reason.
+  //
+  // Croatia is a Slavic country and the `slavic` bed was the other candidate. But
+  // that bed is a brisk balalaika, and inland Pannonian tamburica is not what Split
+  // and Dubrovnik sound like.
+  klapa: { timbre: "reed", spb: 0.36, seq: [
+    ["G4",1.5],["A4",0.5],["B4",1],["A4",1],["G4",2],["r",0.5],
+    ["B4",1],["C5",0.5],["D5",1.5],["C5",1],["B4",1],["A4",2],["r",0.5],
+    ["D5",1],["C5",1],["B4",1],["A4",1],["G4",1],["A4",1],["G4",2.5],
+  ] },
+
   // ---- The four crowded beds, split (added 2026-07-28) -----------------------
   //
   // The same complaint Joshua made about the Islamic countries, applied to the four
@@ -560,12 +627,18 @@ export const COUNTRY_MOTIF = {
   "Egypt": "nile", "Sudan": "nile",                                           // Saba, on a ney
   "Iran": "persian", "Turkey": "anatolia",                                    // NOT the same tradition
   "Uzbekistan": "centralasia", "Kazakhstan": "centralasia",
-  // Mediterranean Europe
-  "Greece": "mediterranean", "Italy": "mediterranean", "Spain": "mediterranean", "Portugal": "mediterranean",
-  "Croatia": "mediterranean",
+  // Mediterranean Europe — one bouzouki bed carried all six of these until
+  // 2026-07-28. Greece keeps it; the other four are traditions in their own right.
+  "Greece": "mediterranean",
+  "Italy": "italy",                                                           // mandolin, tarantella
+  "Spain": "flamenco",                                                        // Andalusian cadence
+  "Portugal": "fado",                                                         // guitarra portuguesa
+  "Croatia": "klapa",                                                         // Dalmatian harmony
   // Malta was falling through to `generic` — an island in the middle of the
   // Mediterranean playing a neutral music box. Its own folk singing, għana, sits
   // squarely between Sicily and North Africa, which is what this bed already is.
+  // It stays on it: għana is sung over a plucked accompaniment and is the one thing
+  // here the Greek bed is still a fair stand-in for.
   "Malta": "mediterranean",
   // Slavic / Eastern Europe
   "Russia": "slavic", "Poland": "slavic", "Czechia": "slavic", "Hungary": "slavic", "Romania": "slavic",

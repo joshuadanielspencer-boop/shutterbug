@@ -99,6 +99,8 @@ describe("arrival tunes", () => {
       "Venezuela", "Guyana"], 5],
     ["West Africa", ["Mali", "Senegal", "Ghana", "Côte d'Ivoire", "Nigeria", "Benin",
       "Cameroon"], 4],
+    ["the northern Mediterranean", ["Greece", "Italy", "Spain", "Portugal", "Croatia",
+      "Malta"], 5],
   ])("keeps %s spread across several motifs", (_region, countries, least) => {
     const keys = new Set(countries.map((c) => {
       const l = LOCATIONS.find((x) => x.country === c);
@@ -110,10 +112,11 @@ describe("arrival tunes", () => {
   });
 
   // The general version of Joshua's complaint. The ceiling was 8 while four motifs
-  // were still at 7-8; those are split, and the two worst left are `mediterranean`
-  // (Italy, Greece, Spain, Portugal, Croatia, Malta) and `caribbean` — so it comes
-  // down to 6. Both are defensible groupings and neither is urgent, but a Greek
-  // bouzouki standing in for Portuguese fado is the next one of these to do.
+  // were still at 7-8; those are split, and so is the Mediterranean that was next
+  // after them. It comes down to 6, which is now `caribbean` alone — Cuba, Jamaica,
+  // Haiti, Trinidad, Belize and Guyana on one steel-drum bed, when a Cuban tres, a
+  // Haitian méringue and a Garifuna punta are four traditions and three languages.
+  // That is the next one of these to do, and the last of the big ones.
   it("no single tune carries more of the world than today's worst", () => {
     const byTune = {};
     for (const country of new Set(LOCATIONS.map((l) => l.country))) {
