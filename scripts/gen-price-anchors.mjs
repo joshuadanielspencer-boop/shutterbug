@@ -154,11 +154,11 @@ const median = (xs) => {
 // often enough that a single fetch is not a reliable build step. Retry, and accept
 // local copies (`--csv a.csv b.csv`) so a rerun on a bad line doesn't need the
 // network at all.
-const get = async (url, tries = 4) => {
+const get = async (url, tries = 4, init = null) => {
   let last;
   for (let i = 0; i < tries; i++) {
     try {
-      const r = await fetch(url, { headers: { "User-Agent": UA } });
+      const r = await fetch(url, init || { headers: { "User-Agent": UA } });
       if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
       return r;
     } catch (e) {
@@ -302,9 +302,111 @@ for (const [country, spec] of Object.entries(MARKETS)) {
     city: spec.city,
     asOf: picked.date.slice(0, 7),
     markets: picked.rows.length,
+    source: "WFP Global Food Prices (HDX)",
   };
 }
 
+
+// =============================================================================
+// NATIONAL STATISTICS OFFICES
+// =============================================================================
+// WFP measures the markets WFP operates in, which is why the block above is an
+// allowlist of seventeen and why it yields ten. The countries a child actually
+// visits most are the ones WFP has no reason to be in at all: the USA is 32 of
+// this game's places and China 21.
+//
+// For those the source has to be the country's own statistics office, one at a
+// time. Two are reachable with no key, no registration and no scraping, and both
+// publish a real national average retail price:
+//
+//   United States   BLS Average Price Data, series APU0000702111 — "Bread, white,
+//                   pan, per lb." US city average. Already per POUND, so rule 3
+//                   needs no conversion at all.
+//   Canada          Statistics Canada table 18-10-0245, "Monthly average retail
+//                   prices for selected products", geography 11 (Canada),
+//                   product 56 (White bread, 675 grams).
+//
+// A national office BEATS the WFP block for the same country. Nothing overlaps
+// today — WFP is not in either of these — but the rule should exist before it is
+// needed rather than after.
+//
+// WHY NOT THE OTHERS. Checked, and each is a specific wall rather than a lack of
+// trying:
+//
+//   United Kingdom  ONS retired its timeseries API in Nov 2024, and the raw price
+//                   quotes it still publishes hold 394 items with NO staple foods
+//                   in them — groceries moved to retailer scanner data, so the
+//                   collector file is leggings, golf balls and blank CDs.
+//   China           data.stats.gov.cn returns 403 to non-Chinese IPs.
+//   Japan           e-Stat requires a registered application ID.
+//   Mexico          INEGI requires an API token.
+//   Australia       ABS's Data API is live but its average-retail-price series
+//                   was discontinued; what remains is CPI indices, not prices.
+//   Eurozone        Eurostat's detailed average prices are gone (404 on every
+//                   dataset), so France, Germany, Italy, Greece and Spain each
+//                   need their own office, and Destatis GENESIS wants
+//                   registration too.
+//
+// Every one of those is a "get a key" or "find a mirror" task, not a code task.
+// Adding one is a new entry in NATIONAL below plus its fetch.
+const NATIONAL = [
+  {
+    country: "United States",
+    source: "US Bureau of Labor Statistics, Average Price Data",
+    item: "bread",
+    async fetchPerLb() {
+      const r = await get("https://api.bls.gov/publicAPI/v2/timeseries/data/", 4, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "User-Agent": UA },
+        body: JSON.stringify({ seriesid: ["APU0000702111"], startyear: String(new Date().getUTCFullYear() - 1), endyear: String(new Date().getUTCFullYear()) }),
+      });
+      const j = await r.json();
+      if (j.status !== "REQUEST_SUCCEEDED") throw new Error(`BLS said ${j.status}: ${(j.message || []).join("; ")}`);
+      const rows = (j.Results?.series?.[0]?.data || []).filter((d) => d.value && d.period?.startsWith("M"));
+      if (!rows.length) throw new Error("BLS returned no monthly observations");
+      // Already per pound — the series is defined that way, so there is nothing
+      // to convert and nothing to get wrong.
+      const latest = rows[0];
+      return { perLb: Number(latest.value), asOf: `${latest.year}-${latest.period.slice(1)}` };
+    },
+  },
+  {
+    country: "Canada",
+    source: "Statistics Canada, table 18-10-0245",
+    item: "bread",
+    async fetchPerLb() {
+      const r = await get("https://www150.statcan.gc.ca/t1/wds/rest/getDataFromCubePidCoordAndLatestNPeriods", 4, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "User-Agent": UA },
+        // geography 11 = Canada, product 56 = White bread, 675 grams.
+        body: JSON.stringify([{ productId: 18100245, coordinate: "11.56.0.0.0.0.0.0.0.0", latestN: 3 }]),
+      });
+      const j = await r.json();
+      const pts = j?.[0]?.object?.vectorDataPoint;
+      if (!pts?.length) throw new Error(`Statistics Canada returned no data (${j?.[0]?.status})`);
+      const latest = pts.reduce((a, p) => (p.refPer > a.refPer ? p : a));
+      // The series is priced per 675 g loaf, so this is the one conversion.
+      return { perLb: latest.value * 453.59237 / 675, asOf: latest.refPer.slice(0, 7) };
+    },
+  },
+];
+
+for (const n of NATIONAL) {
+  const cur = COUNTRY_CURRENCY[n.country];
+  if (!cur) { skipped.push(`${n.country} — no currency on file`); continue; }
+  let got;
+  try { got = await n.fetchPerLb(); }
+  catch (e) { skipped.push(`${n.country} — ${n.source} unreachable: ${e.message}`); continue; }
+  const age = monthsBetween(got.asOf, TODAY);
+  if (age > MAX_AGE_MONTHS) { skipped.push(`${n.country} — newest ${n.source} figure is ${got.asOf}, ${age} months old`); continue; }
+  // Same magnitude sanity as the WFP block: a pound of bread between 5c and $10.
+  const usd = got.perLb / cur.perUsd;
+  if (!(usd > 0.05 && usd < 10)) { skipped.push(`${n.country} — ${got.perLb.toFixed(2)} ${cur.code}/lb is $${usd.toFixed(2)}, which is not a bread price`); continue; }
+  anchors[n.country] = {
+    item: n.item, unit: "pound", metric: "0.45 kg",
+    price: round2sf(got.perLb), city: null, asOf: got.asOf, markets: 1, source: n.source,
+  };
+}
 
 // ---- Write ----------------------------------------------------------------------
 const q = (s) => (s === null ? "null" : JSON.stringify(s));
@@ -312,15 +414,20 @@ const body = Object.entries(anchors)
   .sort(([a], [b]) => a.localeCompare(b))
   .map(([c, a]) =>
     `  ${JSON.stringify(c)}: { item: ${q(a.item)}, unit: ${q(a.unit)}, metric: ${q(a.metric)}, `
-    + `price: ${a.price}, city: ${q(a.city)}, asOf: ${q(a.asOf)} },`)
+    + `price: ${a.price}, city: ${q(a.city)}, asOf: ${q(a.asOf)}, source: ${q(a.source)} },`)
   .join("\n");
 
 writeFileSync(OUT, `// GENERATED by scripts/gen-price-anchors.mjs — do not hand-edit.
 //
 // What the money actually BUYS, so the exchange rate on the culture card stops
 // being arithmetic and becomes a shopping trip. Every figure is a real observed
-// RETAIL price in one named market on one named month, from WFP's Global Food
-// Prices (Humanitarian Data Exchange, CC BY-IGO).
+// RETAIL price on one named month, and every one carries the \`source\` that
+// published it — there is no single global source of everyday prices, so this
+// file is assembled from three:
+//
+//   WFP Global Food Prices (HDX, CC BY-IGO)  — one named market per country
+//   US Bureau of Labor Statistics             — national average, already per lb
+//   Statistics Canada, table 18-10-0245       — national average
 //
 // \`price\` is in the country's own currency, per POUND or per QUART (rule 3:
 // imperial first), converted from WFP's kilo/litre by one formula in the
@@ -334,7 +441,6 @@ writeFileSync(OUT, `// GENERATED by scripts/gen-price-anchors.mjs — do not han
 // keeps those out — read the warning at the top of it before adding a country.
 //
 // Regenerate with:  node scripts/gen-price-anchors.mjs
-export const PRICE_SOURCE = "WFP Global Food Prices (HDX)";
 export const PRICE_ANCHORS = {
 ${body}
 };

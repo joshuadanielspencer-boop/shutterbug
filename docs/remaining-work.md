@@ -327,7 +327,7 @@ This document is long enough that things get lost in it. Every section, in order
 | [9](#9-travel-modes--built-2026-07-15-balance-wants-a-playtest) | Travel modes | built; balance wants Joshua's feel |
 | [10](#10-rewards-progression-and-the-dog-brainstorm-2026-07-19) | **Rewards, progression, and the dog** | brainstorm — decisions needed |
 | [11](#11-the-music-honestly-2026-07-19-recounted-2026-07-28) | **The music, honestly** | recounted 2026-07-28 — 11 regional beds became 43; `caribbean` is the last one left at six |
-| [12](#12-currency-price-anchors--built-2026-07-29-and-it-stops-at-10-countries) | **Currency price anchors** | built 2026-07-29 — 10 countries, and why "all of them" isn't available |
+| [12](#12-currency-price-anchors--built-2026-07-29-and-it-stops-at-10-countries) | **Currency price anchors** | 12 countries / 76 places; the rest need API keys, not code |
 
 ### THE THREE THINGS TO DO NEXT (start here)
 
@@ -1108,6 +1108,42 @@ That allowlist is 17 countries and seven of them then fall out:
   street differing by multiples), so no honest price either. `travel.js` already
   refuses to publish a rate for these; a price is the same claim wearing a hat.
 - **Zambia** — newest observation is 13 months old.
+
+### 2026-07-29: two more, and the wall is now precisely mapped
+
+Added the two biggest countries by places-in-game, both from their own national
+statistics office, both with no key and no scraping:
+
+| country | source | figure |
+|---|---|---|
+| **United States** (32 places) | BLS Average Price Data, series `APU0000702111` | a pound of white bread, US city average — **already per pound**, so rule 3 needs no conversion at all |
+| **Canada** (10 places) | Statistics Canada table 18-10-0245, geo 11 / product 56 | white bread, 675 g loaf, converted once to per pound |
+
+That is **12 countries**, and because the two added are the game's two largest,
+it covers 76 of the 457 places against 34 before.
+
+A national office BEATS the WFP block for the same country. Nothing overlaps
+today — WFP is in neither — but the rule is in the generator before it is needed.
+Every anchor now also carries the `source` that published it, and a test requires
+one: three sources in one file and no way to re-check a figure is not rule 2.
+
+**Why not the others.** Each is a specific wall, checked rather than assumed:
+
+| country | wall |
+|---|---|
+| **United Kingdom** (11) | ONS retired its timeseries API in Nov 2024. The raw price quotes it still publishes hold **394 items with no staple foods** — groceries moved to retailer scanner data, so the collector file is leggings, golf balls and blank CDs. |
+| **China** (21) | `data.stats.gov.cn` returns **403 to non-Chinese IPs**. |
+| **Japan** (10) | e-Stat requires a registered application ID. |
+| **Mexico** (10) | INEGI requires an API token. |
+| **Australia** (9) | The ABS Data API is live but its average-retail-price series was discontinued; what remains is CPI indices, not prices. |
+| **France, Germany, Italy, Greece, Spain** (10 each) | Eurostat's detailed average prices are gone (404 on every dataset), so each needs its own office — and Destatis GENESIS wants registration too. |
+
+**So the remaining work is not code.** Japan, Mexico and Germany need somebody to
+register for a key (free, minutes, but a human with an email address). China needs
+a mirror or a proxy. The UK needs a different ONS product than the obvious one.
+Australia and the rest of the eurozone need a source that may not exist publicly.
+Adding one is a single entry in `NATIONAL` in the generator plus its fetch —
+about twenty lines each once the key is in hand.
 
 ### What it would take to finish, honestly
 

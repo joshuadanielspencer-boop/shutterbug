@@ -45,6 +45,10 @@ describe("price anchors", () => {
       expect(a.metric, `${c}: no metric equivalent`).toMatch(/^[\d.]+ (kg|L)$/);
       expect(a.item, `${c}: no item`).toBeTruthy();
       expect(a.asOf, `${c}: asOf must be YYYY-MM`).toMatch(/^\d{4}-(0[1-9]|1[0-2])$/);
+      // Rule 2: every figure names who published it. There is no single global
+      // source of everyday prices, so the file is assembled from three and a
+      // figure without a source cannot be re-checked by anyone.
+      expect(a.source, `${c}: no source`).toBeTruthy();
     }
   });
 

@@ -8674,7 +8674,15 @@ function PriceAnchorLine({ country, currency }) {
     <div style={{ fontSize: 11.5, opacity: 0.8, marginTop: 2 }}>
       <span aria-hidden="true">🛒 </span>
       {a.city ? `In ${a.city}, a` : "A"} {a.unit} ({a.metric}) of {a.item} cost about{" "}
-      {price} {currency.code} — about {inUsd}.
+      {/* The dollar equivalent is the whole point of this line — except where the
+          country's money already IS the dollar, and "about 1.8 USD — about $1.80"
+          says one thing twice. The USA and every dollarized country skip it. */}
+      {currency.code === "USD"
+        // Dollars get two decimal places, because "$1.8" is not how a price is
+        // written. The rounding already happened in the generator; this is only
+        // how the number is spelled.
+        ? `$${a.price < 100 ? a.price.toFixed(2) : price}`
+        : <>{price} {currency.code} — about {inUsd}</>}.
       <span style={{ opacity: 0.7 }}> ({when})</span>
     </div>
   );

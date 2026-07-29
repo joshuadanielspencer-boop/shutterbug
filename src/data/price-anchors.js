@@ -2,8 +2,13 @@
 //
 // What the money actually BUYS, so the exchange rate on the culture card stops
 // being arithmetic and becomes a shopping trip. Every figure is a real observed
-// RETAIL price in one named market on one named month, from WFP's Global Food
-// Prices (Humanitarian Data Exchange, CC BY-IGO).
+// RETAIL price on one named month, and every one carries the `source` that
+// published it — there is no single global source of everyday prices, so this
+// file is assembled from three:
+//
+//   WFP Global Food Prices (HDX, CC BY-IGO)  — one named market per country
+//   US Bureau of Labor Statistics             — national average, already per lb
+//   Statistics Canada, table 18-10-0245       — national average
 //
 // `price` is in the country's own currency, per POUND or per QUART (rule 3:
 // imperial first), converted from WFP's kilo/litre by one formula in the
@@ -17,16 +22,17 @@
 // keeps those out — read the warning at the top of it before adding a country.
 //
 // Regenerate with:  node scripts/gen-price-anchors.mjs
-export const PRICE_SOURCE = "WFP Global Food Prices (HDX)";
 export const PRICE_ANCHORS = {
-  "Cameroon": { item: "rice", unit: "pound", metric: "0.45 kg", price: 270, city: "Yaoundé", asOf: "2026-06" },
-  "Ecuador": { item: "bread", unit: "pound", metric: "0.45 kg", price: 1.7, city: "Quito", asOf: "2026-06" },
-  "Egypt": { item: "rice", unit: "pound", metric: "0.45 kg", price: 13, city: null, asOf: "2026-05" },
-  "Jordan": { item: "bread", unit: "pound", metric: "0.45 kg", price: 0.15, city: "Amman", asOf: "2026-05" },
-  "Madagascar": { item: "rice", unit: "pound", metric: "0.45 kg", price: 1500, city: "Antananarivo", asOf: "2025-10" },
-  "Namibia": { item: "flour", unit: "pound", metric: "0.45 kg", price: 9.5, city: "Windhoek", asOf: "2026-06" },
-  "Nepal": { item: "rice", unit: "pound", metric: "0.45 kg", price: 40, city: "Kathmandu", asOf: "2026-06" },
-  "Philippines": { item: "rice", unit: "pound", metric: "0.45 kg", price: 22, city: "Manila", asOf: "2026-06" },
-  "Sri Lanka": { item: "rice", unit: "pound", metric: "0.45 kg", price: 110, city: "Colombo", asOf: "2025-09" },
-  "Turkey": { item: "bread", unit: "pound", metric: "0.45 kg", price: 30, city: null, asOf: "2026-06" },
+  "Cameroon": { item: "rice", unit: "pound", metric: "0.45 kg", price: 270, city: "Yaoundé", asOf: "2026-06", source: "WFP Global Food Prices (HDX)" },
+  "Canada": { item: "bread", unit: "pound", metric: "0.45 kg", price: 2.4, city: null, asOf: "2026-05", source: "Statistics Canada, table 18-10-0245" },
+  "Ecuador": { item: "bread", unit: "pound", metric: "0.45 kg", price: 1.7, city: "Quito", asOf: "2026-06", source: "WFP Global Food Prices (HDX)" },
+  "Egypt": { item: "rice", unit: "pound", metric: "0.45 kg", price: 13, city: null, asOf: "2026-05", source: "WFP Global Food Prices (HDX)" },
+  "Jordan": { item: "bread", unit: "pound", metric: "0.45 kg", price: 0.15, city: "Amman", asOf: "2026-05", source: "WFP Global Food Prices (HDX)" },
+  "Madagascar": { item: "rice", unit: "pound", metric: "0.45 kg", price: 1500, city: "Antananarivo", asOf: "2025-10", source: "WFP Global Food Prices (HDX)" },
+  "Namibia": { item: "flour", unit: "pound", metric: "0.45 kg", price: 9.5, city: "Windhoek", asOf: "2026-06", source: "WFP Global Food Prices (HDX)" },
+  "Nepal": { item: "rice", unit: "pound", metric: "0.45 kg", price: 40, city: "Kathmandu", asOf: "2026-06", source: "WFP Global Food Prices (HDX)" },
+  "Philippines": { item: "rice", unit: "pound", metric: "0.45 kg", price: 22, city: "Manila", asOf: "2026-06", source: "WFP Global Food Prices (HDX)" },
+  "Sri Lanka": { item: "rice", unit: "pound", metric: "0.45 kg", price: 110, city: "Colombo", asOf: "2025-09", source: "WFP Global Food Prices (HDX)" },
+  "Turkey": { item: "bread", unit: "pound", metric: "0.45 kg", price: 30, city: null, asOf: "2026-06", source: "WFP Global Food Prices (HDX)" },
+  "United States": { item: "bread", unit: "pound", metric: "0.45 kg", price: 1.8, city: null, asOf: "2026-06", source: "US Bureau of Labor Statistics, Average Price Data" },
 };
