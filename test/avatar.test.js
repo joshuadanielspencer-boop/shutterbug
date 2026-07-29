@@ -152,12 +152,26 @@ describe("migrating avatars saved before the art changed", () => {
 
   // The point of matching on colour rather than on index: a child with the
   // palest old skin must not come back with the darkest new one.
+  //
+  // Asserted on the SWATCH, not the index. The first version pinned index 0 as
+  // the lightest, which was true of the delivery it was written against and
+  // stopped being true the moment the palette was reordered to run dark-to-light
+  // (which is the order Joshua listed the tones in). An index is an accident of
+  // presentation; "the pale one stays pale" is the requirement, and it survives
+  // the palette being reshuffled again.
   it("keeps the light end light and the dark end dark", () => {
-    const lightest = migrateAvatar({ skin: 0, hairColor: 0, shirt: 0 }, "Rosa").head;
-    const darkest = migrateAvatar({ skin: 7, hairColor: 0, shirt: 0 }, "Rosa").head;
-    expect(lightest).toBeLessThan(darkest);
-    expect(lightest).toBe(0);
-    expect(darkest).toBe(PARTS.head.length - 1);
+    const lum = (hex) => {
+      const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255);
+      return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+    };
+    const headFor = (skin) => PARTS.head[migrateAvatar({ skin, hairColor: 0, shirt: 0 }, "Rosa").head];
+    const lightest = headFor(0), darkest = headFor(7);
+    expect(lum(lightest.swatch), `legacy palest landed on "${lightest.colour}"`)
+      .toBeGreaterThan(lum(darkest.swatch));
+    // And on the ENDS of the range, not merely the right side of the middle.
+    const byLum = PARTS.head.slice().sort((a, b) => lum(a.swatch) - lum(b.swatch));
+    expect(lightest.colour).toBe(byLum.at(-1).colour);
+    expect(darkest.colour).toBe(byLum[0].colour);
   });
 
   it("keeps dark hair dark and blonde hair blonde", () => {

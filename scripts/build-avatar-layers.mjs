@@ -37,7 +37,8 @@ import sharp from "sharp";
 import { readdir, mkdir, writeFile, stat } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { join } from "node:path";
-import { extractBrows, hairTone, recolourBrows, rgb2hsl } from "./avatar-brows.mjs";
+import { extractBrows, hairTone, recolourBrows, rgb2hsl, hsl2rgb } from "./avatar-brows.mjs";
+import { PALETTE, materialMask, recolourPlate } from "./avatar-recolour.mjs";
 
 const FRAME = { top: 6, left: 6, bottom: 11, right: 11 };
 const CANVAS = 1200;
@@ -79,7 +80,10 @@ const DERIVED = { brow: "hair" };
 //   - a brand-new KIND of part (a hat, a scarf) needs adding to PARTS above, at
 //     the height it should stack. Nothing else in the pipeline changes.
 function parseName(file) {
-  const tokens = file.replace(/\.png$/i, "").split("_");
+  // A doubled extension is an export slip, not a colour: three plates in the
+  // 2026-07-29 batch arrived as "…_blonde.png.png", and stripping only one left
+  // the colour reading as "blonde.png". Strip them all.
+  const tokens = file.replace(/(\.png)+$/i, "").split("_");
   const part = tokens.shift();
   if (!PARTS.includes(part)) return null;
 
@@ -87,9 +91,15 @@ function parseName(file) {
   const sexAt = tokens.findIndex((t) => t === "male" || t === "female");
   if (sexAt !== -1) sex = tokens.splice(sexAt, 1)[0];
 
-  // A leading all-digits token is the variant number; otherwise the variants of
-  // this part are distinguished by colour alone (as the eyes currently are).
-  const variant = /^\d+$/.test(tokens[0]) ? tokens.shift() : "1";
+  // A leading token of digits OR a single letter is the variant; otherwise the
+  // variants of this part are distinguished by colour alone.
+  //
+  // The letter case matters. The male hairstyles are numbered 1-4 and the female
+  // ones lettered a-d, and matching only digits made "hair_female_a_blonde" a
+  // plate whose COLOUR was "a blonde" — so four hairSTYLES presented themselves
+  // to the child as four colours of one style, while all four male styles
+  // collapsed onto a single key and overwrote each other.
+  const variant = /^(\d+|[a-z])$/.test(tokens[0] ?? "") ? tokens.shift() : "1";
 
   // "skin" is a noun, not a colour: head_1_light_skin is the light one.
   if (tokens.at(-1) === "skin") tokens.pop();
@@ -100,8 +110,22 @@ function parseName(file) {
   if (part === "outfit" && tokens.length > 1) style = tokens.pop();
 
   const colour = tokens.join(" ") || "default";
-  return { part, sex, variant, style, colour, id: file.replace(/\.png$/i, "") };
+  // The id is rebuilt from the parsed pieces rather than taken from the filename,
+  // so a recoloured variant can differ from its source in exactly one token.
+  const id = idFor({ part, sex, variant, style, colour });
+  return { part, sex, variant, style, colour, id };
 }
+
+// part_[sex_]variant_colour[_style]. Stable and unique: two plates that differ
+// only in colour differ only in that token, which is what lets one delivered
+// painting become a whole palette without the ids colliding.
+const idFor = ({ part, sex, variant, style, colour }) => [
+  part,
+  sex === "any" ? null : sex,
+  variant,
+  colour.replace(/\s+/g, "-"),
+  style !== part ? style : null,
+].filter(Boolean).join("_");
 
 const title = (s) => s.replace(/\b\w/g, (c) => c.toUpperCase());
 
@@ -255,58 +279,123 @@ for (const file of files) {
   }
 
   const srcBytes = (await stat(join(SRC, file))).size;
-  const out = await plate(sharp(join(SRC, file)));
-
-  focus[spec.part] = union(focus[spec.part], await inkBox(out));
-
-  const name = `${spec.id}.webp`;
-  await writeFile(join(DEST, name), out);
-  layers.push({ ...spec, file: name, label: title(spec.colour), swatch: await swatchOf(spec.part, out) });
   bytesIn += srcBytes;
-  bytesOut += out.length;
+
+  // ONE delivered painting becomes the whole palette for its part. The delivery
+  // is one plate per SHAPE — one head, two sets of eyes, eight hairstyles, five
+  // outfits — each in a single colour, and the game needs every shape in every
+  // colour. See scripts/avatar-recolour.mjs for how, and for why the mask is not
+  // simply "every pixel" outside the hair.
+  const palette = PALETTE[spec.part];
+  const srcRaw = await rawOf(file);
+  let found = null;
+  if (palette) {
+    found = materialMask(spec.part, spec.colour, srcRaw, CANVAS, CANVAS);
+    if (!found) {
+      console.warn(`  ! ${file}: nothing on this plate is "${spec.colour}" — shipping it as delivered, uncoloured.`);
+      console.warn(`    The colour word in the filename names the garment that carries the colour;`);
+      console.warn(`    if the art changed, the word has to change with it.`);
+    }
+  }
+
+  const variants = found
+    ? palette.map((t) => ({ tone: t, colour: t.name }))
+    : [{ tone: { source: true }, colour: spec.colour }];
 
   const kb = (n) => `${(n / 1024).toFixed(0)} KB`;
-  console.log(`  ✓ ${file.padEnd(30)} ${kb(srcBytes).padStart(8)} → ${kb(out.length).padStart(7)}  ${spec.part}/${spec.colour}`);
+  let wrote = 0;
+  for (const { tone, colour } of variants) {
+    const raw = tone.source ? srcRaw : recolourPlate(spec.part, srcRaw, CANVAS, CANVAS, found, tone);
+    const out = await plate(sharp(raw, { raw: { width: CANVAS, height: CANVAS, channels: 4 } }));
+    const one = { ...spec, colour, id: idFor({ ...spec, colour }) };
+    focus[spec.part] = union(focus[spec.part], await inkBox(out));
+    const name = `${one.id}.webp`;
+    await writeFile(join(DEST, name), out);
+    // `tone` and `srcFile` are build-time bookkeeping (the brow pass needs the
+    // hair's target colour and the delivered head's filename); stripManifest
+    // drops them before anything is written.
+    layers.push({ ...one, file: name, label: title(colour), swatch: await swatchOf(spec.part, out),
+                  tone, srcFile: file });
+    bytesOut += out.length;
+    wrote += out.length;
+  }
+  const shown = variants.map((v) => v.colour).join(", ");
+  console.log(`  ✓ ${file.padEnd(30)} ${kb(srcBytes).padStart(8)} → ${kb(wrote).padStart(8)}  ${spec.part}/${spec.variant}  ${shown}`);
 }
 
 // ---- the synthesised brow layer ---------------------------------------------
-// One plate per hair colour, lifted out of the head art. See avatar-brows.mjs
-// for why one plate covers all four skin tones.
-const headFiles = layers.filter((l) => l.part === "head").map((l) => `${l.id}.png`);
+// One plate per hair COLOUR (not per style — the player never picks brows, and a
+// brow is a brow whatever the fringe above it is doing).
+//
+// extractBrows finds the ink by comparing two skin tones and keeping the pixels
+// they agree on, which needs two head paintings that differ ONLY in skin. The
+// 2026-07-29 delivery has one head, and the tones this build generates from it
+// move the line art along with the skin on purpose (a face whose lines stay put
+// loses its features at the darkest tone). So neither the delivery nor the
+// output can be fed to it directly.
+//
+// What is fed to it is a throwaway pair: the delivered head, and the same head
+// with ONLY its lighter pixels shifted. That is not shipped and never touches the
+// manifest — it exists for one comparison, and it is exactly the comparison the
+// extractor was written for, so the tested code stays unchanged and the ink it
+// isolates is the real ink.
+const SKIN_LUM_FLOOR = 0.34;   // below this a head pixel is line work, not skin
+const headSources = layers.filter((l) => l.part === "head" && l.tone?.source).map((l) => l.srcFile);
 const hairLayers = layers.filter((l) => l.part === "hair");
 const drawnBrows = layers.filter((l) => l.part === "brow").length;
+// One brow per hair colour, and the tone comes from the PALETTE rather than by
+// measuring a built plate: the target is what the hair was dyed to, and reading
+// it back off a WebP would only add rounding.
+const browTones = new Map();
+for (const h of hairLayers) if (!browTones.has(h.colour)) browTones.set(h.colour, h.tone);
 
 if (drawnBrows) {
   // Hand-drawn brows beat lifted ones. If a delivery ever includes brow_*.png,
   // it wins outright and nothing is synthesised on top of it.
   console.log(`\n  brows: ${drawnBrows} drawn plates delivered — skipping synthesis`);
-} else if (headFiles.length >= 2 && hairLayers.length) {
-  const heads = [];
-  for (const f of headFiles) heads.push(await rawOf(f));
-  const brows = extractBrows(heads, CANVAS, CANVAS);
-  console.log(`\n  brows: ${brows.blobs.length} ink blobs lifted from ${heads.length} skin tones`);
+} else if (headSources.length && browTones.size) {
+  const head = await rawOf(headSources[0]);
+  const twin = Buffer.from(head);
+  for (let i = 0; i < CANVAS * CANVAS; i++) {
+    if (twin[i * 4 + 3] < 8) continue;
+    const [hu, s, l] = rgb2hsl(twin[i * 4], twin[i * 4 + 1], twin[i * 4 + 2]);
+    if (l < SKIN_LUM_FLOOR) continue;                      // leave the ink alone
+    const [r, g, b] = hsl2rgb(hu, s, Math.max(0, l - 0.18));
+    twin[i * 4] = r; twin[i * 4 + 1] = g; twin[i * 4 + 2] = b;
+  }
+  const brows = extractBrows([head, twin], CANVAS, CANVAS);
+  console.log(`\n  brows: ${brows.blobs.length} ink blobs lifted from the head's own line art`);
 
-  for (const hair of hairLayers) {
-    const tone = hairTone(await rawOf(`${hair.id}.png`), CANVAS, CANVAS);
+  for (const [colour, tone] of browTones) {
+    const hair = hairLayers.find((h) => h.colour === colour);
     const rgba = recolourBrows(brows, tone, CANVAS, CANVAS);
     const out = await plate(sharp(rgba, { raw: { width: CANVAS, height: CANVAS, channels: 4 } }));
-    const name = `brow_${hair.colour.replace(/ /g, "_")}.webp`;
+    const name = `brow_${colour.replace(/\s+/g, "-")}.webp`;
     await writeFile(join(DEST, name), out);
     focus.brow = union(focus.brow, await inkBox(out));
     // The brow's `colour` is the HAIR colour it belongs with — that is the key
     // the picker matches on, since the player never chooses brows directly.
-    layers.push({ part: "brow", sex: hair.sex, variant: hair.variant, style: "brow",
-                  colour: hair.colour, id: name.replace(/\.webp$/, ""), file: name, label: hair.label,
+    layers.push({ part: "brow", sex: "any", variant: "1", style: "brow",
+                  colour, id: name.replace(/\.webp$/, ""), file: name, label: title(colour),
                   swatch: hair.swatch });
     bytesOut += out.length;
-    console.log(`  ✓ ${name.padEnd(30)} ${(out.length / 1024).toFixed(0)} KB`.padEnd(52) + `matches hair/${hair.colour}`);
+    console.log(`  ✓ ${name.padEnd(30)} ${(out.length / 1024).toFixed(0)} KB`.padEnd(52) + `matches hair/${colour}`);
   }
 } else {
-  console.warn("  ! brows skipped — needs at least two skin tones and one hair colour");
+  console.warn("  ! brows skipped — needs a delivered head plate and at least one hair colour");
 }
 
+// Colours come out in PALETTE order, not alphabetically. The palettes are
+// written in an order a child reads as a range — skin runs deep to light, hair
+// black to blonde — and sorting them by name shuffles that into nonsense
+// ("black, blonde, brown, dark brown, light brown, red").
+const paletteRank = (part, colour) => {
+  const i = (PALETTE[part] ?? PALETTE.hair).findIndex((t) => t.name === colour);
+  return i === -1 ? 999 : i;
+};
+
 // Group into the picker's shape: one entry per part, in z-order, each holding
-// its options in delivery order (variant, then colour).
+// its options in delivery order (variant, then palette order).
 const manifest = {
   canvas: size,
   order: PARTS,
@@ -317,7 +406,9 @@ const manifest = {
       part,
       layers
         .filter((l) => l.part === part)
-        .sort((a, b) => a.variant.localeCompare(b.variant, undefined, { numeric: true }) || a.colour.localeCompare(b.colour)),
+        .sort((a, b) => a.variant.localeCompare(b.variant, undefined, { numeric: true }) || paletteRank(part, a.colour) - paletteRank(part, b.colour))
+        // `tone` and `srcFile` are build-time only — see where they are set.
+        .map(({ tone, srcFile, ...keep }) => keep),
     ]),
   ),
 };
