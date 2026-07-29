@@ -20,6 +20,7 @@ import {
   FRAME_AR, pathBBox, pathBBoxCached, wrapPathPacific, trimWrappedSubpaths,
   trimFarSubpaths, toFrameAspect, fitBox, milesPerLonDegree, niceScaleMiles,
   pathArea, isSpeckIn,
+  boxFloorFor, BOX_MIN_DEG, ISLAND_MIN_DEG, ISLAND_MIN_FRAME_PX, PLATE_PX_PER_DEG,
 } from "../src/map-geometry.js";
 
 const width = (bb) => bb.maxX - bb.minX;
@@ -191,6 +192,48 @@ describe("fitBox", () => {
     const b = fitBox(84.5, 51.5, 59, 26);
     expect(b.x + b.w / 2).toBeCloseTo(84.5, 5);
     expect(b.y + b.h / 2).toBeCloseTo(51.5, 5);
+  });
+});
+
+// The floor is one number for a mainland country and a smaller one for a country
+// whose frame is ocean. The asymmetry is the point: back Switzerland off to the
+// default floor and the frame fills with the Alps, back Trinidad off to it and 72%
+// of the frame is empty Caribbean.
+describe("the island floor", () => {
+  it("is smaller than the default, and only for the countries named", () => {
+    expect(boxFloorFor("Trinidad and Tobago")).toBe(ISLAND_MIN_DEG);
+    expect(boxFloorFor("Jamaica")).toBe(ISLAND_MIN_DEG);
+    expect(ISLAND_MIN_DEG).toBeLessThan(BOX_MIN_DEG);
+    // Switzerland and Rwanda are floored too, and must not move: their frames fill
+    // with real neighbouring ground drawn from the same plate, not with sea.
+    expect(boxFloorFor("Switzerland")).toBe(BOX_MIN_DEG);
+    expect(boxFloorFor("Rwanda")).toBe(BOX_MIN_DEG);
+    expect(boxFloorFor("Nepal")).toBe(BOX_MIN_DEG);
+  });
+
+  // The floor is not a taste; it is the point past which there are no more pixels.
+  // If someone lowers it further, this is what should stop them.
+  it("never magnifies a plate past the pixels it actually has", () => {
+    const b = fitBox(0, 0, 0.4, 0.3, { min: boxFloorFor("Malta") });
+    const sourcePx = b.w * PLATE_PX_PER_DEG;
+    expect(sourcePx, `${sourcePx.toFixed(0)} source pixels across the whole atlas`)
+      .toBeGreaterThanOrEqual(ISLAND_MIN_FRAME_PX);
+  });
+
+  it("gives a small island most of its frame instead of a quarter of it", () => {
+    // Trinidad and Tobago: 1.35° x 1.25° of content, which sat at 28% of the frame.
+    // Measured on the BINDING axis — Trinidad is taller than the frame's aspect, so
+    // it is height that decides how big it reads, and comparing widths would call a
+    // frame-filling map a quarter-full one.
+    const fill = (b) => Math.max(1.35 / b.w, 1.25 / b.h);
+    expect(fill(fitBox(0, 0, 1.35, 1.25, { min: BOX_MIN_DEG }))).toBeLessThan(0.3);
+    expect(fill(fitBox(0, 0, 1.35, 1.25, { min: boxFloorFor("Trinidad and Tobago") }))).toBeGreaterThan(0.7);
+  });
+
+  it("still lets a country bigger than the floor size itself", () => {
+    // Fiji clears the island floor on its own content and must not be pinned to it.
+    const b = fitBox(0, 0, 3.02, 1.35, { min: boxFloorFor("Fiji") });
+    expect(b.w).toBeCloseTo(3.02 * 1.08, 5);
   });
 });
 

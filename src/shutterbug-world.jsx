@@ -37,7 +37,7 @@ import { robinson, eqToRobinson, robinsonToEq, ROBINSON_W, ROBINSON_H,
 // fitting, the scale-bar arithmetic. Extracted from this file (it was ~7,900 lines and
 // this layer had three untested bugs in one session); tested in test/map-geometry.test.js.
 import { FRAME_AR, countryKey, pathBBox, pathBBoxCached as PATH_BBOX_CACHE, isSpeckIn,
-  wrapPathPacific, trimWrappedSubpaths, trimFarSubpaths, toFrameAspect, fitBox,
+  wrapPathPacific, trimWrappedSubpaths, trimFarSubpaths, toFrameAspect, fitBox, boxFloorFor,
   eqPointFromEvent, milesPerLonDegree, niceScaleMiles,
   WC_ALIAS, COUNTRY_BOX_OVERRIDE, placeLabels, labelCorner, LABEL_FS, LABEL_DX, LABEL_DY } from "./map-geometry.js";
 import { rnd, shuffled, withSeed, randInt, pickOne } from "./rng.js";
@@ -711,8 +711,11 @@ const countriesOf = (l) => (l.countries && l.countries.length ? l.countries : [l
       // the frame now nearly fills it; a tall country like Chile still can't
       // fill a wide frame, but it fills the height instead of a fifth of it.
       // fitBox carries the margin, the microstate floor (below which the relief has
-      // no detail left to show) and the cap. See src/map-geometry.js.
-      const box = fitBox(bcx, bcy, bx1 - bx0, by1 - by0);
+      // no detail left to show) and the cap. See src/map-geometry.js. The floor is
+      // LOWER for a country whose frame is ocean rather than neighbours: backing
+      // Switzerland off to the default floor fills the frame with the Alps, and
+      // backing Trinidad off to it fills 72% of the frame with empty sea.
+      const box = fitBox(bcx, bcy, bx1 - bx0, by1 - by0, { min: boxFloorFor(country) });
       COUNTRY_META[countryKey(cont, country)] = { box, cx, cy };
     }
   }

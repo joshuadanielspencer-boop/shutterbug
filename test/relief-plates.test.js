@@ -17,7 +17,7 @@ import { WORLD_COUNTRIES } from "../src/data/worldmap.js";
 import { COUNTRY_LAYER_CONTINENTS } from "../src/data/countries.js";
 import {
   countryKey, pathBBox, fitBox, toFrameAspect, FRAME_AR,
-  WC_ALIAS, COUNTRY_BOX_OVERRIDE,
+  WC_ALIAS, COUNTRY_BOX_OVERRIDE, boxFloorFor,
 } from "../src/map-geometry.js";
 import { COUNTRY_PLATES } from "../src/data/relief-plates.js";
 
@@ -45,7 +45,7 @@ function boxes() {
         key, country,
         box: COUNTRY_BOX_OVERRIDE[key]
           ? toFrameAspect(COUNTRY_BOX_OVERRIDE[key])
-          : fitBox((b0 + b1) / 2, (c0 + c1) / 2, b1 - b0, c1 - c0),
+          : fitBox((b0 + b1) / 2, (c0 + c1) / 2, b1 - b0, c1 - c0, { min: boxFloorFor(country) }),
       });
     }
   }

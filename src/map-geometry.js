@@ -162,7 +162,65 @@ export const toFrameAspect = (b, ar = FRAME_AR) => {
 // so ~31% of the frame width was dead before any margin existed — every country
 // in the game occupied exactly 38% of the frame width, because its shape never
 // entered into it — and then the * 1.5 added 50% margin on top.
-export const fitBox = (cx, cy, contentW, contentH, { margin = 1.08, min = 4.5, max = 120, ar = FRAME_AR } = {}) => {
+// ---- The floor, and why an island needs a different one --------------------
+//
+// The per-country relief plates are cut from the 10m Natural Earth source at its
+// native 60 pixels per degree (scripts/make-country-relief.mjs). That is a HARD
+// ceiling on detail: Trinidad and Tobago is 1.35° across, so the island is 81
+// source pixels wide and no amount of framing invents an 82nd. This is why the
+// atlas has a floor at all — past some point you are not zooming in, you are
+// enlarging the same pixels.
+export const PLATE_PX_PER_DEG = 60;
+
+// The default floor, in degrees of box HEIGHT (so 4.5 × 1.45 = 6.5° wide). At that
+// size the plate supplies ~390 source pixels across the frame, which is a soft but
+// honest ~2× on a desktop atlas.
+export const BOX_MIN_DEG = 4.5;
+
+// The island floor. It is smaller, and the reason is not that islands are special
+// — it is what the frame is FULL OF when a country is backed off to the floor.
+//
+// Back Switzerland off to 6.5° and the frame fills with the Alps, Italy and
+// France: real ground, drawn from the same plate, and a child looking at it learns
+// where Switzerland sits. Nothing is wasted. Back Trinidad off to 6.5° and 72% of
+// the frame is open Caribbean — flat blue with no information in it at all. The
+// default floor buys context for a mainland country and buys literally nothing for
+// an island, which is the whole asymmetry.
+//
+// So an island's floor is set by the only thing that actually binds: how many
+// source pixels are left. Below ~140 across the frame an island stops reading as a
+// shape and starts reading as a smudge, and that works out at 2.3° wide — enough
+// that Trinidad, Jamaica and Fiji fill most of their frames, and Malta and
+// Singapore stop being specks without pretending to a sharpness they cannot have.
+export const ISLAND_MIN_FRAME_PX = 140;
+export const ISLAND_MIN_DEG = ISLAND_MIN_FRAME_PX / PLATE_PX_PER_DEG / FRAME_AR;
+
+// Which countries get it. An explicit list, the same way the camel and cable-car
+// lists in travel.js are explicit: absence means the ordinary floor, which is the
+// safe default. The test is not "is it politically an island" but "at the floor,
+// is the frame around it ocean" — that is what the smaller floor is buying back.
+//
+// Haiti is in it despite sharing Hispaniola: at the floor its frame is still well
+// over half open Caribbean, and the land that is not Haiti is the Dominican
+// Republic, which the map labels anyway. Ireland is in it for the same reason —
+// enlarging it loses some Irish Sea, not some Britain.
+//
+// Countries listed here that are too big to reach either floor (Japan, Indonesia,
+// the Philippines, Cuba, Iceland, New Zealand, Madagascar…) are unaffected. They
+// are named so the rule stays true if the game's places in them ever shift.
+export const OCEAN_FRAMED = new Set([
+  "Singapore", "Malta", "Trinidad and Tobago", "Jamaica", "Haiti", "Cuba",
+  "Solomon Is.", "Fiji", "Vanuatu", "New Caledonia", "French Polynesia",
+  "Micronesia", "Papua New Guinea", "New Zealand",
+  "Sri Lanka", "Taiwan", "Japan", "Philippines", "Indonesia",
+  "Ireland", "Iceland", "United Kingdom", "Madagascar",
+]);
+
+// The floor a given country's zoom box is held to.
+export const boxFloorFor = (country) =>
+  OCEAN_FRAMED.has(country) ? ISLAND_MIN_DEG : BOX_MIN_DEG;
+
+export const fitBox = (cx, cy, contentW, contentH, { margin = 1.08, min = BOX_MIN_DEG, max = 120, ar = FRAME_AR } = {}) => {
   let w = Math.max(contentW, contentH * ar) * margin;
   let h = w / ar;
   if (w < min * ar) { w = min * ar; h = min; }

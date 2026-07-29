@@ -13,7 +13,7 @@ import { LOCATIONS } from "../src/data/locations.js";
 import { WORLD_COUNTRIES } from "../src/data/worldmap.js";
 import {
   fitBox, toFrameAspect, pathBBox, FRAME_AR, countryKey, WC_ALIAS,
-  COUNTRY_BOX_OVERRIDE, placeLabels, labelClashes,
+  COUNTRY_BOX_OVERRIDE, placeLabels, labelClashes, boxFloorFor,
 } from "../src/map-geometry.js";
 
 const PIN_K = 0.033;          // the radius the current pin actually draws at
@@ -39,7 +39,7 @@ const META = (() => {
       const bpath = !wrap && (WC_BY_NAME[country] || WC_BY_NAME[WC_ALIAS[country]]);
       const bb = bpath && pathBBox(bpath, cx, cy, Math.max(7, Math.max(maxX - minX, maxY - minY) * 2.5));
       if (bb) { bx0 = Math.min(bx0, bb.minX); bx1 = Math.max(bx1, bb.maxX); by0 = Math.min(by0, bb.minY); by1 = Math.max(by1, bb.maxY); }
-      out[countryKey(cont, country)] = { box: fitBox((bx0 + bx1) / 2, (by0 + by1) / 2, bx1 - bx0, by1 - by0), locs: ls, wrap };
+      out[countryKey(cont, country)] = { box: fitBox((bx0 + bx1) / 2, (by0 + by1) / 2, bx1 - bx0, by1 - by0, { min: boxFloorFor(country) }), locs: ls, wrap };
     }
   }
   for (const [key, box] of Object.entries(COUNTRY_BOX_OVERRIDE)) if (out[key]) out[key].box = toFrameAspect(box);
