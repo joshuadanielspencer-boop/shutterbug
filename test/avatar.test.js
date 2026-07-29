@@ -3,10 +3,10 @@
 // and swapping the procedural SVG for painted art must not take it away.
 import { describe, it, expect } from "vitest";
 import {
-  PARTS, ORDER, PICKABLE, AVATAR_DIMS, PORTRAIT,
+  PARTS, ORDER, PICKABLE, AVATAR_ROWS, PORTRAIT,
   defaultAvatar, randomAvatar, normalizeAvatar, migrateAvatar, isLegacySpec,
   avatarFor, avatarLayers, focusStyle,
-  SEXES, SEXED, sexOf, optionsFor, stepPart, stepSex, withSex,
+  SEXES, SEXED, sexOf, optionsFor, stepPart, stepAxis, stepSex, withSex,
 } from "../src/avatar-spec.js";
 import { DERIVED, FOCUS } from "../src/data/avatar.js";
 
@@ -57,7 +57,10 @@ describe("avatar parts data", () => {
 
   it("does not offer derived parts to the player", () => {
     for (const part of Object.keys(DERIVED)) expect(PICKABLE).not.toContain(part);
-    expect(AVATAR_DIMS.map((d) => d.key)).toEqual(PICKABLE);
+    // Every editor row belongs to a part the player may pick, and every such
+    // part gets at least one row — so a delivery can add a part without it
+    // silently becoming unreachable.
+    expect(new Set(AVATAR_ROWS.map((r) => r.part))).toEqual(new Set(PICKABLE));
   });
 });
 
@@ -345,5 +348,75 @@ describe("choosing a sex", () => {
         for (const part of sexed) expect(PARTS[part][spec[part]].sex).toBe(spec.sex);
       }
     }
+  });
+});
+
+// ===========================================================================
+// Style and colour as SEPARATE rows. One row per part could only walk the two
+// together — stepping "Hair" went through cut 1 in six colours, then cut 2 in
+// six colours — so reaching the cut you wanted in the colour you wanted took up
+// to 24 presses and knowing the order.
+// ===========================================================================
+describe("stepping style and colour apart", () => {
+  const rowsFor = (part) => AVATAR_ROWS.filter((r) => r.part === part);
+
+  it("gives a part a style row only when it has more than one style", () => {
+    for (const part of PICKABLE) {
+      const axes = new Set(rowsFor(part).map((r) => r.axis));
+      const styles = new Set(PARTS[part].map((o) => o.variant)).size;
+      expect(axes.has("variant"), `${part} has ${styles} style(s)`).toBe(styles > 1);
+      expect(axes.has("colour"), part).toBe(true);
+    }
+    // As delivered: one head painting, one pair of eyes, four hairstyles per
+    // sex, five outfits. So hair and outfit get two rows and the others one.
+    expect(rowsFor("hair").length).toBe(2);
+    expect(rowsFor("outfit").length).toBe(2);
+    expect(rowsFor("head").length).toBe(1);
+    expect(rowsFor("eyes").length).toBe(1);
+  });
+
+  it("holds the other axis still while one moves", () => {
+    for (const sex of SEXES) {
+      for (const { part, axis } of AVATAR_ROWS) {
+        const other = axis === "variant" ? "colour" : "variant";
+        const start = optionsFor(part, sex)[0].i;
+        let spec = { sex, [part]: start };
+        const held = PARTS[part][start][other];
+        const moved = new Set();
+        const values = new Set(optionsFor(part, sex).map(({ o }) => o[axis]));
+        for (let n = 0; n < values.size; n++) {
+          spec = stepAxis(spec, part, axis, 1);
+          const now = PARTS[part][spec[part]];
+          expect(now[other], `${part}.${axis} moved ${other} too`).toBe(held);
+          expect(now.sex === "any" || now.sex === sex, `${part}.${axis} left ${sex}`).toBe(true);
+          moved.add(now[axis]);
+        }
+        // A full lap visits every value of this axis and returns to the start.
+        expect(moved, `${part}.${axis}`).toEqual(values);
+        expect(spec[part], `${part}.${axis} lap`).toBe(start);
+      }
+    }
+  });
+
+  it("cycles the eye colours rather than sitting still", () => {
+    // Reported as "Eyes doesn't rotate". The row exists and does move; what it
+    // could not do before was move WITHOUT also stepping through the other sex's
+    // plates, because the eyes list interleaves male and female.
+    for (const sex of SEXES) {
+      const seen = [];
+      let spec = { sex, eyes: optionsFor("eyes", sex)[0].i };
+      for (let n = 0; n < 6; n++) { seen.push(PARTS.eyes[spec.eyes].colour); spec = stepAxis(spec, "eyes", "colour", 1); }
+      expect(new Set(seen).size, `${sex} eye colours`).toBe(6);
+      expect(seen).toEqual(expect.arrayContaining(["brown", "green", "blue"]));
+    }
+  });
+
+  it("keeps a hair style when only the colour changes, and vice versa", () => {
+    const start = optionsFor("hair", "female").find(({ o }) => o.variant === "c" && o.colour === "red");
+    expect(start, "the delivery should have a red 'c' hairstyle").toBeTruthy();
+    const recoloured = stepAxis({ sex: "female", hair: start.i }, "hair", "colour", 1);
+    expect(PARTS.hair[recoloured.hair].variant).toBe("c");
+    const restyled = stepAxis({ sex: "female", hair: start.i }, "hair", "variant", 1);
+    expect(PARTS.hair[restyled.hair].colour).toBe("red");
   });
 });

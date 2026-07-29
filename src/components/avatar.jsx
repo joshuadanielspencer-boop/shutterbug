@@ -16,7 +16,7 @@ import React, { useState, useRef } from "react";
 import { INK, OCEAN, CORAL, GREEN, PAPER, PAPER_LINE } from "../theme.js";
 import { useModalFocus } from "./modal.jsx";
 import {
-  AVATAR_DIMS, PARTS, PORTRAIT, sexOf, stepSex, stepPart,
+  AVATAR_ROWS, PARTS, PORTRAIT, sexOf, stepSex, stepAxis,
   defaultAvatar, avatarFor, randomAvatar, normalizeAvatar, avatarLayers, focusStyle, fillHeightStyle,
 } from "../avatar-spec.js";
 
@@ -74,19 +74,22 @@ const arrowStyle = {
 // announced to a screen reader through the portrait's own aria-label, which names
 // every part, so the information is present without being clutter on screen. The
 // arrows keep their own labels.
-// `value` is shown for the SEX row and nothing else. Every other row is a thing
-// you can see in the portrait above — a haircut, a jacket — and naming it as
-// well is clutter. "Male"/"Female" is the one choice the picture does not fully
-// announce on its own, and it is also the one that changes what the OTHER rows
-// will offer, so it says which way it is set.
+//
+// `value` is the one exception, and it is shown for the SEX row alone. Every
+// other row changes something you can see in the portrait; male/female is the one
+// choice the picture does not fully announce on its own, and it is also the one
+// that changes what the rows under it will offer, so it says which way it is set.
 function PartRow({ label, value, onStep }) {
   return (
     <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 14,
                   padding: "7px 0", borderTop: `1px solid ${PAPER_LINE}` }}>
       <button type="button" onClick={() => onStep(-1)} style={arrowStyle}
         aria-label={`Previous ${label.toLowerCase()}`}>◀</button>
+      {/* Wide enough for the longest label on one line. "OUTFIT STYLE" is twelve
+          monospace characters with 0.18em of tracking and wrapped to two rows at
+          the old 116, which made that row taller than its neighbours. */}
       <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 13, letterSpacing: "0.18em",
-                     fontWeight: 800, color: INK, width: 116, textAlign: "center" }}>
+                     fontWeight: 800, color: INK, width: 152, textAlign: "center", whiteSpace: "nowrap" }}>
         {(value ?? label).toUpperCase()}
       </span>
       <button type="button" onClick={() => onStep(1)} style={arrowStyle}
@@ -98,19 +101,25 @@ function PartRow({ label, value, onStep }) {
 // The stack of part rows plus a randomize button. Shared by the editor and the
 // create-traveler popup, which used to carry two copies of the same layout.
 //
-// SEX comes first because it narrows what two of the rows under it will offer:
-// the eyes and the hair are drawn per sex, the skin and the jacket are the same
-// paintings for everybody. The arrows below it step through that sex's options
-// only (stepPart), so a boy's arrows never walk into the girls' hairstyles, and
-// switching sex carries each choice to its nearest equivalent rather than
-// resetting the face.
+// SEX comes first because it narrows what the rows under it will offer: the eyes
+// and the hair are drawn per sex, the skin and the outfits are the same paintings
+// for everybody. Every arrow steps inside that sex's own set (stepAxis), so a
+// boy's arrows never walk into the girls' hairstyles, and switching sex carries
+// each choice to its nearest equivalent rather than resetting the face.
+//
+// The rows themselves come from AVATAR_ROWS, which splits each part into its
+// STYLE and its COLOUR wherever there is more than one style to choose. One row
+// per part walked the two together — stepping "Hair" went through cut 1 in six
+// colours, then cut 2 in six colours — so landing on the cut you wanted in the
+// colour you wanted took up to 24 presses and knowing the order.
 function AvatarControls({ spec, setSpec }) {
   const sex = sexOf(spec);
   return (
     <>
       <PartRow label="Sex" value={sex} onStep={(d) => setSpec((s) => stepSex(s, d))} />
-      {AVATAR_DIMS.map((d) => (
-        <PartRow key={d.key} label={d.label} onStep={(delta) => setSpec((s) => stepPart(s, d.key, delta))} />
+      {AVATAR_ROWS.map((r) => (
+        <PartRow key={r.key} label={r.label}
+          onStep={(delta) => setSpec((s) => stepAxis(s, r.part, r.axis, delta))} />
       ))}
     </>
   );
@@ -189,5 +198,5 @@ function AvatarEditor({ name, initial, onSave, onClose, onRename, onRemove }) {
   );
 }
 
-export { AVATAR_DIMS, PARTS, defaultAvatar, avatarFor, randomAvatar, normalizeAvatar,
+export { AVATAR_ROWS, PARTS, defaultAvatar, avatarFor, randomAvatar, normalizeAvatar,
   Avatar, AvatarControls, AvatarEditor };

@@ -112,6 +112,39 @@ const NOTE_CLIP_ON_PAPER = 30;
 // MAP_CAP subtracts it back off the map's own ceiling. Change it here and the cap
 // follows — the two were the sort of pair that drifts when only one is edited.
 const DESK_MAP_DROP = 16;
+
+// ---- The painted boards (the traveler picker, and every screen Jonah is on) ---
+// Both are the same flat-lay photographed from above — map paper on a wooden
+// desk, ringed by a passport, stamps and a compass — and both used to be sized
+// with minHeight, which let them GROW with their content.
+//
+// Growing is what made the background appear to change. `background-size: cover`
+// re-crops the picture to whatever box it is given, so a taller board shows a
+// different part of the same photograph: pick the Journeys mode and the route
+// picker pushes the board from 810px to 1,012px, and the passport and compass
+// slide off the corners. Joshua read that as a different background, which is
+// exactly what it looks like.
+//
+// So the board is a FIXED height and the crop never moves. Content taller than
+// the board scrolls inside it rather than stretching it — that is the trade, and
+// it is the right way round: a scrollbar in one panel is a smaller price than the
+// furniture of the room rearranging itself when you choose a game mode.
+const BOARD_H = "min(90vh, 820px)";
+const boardBox = {
+  position: "relative", height: BOARD_H, width: "100%", margin: "0 auto",
+  backgroundSize: "cover", backgroundPosition: "center",
+  borderRadius: 16, overflow: "hidden", boxShadow: "0 8px 26px rgba(0,0,0,0.32)",
+};
+const boardInner = { position: "relative", zIndex: 2, height: "100%", overflowY: "auto", overflowX: "hidden" };
+
+// The white pill in a board's top-left corner. The traveler picker has always had
+// one; the meet screen's way back was a 13px line of faded text at the bottom of
+// the column, which is not a button a child finds.
+const cornerBackBtn = {
+  position: "absolute", top: 14, left: 14, zIndex: 3, padding: "8px 14px", borderRadius: 8,
+  border: "none", background: "rgba(255,255,255,0.88)", color: INK, fontWeight: 700,
+  fontSize: 13, cursor: "pointer", boxShadow: "0 2px 6px rgba(0,0,0,0.2)",
+};
 // How tall the atlas plate sits on the desk — NOT the aspect the country zoom boxes
 // are built at (that is FRAME_AR, in map-geometry.js). See frameAspect below.
 const DESK_ATLAS_AR = 1.2;
@@ -4095,6 +4128,12 @@ export default function ShutterbugWorld() {
     return (
       <Frame>
         <DeskBoard>
+          {/* The way back to "Who's traveling?", in the corner the picker keeps its
+              own Back button in. This used to be a faded 13px line of text at the
+              bottom of the left column that said "Back to travelers" and went to
+              the SPLASH — the label and the destination had drifted apart, and
+              neither was what a child looking for the traveler list would find. */}
+          <button onClick={() => setScreen("travelers")} style={cornerBackBtn}>← Travelers</button>
           {/* Uncle greets you. He gets the bigger half of the screen and sits on
               the RIGHT; what you read and click stays left, in one column, so the
               eye isn't crossing him to get from his question to the answer. The
@@ -4236,7 +4275,13 @@ export default function ShutterbugWorld() {
           {gameMode === "journey" && (
             <div style={{ marginTop: 18 }}>
               <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.22em", color: INK, opacity: 0.65, marginBottom: 8 }}>THE ROUTE</div>
-              <div style={{ display: "flex", gap: 7, flexWrap: "wrap", justifyContent: "center" }}>
+              {/* Eleven routes wrap to four rows and are the one thing on this screen
+                  that outgrows the board. The board is a fixed height on purpose (see
+                  boardBox), so the overflow is confined HERE rather than left to push
+                  the whole panel: a list that scrolls is a list, where a whole screen
+                  quietly cut off at a painted wooden edge just looks broken. */}
+              <div style={{ display: "flex", gap: 7, flexWrap: "wrap", justifyContent: "center",
+                            maxHeight: 76, overflowY: "auto", padding: "2px 4px" }}>
                 {JOURNEYS.map((jr) => {
                   const on = journeyId === jr.id;
                   return (
@@ -4339,10 +4384,6 @@ export default function ShutterbugWorld() {
           </div>
           </div>{/* end flex row */}
           <div style={{ display: "flex", gap: 18, alignItems: "center", flexWrap: "wrap" }}>
-            <button onClick={() => setScreen("start")}
-              style={{ marginTop: 14, background: "none", border: "none", color: INK, opacity: 0.6, fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
-              ← Back to travelers
-            </button>
             <button onClick={() => setWardrobeOpen(true)}
               style={{ marginTop: 14, background: "none", border: "none", color: OCEAN, opacity: 0.85, fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
               🐾 Pickles's wardrobe
@@ -4488,13 +4529,12 @@ export default function ShutterbugWorld() {
         const selected = profileName ? getProfile(profileName) : null;
         const leaders = canSave ? topScores(5) : [];
         return (
-        <div style={{ position: "relative", minHeight: "min(90vh, 820px)", width: "100%", maxWidth: 1200, margin: "0 auto",
-          backgroundImage: `url("${UI}traveling-bg.jpg")`, backgroundSize: "cover", backgroundPosition: "center",
-          borderRadius: 16, overflow: "hidden", boxShadow: "0 8px 26px rgba(0,0,0,0.32)" }}>
-          <button onClick={() => setScreen("start")} style={{ position: "absolute", top: 14, left: 14, zIndex: 3, padding: "8px 14px", borderRadius: 8, border: "none", background: "rgba(255,255,255,0.88)", color: INK, fontWeight: 700, fontSize: 13, cursor: "pointer", boxShadow: "0 2px 6px rgba(0,0,0,0.2)" }}>← Back</button>
+        <div style={{ ...boardBox, maxWidth: 1200,
+          backgroundImage: `url("${UI}traveling-bg.jpg")` }}>
+          <button onClick={() => setScreen("start")} style={cornerBackBtn}>← Back</button>
 
           {/* Everything sits within the aged-map paper in the centre of the flat-lay. */}
-          <div style={{ position: "relative", zIndex: 2, minHeight: "inherit", display: "flex", flexDirection: "column", alignItems: "center",
+          <div style={{ ...boardInner, display: "flex", flexDirection: "column", alignItems: "center",
             maxWidth: 900, margin: "0 auto", padding: "clamp(16px, 3.5vw, 40px) clamp(20px, 6vw, 76px) clamp(20px, 3vw, 36px)", textAlign: "center" }}>
             <img src={`${UI}whos-traveling-title.png`} alt="Who's traveling? Pick a traveler, play as a guest, or start a new one."
               style={{ width: "min(90%, 470px)", height: "auto", display: "block" }} />
@@ -6850,10 +6890,9 @@ function SepiaMapBackground() {
 // rather than drifting over the props on a small screen.
 function DeskBoard({ children, maxWidth = 1180, pad }) {
   return (
-    <div style={{ position: "relative", minHeight: "min(90vh, 820px)", width: "100%", maxWidth, margin: "0 auto",
-      backgroundImage: `url("${UI}main-screen-bg.jpg")`, backgroundSize: "cover", backgroundPosition: "center",
-      borderRadius: 16, overflow: "hidden", boxShadow: "0 8px 26px rgba(0,0,0,0.32)" }}>
-      <div style={{ position: "relative", zIndex: 2, minHeight: "inherit",
+    <div style={{ ...boardBox, maxWidth,
+      backgroundImage: `url("${UI}main-screen-bg.jpg")` }}>
+      <div style={{ ...boardInner,
         padding: pad || "clamp(16px, 3.2vw, 40px) clamp(24px, 6.5vw, 92px) clamp(18px, 3vw, 40px)" }}>
         {children}
       </div>

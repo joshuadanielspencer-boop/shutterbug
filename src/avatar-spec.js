@@ -26,15 +26,33 @@ const EDITOR_ORDER = ["head", "eyes", "hair", "outfit"];
 export const PICKABLE = EDITOR_ORDER.filter((p) => ORDER.includes(p) && !(p in DERIVED))
   .concat(ORDER.filter((p) => !(p in DERIVED) && !EDITOR_ORDER.includes(p)));
 
-const LABEL = { head: "Skin", eyes: "Eyes", hair: "Hair", outfit: "Jacket" };
+// ---------------------------------------------------------------------------
+// The editor's rows
+// ---------------------------------------------------------------------------
+// A plate is two independent choices — WHICH one (its `variant`: which haircut,
+// which garment) and what COLOUR it is — and the editor gives each its own row.
+// One row per part could only ever walk the two together: stepping "Hair" moved
+// through style 1 in six colours, then style 2 in six colours, so finding the
+// cut you wanted in the colour you wanted meant up to 24 presses and knowing the
+// order. Two rows make it two obvious ones.
+//
+// The rows are DERIVED, not listed: a part gets a style row only if it actually
+// has more than one variant. The head has a single painting in six skin tones,
+// so it gets one row and is not made to pretend otherwise — and the day a second
+// head shape is delivered, its style row appears on its own.
+const ROW_LABEL = {
+  head: { colour: "Skin" },
+  eyes: { colour: "Eyes" },
+  hair: { variant: "Hair Style", colour: "Hair Color" },
+  outfit: { variant: "Outfit Style", colour: "Outfit Color" },
+};
 
-// The editor and the create-traveler popup both render this table, which is why
-// it is a table and not two copies of a layout.
-export const AVATAR_DIMS = PICKABLE.map((key) => ({
-  key,
-  label: LABEL[key] || key,
-  options: PARTS[key],
-}));
+const distinct = (part, axis) => new Set(PARTS[part].map((o) => o[axis])).size;
+
+export const AVATAR_ROWS = PICKABLE.flatMap((part) =>
+  ["variant", "colour"]
+    .filter((axis) => ROW_LABEL[part]?.[axis] && distinct(part, axis) > 1)
+    .map((axis) => ({ part, axis, key: `${part}.${axis}`, label: ROW_LABEL[part][axis] })));
 
 // ---------------------------------------------------------------------------
 // Sex
@@ -99,6 +117,31 @@ export function stepPart(spec, part, delta) {
   const from = at === -1 ? 0 : at;
   const next = opts[(((from + delta) % opts.length) + opts.length) % opts.length];
   return { ...spec, [part]: next.i };
+}
+
+// Move along ONE axis of a part — its style or its colour — holding the other
+// where it is. This is what makes "Hair Style" and "Hair Color" two rows rather
+// than one: pressing Style keeps the colour, pressing Color keeps the cut.
+//
+// It stays inside the sex's own set, so the styles a boy cycles are the four
+// male ones and a girl's are the four female ones. And it is written against the
+// VALUE (variant "3", colour "red") rather than a position, because male and
+// female styles are numbered differently — there is no shared index to step.
+export function stepAxis(spec, part, axis, delta) {
+  const opts = optionsFor(part, sexOf(spec));
+  const cur = PARTS[part]?.[spec[part]];
+  const values = [...new Set(opts.map(({ o }) => o[axis]))];
+  if (values.length < 2) return spec;
+  const at = values.indexOf(cur?.[axis]);
+  const want = values[((((at < 0 ? 0 : at) + delta) % values.length) + values.length) % values.length];
+  const other = axis === "variant" ? "colour" : "variant";
+  // Hold the other axis if that combination exists; every plate in this delivery
+  // is every style in every colour, so it always does — but a partial future
+  // batch would fall back to the first plate of the wanted value rather than
+  // refusing to move.
+  const found = opts.find(({ o }) => o[axis] === want && o[other] === cur?.[other])
+             ?? opts.find(({ o }) => o[axis] === want);
+  return found ? { ...spec, [part]: found.i } : spec;
 }
 
 // Switch sex, carrying every sexed choice to its nearest equivalent.
