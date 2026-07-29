@@ -77,12 +77,14 @@ Last updated **2026-07-28**.
 >    an island fills it with empty sea, and the island floor is set by how many
 >    source pixels are left rather than by taste. Trinidad 28% → 78%, Jamaica 33% →
 >    92%, Fiji 46% → 93%; no mainland country moved.
-> 4. **Mr O's "checkered background"** could not be reproduced: all ten shipped images
->    have genuine alpha, live and local are byte-identical, and no UI asset contains a
->    checkerboard. BUT four of the ORIGINALS in `Images/Mr O complete/` (considering,
->    explaining, sharing, teaching) are fully opaque with a white-and-grey
->    checkerboard baked in, which is almost certainly what he is looking at. Ask which
->    SCREEN he sees it on before touching files that measure correct.
+> 4. ~~**Mr O's "checkered background"**~~ **CLOSED 2026-07-29 — Joshua: "Mr O is
+>    good."** It could never be reproduced in the shipped game: all ten images have
+>    genuine alpha, live and local are byte-identical, and no UI asset contains a
+>    checkerboard. What he had been looking at was almost certainly four of the
+>    ORIGINALS in `Images/Mr O complete/` (considering, explaining, sharing,
+>    teaching), which are fully opaque with a white-and-grey checkerboard baked in.
+>    Worth keeping in mind if it ever comes back: check whether the file being
+>    looked at is a delivery or a shipped asset before measuring anything.
 
 > ### ⚠ 2026-07-28: the speech voice, and what would actually fix it
 >
