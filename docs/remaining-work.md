@@ -389,6 +389,20 @@ Journeys, and the Grandpa Nigel story frame.
 | `node scripts/gen-geography.mjs` | Rebuilds `src/data/geography.js` (rivers/lakes/seas) from Natural Earth. |
 | `node scripts/make-relief.mjs <NE1.tif> --width 8192 --out public/relief-world.jpg` | Rebuilds the relief plates. |
 | `node scripts/imperial-first.mjs --dry` | Finds/rewrites metric-only measurements. Always `--dry` first. |
+| `node scripts/gen-price-anchors.mjs` | Rebuilds `src/data/price-anchors.js` from WFP food prices. `--csv a.csv b.csv` to work from local copies. **Read the warning at the top before adding a country** (§12). |
+
+> ⚠ **The two relief scripts cannot be run on this machine as it stands.** Both want
+> the Natural Earth source raster (`NE1_HR_LR.tif` / `HYP_HR_SR_W.tif`) as an
+> argument, and it is **not in the repo and not anywhere on disk** — `assets-src/`
+> holds only `icon.svg`. It is a ~200 MB download from naturalearthdata.com, and it
+> is deliberately not committed.
+>
+> This matters more than it looks, because `test/relief-plates.test.js` asserts every
+> per-country plate covers the ground its zoom box draws. **Making a country's box
+> BIGGER breaks that test and needs the raster to fix**; making one smaller is free,
+> since a smaller box is a subset of ground the existing plate already covers. That
+> asymmetry is why the island floor (2026-07-29) needed no plate regeneration, and
+> it is the first thing to check before touching `fitBox` in the other direction.
 
 ### Three traps that have already bitten, and will again
 
