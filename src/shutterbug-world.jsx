@@ -13,6 +13,7 @@ import { JOURNEYS, JOURNEY_BY_ID, journeyBox, unrolledX, closestStops } from "./
 import { HUBS, TRANSPORT_BY_ID, transportOptionsFor, countryTransport, money as fmtMoney, currencyFor } from "./data/travel.js";
 import { COUNTRY_PEOPLE, peopleCards, greetingMeaning } from "./data/culture.js";
 import { COUNTRY_CURRENCY, CURRENCY_AS_OF } from "./data/currency.js";
+import { PRICE_ANCHORS } from "./data/price-anchors.js";
 import { DOG_LINES } from "./data/pickles.js";
 import { CREDIT_SECTIONS, COPYRIGHT_LINE } from "./data/credits.js";
 // The small presentational pieces that only put a picture on the screen. They know
@@ -8562,6 +8563,42 @@ function CurrencyLine({ country }) {
             ? `1 ${c.name} is worth about $${per} (${CURRENCY_AS_OF}).`
             : `About ${money(per)} to the US dollar (${CURRENCY_AS_OF}).`}
       </div>
+      <PriceAnchorLine country={country} currency={c} />
+    </div>
+  );
+}
+
+// What the money BUYS. The rate above teaches arithmetic; this teaches a shopping
+// trip, and it is the half a child can actually feel — "about 37 córdobas to the
+// dollar" means nothing next to "a pound of rice costs about 25 córdobas".
+//
+// Only ten countries have one (src/data/price-anchors.js), and that is not an
+// oversight. There is no authoritative global source of everyday retail prices;
+// the one good free source, WFP's, monitors the markets WFP OPERATES IN, which for
+// Kenya and Uganda means refugee camps. So a country gets this line only where a
+// real observed price in its capital or its own national average exists, and the
+// line SAYS which city and which month rather than claiming a national present
+// tense it can't support. See the warning at the top of the generator.
+//
+// The amount is given in the currency CODE, not its name, on purpose: the line
+// directly above already says what EGP is, and "a pound of rice cost about 13
+// Egyptian pounds" is a sentence with two different pounds in it.
+function PriceAnchorLine({ country, currency }) {
+  const a = PRICE_ANCHORS[country];
+  if (!a) return null;
+  const usd = a.price / currency.perUsd;
+  // Under a dollar reads better in cents — "about 30¢" is a number a child owns.
+  const inUsd = usd < 1 ? `${Math.round(usd * 100)}¢` : `$${usd < 10 ? usd.toFixed(2) : Math.round(usd)}`;
+  const [y, m] = a.asOf.split("-");
+  const when = `${["January", "February", "March", "April", "May", "June", "July",
+    "August", "September", "October", "November", "December"][+m - 1]} ${y}`;
+  const price = a.price.toLocaleString("en-US");
+  return (
+    <div style={{ fontSize: 11.5, opacity: 0.8, marginTop: 2 }}>
+      <span aria-hidden="true">🛒 </span>
+      {a.city ? `In ${a.city}, a` : "A"} {a.unit} ({a.metric}) of {a.item} cost about{" "}
+      {price} {currency.code} — about {inUsd}.
+      <span style={{ opacity: 0.7 }}> ({when})</span>
     </div>
   );
 }

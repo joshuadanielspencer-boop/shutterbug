@@ -27,11 +27,10 @@ Last updated **2026-07-28**.
 >    the character in the same position. The frame is NOT the registration reference
 >    — it is stripped and identical on every plate. Canvas size and character
 >    position are the whole contract.
-> 2. **Currency PRICE anchors** ("a loaf of bread costs about 45 córdobas") — the
->    part of his spec that teaches orders of magnitude and never shipped. The culture
->    card already carries currency name/code/symbol and a dated exchange-rate anchor
->    for 55 of 106 countries. Every figure needs a source under rule 2, so the
->    question is whether he wants all 55 or a handful first to see how it reads.
+> 2. ~~**Currency PRICE anchors**~~ **BUILT, and it reaches 10 countries, not 55.**
+>    Joshua asked for all of them. See §12 for why that is not available at any
+>    price — the short version is that there is no authoritative global source of
+>    everyday retail prices, and the one good free source measures refugee camps.
 > 3. **Trinidad and Tobago's map.** The plate is already at the source raster's
 >    native 60 px/degree, so it cannot be sharpened. The problem is framing: every
 >    small country is floored at the same 7.3° box by `fitBox`'s minimum, so Trinidad
@@ -288,6 +287,7 @@ This document is long enough that things get lost in it. Every section, in order
 | [9](#9-travel-modes--built-2026-07-15-balance-wants-a-playtest) | Travel modes | built; balance wants Joshua's feel |
 | [10](#10-rewards-progression-and-the-dog-brainstorm-2026-07-19) | **Rewards, progression, and the dog** | brainstorm — decisions needed |
 | [11](#11-the-music-honestly-2026-07-19-recounted-2026-07-28) | **The music, honestly** | recounted 2026-07-28 — 11 regional beds became 43; `caribbean` is the last one left at six |
+| [12](#12-currency-price-anchors--built-2026-07-29-and-it-stops-at-10-countries) | **Currency price anchors** | built 2026-07-29 — 10 countries, and why "all of them" isn't available |
 
 ### THE THREE THINGS TO DO NEXT (start here)
 
@@ -991,3 +991,91 @@ openings for countries whose anthem is genuinely famous.
 
 Note the tunes now play **once, not twice** — the eleven regional beds were rewritten
 as two-phrase call-and-response melodies (4.7–9.9s) so a single pass stands alone.
+
+## 12. Currency price anchors — built 2026-07-29, and it stops at 10 countries
+
+Joshua's spec: *"a loaf of bread costs about 45 córdobas"*. The culture card already
+says what money a country uses and roughly how many of it a dollar buys; that teaches
+the **rate**. The price anchor teaches what the money **buys**, which is the half a
+child can actually feel. Asked whether he wanted a handful first or all of them, he
+said all of them.
+
+**All of them is not available.** Not slow — unavailable. This is the finding, and it
+is worth reading before anyone tries again.
+
+### What was built
+
+- `scripts/gen-price-anchors.mjs` — pulls WFP's Global Food Prices from the
+  Humanitarian Data Exchange (CC BY-IGO, updated monthly), picks one staple per
+  country, converts to imperial, rounds to two significant figures, writes
+  `src/data/price-anchors.js`. The yearly CSVs are 20–55 MB and HDX drops the big
+  one part-way through often enough that it retries and also accepts local copies
+  (`--csv a.csv b.csv`).
+- `src/data/price-anchors.js` — generated, 10 countries.
+- `PriceAnchorLine` in `shutterbug-world.jsx`, under the money line on the culture
+  card: *"🛒 In Kathmandu, a pound (0.45 kg) of rice cost about 40 NPR — about 27¢.
+  (June 2026)"*
+- `test/price-anchors.test.js` — 7 tests. The one with teeth cross-checks each price
+  against the exchange rate beside it, because they come from different sources and
+  if they disagree about what a pound of food costs in dollars, one of them is wrong.
+
+Cameroon, Ecuador, Egypt, Jordan, Madagascar, Namibia, Nepal, the Philippines,
+Sri Lanka, Turkey.
+
+### Why not more — the trap, in detail
+
+**WFP monitors the markets WFP OPERATES IN.** It publishes retail prices for 72
+countries and that number is a trap, because those are food-security monitoring
+sites, not national price surveys:
+
+| country | every monitored market is… |
+|---|---|
+| Kenya | Kakuma and Dadaab — refugee camps |
+| Uganda | refugee settlements |
+| Algeria | Tindouf, Smara, Dakhla, Laayoun — the Sahrawi camps and Western Sahara |
+| Zimbabwe | includes Tongogara Refugee Camp |
+| Nigeria | the north-eastern conflict markets |
+| Guatemala | one market, and it sells nothing but **fuel** |
+| Ethiopia | one market, and it quotes nothing but an **unofficial exchange rate** |
+
+Every one of those yields a well-formed, plausible number that would be flatly false
+on a card reading "in Kenya" — the same shape as the Nile that stopped in Sudan. So
+the generator does **not** take WFP's country list. It takes an explicit allowlist,
+and each entry names ONE market that is either the country's own published national
+average or a market in its capital, verified against the row's own admin1 region.
+That allowlist is 17 countries and seven of them then fall out:
+
+- **Nicaragua** — WFP quotes its national average in **USD**, not córdobas. Joshua's
+  own example country, and the data cannot serve it.
+- **Bolivia** — our exchange rate and WFP's disagree by 60%, so the cross-check
+  refuses both.
+- **Ethiopia, Guatemala** — no staple food in the one monitored market (above).
+- **Iran, Sudan** — no single honest exchange rate (hyperinflation, or official vs.
+  street differing by multiples), so no honest price either. `travel.js` already
+  refuses to publish a rate for these; a price is the same claim wearing a hat.
+- **Zambia** — newest observation is 13 months old.
+
+### What it would take to finish, honestly
+
+There is **no authoritative global source of everyday retail prices.** Checked:
+
+- **Eurostat's detailed average prices** (`prc_dap15`/`prc_dap16`) — the obvious way
+  to get ~15 European countries in one integration. **Discontinued**; the API returns
+  404 for all of them.
+- **World Bank ICP** — publishes PPP conversion factors, not item prices. A price
+  derived from a PPP factor is a model, not a source, and rule 2 forbids it.
+- **Numbeo** — crowd-sourced with no verification. Not a source for a teaching tool.
+- **FAO** — producer prices, not retail.
+
+That leaves **national statistics offices, one at a time**: BLS for the US, ONS for
+the UK, e-Stat for Japan, INEGI for Mexico, and so on — roughly 90 separate
+integrations in as many formats and languages. Each is genuinely authoritative and
+each is a day's work. That is the real price of "all of them", and it is a content
+project of the same shape as the culture-photo audit rather than a task.
+
+**A cheaper path that would double the coverage:** the ~15 biggest economies by
+themselves would cover most of the countries a child actually visits in a run (the
+USA has 32 places, China 21, the UK 11, France/Germany/Italy/Greece/Japan/Mexico/
+Canada 10 each). Fifteen national statistics offices is a week, not a quarter, and
+it would take the card from 10 countries to 25 while covering perhaps half of all
+arrivals. That is the recommendation if Joshua wants this pushed further.
