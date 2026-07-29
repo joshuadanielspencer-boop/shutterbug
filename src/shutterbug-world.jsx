@@ -98,6 +98,20 @@ const HEADER_AVATAR = 112;
 // How tall the teal bar itself is. It is sized to the GREETING — the one thing in
 // it that is really text — and everything larger overruns it on purpose.
 const HEADER_BAR = 58;
+// How tall the logo rides on that bar. It is deliberately far taller than the bar —
+// the ribbon is furniture the logo sits ON, not a box it lives in — and overrun()
+// turns the difference into the negative margins that let it break both edges
+// without dragging the bar's height up with it. Raising this number is the one
+// knob for "let the logo transgress the teal a bit more"; everything else follows.
+const HEADER_LOGO = 172;
+// The paperclip on Uncle Jonah's note. 560x700 of art, so height is width x 1.25.
+const NOTE_CLIP_W = 68, NOTE_CLIP_H = Math.round(NOTE_CLIP_W * 700 / 560);
+const NOTE_CLIP_ON_PAPER = 30;
+// How far below the top of its column the atlas sits. It used to be a bare 3px.
+// This is NOT free height: the desk must fit one screen with no scrolling, so
+// MAP_CAP subtracts it back off the map's own ceiling. Change it here and the cap
+// follows — the two were the sort of pair that drifts when only one is edited.
+const DESK_MAP_DROP = 16;
 // How tall the atlas plate sits on the desk — NOT the aspect the country zoom boxes
 // are built at (that is FRAME_AR, in map-geometry.js). See frameAspect below.
 const DESK_ATLAS_AR = 1.2;
@@ -5626,7 +5640,7 @@ export default function ShutterbugWorld() {
   const stepIdx = phase === "continent" ? 0 : phase === "country" ? 1 : (revealed ? 3 : 2);
   // Cap the atlas so the whole desk (header + map + ribbon) fits one screen with NO
   // scrolling — the game is meant to lock to a fixed window (a desktop app), never
-  // scroll. The 560px cap holds on tall screens; on shorter ones the map shrinks.
+  // scroll. The 620px cap holds on tall screens; on shorter ones the map shrinks.
   //
   // The subtrahend is everything ABOVE and BELOW the map, and it is spelled out
   // rather than left as one magic number because it was wrong: it read 262 while the
@@ -5638,9 +5652,13 @@ export default function ShutterbugWorld() {
   //   18  the bar's margin-bottom
   //  ~238 the ribbon, the phase tracker's last row and the desk's bottom padding
   //
+  //   16  DESK_MAP_DROP, the gap the atlas now sits below the top of its column
+  //
   // Measured, not estimated: with this value a 1280x900 window renders the desk at
   // exactly the viewport height and document.scrollHeight stops exceeding it.
-  const MAP_CAP = "min(calc(100vh - 300px), 620px)";
+  // DESK_MAP_DROP is added rather than baked in, so pushing the map further down
+  // takes the room out of the map instead of out of the bottom of the screen.
+  const MAP_CAP = `min(calc(100vh - ${300 + DESK_MAP_DROP}px), 620px)`;
   // A short live instruction for the bottom ribbon, matched to the current phase.
   // It used to name the vehicle while an overland hop was running; that hop is gone
   // and the naming moved to the arrival card, where the same sentence does the same
@@ -5683,8 +5701,8 @@ export default function ShutterbugWorld() {
           {/* Centred on the ribbon, breaking it equally top and bottom — Joshua's
               call, and the reason the desk now carries real headroom above the bar.
               overrun() derives the margins from HEADER_BAR, so the two can't drift. */}
-          <img src={`${UI}shutterbug-logo.png`} alt="Shutterbug" style={{ height: 150, width: "auto",
-            ...overrun(150), filter: "drop-shadow(0 3px 4px rgba(0,0,0,0.4))" }} />
+          <img src={`${UI}shutterbug-logo.png`} alt="Shutterbug" style={{ height: HEADER_LOGO, width: "auto",
+            ...overrun(HEADER_LOGO), filter: "drop-shadow(0 3px 4px rgba(0,0,0,0.4))" }} />
         </button>
         <div style={{ flex: 1, minWidth: 8 }} />
         {/* Travel-days calendar — centered over the bar, oversized, overruns the teal. */}
@@ -5819,8 +5837,19 @@ export default function ShutterbugWorld() {
             border: "15px solid transparent",
             borderImage: `url("${UI}airmail-paper-texture.png") 84 stretch`,
             boxShadow: "0 4px 0 rgba(16,38,46,0.18)" }}>
+            {/* The clip HOOKS OVER the note's top edge. `top` is measured from the
+                padding box and the airmail border is 15px thick, so top:-15 puts the
+                clip's crown exactly level with the note's outer edge — every bit of it
+                on the paper, which reads as a clip lying on the page rather than
+                holding it.
+                NOTE_CLIP_ON_PAPER is how much of it stays on the sheet, and it is
+                small for a reason: at this size the clip is as wide as the note's
+                margin is deep, so anything more than about a third of it on the paper
+                lands on "A Note from Jonah" and eats the first two letters. Measured
+                in the browser, not guessed. */}
             <img src={`${UI}paperclip.png`} alt="" aria-hidden="true"
-              style={{ position: "absolute", top: -15, left: 16, width: 34, height: "auto", filter: "drop-shadow(0 3px 3px rgba(0,0,0,0.35))" }} />
+              style={{ position: "absolute", top: -(15 + NOTE_CLIP_H - NOTE_CLIP_ON_PAPER), left: 16,
+                width: NOTE_CLIP_W, height: "auto", filter: "drop-shadow(0 3px 3px rgba(0,0,0,0.35))" }} />
             <div style={{ textAlign: "center", marginBottom: 8, color: CORAL }}>
               <span style={{ display: "block", fontFamily: HAND, fontWeight: 700, fontSize: 33, lineHeight: 1.05 }}>A Note from Jonah</span>
               <span style={{ display: "block", fontFamily: "ui-monospace, monospace", fontSize: 18, letterSpacing: "0.1em", fontWeight: 800, whiteSpace: "nowrap" }}>
@@ -5967,7 +5996,11 @@ export default function ShutterbugWorld() {
               with brass corners, a compass rose, and a faint ink-distress wash.
               All the decoration is pointer-events:none so the map stays clickable.
               The wide world map fills the plate; zoomed square maps stay height-capped. */}
-          <div style={{ position: "relative", width: "100%", maxWidth: 940, margin: "3px auto 0", padding: 12, borderRadius: 16,
+          {/* The whole atlas — plate, brass corners and all — sits DESK_MAP_DROP below
+              the top of its column. The desk has to fit one screen with no scrolling,
+              so this is bought back out of MAP_CAP rather than added to the column's
+              height; see the note on MAP_CAP. */}
+          <div style={{ position: "relative", width: "100%", maxWidth: 940, margin: `${DESK_MAP_DROP}px auto 0`, padding: 12, borderRadius: 16,
             border: `4px solid ${OCEAN_DEEP}`, boxShadow: "0 8px 0 rgba(16,38,46,0.22)",
             background: `url("${UI}atlas-paper-texture.png") center / cover, ${PAPER}` }}>
           <div style={{ position: "relative", aspectRatio: frameAspect, width: "100%", maxWidth: "100%", maxHeight: MAP_CAP, margin: "0 auto", borderRadius: 8, overflow: "hidden", border: `2px solid ${INK}` }}>
