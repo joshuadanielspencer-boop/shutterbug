@@ -6,6 +6,7 @@ import {
   PARTS, ORDER, PICKABLE, AVATAR_DIMS, PORTRAIT,
   defaultAvatar, randomAvatar, normalizeAvatar, migrateAvatar, isLegacySpec,
   avatarFor, avatarLayers, focusStyle,
+  SEXES, SEXED, sexOf, optionsFor, stepPart, stepSex, withSex,
 } from "../src/avatar-spec.js";
 import { DERIVED, FOCUS } from "../src/data/avatar.js";
 
@@ -232,5 +233,117 @@ describe("focusStyle", () => {
 
   it("returns nothing for a missing box instead of NaN transforms", () => {
     expect(focusStyle(null)).toEqual({});
+  });
+});
+
+// ===========================================================================
+// Sex, which is a FILTER over two of the four wardrobe rows rather than a fifth
+// row of its own. The eyes and the hair are drawn per sex; the skin and the
+// outfit are the same paintings for everybody.
+//
+// The failure mode worth guarding is silent: a spec's numbers are indices into
+// the FULL plate list, and the moment anything treats them as indices into the
+// filtered view instead, every saved profile means a different face — a girl's
+// saved hair comes back as a boy's, and nothing errors.
+// ===========================================================================
+describe("choosing a sex", () => {
+  const sexed = PICKABLE.filter((p) => SEXED[p]);
+
+  it("filters the parts that are drawn per sex, and only those", () => {
+    expect(sexed, "the delivery should have sex-specific eyes and hair").toEqual(
+      expect.arrayContaining(["eyes", "hair"]));
+    for (const part of PICKABLE) {
+      const m = optionsFor(part, "male"), f = optionsFor(part, "female");
+      if (SEXED[part]) {
+        expect(m.length + f.length, part).toBe(PARTS[part].length);
+        expect(m.map((o) => o.i)).not.toEqual(f.map((o) => o.i));
+      } else {
+        // Skin and outfits: everybody sees every plate, same indices.
+        expect(m.map((o) => o.i), part).toEqual(f.map((o) => o.i));
+      }
+    }
+  });
+
+  it("only ever offers a traveler plates their own sex can wear", () => {
+    for (const sex of SEXES) {
+      for (const part of sexed) {
+        for (const { o } of optionsFor(part, sex)) expect(o.sex, `${part}/${sex}`).toBe(sex);
+      }
+    }
+  });
+
+  it("steps within its own sex and wraps there, never into the other's", () => {
+    for (const sex of SEXES) {
+      for (const part of sexed) {
+        const opts = optionsFor(part, sex);
+        let spec = { sex, [part]: opts[0].i };
+        // A full lap must return exactly where it started, having touched every
+        // option of this sex and none of the other's.
+        const seen = new Set();
+        for (let n = 0; n < opts.length; n++) {
+          seen.add(spec[part]);
+          expect(PARTS[part][spec[part]].sex, `${part}/${sex}`).toBe(sex);
+          spec = stepPart(spec, part, 1);
+        }
+        expect(seen.size, `${part}/${sex} lap`).toBe(opts.length);
+        expect(spec[part]).toBe(opts[0].i);
+      }
+    }
+  });
+
+  it("keeps the colour when the sex changes", () => {
+    // Switching should feel like changing who is wearing the haircut. Colour is
+    // what a child recognises as "mine", so it is held first.
+    for (const part of sexed) {
+      for (const { o, i } of optionsFor(part, "male")) {
+        const after = withSex({ sex: "male", [part]: i }, "female");
+        expect(PARTS[part][after[part]].colour, `${part} ${o.colour}`).toBe(o.colour);
+        expect(PARTS[part][after[part]].sex).toBe("female");
+        // …and back again lands on the plate it started from.
+        expect(withSex(after, "male")[part]).toBe(i);
+      }
+    }
+  });
+
+  it("leaves the unisex choices alone when the sex changes", () => {
+    const before = { sex: "male", head: 3, outfit: 11, eyes: optionsFor("eyes", "male")[2].i,
+                     hair: optionsFor("hair", "male")[7].i };
+    const after = withSex(before, "female");
+    expect(after.head).toBe(before.head);
+    expect(after.outfit).toBe(before.outfit);
+  });
+
+  it("gives every default and random traveler a sex they can actually wear", () => {
+    for (const name of ["Rosa", "Sam", "Ada", "Kai", "Jo", "Wren", "Bo"]) {
+      const spec = defaultAvatar(name);
+      expect(SEXES).toContain(spec.sex);
+      for (const part of sexed) expect(PARTS[part][spec[part]].sex, `${name}/${part}`).toBe(spec.sex);
+    }
+    for (let n = 0; n < 40; n++) {
+      const spec = randomAvatar(() => (n * 0.137 + 0.01) % 1);
+      for (const part of sexed) expect(PARTS[part][spec[part]].sex, `random ${n}/${part}`).toBe(spec.sex);
+    }
+  });
+
+  // The one that matters for a child mid-play: their profile was written before
+  // this choice existed, so it has no `sex` and its indices may point anywhere.
+  it("carries a profile saved before sex existed onto plates that agree", () => {
+    for (const part of sexed) {
+      for (let i = 0; i < PARTS[part].length; i++) {
+        const spec = normalizeAvatar({ head: 0, outfit: 0, eyes: 0, hair: 0, [part]: i }, "Rosa");
+        expect(SEXES).toContain(spec.sex);
+        for (const p of sexed)
+          expect(PARTS[p][spec[p]].sex, `${part}=${i} → ${p}`).toBe(spec.sex);
+      }
+    }
+  });
+
+  it("never leaves a migrated legacy traveler wearing the other sex's art", () => {
+    for (let skin = 0; skin < 8; skin++) {
+      for (let hairColor = 0; hairColor < 15; hairColor += 3) {
+        const spec = migrateAvatar({ skin, hairColor, shirt: 0 }, "Rosa");
+        for (const part of sexed) expect(PARTS[part][spec[part]].sex).toBe(spec.sex);
+      }
+    }
   });
 });

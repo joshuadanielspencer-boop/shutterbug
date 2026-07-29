@@ -462,7 +462,12 @@ export const PARTS = ${JSON.stringify(
     Object.fromEntries(
       PARTS.map((part) => [
         part,
-        manifest.parts[part].map(({ file, colour, label, swatch, style, sex }) => ({ file, colour, label, swatch, style, sex })),
+        // `variant` ships too. It is the only thing that says WHICH haircut a
+        // plate is, and without it the editor cannot match a boy's second
+        // hairstyle to a girl's second one when the sex changes — colour alone
+        // sends every style home to the first one in the list.
+        manifest.parts[part].map(({ file, colour, label, swatch, style, sex, variant }) =>
+          ({ file, colour, label, swatch, style, sex, variant })),
       ]),
     ),
     null,

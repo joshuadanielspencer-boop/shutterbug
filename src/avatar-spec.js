@@ -33,9 +33,87 @@ const LABEL = { head: "Skin", eyes: "Eyes", hair: "Hair", outfit: "Jacket" };
 export const AVATAR_DIMS = PICKABLE.map((key) => ({
   key,
   label: LABEL[key] || key,
-  n: PARTS[key].length,
   options: PARTS[key],
 }));
+
+// ---------------------------------------------------------------------------
+// Sex
+// ---------------------------------------------------------------------------
+// A traveler is male or female, and that choice narrows two of the four things
+// they pick: the eyes and the hair are drawn per sex (different lashes, four
+// hairstyles each), while the skin and the outfit are the same paintings for
+// everybody. So sex is not a fifth wardrobe row — it is a filter over two of the
+// existing ones.
+export const SEXES = ["male", "female"];
+
+// WHICH parts it filters is read off the art, not listed here. A part is
+// sex-specific if any of its plates names a sex, so the day a delivery adds
+// female-specific outfits the editor narrows those too with no code change.
+export const SEXED = Object.fromEntries(
+  Object.keys(PARTS).map((p) => [p, PARTS[p].some((o) => o.sex && o.sex !== "any")]),
+);
+
+export const sexOf = (spec) => (SEXES.includes(spec?.sex) ? spec.sex : SEXES[0]);
+
+// The plates of `part` a traveler of `sex` may wear, each carrying the index it
+// sits at in the FULL list.
+//
+// That last part is the whole design. A spec's numbers stay indices into
+// PARTS[part] and never become indices into a filtered view — otherwise every
+// saved profile would mean something different the moment the filter existed,
+// and a girl's saved hair would come back as a boy's.
+export function optionsFor(part, sex) {
+  const all = PARTS[part] ?? [];
+  const mine = all.map((o, i) => ({ o, i })).filter(({ o }) => !o.sex || o.sex === "any" || o.sex === sex);
+  // A part with no plates for this sex at all is offered whole rather than empty.
+  return mine.length ? mine : all.map((o, i) => ({ o, i }));
+}
+
+// The variants a sex is offered, in order. Male hairstyles are numbered 1-4 and
+// female ones lettered a-d, so they can only be matched to each other by
+// POSITION — there is no "the same style" across the two sets, only "the same
+// one along".
+const variantsOf = (list) => [...new Set(list.map(({ o }) => o.variant))];
+
+// The nearest equivalent plate in the other sex's set. Switching sex should feel
+// like changing who is wearing the haircut, not like being handed a stranger, so
+// colour is held first and the variant's position second.
+function matchAcrossSex(part, index, fromSex, toSex) {
+  const to = optionsFor(part, toSex);
+  const cur = PARTS[part]?.[index];
+  if (!cur) return to[0].i;
+  const rank = variantsOf(optionsFor(part, fromSex)).indexOf(cur.variant);
+  const toVariants = variantsOf(to);
+  const want = toVariants[Math.min(Math.max(rank, 0), toVariants.length - 1)];
+  return (to.find(({ o }) => o.colour === cur.colour && o.variant === want)
+       ?? to.find(({ o }) => o.colour === cur.colour)
+       ?? to[0]).i;
+}
+
+// Move one step through the options this traveler's sex is offered. The editor's
+// arrows call this rather than doing `(i + 1) % n` themselves, which would walk
+// straight out of the boy's hairstyles and into the girl's.
+export function stepPart(spec, part, delta) {
+  const opts = optionsFor(part, sexOf(spec));
+  const at = opts.findIndex(({ i }) => i === spec[part]);
+  const from = at === -1 ? 0 : at;
+  const next = opts[(((from + delta) % opts.length) + opts.length) % opts.length];
+  return { ...spec, [part]: next.i };
+}
+
+// Switch sex, carrying every sexed choice to its nearest equivalent.
+export function withSex(spec, sex) {
+  const from = sexOf(spec);
+  const out = { ...spec, sex: SEXES.includes(sex) ? sex : from };
+  if (out.sex === from) return out;
+  for (const part of PICKABLE) {
+    if (SEXED[part]) out[part] = matchAcrossSex(part, spec[part], from, out.sex);
+  }
+  return out;
+}
+
+export const stepSex = (spec, delta) =>
+  withSex(spec, SEXES[(((SEXES.indexOf(sexOf(spec)) + delta) % SEXES.length) + SEXES.length) % SEXES.length]);
 
 // FNV-1a, so a traveler who never opens the editor still has a stable face.
 const hashStr = (str) => {
@@ -47,17 +125,27 @@ const hashStr = (str) => {
 const wrap = (i, n) => (((i | 0) % n) + n) % n; // negative-safe
 
 export function defaultAvatar(name) {
-  const spec = {};
   // Hash the part NAME into the seed rather than shifting one hash by the part's
   // position in PICKABLE. Position would mean that reordering the editor's rows
   // silently reassigns every un-customised traveler a new face.
-  for (const key of PICKABLE) spec[key] = hashStr(`av:${name ?? "?"}:${key}`) % PARTS[key].length;
+  const sex = SEXES[hashStr(`av:${name ?? "?"}:sex`) % SEXES.length];
+  const spec = { sex };
+  // Drawn from the options that sex is offered, so an un-customised traveler
+  // never opens the editor to find their own hair not in the list.
+  for (const key of PICKABLE) {
+    const opts = optionsFor(key, sex);
+    spec[key] = opts[hashStr(`av:${name ?? "?"}:${key}`) % opts.length].i;
+  }
   return spec;
 }
 
 export function randomAvatar(rand = Math.random) {
-  const spec = {};
-  for (const key of PICKABLE) spec[key] = Math.floor(rand() * PARTS[key].length);
+  const sex = SEXES[Math.floor(rand() * SEXES.length)];
+  const spec = { sex };
+  for (const key of PICKABLE) {
+    const opts = optionsFor(key, sex);
+    spec[key] = opts[Math.floor(rand() * opts.length)].i;
+  }
   return spec;
 }
 
@@ -87,15 +175,19 @@ function colourDistance(a, b) {
   return Math.sqrt((2 + rm / 256) * dr * dr + 4 * dg * dg + (2 + (255 - rm) / 256) * db * db);
 }
 
-function nearestPlate(part, hex) {
-  if (!hex) return 0;
+// Restricted to what `sex` may wear: matching a legacy hair colour against every
+// plate in the file would happily hand a boy one of the girls' hairstyles,
+// because colour is all it compares and both sexes have the same six colours.
+function nearestPlate(part, hex, sex) {
+  const pool = optionsFor(part, sex);
+  if (!hex) return pool[0].i;
   const want = hex2rgb(hex);
-  let best = 0, bestD = Infinity;
-  PARTS[part].forEach((opt, i) => {
-    if (!opt.swatch) return;
-    const d = colourDistance(want, hex2rgb(opt.swatch));
+  let best = pool[0].i, bestD = Infinity;
+  for (const { o, i } of pool) {
+    if (!o.swatch) continue;
+    const d = colourDistance(want, hex2rgb(o.swatch));
     if (d < bestD) { bestD = d; best = i; }
-  });
+  }
   return best;
 }
 
@@ -120,14 +212,17 @@ export const isLegacySpec = (spec) =>
 // Eye colour is the reverse case — the new art has it and the old spec did not —
 // so it comes from the name hash, which is what an un-customised traveler would
 // have got anyway.
+// Sex has no successor either — the old scheme had no such choice — so it comes
+// from the name hash like the eye colour does.
 export function migrateAvatar(spec, name) {
   const fallback = defaultAvatar(name);
   if (!isLegacySpec(spec)) return fallback;
+  const sex = fallback.sex;
   return {
     ...fallback,
-    head: nearestPlate("head", LEGACY_SKIN[wrap(spec.skin, LEGACY_SKIN.length)]),
-    hair: nearestPlate("hair", LEGACY_HAIRC[wrap(spec.hairColor, LEGACY_HAIRC.length)]),
-    outfit: nearestPlate("outfit", LEGACY_SHIRT[wrap(spec.shirt, LEGACY_SHIRT.length)]),
+    head: nearestPlate("head", LEGACY_SKIN[wrap(spec.skin, LEGACY_SKIN.length)], sex),
+    hair: nearestPlate("hair", LEGACY_HAIRC[wrap(spec.hairColor, LEGACY_HAIRC.length)], sex),
+    outfit: nearestPlate("outfit", LEGACY_SHIRT[wrap(spec.shirt, LEGACY_SHIRT.length)], sex),
   };
 }
 
@@ -137,10 +232,20 @@ export function migrateAvatar(spec, name) {
 export function normalizeAvatar(spec, name) {
   if (isLegacySpec(spec)) return migrateAvatar(spec, name);
   const base = defaultAvatar(name);
-  const out = {};
+  const sex = SEXES.includes(spec?.sex) ? spec.sex : base.sex;
+  const out = { sex };
   for (const key of PICKABLE) {
     const v = spec && spec[key];
-    out[key] = Number.isFinite(v) ? wrap(v, PARTS[key].length) : base[key];
+    let i = Number.isFinite(v) ? wrap(v, PARTS[key].length) : base[key];
+    // A saved index can point at the OTHER sex's art: a profile written before
+    // this choice existed, a spec synced from an older build, a hand-edited
+    // localStorage entry. Carry it across to the nearest equivalent rather than
+    // resetting the child's face to a default they never chose.
+    if (SEXED[key] && !optionsFor(key, sex).some((o) => o.i === i)) {
+      const was = PARTS[key][i]?.sex;
+      i = matchAcrossSex(key, i, SEXES.includes(was) ? was : sex, sex);
+    }
+    out[key] = i;
   }
   return out;
 }

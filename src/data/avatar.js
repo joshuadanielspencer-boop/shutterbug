@@ -58,7 +58,8 @@ export const PARTS = {
       "label": "Red",
       "swatch": "#9f2b21",
       "style": "outfit",
-      "sex": "any"
+      "sex": "any",
+      "variant": "1"
     },
     {
       "file": "outfit_1_orange.webp",
@@ -66,7 +67,8 @@ export const PARTS = {
       "label": "Orange",
       "swatch": "#ab5a23",
       "style": "outfit",
-      "sex": "any"
+      "sex": "any",
+      "variant": "1"
     },
     {
       "file": "outfit_1_yellow.webp",
@@ -74,7 +76,8 @@ export const PARTS = {
       "label": "Yellow",
       "swatch": "#b68d28",
       "style": "outfit",
-      "sex": "any"
+      "sex": "any",
+      "variant": "1"
     },
     {
       "file": "outfit_1_green.webp",
@@ -82,7 +85,8 @@ export const PARTS = {
       "label": "Green",
       "swatch": "#2e794b",
       "style": "outfit",
-      "sex": "any"
+      "sex": "any",
+      "variant": "1"
     },
     {
       "file": "outfit_1_blue.webp",
@@ -90,7 +94,8 @@ export const PARTS = {
       "label": "Blue",
       "swatch": "#255890",
       "style": "outfit",
-      "sex": "any"
+      "sex": "any",
+      "variant": "1"
     },
     {
       "file": "outfit_1_purple.webp",
@@ -98,7 +103,8 @@ export const PARTS = {
       "label": "Purple",
       "swatch": "#723c74",
       "style": "outfit",
-      "sex": "any"
+      "sex": "any",
+      "variant": "1"
     },
     {
       "file": "outfit_1_pink.webp",
@@ -106,7 +112,8 @@ export const PARTS = {
       "label": "Pink",
       "swatch": "#a13a5f",
       "style": "outfit",
-      "sex": "any"
+      "sex": "any",
+      "variant": "1"
     },
     {
       "file": "outfit_2_red.webp",
@@ -114,7 +121,8 @@ export const PARTS = {
       "label": "Red",
       "swatch": "#a4281f",
       "style": "outfit",
-      "sex": "any"
+      "sex": "any",
+      "variant": "2"
     },
     {
       "file": "outfit_2_orange.webp",
@@ -122,7 +130,8 @@ export const PARTS = {
       "label": "Orange",
       "swatch": "#b05a20",
       "style": "outfit",
-      "sex": "any"
+      "sex": "any",
+      "variant": "2"
     },
     {
       "file": "outfit_2_yellow.webp",
@@ -130,7 +139,8 @@ export const PARTS = {
       "label": "Yellow",
       "swatch": "#be9326",
       "style": "outfit",
-      "sex": "any"
+      "sex": "any",
+      "variant": "2"
     },
     {
       "file": "outfit_2_green.webp",
@@ -138,7 +148,8 @@ export const PARTS = {
       "label": "Green",
       "swatch": "#308552",
       "style": "outfit",
-      "sex": "any"
+      "sex": "any",
+      "variant": "2"
     },
     {
       "file": "outfit_2_blue.webp",
@@ -146,7 +157,8 @@ export const PARTS = {
       "label": "Blue",
       "swatch": "#235993",
       "style": "outfit",
-      "sex": "any"
+      "sex": "any",
+      "variant": "2"
     },
     {
       "file": "outfit_2_purple.webp",
@@ -154,7 +166,8 @@ export const PARTS = {
       "label": "Purple",
       "swatch": "#74397b",
       "style": "outfit",
-      "sex": "any"
+      "sex": "any",
+      "variant": "2"
     },
     {
       "file": "outfit_2_pink.webp",
@@ -162,7 +175,8 @@ export const PARTS = {
       "label": "Pink",
       "swatch": "#aa3664",
       "style": "outfit",
-      "sex": "any"
+      "sex": "any",
+      "variant": "2"
     },
     {
       "file": "outfit_3_red.webp",
@@ -170,7 +184,8 @@ export const PARTS = {
       "label": "Red",
       "swatch": "#9f2a21",
       "style": "outfit",
-      "sex": "any"
+      "sex": "any",
+      "variant": "3"
     },
     {
       "file": "outfit_3_orange.webp",
@@ -178,7 +193,8 @@ export const PARTS = {
       "label": "Orange",
       "swatch": "#a65620",
       "style": "outfit",
-      "sex": "any"
+      "sex": "any",
+      "variant": "3"
     },
     {
       "file": "outfit_3_yellow.webp",
@@ -186,7 +202,8 @@ export const PARTS = {
       "label": "Yellow",
       "swatch": "#ac8522",
       "style": "outfit",
-      "sex": "any"
+      "sex": "any",
+      "variant": "3"
     },
     {
       "file": "outfit_3_green.webp",
@@ -194,7 +211,8 @@ export const PARTS = {
       "label": "Green",
       "swatch": "#318150",
       "style": "outfit",
-      "sex": "any"
+      "sex": "any",
+      "variant": "3"
     },
     {
       "file": "outfit_3_blue.webp",
@@ -202,7 +220,8 @@ export const PARTS = {
       "label": "Blue",
       "swatch": "#265a8f",
       "style": "outfit",
-      "sex": "any"
+      "sex": "any",
+      "variant": "3"
     },
     {
       "file": "outfit_3_purple.webp",
@@ -210,7 +229,8 @@ export const PARTS = {
       "label": "Purple",
       "swatch": "#733c75",
       "style": "outfit",
-      "sex": "any"
+      "sex": "any",
+      "variant": "3"
     },
     {
       "file": "outfit_3_pink.webp",
@@ -218,7 +238,8 @@ export const PARTS = {
       "label": "Pink",
       "swatch": "#9b3158",
       "style": "outfit",
-      "sex": "any"
+      "sex": "any",
+      "variant": "3"
     },
     {
       "file": "outfit_4_red.webp",
@@ -226,7 +247,8 @@ export const PARTS = {
       "label": "Red",
       "swatch": "#a22d24",
       "style": "outfit",
-      "sex": "any"
+      "sex": "any",
+      "variant": "4"
     },
     {
       "file": "outfit_4_orange.webp",
@@ -234,7 +256,8 @@ export const PARTS = {
       "label": "Orange",
       "swatch": "#b25f27",
       "style": "outfit",
-      "sex": "any"
+      "sex": "any",
+      "variant": "4"
     },
     {
       "file": "outfit_4_yellow.webp",
@@ -242,7 +265,8 @@ export const PARTS = {
       "label": "Yellow",
       "swatch": "#be952d",
       "style": "outfit",
-      "sex": "any"
+      "sex": "any",
+      "variant": "4"
     },
     {
       "file": "outfit_4_green.webp",
@@ -250,7 +274,8 @@ export const PARTS = {
       "label": "Green",
       "swatch": "#2b784a",
       "style": "outfit",
-      "sex": "any"
+      "sex": "any",
+      "variant": "4"
     },
     {
       "file": "outfit_4_blue.webp",
@@ -258,7 +283,8 @@ export const PARTS = {
       "label": "Blue",
       "swatch": "#265a93",
       "style": "outfit",
-      "sex": "any"
+      "sex": "any",
+      "variant": "4"
     },
     {
       "file": "outfit_4_purple.webp",
@@ -266,7 +292,8 @@ export const PARTS = {
       "label": "Purple",
       "swatch": "#6f3b7d",
       "style": "outfit",
-      "sex": "any"
+      "sex": "any",
+      "variant": "4"
     },
     {
       "file": "outfit_4_pink.webp",
@@ -274,7 +301,8 @@ export const PARTS = {
       "label": "Pink",
       "swatch": "#ac4068",
       "style": "outfit",
-      "sex": "any"
+      "sex": "any",
+      "variant": "4"
     },
     {
       "file": "outfit_5_red.webp",
@@ -282,7 +310,8 @@ export const PARTS = {
       "label": "Red",
       "swatch": "#3a4565",
       "style": "outfit",
-      "sex": "any"
+      "sex": "any",
+      "variant": "5"
     },
     {
       "file": "outfit_5_orange.webp",
@@ -290,7 +319,8 @@ export const PARTS = {
       "label": "Orange",
       "swatch": "#3e5f60",
       "style": "outfit",
-      "sex": "any"
+      "sex": "any",
+      "variant": "5"
     },
     {
       "file": "outfit_5_yellow.webp",
@@ -298,7 +328,8 @@ export const PARTS = {
       "label": "Yellow",
       "swatch": "#716958",
       "style": "outfit",
-      "sex": "any"
+      "sex": "any",
+      "variant": "5"
     },
     {
       "file": "outfit_5_green.webp",
@@ -306,7 +337,8 @@ export const PARTS = {
       "label": "Green",
       "swatch": "#2e6675",
       "style": "outfit",
-      "sex": "any"
+      "sex": "any",
+      "variant": "5"
     },
     {
       "file": "outfit_5_blue.webp",
@@ -314,7 +346,8 @@ export const PARTS = {
       "label": "Blue",
       "swatch": "#2a5c8f",
       "style": "outfit",
-      "sex": "any"
+      "sex": "any",
+      "variant": "5"
     },
     {
       "file": "outfit_5_purple.webp",
@@ -322,7 +355,8 @@ export const PARTS = {
       "label": "Purple",
       "swatch": "#376490",
       "style": "outfit",
-      "sex": "any"
+      "sex": "any",
+      "variant": "5"
     },
     {
       "file": "outfit_5_pink.webp",
@@ -330,7 +364,8 @@ export const PARTS = {
       "label": "Pink",
       "swatch": "#394a76",
       "style": "outfit",
-      "sex": "any"
+      "sex": "any",
+      "variant": "5"
     }
   ],
   "head": [
@@ -340,7 +375,8 @@ export const PARTS = {
       "label": "Deep",
       "swatch": "#583620",
       "style": "head",
-      "sex": "any"
+      "sex": "any",
+      "variant": "2"
     },
     {
       "file": "head_2_dark.webp",
@@ -348,7 +384,8 @@ export const PARTS = {
       "label": "Dark",
       "swatch": "#7f4f2d",
       "style": "head",
-      "sex": "any"
+      "sex": "any",
+      "variant": "2"
     },
     {
       "file": "head_2_brown.webp",
@@ -356,7 +393,8 @@ export const PARTS = {
       "label": "Brown",
       "swatch": "#ae6a38",
       "style": "head",
-      "sex": "any"
+      "sex": "any",
+      "variant": "2"
     },
     {
       "file": "head_2_medium.webp",
@@ -364,7 +402,8 @@ export const PARTS = {
       "label": "Medium",
       "swatch": "#d28a52",
       "style": "head",
-      "sex": "any"
+      "sex": "any",
+      "variant": "2"
     },
     {
       "file": "head_2_tan.webp",
@@ -372,7 +411,8 @@ export const PARTS = {
       "label": "Tan",
       "swatch": "#fbad6e",
       "style": "head",
-      "sex": "any"
+      "sex": "any",
+      "variant": "2"
     },
     {
       "file": "head_2_light.webp",
@@ -380,7 +420,8 @@ export const PARTS = {
       "label": "Light",
       "swatch": "#f8cfab",
       "style": "head",
-      "sex": "any"
+      "sex": "any",
+      "variant": "2"
     }
   ],
   "brow": [
@@ -390,7 +431,8 @@ export const PARTS = {
       "label": "Black",
       "swatch": "#1c1814",
       "style": "brow",
-      "sex": "any"
+      "sex": "any",
+      "variant": "1"
     },
     {
       "file": "brow_dark-brown.webp",
@@ -398,7 +440,8 @@ export const PARTS = {
       "label": "Dark Brown",
       "swatch": "#412a1b",
       "style": "brow",
-      "sex": "any"
+      "sex": "any",
+      "variant": "1"
     },
     {
       "file": "brow_brown.webp",
@@ -406,7 +449,8 @@ export const PARTS = {
       "label": "Brown",
       "swatch": "#664122",
       "style": "brow",
-      "sex": "any"
+      "sex": "any",
+      "variant": "1"
     },
     {
       "file": "brow_light-brown.webp",
@@ -414,7 +458,8 @@ export const PARTS = {
       "label": "Light Brown",
       "swatch": "#9a6832",
       "style": "brow",
-      "sex": "any"
+      "sex": "any",
+      "variant": "1"
     },
     {
       "file": "brow_blonde.webp",
@@ -422,7 +467,8 @@ export const PARTS = {
       "label": "Blonde",
       "swatch": "#cf7e2e",
       "style": "brow",
-      "sex": "any"
+      "sex": "any",
+      "variant": "1"
     },
     {
       "file": "brow_red.webp",
@@ -430,7 +476,8 @@ export const PARTS = {
       "label": "Red",
       "swatch": "#8e3818",
       "style": "brow",
-      "sex": "any"
+      "sex": "any",
+      "variant": "1"
     }
   ],
   "eyes": [
@@ -440,7 +487,8 @@ export const PARTS = {
       "label": "Brown",
       "swatch": "#c59373",
       "style": "eyes",
-      "sex": "female"
+      "sex": "female",
+      "variant": "1"
     },
     {
       "file": "eyes_male_1_brown.webp",
@@ -448,7 +496,8 @@ export const PARTS = {
       "label": "Brown",
       "swatch": "#945326",
       "style": "eyes",
-      "sex": "male"
+      "sex": "male",
+      "variant": "1"
     },
     {
       "file": "eyes_female_1_blue.webp",
@@ -456,7 +505,8 @@ export const PARTS = {
       "label": "Blue",
       "swatch": "#c49272",
       "style": "eyes",
-      "sex": "female"
+      "sex": "female",
+      "variant": "1"
     },
     {
       "file": "eyes_male_1_blue.webp",
@@ -464,7 +514,8 @@ export const PARTS = {
       "label": "Blue",
       "swatch": "#2f7eba",
       "style": "eyes",
-      "sex": "male"
+      "sex": "male",
+      "variant": "1"
     },
     {
       "file": "eyes_female_1_green.webp",
@@ -472,7 +523,8 @@ export const PARTS = {
       "label": "Green",
       "swatch": "#c49272",
       "style": "eyes",
-      "sex": "female"
+      "sex": "female",
+      "variant": "1"
     },
     {
       "file": "eyes_male_1_green.webp",
@@ -480,7 +532,8 @@ export const PARTS = {
       "label": "Green",
       "swatch": "#34974c",
       "style": "eyes",
-      "sex": "male"
+      "sex": "male",
+      "variant": "1"
     },
     {
       "file": "eyes_female_1_hazel.webp",
@@ -488,7 +541,8 @@ export const PARTS = {
       "label": "Hazel",
       "swatch": "#c39170",
       "style": "eyes",
-      "sex": "female"
+      "sex": "female",
+      "variant": "1"
     },
     {
       "file": "eyes_male_1_hazel.webp",
@@ -496,7 +550,8 @@ export const PARTS = {
       "label": "Hazel",
       "swatch": "#8d8e3d",
       "style": "eyes",
-      "sex": "male"
+      "sex": "male",
+      "variant": "1"
     },
     {
       "file": "eyes_female_1_amber.webp",
@@ -504,7 +559,8 @@ export const PARTS = {
       "label": "Amber",
       "swatch": "#c39270",
       "style": "eyes",
-      "sex": "female"
+      "sex": "female",
+      "variant": "1"
     },
     {
       "file": "eyes_male_1_amber.webp",
@@ -512,7 +568,8 @@ export const PARTS = {
       "label": "Amber",
       "swatch": "#ecad27",
       "style": "eyes",
-      "sex": "male"
+      "sex": "male",
+      "variant": "1"
     },
     {
       "file": "eyes_female_1_grey.webp",
@@ -520,7 +577,8 @@ export const PARTS = {
       "label": "Grey",
       "swatch": "#c49172",
       "style": "eyes",
-      "sex": "female"
+      "sex": "female",
+      "variant": "1"
     },
     {
       "file": "eyes_male_1_grey.webp",
@@ -528,7 +586,8 @@ export const PARTS = {
       "label": "Grey",
       "swatch": "#a69289",
       "style": "eyes",
-      "sex": "male"
+      "sex": "male",
+      "variant": "1"
     }
   ],
   "hair": [
@@ -538,7 +597,8 @@ export const PARTS = {
       "label": "Black",
       "swatch": "#1f1a16",
       "style": "hair",
-      "sex": "male"
+      "sex": "male",
+      "variant": "1"
     },
     {
       "file": "hair_male_1_dark-brown.webp",
@@ -546,7 +606,8 @@ export const PARTS = {
       "label": "Dark Brown",
       "swatch": "#442d1c",
       "style": "hair",
-      "sex": "male"
+      "sex": "male",
+      "variant": "1"
     },
     {
       "file": "hair_male_1_brown.webp",
@@ -554,7 +615,8 @@ export const PARTS = {
       "label": "Brown",
       "swatch": "#6a4423",
       "style": "hair",
-      "sex": "male"
+      "sex": "male",
+      "variant": "1"
     },
     {
       "file": "hair_male_1_light-brown.webp",
@@ -562,7 +624,8 @@ export const PARTS = {
       "label": "Light Brown",
       "swatch": "#9e6d3a",
       "style": "hair",
-      "sex": "male"
+      "sex": "male",
+      "variant": "1"
     },
     {
       "file": "hair_male_1_blonde.webp",
@@ -570,7 +633,8 @@ export const PARTS = {
       "label": "Blonde",
       "swatch": "#d17c36",
       "style": "hair",
-      "sex": "male"
+      "sex": "male",
+      "variant": "1"
     },
     {
       "file": "hair_male_1_red.webp",
@@ -578,7 +642,8 @@ export const PARTS = {
       "label": "Red",
       "swatch": "#923b1a",
       "style": "hair",
-      "sex": "male"
+      "sex": "male",
+      "variant": "1"
     },
     {
       "file": "hair_male_2_black.webp",
@@ -586,7 +651,8 @@ export const PARTS = {
       "label": "Black",
       "swatch": "#1d1814",
       "style": "hair",
-      "sex": "male"
+      "sex": "male",
+      "variant": "2"
     },
     {
       "file": "hair_male_2_dark-brown.webp",
@@ -594,7 +660,8 @@ export const PARTS = {
       "label": "Dark Brown",
       "swatch": "#432b1a",
       "style": "hair",
-      "sex": "male"
+      "sex": "male",
+      "variant": "2"
     },
     {
       "file": "hair_male_2_brown.webp",
@@ -602,7 +669,8 @@ export const PARTS = {
       "label": "Brown",
       "swatch": "#684221",
       "style": "hair",
-      "sex": "male"
+      "sex": "male",
+      "variant": "2"
     },
     {
       "file": "hair_male_2_light-brown.webp",
@@ -610,7 +678,8 @@ export const PARTS = {
       "label": "Light Brown",
       "swatch": "#9d6931",
       "style": "hair",
-      "sex": "male"
+      "sex": "male",
+      "variant": "2"
     },
     {
       "file": "hair_male_2_blonde.webp",
@@ -618,7 +687,8 @@ export const PARTS = {
       "label": "Blonde",
       "swatch": "#d48b3a",
       "style": "hair",
-      "sex": "male"
+      "sex": "male",
+      "variant": "2"
     },
     {
       "file": "hair_male_2_red.webp",
@@ -626,7 +696,8 @@ export const PARTS = {
       "label": "Red",
       "swatch": "#903816",
       "style": "hair",
-      "sex": "male"
+      "sex": "male",
+      "variant": "2"
     },
     {
       "file": "hair_male_3_black.webp",
@@ -634,7 +705,8 @@ export const PARTS = {
       "label": "Black",
       "swatch": "#1d1814",
       "style": "hair",
-      "sex": "male"
+      "sex": "male",
+      "variant": "3"
     },
     {
       "file": "hair_male_3_dark-brown.webp",
@@ -642,7 +714,8 @@ export const PARTS = {
       "label": "Dark Brown",
       "swatch": "#432a1a",
       "style": "hair",
-      "sex": "male"
+      "sex": "male",
+      "variant": "3"
     },
     {
       "file": "hair_male_3_brown.webp",
@@ -650,7 +723,8 @@ export const PARTS = {
       "label": "Brown",
       "swatch": "#694120",
       "style": "hair",
-      "sex": "male"
+      "sex": "male",
+      "variant": "3"
     },
     {
       "file": "hair_male_3_light-brown.webp",
@@ -658,7 +732,8 @@ export const PARTS = {
       "label": "Light Brown",
       "swatch": "#9e692f",
       "style": "hair",
-      "sex": "male"
+      "sex": "male",
+      "variant": "3"
     },
     {
       "file": "hair_male_3_blonde.webp",
@@ -666,7 +741,8 @@ export const PARTS = {
       "label": "Blonde",
       "swatch": "#d88e3b",
       "style": "hair",
-      "sex": "male"
+      "sex": "male",
+      "variant": "3"
     },
     {
       "file": "hair_male_3_red.webp",
@@ -674,7 +750,8 @@ export const PARTS = {
       "label": "Red",
       "swatch": "#913715",
       "style": "hair",
-      "sex": "male"
+      "sex": "male",
+      "variant": "3"
     },
     {
       "file": "hair_male_4_black.webp",
@@ -682,7 +759,8 @@ export const PARTS = {
       "label": "Black",
       "swatch": "#1f1914",
       "style": "hair",
-      "sex": "male"
+      "sex": "male",
+      "variant": "4"
     },
     {
       "file": "hair_male_4_dark-brown.webp",
@@ -690,7 +768,8 @@ export const PARTS = {
       "label": "Dark Brown",
       "swatch": "#472b19",
       "style": "hair",
-      "sex": "male"
+      "sex": "male",
+      "variant": "4"
     },
     {
       "file": "hair_male_4_brown.webp",
@@ -698,7 +777,8 @@ export const PARTS = {
       "label": "Brown",
       "swatch": "#6d4220",
       "style": "hair",
-      "sex": "male"
+      "sex": "male",
+      "variant": "4"
     },
     {
       "file": "hair_male_4_light-brown.webp",
@@ -706,7 +786,8 @@ export const PARTS = {
       "label": "Light Brown",
       "swatch": "#a4692d",
       "style": "hair",
-      "sex": "male"
+      "sex": "male",
+      "variant": "4"
     },
     {
       "file": "hair_male_4_blonde.webp",
@@ -714,7 +795,8 @@ export const PARTS = {
       "label": "Blonde",
       "swatch": "#e09642",
       "style": "hair",
-      "sex": "male"
+      "sex": "male",
+      "variant": "4"
     },
     {
       "file": "hair_male_4_red.webp",
@@ -722,7 +804,8 @@ export const PARTS = {
       "label": "Red",
       "swatch": "#973516",
       "style": "hair",
-      "sex": "male"
+      "sex": "male",
+      "variant": "4"
     },
     {
       "file": "hair_female_a_black.webp",
@@ -730,7 +813,8 @@ export const PARTS = {
       "label": "Black",
       "swatch": "#1c1814",
       "style": "hair",
-      "sex": "female"
+      "sex": "female",
+      "variant": "a"
     },
     {
       "file": "hair_female_a_dark-brown.webp",
@@ -738,7 +822,8 @@ export const PARTS = {
       "label": "Dark Brown",
       "swatch": "#412a1b",
       "style": "hair",
-      "sex": "female"
+      "sex": "female",
+      "variant": "a"
     },
     {
       "file": "hair_female_a_brown.webp",
@@ -746,7 +831,8 @@ export const PARTS = {
       "label": "Brown",
       "swatch": "#664122",
       "style": "hair",
-      "sex": "female"
+      "sex": "female",
+      "variant": "a"
     },
     {
       "file": "hair_female_a_light-brown.webp",
@@ -754,7 +840,8 @@ export const PARTS = {
       "label": "Light Brown",
       "swatch": "#9a6832",
       "style": "hair",
-      "sex": "female"
+      "sex": "female",
+      "variant": "a"
     },
     {
       "file": "hair_female_a_blonde.webp",
@@ -762,7 +849,8 @@ export const PARTS = {
       "label": "Blonde",
       "swatch": "#cf7e2e",
       "style": "hair",
-      "sex": "female"
+      "sex": "female",
+      "variant": "a"
     },
     {
       "file": "hair_female_a_red.webp",
@@ -770,7 +858,8 @@ export const PARTS = {
       "label": "Red",
       "swatch": "#8e3818",
       "style": "hair",
-      "sex": "female"
+      "sex": "female",
+      "variant": "a"
     },
     {
       "file": "hair_female_b_black.webp",
@@ -778,7 +867,8 @@ export const PARTS = {
       "label": "Black",
       "swatch": "#1c1814",
       "style": "hair",
-      "sex": "female"
+      "sex": "female",
+      "variant": "b"
     },
     {
       "file": "hair_female_b_dark-brown.webp",
@@ -786,7 +876,8 @@ export const PARTS = {
       "label": "Dark Brown",
       "swatch": "#412a1c",
       "style": "hair",
-      "sex": "female"
+      "sex": "female",
+      "variant": "b"
     },
     {
       "file": "hair_female_b_brown.webp",
@@ -794,7 +885,8 @@ export const PARTS = {
       "label": "Brown",
       "swatch": "#674123",
       "style": "hair",
-      "sex": "female"
+      "sex": "female",
+      "variant": "b"
     },
     {
       "file": "hair_female_b_light-brown.webp",
@@ -802,7 +894,8 @@ export const PARTS = {
       "label": "Light Brown",
       "swatch": "#9b6834",
       "style": "hair",
-      "sex": "female"
+      "sex": "female",
+      "variant": "b"
     },
     {
       "file": "hair_female_b_blonde.webp",
@@ -810,7 +903,8 @@ export const PARTS = {
       "label": "Blonde",
       "swatch": "#ca7a29",
       "style": "hair",
-      "sex": "female"
+      "sex": "female",
+      "variant": "b"
     },
     {
       "file": "hair_female_b_red.webp",
@@ -818,7 +912,8 @@ export const PARTS = {
       "label": "Red",
       "swatch": "#8f3819",
       "style": "hair",
-      "sex": "female"
+      "sex": "female",
+      "variant": "b"
     },
     {
       "file": "hair_female_c_black.webp",
@@ -826,7 +921,8 @@ export const PARTS = {
       "label": "Black",
       "swatch": "#1a1714",
       "style": "hair",
-      "sex": "female"
+      "sex": "female",
+      "variant": "c"
     },
     {
       "file": "hair_female_c_dark-brown.webp",
@@ -834,7 +930,8 @@ export const PARTS = {
       "label": "Dark Brown",
       "swatch": "#412a1c",
       "style": "hair",
-      "sex": "female"
+      "sex": "female",
+      "variant": "c"
     },
     {
       "file": "hair_female_c_brown.webp",
@@ -842,7 +939,8 @@ export const PARTS = {
       "label": "Brown",
       "swatch": "#664124",
       "style": "hair",
-      "sex": "female"
+      "sex": "female",
+      "variant": "c"
     },
     {
       "file": "hair_female_c_light-brown.webp",
@@ -850,7 +948,8 @@ export const PARTS = {
       "label": "Light Brown",
       "swatch": "#9a6834",
       "style": "hair",
-      "sex": "female"
+      "sex": "female",
+      "variant": "c"
     },
     {
       "file": "hair_female_c_blonde.webp",
@@ -858,7 +957,8 @@ export const PARTS = {
       "label": "Blonde",
       "swatch": "#c17124",
       "style": "hair",
-      "sex": "female"
+      "sex": "female",
+      "variant": "c"
     },
     {
       "file": "hair_female_c_red.webp",
@@ -866,7 +966,8 @@ export const PARTS = {
       "label": "Red",
       "swatch": "#8e371a",
       "style": "hair",
-      "sex": "female"
+      "sex": "female",
+      "variant": "c"
     },
     {
       "file": "hair_female_d_black.webp",
@@ -874,7 +975,8 @@ export const PARTS = {
       "label": "Black",
       "swatch": "#1c1814",
       "style": "hair",
-      "sex": "female"
+      "sex": "female",
+      "variant": "d"
     },
     {
       "file": "hair_female_d_dark-brown.webp",
@@ -882,7 +984,8 @@ export const PARTS = {
       "label": "Dark Brown",
       "swatch": "#412b1b",
       "style": "hair",
-      "sex": "female"
+      "sex": "female",
+      "variant": "d"
     },
     {
       "file": "hair_female_d_brown.webp",
@@ -890,7 +993,8 @@ export const PARTS = {
       "label": "Brown",
       "swatch": "#674122",
       "style": "hair",
-      "sex": "female"
+      "sex": "female",
+      "variant": "d"
     },
     {
       "file": "hair_female_d_light-brown.webp",
@@ -898,7 +1002,8 @@ export const PARTS = {
       "label": "Light Brown",
       "swatch": "#9a6832",
       "style": "hair",
-      "sex": "female"
+      "sex": "female",
+      "variant": "d"
     },
     {
       "file": "hair_female_d_blonde.webp",
@@ -906,7 +1011,8 @@ export const PARTS = {
       "label": "Blonde",
       "swatch": "#d38330",
       "style": "hair",
-      "sex": "female"
+      "sex": "female",
+      "variant": "d"
     },
     {
       "file": "hair_female_d_red.webp",
@@ -914,7 +1020,8 @@ export const PARTS = {
       "label": "Red",
       "swatch": "#8f3818",
       "style": "hair",
-      "sex": "female"
+      "sex": "female",
+      "variant": "d"
     }
   ]
 };

@@ -16,7 +16,7 @@ import React, { useState, useRef } from "react";
 import { INK, OCEAN, CORAL, GREEN, PAPER, PAPER_LINE } from "../theme.js";
 import { useModalFocus } from "./modal.jsx";
 import {
-  AVATAR_DIMS, PARTS, PORTRAIT,
+  AVATAR_DIMS, PARTS, PORTRAIT, sexOf, stepSex, stepPart,
   defaultAvatar, avatarFor, randomAvatar, normalizeAvatar, avatarLayers, focusStyle, fillHeightStyle,
 } from "../avatar-spec.js";
 
@@ -74,30 +74,43 @@ const arrowStyle = {
 // announced to a screen reader through the portrait's own aria-label, which names
 // every part, so the information is present without being clutter on screen. The
 // arrows keep their own labels.
-function PartRow({ dim, value, onPick }) {
-  const step = (d) => onPick((value + d + dim.n) % dim.n);
+// `value` is shown for the SEX row and nothing else. Every other row is a thing
+// you can see in the portrait above — a haircut, a jacket — and naming it as
+// well is clutter. "Male"/"Female" is the one choice the picture does not fully
+// announce on its own, and it is also the one that changes what the OTHER rows
+// will offer, so it says which way it is set.
+function PartRow({ label, value, onStep }) {
   return (
     <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 14,
                   padding: "7px 0", borderTop: `1px solid ${PAPER_LINE}` }}>
-      <button type="button" onClick={() => step(-1)} style={arrowStyle}
-        aria-label={`Previous ${dim.label.toLowerCase()}`}>◀</button>
+      <button type="button" onClick={() => onStep(-1)} style={arrowStyle}
+        aria-label={`Previous ${label.toLowerCase()}`}>◀</button>
       <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 13, letterSpacing: "0.18em",
                      fontWeight: 800, color: INK, width: 116, textAlign: "center" }}>
-        {dim.label.toUpperCase()}
+        {(value ?? label).toUpperCase()}
       </span>
-      <button type="button" onClick={() => step(1)} style={arrowStyle}
-        aria-label={`Next ${dim.label.toLowerCase()}`}>▶</button>
+      <button type="button" onClick={() => onStep(1)} style={arrowStyle}
+        aria-label={`Next ${label.toLowerCase()}`}>▶</button>
     </div>
   );
 }
 
 // The stack of part rows plus a randomize button. Shared by the editor and the
 // create-traveler popup, which used to carry two copies of the same layout.
+//
+// SEX comes first because it narrows what two of the rows under it will offer:
+// the eyes and the hair are drawn per sex, the skin and the jacket are the same
+// paintings for everybody. The arrows below it step through that sex's options
+// only (stepPart), so a boy's arrows never walk into the girls' hairstyles, and
+// switching sex carries each choice to its nearest equivalent rather than
+// resetting the face.
 function AvatarControls({ spec, setSpec }) {
+  const sex = sexOf(spec);
   return (
     <>
+      <PartRow label="Sex" value={sex} onStep={(d) => setSpec((s) => stepSex(s, d))} />
       {AVATAR_DIMS.map((d) => (
-        <PartRow key={d.key} dim={d} value={spec[d.key]} onPick={(i) => setSpec((s) => ({ ...s, [d.key]: i }))} />
+        <PartRow key={d.key} label={d.label} onStep={(delta) => setSpec((s) => stepPart(s, d.key, delta))} />
       ))}
     </>
   );
