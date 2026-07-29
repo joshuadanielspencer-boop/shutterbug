@@ -167,6 +167,22 @@ describe("country tunes", () => {
       expect(secs, `${key} is ${secs.toFixed(1)}s — too long to hold an arrival`).toBeLessThan(12);
     }
   });
+
+  it("every tune names a timbre the synth actually has", async () => {
+    // `voice()` falls back to TIMBRE.music for a name it doesn't recognise. It does
+    // not throw and it does not fall silent — the tune just plays on the wrong
+    // instrument, which is invisible to every other test in this file and to the
+    // build. A gamelan bed rendered as a music box would look completely fine.
+    installFakeAudio();
+    vi.resetModules();
+    const { MUSIC } = await import("../src/audio.js");
+    const { TUNES } = await import("../src/data/tunes.js");
+    const wrong = Object.entries(TUNES)
+      .filter(([, t]) => !MUSIC.timbres.includes(t.timbre))
+      .map(([k, t]) => `${k}: "${t.timbre}"`);
+    expect(wrong, `timbres the synth would silently replace with the music box:\n  ${wrong.join("\n  ")}`
+      + `\n(it knows: ${MUSIC.timbres.join(", ")})`).toEqual([]);
+  });
 });
 
 // ===========================================================================

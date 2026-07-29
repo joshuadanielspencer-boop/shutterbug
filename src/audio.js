@@ -579,6 +579,12 @@ export const MUSIC = (() => {
   // loop is faded out at the map).
   const wake = (c) => { master.gain.cancelScheduledValues(c.currentTime); master.gain.setTargetAtTime(0.16, c.currentTime, 0.3); };
   return {
+    // The timbres a tune in src/data/tunes.js may name. Exposed ONLY so a test can
+    // check the data against the real table: `voice()` falls back to TIMBRE.music
+    // for an unknown name, so a typo ("kalimbah", "sitar " with a space) doesn't
+    // throw and doesn't fall silent — it quietly plays the wrong instrument, which
+    // is the kind of wrong nobody notices until a child has heard it a hundred times.
+    timbres: Object.keys(TIMBRE),
     // The SPLASH bed: the pipes' drone alone, no melody — the sound of a piper with
     // the bag filled, about to start. It is deliberately the same D2+A2 the jig's own
     // drone uses, because the jig is in D Mixolydian: when "Begin your adventure"
