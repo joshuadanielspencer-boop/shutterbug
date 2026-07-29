@@ -6,6 +6,47 @@ three project rules are hard requirements), then the task you're doing.
 
 Last updated **2026-07-28**.
 
+> ### ⚠ 2026-07-29: the avatar range is generated now, not painted
+>
+> Joshua's new delivery is **one plate per SHAPE, each in a single colour** — one
+> head in tan, two sets of eyes in brown, eight hairstyles in blonde, five outfits
+> in blue/purple/red. The colour range is **generated** from it by
+> `scripts/avatar-recolour.mjs`: 16 paintings become 107 plates and **120,960
+> distinct travelers**. Adding a colour is one line in a palette; adding a shape is
+> still one correctly-named PNG.
+>
+> | part | range |
+> |---|---|
+> | eyes | brown, blue, green, hazel, amber, grey — × 2 sexes |
+> | hair | black, dark brown, brown, light brown, blonde, red — × 8 styles |
+> | skin | deep, dark, brown, medium, tan, light |
+> | outfit | red, orange, yellow, green, blue, purple, pink — × 5 garments |
+>
+> **Read the top of `scripts/avatar-recolour.mjs` before touching any of it.** The
+> recolour is easy; the MASKS are the work, and each one is there because a naive
+> version shipped something wrong:
+>
+> - **The eyelid crease** is painted in the same warm brown as the iris and passes
+>   every colour test there is. It is excluded on SHAPE — the irises come back as
+>   ~1,400 px filling 0.45 of their bounding box, the creases as ~200 px at 0.06.
+>   Without that a blue-eyed child gets blue eyeliner.
+> - **The outfit colour word names a different garment each time.** 1/2/3 are
+>   jackets, 4 is a cardigan, and 5 is a red T-SHIRT under a blue denim jacket —
+>   45% of that plate is denim. Masking on the declared colour is self-checking.
+> - **The head recolours its ink too**, because skin and line work are the same
+>   hue and leaving the lines put costs the darkest face its features.
+> - **Highlights are damped when darkening.** Blonde art has a huge specular
+>   range, and shifting all of it down left "black" hair reading as brown.
+>
+> **What this costs:** the built set is **3.1 MB**, up from 496 KB, all precached
+> by the PWA. If that ever matters, `--size 400` is the lever (the largest render
+> in the game is the 132 px passport frame, so 600 is already 2× for retina).
+>
+> **Still wanted from Joshua:** nothing is blocked. More SHAPES are the thing that
+> would add most now — more outfits, more hairstyles — since every one arrives in
+> the full colour range for free. Female-specific eyelashes would also land as
+> filenames alone.
+
 > ### ⚠ 2026-07-28 (evening): the rest of the tune-sameness pass, and four questions
 >
 > **Shipped:** the four beds still carrying 7–8 countries each — `southeastasia`,
@@ -21,12 +62,10 @@ Last updated **2026-07-28**.
 > **Nobody has heard any of them but a synthesizer.** See §11 item 2.
 >
 > **Four things need Joshua and were not started:**
-> 1. **`Images/Avatar designs/eyes_female_brown.png.png`** is 1024×1024 where every
->    other plate is 1200×1200 (and has a doubled `.png`). The build SKIPS it with a
->    named warning rather than ship it crooked. Needs a re-export at 1200×1200 with
->    the character in the same position. The frame is NOT the registration reference
->    — it is stripped and identical on every plate. Canvas size and character
->    position are the whole contract.
+> 1. ~~**`Images/Avatar designs/eyes_female_brown.png.png`** is 1024×1024~~ **FIXED
+>    by Joshua, 2026-07-29** — every plate in the new batch is 1200×1200. Three
+>    still carry a doubled `.png`, which the build now strips rather than reading
+>    as part of the colour.
 > 2. ~~**Currency PRICE anchors**~~ **BUILT, and it reaches 10 countries, not 55.**
 >    Joshua asked for all of them. See §12 for why that is not available at any
 >    price — the short version is that there is no authoritative global source of
