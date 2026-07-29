@@ -101,6 +101,8 @@ describe("arrival tunes", () => {
       "Cameroon"], 4],
     ["the northern Mediterranean", ["Greece", "Italy", "Spain", "Portugal", "Croatia",
       "Malta"], 5],
+    ["the Caribbean", ["Cuba", "Jamaica", "Haiti", "Trinidad and Tobago", "Belize",
+      "Guyana"], 5],
   ])("keeps %s spread across several motifs", (_region, countries, least) => {
     const keys = new Set(countries.map((c) => {
       const l = LOCATIONS.find((x) => x.country === c);
@@ -111,12 +113,16 @@ describe("arrival tunes", () => {
       .toBeGreaterThanOrEqual(least);
   });
 
-  // The general version of Joshua's complaint. The ceiling was 8 while four motifs
-  // were still at 7-8; those are split, and so is the Mediterranean that was next
-  // after them. It comes down to 6, which is now `caribbean` alone — Cuba, Jamaica,
-  // Haiti, Trinidad, Belize and Guyana on one steel-drum bed, when a Cuban tres, a
-  // Haitian méringue and a Garifuna punta are four traditions and three languages.
-  // That is the next one of these to do, and the last of the big ones.
+  // The general version of Joshua's complaint, and it is finished. The ceiling was
+  // 8 while four motifs carried 7-8 countries; those were split, then the
+  // Mediterranean, then the Caribbean — the last of the big ones. Nothing now
+  // carries more than FIVE.
+  //
+  // The five that sit at five are `eastafrica`, `southasia`, `slavic`,
+  // `southernafrica`, `centralamerica` and `nordic`, and none of them is
+  // indefensible the way one steel drum for four traditions was: each is a real
+  // musical region whose members genuinely share instruments and modes. Tighten
+  // this further only with a reason of that kind, not to make the number smaller.
   it("no single tune carries more of the world than today's worst", () => {
     const byTune = {};
     for (const country of new Set(LOCATIONS.map((l) => l.country))) {
@@ -124,8 +130,8 @@ describe("arrival tunes", () => {
       (byTune[key] = byTune[key] || []).push(country);
     }
     const hogs = Object.entries(byTune)
-      .filter(([, cs]) => cs.length > 6)
+      .filter(([, cs]) => cs.length > 5)
       .map(([k, cs]) => `${k}: ${cs.length} countries (${cs.join(", ")})`);
-    expect(hogs, `tunes carrying more than six countries:\n  ${hogs.join("\n  ")}`).toEqual([]);
+    expect(hogs, `tunes carrying more than five countries:\n  ${hogs.join("\n  ")}`).toEqual([]);
   });
 });

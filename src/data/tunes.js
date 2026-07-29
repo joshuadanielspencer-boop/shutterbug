@@ -174,7 +174,65 @@ export const TUNES = {
     ["G4",0.5],["A4",0.5],["B4",1],["D5",1],["B4",1],["G4",1],["A4",1],["D4",1],["G4",2],["B4",1],["A4",1],["G4",2],["r",1],
     ["D5",0.5],["E5",0.5],["D5",1],["B4",1],["G4",1],["A4",1],["B4",1],["A4",1],["G4",1],["F#4",1],["E4",1],["D4",1],["G4",3],
   ] },
-  // Caribbean — steel-drum, bright major arpeggios.
+  // ---- The Caribbean, five ways (added 2026-07-29) ---------------------------
+  //
+  // The last bed carrying six countries, and the last of the big ones. Cuba,
+  // Jamaica, Haiti, Trinidad, Belize and Guyana shared one steel drum — four
+  // traditions and three languages, and the steel pan belongs to exactly one of
+  // them. A child flying Havana → Port-au-Prince → Belize City heard the same
+  // eight bars three times.
+  //
+  // Same discipline as the maqam and Mediterranean blocks: each bed names a real
+  // instrument and a real tradition, and the RHYTHM it is built on is checkable.
+  // The son clave really is a two-bar figure with onsets on the 1st, 4th, 7th,
+  // 11th and 13th eighths; the vaksin really are single-pitch bamboo trumpets
+  // played in hocket. What is never claimed is that any of these is a song.
+
+  // Cuba — SON, on the tres. The tres has three courses of paired strings and the
+  // outer two are tuned in OCTAVES, which is what the octave partial on this
+  // timbre is: not an effect, the instrument. Every bar below is laid on the son
+  // clave 3-2 — the durations ARE that pattern, 1.5 1.5 2 1 2, four times over.
+  son: { timbre: "koto", spb: 0.22, seq: [
+    ["G4",1.5],["C5",1.5],["E5",2],["D5",1],["C5",2],
+    ["A4",1.5],["C5",1.5],["D5",2],["Bb4",1],["G4",2],
+    ["E5",1.5],["D5",1.5],["C5",2],["A4",1],["G4",2],
+    ["C5",1.5],["Bb4",1.5],["A4",2],["G4",1],["C4",2],
+  ] },
+  // Jamaica — MENTO, the island's own folk music and the root reggae grew from,
+  // played on the banjo. Its signature is where the weight falls: the phrases
+  // below lean onto the offbeat with a short pickup into each strong note, which
+  // is the lilt mento is named for. Deliberately NOT reggae — that is a
+  // twentieth-century music, and this game's beds stay on folk ground.
+  mento: { timbre: "pluck", spb: 0.26, seq: [
+    ["G4",0.75],["A4",0.25],["B4",0.5],["D5",0.5],["B4",0.75],["A4",0.25],["G4",1],["r",0.5],
+    ["A4",0.75],["B4",0.25],["C5",0.5],["E5",0.5],["C5",0.75],["B4",0.25],["A4",1],["r",0.5],
+    ["E5",0.75],["D5",0.25],["B4",0.5],["A4",0.5],["G4",0.75],["A4",0.25],["B4",1],["r",0.5],
+    ["D5",0.5],["B4",0.5],["G4",0.5],["A4",0.5],["B4",0.75],["A4",0.25],["G4",1.5],
+  ] },
+  // Haiti — RARA, the processional music, on the vaksin: bamboo trumpets that
+  // play ONE pitch each. A tune is assembled from several of them alternating,
+  // which is why this is a small set of insistent repeated notes in hocket rather
+  // than a melodic line, and why it is on a brass voice. Francophone and Vodou-
+  // rooted, and nothing at all like the anglophone islands either side of it.
+  haiti: { timbre: "brass", spb: 0.3, seq: [
+    ["D4",1],["A4",0.5],["D4",0.5],["F4",1],["A4",0.5],["D4",0.5],
+    ["G4",1],["D4",0.5],["A4",0.5],["F4",1],["D4",0.5],["A4",0.5],["r",0.5],
+    ["A4",0.5],["D5",0.5],["A4",0.5],["F4",0.5],["D4",1],["A4",0.5],["D4",0.5],
+    ["F4",1],["A4",1],["D4",2],
+  ] },
+  // Belize — GARIFUNA paranda and punta (UNESCO, 2001), which is Central American
+  // mainland and Garifuna rather than island Caribbean at all. Paranda is guitar
+  // music over the primero and segunda drums, sung call-and-response, and the
+  // phrases below alternate a call with its answer.
+  garifuna: { timbre: "guitar", spb: 0.26, seq: [
+    ["A4",1],["C5",0.5],["A4",0.5],["G4",1],["E4",1],["r",0.5],
+    ["E4",0.5],["G4",0.5],["A4",1],["C5",0.5],["A4",0.5],["G4",1.5],["r",0.5],
+    ["C5",1],["D5",0.5],["C5",0.5],["A4",1],["G4",1],["r",0.5],
+    ["G4",0.5],["A4",0.5],["G4",1],["E4",0.5],["D4",0.5],["E4",2],
+  ] },
+  // Trinidad and Tobago (and Guyana) — the STEEL PAN, which was invented in
+  // Trinidad, so this bed keeps the country the instrument comes from. Bright
+  // major arpeggios, calypso-lilted.
   caribbean: { timbre: "steel", spb: 0.24, seq: [
     ["C4",0.5],["E4",0.5],["G4",0.5],["C5",1],["G4",0.5],["E4",1],["F4",0.5],["A4",0.5],["C5",1.5],["G4",1],["E4",1],["C4",2],["r",1],
     ["E5",0.5],["D5",0.5],["C5",1],["G4",1],["A4",0.5],["G4",0.5],["F4",1],["E4",1],["D4",0.5],["E4",0.5],["F4",1],["E4",1],["C4",3],
@@ -669,11 +727,19 @@ export const COUNTRY_MOTIF = {
   "Argentina": "riodelaplata", "Uruguay": "riodelaplata",                     // tango, habanera cell
   "Colombia": "llanero", "Venezuela": "llanero",                              // joropo, arpa llanera
   "Paraguay": "paraguay",                                                     // Paraguayan harp
-  // Caribbean. Guyana is on the South American mainland and in the Caribbean
-  // everywhere else that counts — English-speaking, CARICOM, and its music is
-  // calypso, soca and chutney. It was on the Latin bed, which fits it worst of all.
-  "Cuba": "caribbean", "Jamaica": "caribbean", "Haiti": "caribbean", "Trinidad and Tobago": "caribbean",
-  "Belize": "caribbean", "Guyana": "caribbean",
+  // The Caribbean — one steel drum for six countries until 2026-07-29. See the
+  // block above TUNES.son. The pan stays with the island that invented it.
+  "Trinidad and Tobago": "caribbean",                                         // steel pan
+  "Cuba": "son",                                                              // tres, son clave
+  "Jamaica": "mento",                                                         // banjo, offbeat
+  "Haiti": "haiti",                                                           // rara, vaksin
+  "Belize": "garifuna",                                                       // paranda + punta
+  // Guyana is on the South American mainland and in the Caribbean everywhere else
+  // that counts — English-speaking, CARICOM, and calypso and soca are played there
+  // alongside the pan. It shares Trinidad's bed rather than getting a sixth of its
+  // own: its most distinctive music is Indo-Guyanese chutney, which is a
+  // twentieth-century form and wants a harmonium this synth does not have.
+  "Guyana": "caribbean",
   // Central America — marimba country, and nothing like the Caribbean steel drum.
   "Guatemala": "centralamerica", "Honduras": "centralamerica", "Nicaragua": "centralamerica",
   "Costa Rica": "centralamerica", "Panama": "centralamerica",
