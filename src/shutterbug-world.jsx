@@ -32,6 +32,7 @@ import { useModalFocus, ModalShell, OpenBook } from "./components/modal.jsx";
 // already-saved avatars onto the new art is tested.
 import { avatarFor, randomAvatar, Avatar, AvatarControls, AvatarTwoCol, AvatarEditor } from "./components/avatar.jsx";
 import { categoryCountries, categoryMissionOK as missionOK } from "./missions.js";
+import { updateGate } from "./app-update.js";
 import { robinson, eqToRobinson, robinsonToEq, ROBINSON_W, ROBINSON_H,
   flightLegs, legPath } from "./robinson.js";
 // The pure map geometry — bounding boxes, the two antimeridian cutters, frame-aspect
@@ -1669,6 +1670,10 @@ export default function ShutterbugWorld() {
   };
   const [helloPicks, setHelloPicks] = useState(pickHellos);
   useEffect(() => { if (screen === "start") setHelloPicks(pickHellos()); }, [screen]);
+  // A newly deployed build may be sitting claimed and waiting to reload the page.
+  // Tell the gate where the player is standing: it takes the reload the moment
+  // that's somewhere losing the screen costs nothing. See src/app-update.js.
+  useEffect(() => { updateGate.noteScreen(screen); }, [screen]);
   // Which bubble is being pointed at, so the splash can name its language and say
   // what the word actually means — the sound alone taught the pronunciation but
   // never what was being said.
@@ -4003,7 +4008,7 @@ export default function ShutterbugWorld() {
               ))}
               {outfits.map((o) => (
                 <div key={o} style={{ display: "flex", alignItems: "center", gap: 14, background: "#F1E9F6", border: `2px solid ${OCEAN}`, borderRadius: 14, padding: "10px 16px" }}>
-                  <img src={`${UI}dog-outfits/${o}_seated_smile.png`} alt="" aria-hidden="true"
+                  <img src={`${UI}dog-outfits/${o}_seated_smile.webp`} alt="" aria-hidden="true"
                     style={{ width: 96, height: 96, objectFit: "contain", flex: "none" }} />
                   <div style={{ minWidth: 0 }}>
                     <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 10, letterSpacing: "0.14em", color: OCEAN, fontWeight: 800 }}>👕 A NEW OUTFIT FOR PICKLES</div>
@@ -7709,7 +7714,7 @@ function WardrobeModal({ unlocked, mode, pick, onSet, onClose }) {
               style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 3, padding: "7px 5px",
                 background: sel ? "#FBF1D6" : "#fff", border: `2px solid ${sel ? GOLD : PAPER_LINE}`, borderRadius: 12,
                 cursor: on ? "pointer" : "default", opacity: on ? 1 : 0.6 }}>
-              <img src={`${UI}dog-outfits/${o}_seated_smile.png`} alt="" aria-hidden="true"
+              <img src={`${UI}dog-outfits/${o}_seated_smile.webp`} alt="" aria-hidden="true"
                 style={{ width: 87, height: 87, objectFit: "contain", filter: on ? "none" : "grayscale(1) opacity(0.55)" }} />
               <div style={{ fontSize: 10.5, fontWeight: 800, color: INK, textAlign: "center", lineHeight: 1.15 }}>{(OUTFIT_NAME[o] || o).replace(/^the /, "")}</div>
               {!on && <div style={{ fontSize: 8.5, color: INK, opacity: 0.7, textAlign: "center", lineHeight: 1.2 }}>🔒 {outfitUnlockLabel(o)}</div>}
@@ -9292,7 +9297,7 @@ function PicklesCheer({ cheer, outfit, reduced }) {
   // the same six poses, so her celebration pose survives the costume — the semantic
   // pose maps onto the outfit's file (see OUTFIT_POSE_FILE).
   const src = outfit
-    ? `${UI}dog-outfits/${outfit}_${OUTFIT_POSE_FILE[copy.pose] || "seated_smile"}.png`
+    ? `${UI}dog-outfits/${outfit}_${OUTFIT_POSE_FILE[copy.pose] || "seated_smile"}.webp`
     : `${UI}dog/${DOG_POSES[copy.pose]}`;
   return (
     <div className={reduced ? "" : "sbw-pop"} aria-hidden="true"

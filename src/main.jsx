@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import ReactDOM from "react-dom/client";
 import ShutterbugWorld from "./shutterbug-world.jsx";
+import { updateGate } from "./app-update.js";
 import "./index.css";
 
 // ---- Boot splash: the Lotus logo on white, before the game's own splash --------
@@ -80,7 +81,7 @@ class ErrorBoundary extends React.Component {
   }
 }
 
-// ---- Take a new build the FIRST time, not the second ------------------------
+// ---- Take a new build the first time — but never mid-trip -------------------
 // vite.config.js already ships `registerType: "autoUpdate"` with skipWaiting +
 // clientsClaim, so a new service worker installs and takes over the open page
 // straight away. What it CANNOT do is change the HTML and JS the page already
@@ -88,17 +89,18 @@ class ErrorBoundary extends React.Component {
 // previous build until they happen to reload, which is exactly the "the subtitle
 // is still the old blue one until I force a refresh" report.
 //
-// `controllerchange` fires at the moment the fresh worker claims this page. One
-// reload there and the player is on the new build without knowing anything
-// happened. The guard matters: without it, a reload that itself triggers another
-// controllerchange would loop the page forever.
+// `controllerchange` fires at the moment the fresh worker claims this page, and
+// this used to reload right there. It worked, and it also restarted the game
+// under anyone who happened to be playing: a deploy landed, the worker claimed
+// the page, and a child two stops into Lewis & Clark was returned to the splash
+// with the trip gone (nothing about a run in progress is saved). Every push did
+// this to every open copy of the game.
+//
+// So the reload is handed to updateGate, which holds it until the player is back
+// somewhere it costs nothing — see src/app-update.js. The gate also carries the
+// "only ever fire once" guard that stops a reload from looping the page.
 if ("serviceWorker" in navigator) {
-  let reloading = false;
-  navigator.serviceWorker.addEventListener("controllerchange", () => {
-    if (reloading) return;
-    reloading = true;
-    window.location.reload();
-  });
+  navigator.serviceWorker.addEventListener("controllerchange", () => updateGate.requestUpdate());
 }
 
 ReactDOM.createRoot(document.getElementById("root")).render(

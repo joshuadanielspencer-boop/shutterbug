@@ -6,6 +6,47 @@ three project rules are hard requirements), then the task you're doing.
 
 Last updated **2026-07-29**.
 
+> ### ⚠ 2026-07-30: why the app "just restarted in the middle of a game"
+>
+> Joshua reported this and it was two separate faults, both now fixed.
+>
+> **1. Every deploy restarted every open copy of the game.** `main.jsx` reloaded
+> the page the instant a new service worker claimed it (`controllerchange`), with
+> no idea whether anyone was playing — and **an in-progress run is saved nowhere**:
+> `journey`, `expedition` and `tourPlan` are React state, and localStorage holds
+> only the profile, its bests and its passport. Reproduced exactly: "STOP 1 OF 6" →
+> reload → "Begin your adventure", trip gone. Every `git push` did this to whoever
+> was mid-trip, and this project auto-deploys on push.
+>
+> The reload now goes through `src/app-update.js`, which **holds it until the
+> player is on the splash, the traveler picker, or the meet screen** — and every
+> run ends at the splash, so it always lands. Anything not on that list counts as
+> unsafe, deliberately: delaying an update costs a player nothing, interrupting one
+> costs them the trip, so a screen added later has to be named on purpose before it
+> can ever be interrupted. `test/app-update.test.js` covers it, including the case
+> that regressed (verified the tests fail against the old always-reload behaviour).
+>
+> **2. The PWA precached 326 MB, and 305 MB of it was the dog.** `dog-outfits`
+> shipped as 108 plates of 1254×1254 truecolour PNG at ~2.7 MB each — for a dog
+> drawn at **390px** at her largest and 87px in the wardrobe. On an iPad that is
+> exactly what makes iOS evict the app or kill the tab. They are now 800px webp
+> (2× her largest render): **305 MB → 12 MB**, and measured against the originals
+> at 390px the mean pixel difference is **0.94/255**. The camera bag came down too
+> (1146px and 2.5 MB, drawn at 210px → 640px, 692 KB).
+>
+> **Precache total: 326 MB → 59 MB.**
+>
+> It happened because `scripts/optimize-ui-art.mjs` walks a hard-coded folder list
+> and nobody added `dog-outfits` to it. That list now has two policies (palette
+> PNG for small emblems, resize-to-webp for big character art), but the real guard
+> is `test/precache-size.test.js`, which walks what is actually on disk — so a
+> folder nobody thought about is checked anyway.
+>
+> **Still oversized, and the obvious next pass:** five Mr O plates at ~1 MB each,
+> `airmail-paper-texture` (980 KB), `leather-texture` (756 KB),
+> `atlas-paper-texture` (724 KB), `splash.jpg` (836 KB). The per-file tripwire sits
+> at 1100 KB; lowering it is how that gets finished.
+
 > ### ⚠ 2026-07-29: the meet screen fits the board now — with one state left over
 >
 > The screen ran past the bottom of the painted board, and by more than the last

@@ -17,12 +17,31 @@
 // Do NOT point this at photographic assets — palette banding shows on gradients.
 // The pristine originals stay in the delivery folder outside the repo.
 import sharp from "sharp";
-import { readdir, stat, rename, open } from "node:fs/promises";
+import { readdir, stat, rename, open, unlink } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { join } from "node:path";
 
-const ART_DIRS = ["badges", "modes", "themes", "difficulty", "ranks", "medals", "roundels", "transport", "hello", "dog"];
+// Two policies, because the art is two different things.
+//
+// PALETTE_DIRS are small flat emblems drawn at 22–62 px. Same pixels, 256
+// colours, still a PNG.
+//
+// RESIZE_DIRS are big character illustrations. Quantising those is treating a
+// symptom: `dog-outfits` arrived as 108 plates of 1254×1254 truecolour PNG at
+// ~2.7 MB each — 305 MB, precached in full onto every install — for a dog who is
+// drawn at 390 px at her very largest and 87 px in the wardrobe. It was missed
+// because this list is what the optimizer walks, and nobody added the new folder
+// to it, so the batch shipped untouched and no build step complained. The value
+// is the biggest size it is ever DRAWN, doubled for retina; webp because these
+// are illustrations with alpha and a palette would band the shading.
+//
+// `test/precache-size.test.js` is the thing that will actually catch the next
+// one — a list you must remember to update is not a guard.
+const PALETTE_DIRS = ["badges", "modes", "themes", "difficulty", "ranks", "medals", "roundels", "transport", "hello", "dog"];
+const RESIZE_DIRS = { "dog-outfits": 800 };
+const ART_DIRS = [...PALETTE_DIRS, ...Object.keys(RESIZE_DIRS)];
 const COLORS = 256;
+const WEBP_QUALITY = 88;
 
 // True if the PNG is already stored as a palette. Read from the file header
 // rather than sharp's metadata: sharp decodes a palette PNG to RGBA and reports
@@ -55,6 +74,29 @@ for (const dir of dirs) {
     continue;
   }
   console.log(`\n${dir}/`);
+
+  // Big character art: shrink to the size it is actually drawn at and re-encode
+  // as webp, replacing the PNG. Idempotent for free — once converted there are
+  // no PNGs left here, so a re-run after dropping in ONE new plate touches only
+  // that plate.
+  if (RESIZE_DIRS[dir]) {
+    const edge = RESIZE_DIRS[dir];
+    for (const name of files) {
+      const src = join(abs, name);
+      const size = (await stat(src)).size;
+      const dest = join(abs, name.replace(/\.png$/, ".webp"));
+      await sharp(src)
+        .resize(edge, edge, { fit: "inside", withoutEnlargement: true })
+        .webp({ quality: WEBP_QUALITY })
+        .toFile(dest);
+      const out = (await stat(dest)).size;
+      await unlink(src);
+      console.log(`  ✓ ${name.padEnd(46)} ${kb(size).padStart(8)} → ${kb(out).padStart(8)} webp @${edge}px  (${Math.round((100 * out) / size)}%)`);
+      before += size; after += out; done++;
+    }
+    continue;
+  }
+
   for (const name of files) {
     const src = join(abs, name);
     const size = (await stat(src)).size;
