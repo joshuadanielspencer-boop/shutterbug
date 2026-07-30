@@ -1,0 +1,229 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tune lab — listen to every arrival bed</title>
+<!--
+  A standalone listening page for the arrival music. Nothing in the game imports
+  it, and it imports nothing of its own: it pulls `src/data/tunes.js` and
+  `src/audio.js` straight out of the app, so a bed edited in the data file is
+  heard here on the next reload with no change to this page.
+
+  WHY IT EXISTS. Every bed in tunes.js is checked by test for note grammar,
+  playable range, phrase length, timbre and how many countries it carries — and
+  none of that says whether it SOUNDS GOOD. That is Joshua's ear and only his,
+  and until now there was no way to put the beds in front of it short of playing
+  the game to an arrival in each of 98 countries.
+
+  WHY IT DRIVES THE REAL SYNTH rather than rendering audio files offline. The
+  question being asked is "does this sound right", so the one unacceptable answer
+  is a sound the game does not make. This page calls MUSIC.countryTune(country,
+  continent) — the exact function an arrival calls — so what you hear IS the
+  arrival, envelopes, timbre, drone and all. A second synth written to render
+  WAVs would have to reproduce Web Audio's filters and envelopes exactly to be
+  worth listening to, and any place it failed would be a note Joshua judged that
+  the game never plays.
+
+  Served at /tune-lab.html by `npm run dev`.
+-->
+<style>
+  :root {
+    --ink: #F4ECD8; --bg: #2f1d0f; --panel: #3d2715; --amber: #F0A500;
+    --dim: rgba(244,236,216,.6); --line: rgba(244,236,216,.22);
+    --real: #7FD1AE;   /* a real named melody */
+    --wide: #E8846B;   /* a bed carrying four or more countries */
+  }
+  * { box-sizing: border-box; }
+  body { font: 15px/1.5 system-ui, sans-serif; background: var(--bg); color: var(--ink); margin: 0; padding: 24px 28px 80px; }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  h2 { font-size: 13px; letter-spacing: .12em; text-transform: uppercase; color: var(--amber); margin: 28px 0 10px; }
+  p.lede { margin: 0 0 20px; color: var(--dim); max-width: 76ch; }
+  code { background: rgba(0,0,0,.28); padding: 1px 5px; border-radius: 4px; font-size: .92em; }
+
+  .bar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin: 0 0 20px; }
+  button { font: inherit; color: var(--ink); background: var(--panel); border: 1px solid var(--line);
+           border-radius: 9px; padding: 7px 13px; cursor: pointer; }
+  button:hover { border-color: var(--amber); }
+  button:focus-visible { outline: 3px solid var(--amber); outline-offset: 2px; }
+  button[disabled] { opacity: .45; cursor: default; }
+  .stopbtn { border-color: var(--wide); }
+
+  table { border-collapse: collapse; width: 100%; max-width: 1100px; }
+  th, td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--amber); font-weight: 600; }
+  tr.playing { background: rgba(240,165,0,.14); }
+  td.key { font-family: ui-monospace, monospace; white-space: nowrap; }
+  td.count { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .countries { color: var(--dim); font-size: 13px; }
+  .tag { display: inline-block; font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase;
+         border: 1px solid currentColor; border-radius: 999px; padding: 0 6px; margin-left: 7px; vertical-align: 1px; }
+  .tag.real { color: var(--real); }
+  .tag.wide { color: var(--wide); }
+  .meta { color: var(--dim); font-size: 12.5px; white-space: nowrap; }
+
+  /* Colour is never the only signal (CLAUDE.md rule 4): every tag says its word,
+     and the row being played is marked with a ▶ in the button as well as tinted. */
+</style>
+
+<h1>Tune lab</h1>
+<p class="lede">
+  Every arrival bed in <code>src/data/tunes.js</code>, played through the game's own
+  synthesizer — this page calls the same <code>MUSIC.countryTune()</code> an arrival
+  calls, so what you hear is exactly what a child hears when they land. Press a row to
+  play it, or tap <kbd>N</kbd> to hear the next one down — the fastest way to judge a
+  bed is against the bed beside it.
+</p>
+
+<div class="bar">
+  <button id="playAll">▶ Play every bed in turn</button>
+  <button id="stop" class="stopbtn">■ Stop</button>
+  <label><input type="checkbox" id="wideFirst"> Widest beds first</label>
+  <span class="meta" id="summary"></span>
+</div>
+
+<h2>Named melodies — a real tune, off a score</h2>
+<table>
+  <thead><tr><th>Tune</th><th>Timbre</th><th>Length</th><th class="count">Countries</th><th>Carries</th></tr></thead>
+  <tbody id="realRows"></tbody>
+</table>
+
+<h2>Regional beds — original phrases, written to evoke a region</h2>
+<table>
+  <thead><tr><th>Bed</th><th>Timbre</th><th>Length</th><th class="count">Countries</th><th>Carries</th></tr></thead>
+  <tbody id="bedRows"></tbody>
+</table>
+
+<script type="module">
+// Imported dynamically, and from /src/, which exists only while the dev server is
+// running — a production build has no /src to serve. Static imports would leave a
+// blank page with a 404 in a console nobody opened; this says what to do instead.
+let TUNES, COUNTRY_TUNE, tuneKeyFor, LOCATIONS, MUSIC;
+try {
+  ({ TUNES, COUNTRY_TUNE, tuneKeyFor } = await import("/src/data/tunes.js"));
+  ({ LOCATIONS } = await import("/src/data/locations.js"));
+  ({ MUSIC } = await import("/src/audio.js"));
+} catch (err) {
+  document.body.innerHTML = `<h1>Tune lab</h1>
+    <p class="lede">This page reads the game's source directly, so it only runs under
+    the dev server. Start it with <code>npm run dev</code> and open
+    <a href="http://localhost:5173/tune-lab.html">localhost:5173/tune-lab.html</a>.</p>
+    <p class="lede" style="opacity:.6">(${String(err && err.message)})</p>`;
+  throw err;
+}
+
+// Every element is looked up explicitly rather than through the id-as-global that
+// browsers also provide. That shortcut has a trapdoor: `stop` resolves to the
+// BUILT-IN window.stop(), not to <button id="stop">, so `stop.onclick = …` sets a
+// property on a function and the button silently does nothing. It cost a debugging
+// round here; one helper is cheaper than remembering which ids collide.
+const $ = (id) => document.getElementById(id);
+
+// Which countries actually reach each bed, resolved the way the game resolves it
+// — through tuneKeyFor, not by reading the mapping tables. A bed that no country
+// can reach is worth seeing as an empty row rather than not seeing at all.
+const seen = new Map();                     // country -> continent
+for (const l of LOCATIONS) if (!seen.has(l.country)) seen.set(l.country, l.continent);
+
+const byBed = new Map(Object.keys(TUNES).map((k) => [k, []]));
+for (const [country, continent] of seen) {
+  const key = tuneKeyFor(country, continent);
+  (byBed.get(key) ?? byBed.set(key, []).get(key)).push(country);
+}
+for (const list of byBed.values()) list.sort((a, b) => a.localeCompare(b));
+
+// A bed is a "named melody" if some country claims it by name in COUNTRY_TUNE —
+// which is exactly what distinguishes the six real tunes from the regional beds.
+// Read off that table rather than listed here, so a seventh real melody needs no
+// edit to this page.
+const REAL = new Set(Object.values(COUNTRY_TUNE));
+
+const secs = (t) => t.seq.reduce((s, [, b]) => s + b * t.spb, 0);
+const rows = [];
+
+const render = () => {
+  const order = [...byBed.entries()];
+  if ($("wideFirst").checked) order.sort((a, b) => b[1].length - a[1].length || a[0].localeCompare(b[0]));
+  else order.sort((a, b) => a[0].localeCompare(b[0]));
+
+  $("realRows").replaceChildren();
+  $("bedRows").replaceChildren();
+  rows.length = 0;
+
+  // Real melodies first, then the regional beds — the same order the two tables
+  // appear in. `rows` doubles as the running order for the N shortcut, so building
+  // it in any other order would make N jump between the two tables mid-list.
+  const visual = [...order.filter(([k]) => REAL.has(k)), ...order.filter(([k]) => !REAL.has(k))];
+
+  for (const [key, countries] of visual) {
+    const tune = TUNES[key];
+    const real = REAL.has(key);
+    const tr = document.createElement("tr");
+    const btn = document.createElement("button");
+    btn.textContent = "▶ " + key;
+    btn.onclick = () => play(key);
+
+    const cell = (html, cls) => { const td = document.createElement("td"); if (cls) td.className = cls; td.innerHTML = html; return td; };
+    const tdKey = document.createElement("td"); tdKey.className = "key"; tdKey.append(btn);
+    if (real) tdKey.insertAdjacentHTML("beforeend", '<span class="tag real">real tune</span>');
+    else if (countries.length >= 4) tdKey.insertAdjacentHTML("beforeend", '<span class="tag wide">wide</span>');
+    tr.append(tdKey);
+    tr.append(cell(tune.timbre, "meta"));
+    tr.append(cell(secs(tune).toFixed(1) + " s", "meta"));
+    tr.append(cell(String(countries.length), "count"));
+    tr.append(cell(countries.join(", ") || "<i>nothing reaches this bed</i>", "countries"));
+
+    $(real ? "realRows" : "bedRows").append(tr);
+    rows.push({ key, tr, btn, countries, secs: secs(tune) });
+  }
+  $("summary").textContent = `${byBed.size} beds · ${seen.size} countries · `
+    + `widest carries ${Math.max(...[...byBed.values()].map((c) => c.length))}`;
+};
+
+// ---- playback -------------------------------------------------------------
+// One at a time, and always through a real country so tuneKeyFor is in the loop.
+let timer = null, current = null;
+
+const clearMark = () => { for (const r of rows) r.tr.classList.remove("playing"); current = null; };
+
+const stopAll = () => { if (timer) { clearTimeout(timer); timer = null; } MUSIC.stopCountry(); clearMark(); };
+
+function play(key, then) {
+  stopAll();
+  const row = rows.find((r) => r.key === key);
+  if (!row || !row.countries.length) return;
+  row.tr.classList.add("playing");
+  current = key;
+  // The FIRST country of the bed, every time — auditioning a bed twice should not
+  // depend on which of its countries the page happened to pick.
+  MUSIC.countryTune(row.countries[0], seen.get(row.countries[0]));
+  if (then) timer = setTimeout(then, (row.secs + 1.1) * 1000);
+}
+
+const playFrom = (i) => {
+  if (i >= rows.length) { stopAll(); return; }
+  const row = rows[i];
+  if (!row.countries.length) { playFrom(i + 1); return; }
+  play(row.key, () => playFrom(i + 1));
+};
+
+$("playAll").onclick = () => playFrom(0);
+$("stop").onclick = stopAll;
+$("wideFirst").onchange = () => { stopAll(); render(); };
+
+// N walks down the list — the point of this page is comparing one bed against the
+// next, and that wants a key you can keep tapping without aiming at anything.
+//
+// It is N and not Space on purpose. Space ACTIVATES A FOCUSED BUTTON, and every
+// row here is a button: a global Space handler would have to preventDefault to
+// stop the page scrolling, which would swallow the activation and leave a keyboard
+// user unable to press the very control they had tabbed to (CLAUDE.md rule 4).
+addEventListener("keydown", (e) => {
+  if (e.key.toLowerCase() !== "n" || e.metaKey || e.ctrlKey || e.altKey) return;
+  // `?.` because the event target is not always an Element (a keydown dispatched
+  // at `document` has no .matches, and throwing here would kill the shortcut).
+  if (e.target.matches?.("input, textarea, select")) return;
+  const i = current ? rows.findIndex((r) => r.key === current) : -1;
+  playFrom(i + 1);
+});
+
+render();
+</script>

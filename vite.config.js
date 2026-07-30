@@ -101,7 +101,18 @@ export default defineConfig({
         // landmark photos to runtime caching below. They are cached the first time a
         // country's map is opened, so a place you have actually been works offline,
         // and a country you have never visited falls back to the world plate.
-        globIgnores: ["relief/**"],
+        // The two *-lab.html pages are developer review tools that live in public/
+        // so `npm run dev` serves them. They are not part of the game and there is
+        // no reason to put them on a child's iPad at install time. (tune-lab.html
+        // imports from /src/ and therefore only works under the dev server at all;
+        // it says so on the page if opened from a build.)
+        globIgnores: ["relief/**", "*-lab.html"],
+        // …and once they are out of the precache, the service worker's navigation
+        // fallback would answer /tune-lab.html with index.html — i.e. open the GAME
+        // at the lab's URL, which is a more confusing failure than a missing page.
+        // Exempt them so the real file is served (avatar-lab.html works from a build;
+        // tune-lab.html explains that it needs the dev server).
+        navigateFallbackDenylist: [/-lab\.html$/],
         maximumFileSizeToCacheInBytes: 6 * 1024 * 1024,
         cleanupOutdatedCaches: true,
         clientsClaim: true,
