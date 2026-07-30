@@ -1209,17 +1209,39 @@ one: three sources in one file and no way to re-check a figure is not rule 2.
 |---|---|
 | **United Kingdom** (11) | ONS retired its timeseries API in Nov 2024. The raw price quotes it still publishes hold **394 items with no staple foods** — groceries moved to retailer scanner data, so the collector file is leggings, golf balls and blank CDs. |
 | **China** (21) | `data.stats.gov.cn` returns **403 to non-Chinese IPs**. |
-| **Japan** (10) | e-Stat requires a registered application ID. |
-| **Mexico** (10) | INEGI requires an API token. |
+| **Japan** (10) | ~~e-Stat requires a registered application ID.~~ **The API does. The site does not** — see below. |
+| **Mexico** (10) | ~~INEGI requires an API token.~~ **The API does. The site does not** — see below. |
 | **Australia** (9) | The ABS Data API is live but its average-retail-price series was discontinued; what remains is CPI indices, not prices. |
-| **France, Germany, Italy, Greece, Spain** (10 each) | Eurostat's detailed average prices are gone (404 on every dataset), so each needs its own office — and Destatis GENESIS wants registration too. |
+| **France, Italy, Greece, Spain** (10 each) | Eurostat's detailed average prices are gone (404 on every dataset), so each needs its own office. |
+| **Germany** (10) | **Dead end, and a key would not have helped.** Destatis publishes consumer price INDICES only — no average price in euros for bread, rice, milk or potatoes. Checked 2026-07-30. Do not spend time registering for GENESIS on this account. |
 
-**So the remaining work is not code.** Japan, Mexico and Germany need somebody to
-register for a key (free, minutes, but a human with an email address). China needs
-a mirror or a proxy. The UK needs a different ONS product than the obvious one.
-Australia and the rest of the eurozone need a source that may not exist publicly.
-Adding one is a single entry in `NATIONAL` in the generator plus its fetch —
-about twenty lines each once the key is in hand.
+### ⚠ 2026-07-30 — "requires a key" was wrong for two of the three
+
+Joshua declined to register for keys and asked for estimates instead. Estimates are
+not available here: these strings are player-facing teaching content and **rule 2
+forbids inventing them**. But the premise turned out to be soft — the API needs a
+key, the public site does not:
+
+- **Mexico — open, and current.** `inegi.org.mx/app/preciospromedio/?bs=18a` is the
+  average-price tool on the 2Q-Jul-2018 base, carrying **August 2024 through June
+  2026**, no token, with CSV / XLS / SDMX export. (The default `?bs=18` is the old
+  base and stops at July 2018 — do not use it.) Export is a plain GET to
+  `Exportacion.aspx?series=…&tipo=…&pi=202606&pf=202606&ent=…&bs=18a`. **Unfinished:
+  the `series` id format.** It is not the bare CPI tree code — `001011111004` ("04
+  Arroz y cereales preparados") returns the app's HTML, not a file. The value is
+  assembled by the page's JS from a chosen generic plus chosen cities; read it off
+  the hidden `#series` input after making a selection in the UI, then copy the shape.
+- **Japan — open.** The Retail Price Survey (小売物価統計調査, survey id `00200571`)
+  publishes "Retail Prices of Major Items by Cities", item `1001` non-glutinous rice
+  among them, as downloadable files from the e-Stat *web* interface with no
+  application ID. Only the API wants one.
+
+Both are a session of work, not a favour from Joshua. Neither is a guess.
+
+**What is still genuinely blocked:** China needs a mirror or a proxy. The UK needs a
+different ONS product than the obvious one. Australia, Germany and the rest of the
+eurozone need a source that may not exist publicly. Adding a reachable country is a
+single entry in `NATIONAL` in the generator plus its fetch.
 
 ### What it would take to finish, honestly
 
