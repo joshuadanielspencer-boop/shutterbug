@@ -108,6 +108,7 @@ public/                    # static assets copied as-is + precached by the PWA
   relief-antarctica.jpg    #   polar relief plate for the Antarctica map
   *.png / icon.svg         #   generated PWA + favicon + apple-touch icons
   avatar-lab.html          #   standalone review page for the avatar art (reads the manifest)
+  tune-lab.html            #   standalone LISTENING page: every arrival bed, played by the real synth
   assets/shutterbug-ui/    #   the illustrated UI art (map furniture, passport, Mr O…)
     badges|modes|themes|difficulty/  #     badge art, mapped to game keys by src/data/art.js
     avatar-v2/             #     GENERATED — the traveler's layered portrait plates
@@ -123,7 +124,7 @@ src/
   avatar-spec.js           # avatar logic — defaults, randomize, and the legacy migration
   components/avatar.jsx    # the layered portrait and its editor
   data/
-    locations.js           # game content: 457 places in 108 countries — clues, facts, photos, greetings, category
+    locations.js           # game content: 464 places in 108 countries — clues, facts, photos, greetings, category
     categories.js          # the 14 subject categories + kinds + display metadata
     art.js                 # UI art registry — game key → badge/icon/crest file
     worldmap.js            # country outline paths + COUNTRY_CONTINENT colour map
@@ -139,13 +140,16 @@ claude-code-game-build-guide.md   # design/build notes
 ## What's left to build
 
 `docs/remaining-work.md` is the handoff list — every outstanding task, written so a
-fresh session can pick one up cold. Read it before starting anything new. One item
-is **paused pending Joshua's artwork** (the avatar wiring) and two **need his
-decision** (the Supabase backend, the Tauri desktop wrapper).
+fresh session can pick one up cold. Read it before starting anything new. What is
+left is mostly **not code**: the travel-modes balance and the arrival music both want
+Joshua's judgement rather than a build, and two items **need his decision** (the
+Supabase backend, the Tauri desktop wrapper).
 
-The award badges are **partly done**: 31 of 73 assets are in and wired
-(`docs/art-assets-needed.md` tracks which). New art wires in by editing
-`src/data/art.js` alone — see that doc's "How to land the next batch".
+The award badges are **essentially done**: 71 of 73 assets are in and wired, and the
+two outstanding are optional flourishes that block nothing (`docs/art-assets-needed.md`
+tracks which). New art wires in by editing `src/data/art.js` alone — see that doc's
+"How to land the next batch". The avatar redesign shipped 2026-07-28; it is no longer
+waiting on artwork.
 
 ## Rules
 

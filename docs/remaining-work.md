@@ -394,7 +394,7 @@ This document is long enough that things get lost in it. Every section, in order
 |---|---|---|
 | [1](#1-the-avatar-redesign--done-2026-07-28) | Avatar redesign | ✅ done |
 | [2](#2-rotating-people-cards--done-2026-07-15) | Rotating people cards | ✅ done |
-| [3](#3-the-roguelike-layer) | The roguelike layer | biggest unstarted build |
+| [3](#3-the-roguelike-layer) | The roguelike layer | ✅ all five slices shipped; playtest and feel only |
 | [4](#4-the-tap-to-learn-curiosity-layer) | Curiosity layer | ✅ done |
 | [5](#5-more-journeys) | More Journeys | ongoing content |
 | [6](#6-wire-the-awardprogression-graphics-into-the-passport) | Award graphics into the passport | ✅ done |
@@ -402,10 +402,17 @@ This document is long enough that things get lost in it. Every section, in order
 | [8](#8-optionally-package-a-desktop-app) | Desktop app | recommended against |
 | [9](#9-travel-modes--built-2026-07-15-balance-wants-a-playtest) | Travel modes | built; balance wants Joshua's feel |
 | [10](#10-rewards-progression-and-the-dog-brainstorm-2026-07-19) | **Rewards, progression, and the dog** | brainstorm — decisions needed |
-| [11](#11-the-music-honestly-2026-07-19-recounted-2026-07-28) | **The music, honestly** | recounted 2026-07-28 — 11 regional beds became 43; `caribbean` is the last one left at six |
-| [12](#12-currency-price-anchors--built-2026-07-29-and-it-stops-at-10-countries) | **Currency price anchors** | 12 countries / 76 places; the rest need API keys, not code |
+| [11](#11-the-music-honestly-2026-07-19-recounted-2026-07-28) | **The music, honestly** | 55 beds, none carrying more than five; `/tune-lab.html` now plays them all — **waiting on Joshua's ear** |
+| [12](#12-currency-price-anchors--built-2026-07-29-and-it-stops-at-14-countries) | **Currency price anchors** | 14 countries / 95 places; every reachable free source is now taken |
 
 ### THE THREE THINGS TO DO NEXT (start here)
+
+> **Read this first: all three are Joshua's, not a coder's.** As of 2026-07-30 the
+> build queue is empty — the roguelike layer (§3), the badge art (§6, 71/73), the
+> avatar (§1) and the price anchors (§12) have all landed. What remains needs a
+> person to play the game and say what feels wrong, or to make a decision. A session
+> that opens this file looking for something to *build* should read §5 (more Journeys
+> — pure data) or §10's option (a), and otherwise say so rather than inventing work.
 
 1. **Travel-modes balance playtest.** The feature is built and live (see §9); its
    *numbers* want Joshua's feel. He plays a Grand Tour on Adventurer and says "money
@@ -413,26 +420,26 @@ This document is long enough that things get lost in it. Every section, in order
    `src/data/travel.js` (`transportOptionsFor` — the `usd`/`days` formulas), the
    starting wallet in `startTour` ($3,500 Adventurer / $2,500 Expert), and `legSlack`
    (the extra day budget per stop). Leftover-money bonus = 1 pt per $500, in the
-   `photographCity` tour-win branch.
-2. **Badge art — ✅ essentially DONE (71/73, 2026-07-16).** Every tracked value in the
-   game renders its own art; no placeholder emoji remain anywhere. Only two optional
-   flourishes are left (`travel-wallet.png`, `travel-hub.png`) and neither blocks
-   anything. If more art ever lands it's a one-file job: drop the PNGs in
-   `public/assets/shutterbug-ui/<folder>/`, run `node scripts/optimize-ui-art.mjs`, add
-   the keys to **`src/data/art.js`**, `npm test`. Every render site prefers art and falls
-   back to emoji, and `<ArtBadge dim>` generates the greyed/locked state from the colour
-   file. See `docs/art-assets-needed.md`.
-3. **The roguelike layer** (§3) — **all five slices now shipped** (camera bag, run
-   modifiers, route-choice map, debrief/renown, push-your-luck + Cover Story finale).
-   The Long Trip is feature-complete; what's left is playtest and feel — dial the
-   balance knobs (`LONG_TRIP_DAYS`, `renownGain`/`renownRank`, `COVER_DAYS`, the
-   hold-for-the-light odds, condition/kit strengths), and decide whether guests should
-   be able to reach the mode at all.
+   `photographCity` tour-win branch. The same applies to **The Long Trip** (§3), whose
+   knobs are `LONG_TRIP_DAYS`, `renownGain`/`renownRank`, `COVER_DAYS`, the
+   hold-for-the-light odds and the condition/kit strengths.
+2. **Listen to the arrival music** (§11) — newly possible as of 2026-07-30.
+   `npm run dev`, then <http://localhost:5173/tune-lab.html>: all 55 beds, each with
+   the countries it carries, played by the game's own synthesizer. Tap **N** to walk
+   the list. Everything testable about these tunes already passes; whether they sound
+   good has never been checked by a human, and it cannot be checked by anyone else.
+3. **Decide what an achievement is worth** (§10). Earning one currently grants
+   *nothing* — 24 badges derived live from the profile, never persisted, never paid
+   out — and Joshua already reported the hollowness ("he said congratulations and then
+   that was it"). Five options are laid out there; the recommendation is **(a) stage
+   the unlock moment properly, then (c) tie unlocks to Jonah's anecdotes**, both
+   staging and content rather than new systems. This one needs his pick, then it is
+   buildable.
 
-**Then, in Joshua's stated order:** the graphics pass is now done — §1 avatar redesign
-landed 2026-07-28 and §6 badges before it — leaving the **desktop executable + final
-single-screen fit** (§8) as the capstone. The Supabase backend (§7) sits off to the
-side whenever he wants it.
+**Then, in Joshua's stated order:** the graphics pass is done, leaving the **desktop
+executable + final single-screen fit** (§8) as the capstone — where the standing
+recommendation is still *don't*, because the PWA already installs. The Supabase
+backend (§7) sits off to the side whenever he wants it.
 
 ### Recently shipped
 
@@ -475,8 +482,7 @@ Journeys, and the Grandpa Nigel story frame.
 - **Live** at `joshuadanielspencer-boop.github.io/shutterbug/`. `git push` to `main`
   triggers `.github/workflows/deploy.yml`, which tests, builds and publishes. There
   is no separate deploy step.
-- `npm test` → **120 tests, 7 files** (`data`, `daily`, `routes`, `art`, `audio`,
-  `passport-file`, `passport-merge`). They must stay green; several of them guard
+- `npm test` → **378 tests, 22 files** (2026-07-30). They must stay green; several guard
   *facts*, not just shapes, and exist because a plausible-looking wrong map shipped
   once already. Three caught real bugs on their first run: a second bagpipe drone
   stacking over the splash bed, three missing continent-crossing pairs, and the
@@ -504,7 +510,9 @@ Journeys, and the Grandpa Nigel story frame.
 | `node scripts/gen-geography.mjs` | Rebuilds `src/data/geography.js` (rivers/lakes/seas) from Natural Earth. |
 | `node scripts/make-relief.mjs <NE1.tif> --width 8192 --out public/relief-world.jpg` | Rebuilds the relief plates. |
 | `node scripts/imperial-first.mjs --dry` | Finds/rewrites metric-only measurements. Always `--dry` first. |
-| `node scripts/gen-price-anchors.mjs` | Rebuilds `src/data/price-anchors.js` from WFP food prices. `--csv a.csv b.csv` to work from local copies. **Read the warning at the top before adding a country** (§12). |
+| `node scripts/gen-price-anchors.mjs` | Rebuilds `src/data/price-anchors.js` from WFP food prices **plus four national statistics offices** (US, Canada, Japan, Mexico). `--csv a.csv b.csv` to work from local copies. **Read the warning at the top before adding a country** (§12). |
+| `npm run dev` → `/tune-lab.html` | Listen to every arrival bed, played by the game's own synth, with the countries each carries. The only way to judge whether a bed sounds right (§11). |
+| `npm run dev` → `/avatar-lab.html` | Review the avatar art layer by layer (§1). |
 
 > ⚠ **The two relief scripts cannot be run on this machine as it stands.** Both want
 > the Natural Earth source raster (`NE1_HR_LR.tif` / `HYP_HR_SR_W.tif`) as an
@@ -607,7 +615,9 @@ credit/license`, `npm test`, and **show Joshua the photo first**.
 ## 3. The roguelike layer
 
 Spec'd in `docs/design-notes.md` §3. This is **The Long Trip** — the fifth mode.
-**Four of the five slices have shipped**; each was built to be playable on its own.
+**All five slices have shipped** (the fifth landed 2026-07-25); each was built to be
+playable on its own. What is left is playtest and feel, not build — see the balance
+knobs listed at the end of this section.
 
 1. **Camera-bag loadout** — ✅ SHIPPED (`src/data/kit.js`). Run-scoped items: telephoto
    lens (first wrong country free), fast film (a perfect shot refunds ½ day), bush
@@ -1057,18 +1067,28 @@ Ideas, best first:
 > 7–8, plus the Mediterranean). The median bed now carries **two** countries.
 >
 > **What is left of this, in order:**
-> 1. **`caribbean` is the last bed at six** — Cuba, Jamaica, Haiti, Trinidad, Belize
->    and Guyana on one steel drum, when a Cuban tres, a Haitian méringue and a
->    Garifuna punta are four traditions and three languages. `test/tunes.test.js`
->    holds the ceiling at 6 and names this as the reason; tighten it to 4 when it's
->    done. Five beds are at five (`eastafrica`, `southasia`, `slavic`,
->    `southernafrica`, `centralamerica`, `nordic`) and none is as indefensible.
-> 2. **Nobody has heard these but a synthesizer.** Every bed is checked by test for
->    note grammar, playable range, length, timbre and how many countries it carries
->    — and none of that says whether it sounds good. That is Joshua's ear and only
->    his. `scripts/` has no renderer; a session that wants to hand him something to
->    listen to can render the tunes offline (naive oscillators + an RBJ lowpass
->    matching `TIMBRE` in src/audio.js gets close enough to compare beds).
+> 1. ~~`caribbean` is the last bed at six.~~ **✅ DONE.** It was split into `mento`
+>    (Jamaica, banjo), `haiti` (rara vaksin hocket, brass), `garifuna` (Belize,
+>    paranda guitar) and `caribbean` (the steel pan, kept for Trinidad, where the
+>    instrument was invented, plus Guyana). **Nothing now carries more than FIVE**
+>    and `test/tunes.test.js` holds the ceiling there. The six beds at five
+>    (`eastafrica`, `southasia`, `slavic`, `southernafrica`, `centralamerica`,
+>    `nordic`) are each a real musical region whose members share instruments and
+>    modes; tighten further only with a reason of that kind, not to make the number
+>    smaller.
+> 2. **Nobody has heard these but a synthesizer — and now there is a way to.**
+>    ✅ **`public/tune-lab.html`** (2026-07-30) lists all 55 beds with the countries
+>    each carries and plays any of them on demand; `npm run dev`, then
+>    <http://localhost:5173/tune-lab.html>. Tap **N** to walk down the list, which is
+>    how you actually hear whether two beds are too alike.
+>
+>    It drives the game's own `MUSIC.countryTune()` rather than rendering audio
+>    files offline. That was a deliberate reversal of what this section used to
+>    advise: the question is "does it sound right", so the one unacceptable answer is
+>    a sound the game does not make, and a second synth would have to reproduce Web
+>    Audio's filters and envelopes exactly to be worth trusting.
+>
+>    **This is now blocked on Joshua's ear and nothing else.**
 > 3. **The six real melodies are still the ceiling on authenticity**, and the section
 >    below is still the honest account of what more would cost.
 
@@ -1122,7 +1142,7 @@ openings for countries whose anthem is genuinely famous.
 Note the tunes now play **once, not twice** — the eleven regional beds were rewritten
 as two-phrase call-and-response melodies (4.7–9.9s) so a single pass stands alone.
 
-## 12. Currency price anchors — built 2026-07-29, and it stops at 10 countries
+## 12. Currency price anchors — built 2026-07-29, and it stops at 14 countries
 
 Joshua's spec: *"a loaf of bread costs about 45 córdobas"*. The culture card already
 says what money a country uses and roughly how many of it a dollar buys; that teaches
@@ -1141,7 +1161,8 @@ is worth reading before anyone tries again.
   `src/data/price-anchors.js`. The yearly CSVs are 20–55 MB and HDX drops the big
   one part-way through often enough that it retries and also accepts local copies
   (`--csv a.csv b.csv`).
-- `src/data/price-anchors.js` — generated, 10 countries.
+- `src/data/price-anchors.js` — generated; 10 countries on this date, **14 now**
+  (the two dated sections below add the four national-statistics-office entries).
 - `PriceAnchorLine` in `shutterbug-world.jsx`, under the money line on the culture
   card: *"🛒 In Kathmandu, a pound (0.45 kg) of rice cost about 40 NPR — about 27¢.
   (June 2026)"*
@@ -1196,7 +1217,7 @@ statistics office, both with no key and no scraping:
 | **Canada** (10 places) | Statistics Canada table 18-10-0245, geo 11 / product 56 | white bread, 675 g loaf, converted once to per pound |
 
 That is **12 countries**, and because the two added are the game's two largest,
-it covers 76 of the 457 places against 34 before.
+it covers 76 of the places against 34 before.
 
 A national office BEATS the WFP block for the same country. Nothing overlaps
 today — WFP is in neither — but the rule is in the generator before it is needed.
@@ -1209,39 +1230,63 @@ one: three sources in one file and no way to re-check a figure is not rule 2.
 |---|---|
 | **United Kingdom** (11) | ONS retired its timeseries API in Nov 2024. The raw price quotes it still publishes hold **394 items with no staple foods** — groceries moved to retailer scanner data, so the collector file is leggings, golf balls and blank CDs. |
 | **China** (21) | `data.stats.gov.cn` returns **403 to non-Chinese IPs**. |
-| **Japan** (10) | ~~e-Stat requires a registered application ID.~~ **The API does. The site does not** — see below. |
-| **Mexico** (10) | ~~INEGI requires an API token.~~ **The API does. The site does not** — see below. |
+| **Japan** (10) | ~~e-Stat requires a registered application ID.~~ **Done 2026-07-30** — see below. |
+| **Mexico** (10) | ~~INEGI requires an API token.~~ **Done 2026-07-30** — see below. |
 | **Australia** (9) | The ABS Data API is live but its average-retail-price series was discontinued; what remains is CPI indices, not prices. |
 | **France, Italy, Greece, Spain** (10 each) | Eurostat's detailed average prices are gone (404 on every dataset), so each needs its own office. |
 | **Germany** (10) | **Dead end, and a key would not have helped.** Destatis publishes consumer price INDICES only — no average price in euros for bread, rice, milk or potatoes. Checked 2026-07-30. Do not spend time registering for GENESIS on this account. |
 
-### ⚠ 2026-07-30 — "requires a key" was wrong for two of the three
+### ⚠ 2026-07-30 — "requires a key" was wrong for two of the three, and both are now in
 
 Joshua declined to register for keys and asked for estimates instead. Estimates are
 not available here: these strings are player-facing teaching content and **rule 2
 forbids inventing them**. But the premise turned out to be soft — the API needs a
-key, the public site does not:
+key, the public site does not. Both were then built the same day:
 
-- **Mexico — open, and current.** `inegi.org.mx/app/preciospromedio/?bs=18a` is the
-  average-price tool on the 2Q-Jul-2018 base, carrying **August 2024 through June
-  2026**, no token, with CSV / XLS / SDMX export. (The default `?bs=18` is the old
-  base and stops at July 2018 — do not use it.) Export is a plain GET to
-  `Exportacion.aspx?series=…&tipo=…&pi=202606&pf=202606&ent=…&bs=18a`. **Unfinished:
-  the `series` id format.** It is not the bare CPI tree code — `001011111004` ("04
-  Arroz y cereales preparados") returns the app's HTML, not a file. The value is
-  assembled by the page's JS from a chosen generic plus chosen cities; read it off
-  the hidden `#series` input after making a selection in the UI, then copy the shape.
-- **Japan — open.** The Retail Price Survey (小売物価統計調査, survey id `00200571`)
-  publishes "Retail Prices of Major Items by Cities", item `1001` non-glutinous rice
-  among them, as downloadable files from the e-Stat *web* interface with no
-  application ID. Only the API wants one.
+| country | source | figure |
+|---|---|---|
+| **Japan** (10 places) | Statistics Bureau, Retail Price Survey (小売物価統計調査 `00200571`), table 1, item 1001/1002 うるち米 in 東京都区部 | a pound of rice in Tokyo, **420 JPY** (June 2026) |
+| **Mexico** (10 places) | INEGI *Precios promedio* on the 2Q-Jul-2018 base, genérico 014 Tortilla de maíz, city 01 | a pound of tortillas in Mexico City, **10 MXN** (June 2026) |
 
-Both are a session of work, not a favour from Joshua. Neither is a guess.
+That is **14 countries covering 95 of the 464 places**, against 76 before.
+
+Both name a **city**, not a national average, because neither office publishes a
+national average retail price and averaging their 55 and 82 cities here would be a
+number this project computed rather than one anybody published. The card already had
+the shape for it — the WFP entries name a city too.
+
+**Rice, not bread, for Japan.** 食パン is in the same table at 534 yen a kilo. The
+line is meant to be a shopping trip a child can picture, not a like-for-like row in
+a spreadsheet, and Japanese kitchens run on rice. Same reasoning picks tortillas for
+Mexico over its bread or rice.
+
+**The two traps, written down because both cost real time:**
+
+1. **There is no Mexican `series` id, and the previous session's plan to read one off
+   the page could not have worked.** For CSV/XLS the app posts `series=` **empty** and
+   takes the selection from **ASP.NET session state** — the code comment in the page
+   even says so (*"los valores lo va a tomar de las variables de session"*). The
+   3-digit code `obtieneSerieExporta()` builds (`substring(12,15)` of the 15-digit
+   leaf, e.g. `014`) is only used for the IQY format. The working sequence is: GET the
+   app for a cookie → POST `ObtieneCountReg` with the 3-digit genérico and the city
+   list (**this is what writes the session**) → POST `Exportacion.aspx`. The earlier
+   note that `001011111004` "returns HTML, not a file" was right about the symptom and
+   wrong about the cause: that code is a *class* node, not a leaf genérico, and no
+   value of `series` would have worked over GET anyway.
+2. **Japan publishes this as a spreadsheet and nothing else.** The only CSVs on the
+   month's file list are the 銘柄設定一覧 reference tables, not prices. So the
+   generator now carries ~60 lines of `node:zlib` that read an .xlsx directly (a ZIP
+   of XML) rather than taking a parser dependency. Furigana (`<rPh>`) has to be
+   stripped from the shared strings or 札幌市 comes out as 札幌市サッポロシ.
 
 **What is still genuinely blocked:** China needs a mirror or a proxy. The UK needs a
 different ONS product than the obvious one. Australia, Germany and the rest of the
 eurozone need a source that may not exist publicly. Adding a reachable country is a
 single entry in `NATIONAL` in the generator plus its fetch.
+
+**The general lesson, now that it has happened twice:** before recording a country as
+blocked on a key, check what the office's own *website* serves. Both walls were only
+ever on the API.
 
 ### What it would take to finish, honestly
 
@@ -1255,15 +1300,21 @@ There is **no authoritative global source of everyday retail prices.** Checked:
 - **Numbeo** — crowd-sourced with no verification. Not a source for a teaching tool.
 - **FAO** — producer prices, not retail.
 
-That leaves **national statistics offices, one at a time**: BLS for the US, ONS for
-the UK, e-Stat for Japan, INEGI for Mexico, and so on — roughly 90 separate
-integrations in as many formats and languages. Each is genuinely authoritative and
-each is a day's work. That is the real price of "all of them", and it is a content
-project of the same shape as the culture-photo audit rather than a task.
+That leaves **national statistics offices, one at a time**: BLS for the US, StatCan
+for Canada, e-Stat for Japan, INEGI for Mexico — the four now in — and so on for
+roughly 90 more, in as many formats and languages. Each is genuinely authoritative
+and each is a day's work; the four here took a session apiece and no two shared a
+line of code (a JSON API, a cube endpoint, a spreadsheet, and a session-bound
+ASP.NET form). That is the real price of "all of them", and it is a content project
+of the same shape as the culture-photo audit rather than a task.
 
 **A cheaper path that would double the coverage:** the ~15 biggest economies by
-themselves would cover most of the countries a child actually visits in a run (the
-USA has 32 places, China 21, the UK 11, France/Germany/Italy/Greece/Japan/Mexico/
-Canada 10 each). Fifteen national statistics offices is a week, not a quarter, and
-it would take the card from 10 countries to 25 while covering perhaps half of all
-arrivals. That is the recommendation if Joshua wants this pushed further.
+themselves would cover most of the countries a child actually visits in a run. Four
+of them are now done — the USA (32 places), China's 21 still blocked, the UK's 11
+still blocked, and Japan, Mexico and Canada (10 each) in. What is left of that list
+is **China, the UK, Australia, and the eurozone five** (France, Germany, Italy,
+Greece, Spain), and unlike the four already taken, none of these is a session of
+work: each is either genuinely unreachable from here (China's 403, Germany's
+index-only publishing) or needs a source nobody has found yet. The cheap wins are
+spent. Anything further is a content project of the same shape as the culture-photo
+audit, not a task.
