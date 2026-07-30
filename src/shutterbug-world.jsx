@@ -1916,6 +1916,7 @@ export default function ShutterbugWorld() {
   // dress for the region where the outfit is unlocked; "basic" = never; "always" = one
   // chosen favourite everywhere it's unlocked. Persisted per traveler.
   const [wardrobeOpen, setWardrobeOpen] = useState(false);
+  const [newsOpen, setNewsOpen] = useState(false);   // the "Newly unlocked!" popup
   // "Back to the title screen" mid-run. There is no save, so this is destructive and
   // asks first — see the gear menu and abandonRun().
   const [confirmQuit, setConfirmQuit] = useState(false);
@@ -2521,6 +2522,11 @@ export default function ShutterbugWorld() {
       if (!u[difficulty]) setDifficulty("easy");
     }
     setMeetInfo({ line, comment, news, mood });
+    // Anything new opens as a popup over the meet screen (see UnlockNewsModal).
+    // `seenUnlocks` was written above, so this is the only showing it ever gets —
+    // which is exactly why it should not have been the thing hanging off the
+    // bottom edge of the board.
+    setNewsOpen(news.length > 0);
     setMeetTyped(0); // Uncle starts talking; controls stay grayed until he's done
     setScreen("meet");
   }
@@ -4275,20 +4281,13 @@ export default function ShutterbugWorld() {
               })()}
             </div>
 
-          {/* Newly unlocked! — Jonah's announcements, under the wax seal. */}
-          {news.length > 0 && (
-            <div style={{ marginTop: 12, background: "#EAF6EF", border: `2px solid ${GREEN}`, borderRadius: 12, padding: "12px 16px", display: "flex", gap: 12, alignItems: "flex-start", textAlign: "left" }}>
-              <ArtBadge art={SEAL_UNLOCKED} emoji="🔓" size={54} style={{ marginTop: 2 }} />
-              <div style={{ minWidth: 0 }}>
-                <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.16em", color: GREEN, fontWeight: 700, marginBottom: 6 }}>NEWLY UNLOCKED!</div>
-                {news.map((n, i) => (
-                  <p key={i} style={{ margin: i ? "6px 0 0" : 0, color: INK, fontSize: 14.5, lineHeight: 1.45 }}>
-                    <span aria-hidden="true">{GRANDPA.emoji} </span>{n}
-                  </p>
-                ))}
-              </div>
-            </div>
-          )}
+          {/* "Newly unlocked!" is a POPUP now — see UnlockNewsModal, rendered at the
+              bottom of this screen. It used to sit here, inline, above the mode cards,
+              and it was the one thing left that ran off the painted board: five
+              announcements at once is a 340px card and there is nowhere on this
+              screen to put 340px. Uncle Jonah telling you what you have earned also
+              deserves better than being the thing that pushes the difficulty row off
+              the bottom edge. Joshua's call, 2026-07-30. */}
 
           {/* Jonah's choices — grayed out and non-interactive until he's finished
               talking, so nobody clicks past his greeting before it's on screen. */}
@@ -4467,6 +4466,9 @@ export default function ShutterbugWorld() {
           </div>
           </div>{/* end flex row */}
         </DeskBoard>
+        {newsOpen && news.length > 0 && (
+          <UnlockNewsModal news={news} onClose={() => setNewsOpen(false)} />
+        )}
         {wardrobeOpen && <WardrobeModal unlocked={dogUnlocked} mode={dogMode} pick={dogPick}
           onSet={saveWardrobe} onClose={() => setWardrobeOpen(false)} />}
       </Frame>
@@ -7655,6 +7657,52 @@ function QuitRunModal({ mode, step, total, onQuit, onClose }) {
             {isExplore ? "Back to the title screen" : "End the trip and leave"}
           </button>
         </div>
+      </div>
+    </ModalShell>
+  );
+}
+
+// "Newly unlocked!" — what Uncle Jonah has to tell you before you pick a trip.
+//
+// This used to be a card wedged into the meet screen's left column, above the mode
+// cards. Up to five things can unlock at once (a rank-up plus medium, the Grand
+// Tour, hard and themed expeditions), which is a 340px card on a board that is a
+// fixed 810px and already full — it pushed the difficulty row and the wardrobe link
+// clean off the bottom. There was nowhere to move it to: after the tuner moved
+// across, both columns had about 25px to spare.
+//
+// A popup solves the space problem, but the reason to prefer it is that this is the
+// one moment on the screen that is genuinely about the child rather than about
+// configuring a run. It gets the whole window and its own beat, and the meet screen
+// underneath goes back to being the six mode cards and a difficulty row.
+function UnlockNewsModal({ news, onClose }) {
+  return (
+    <ModalShell label="Newly unlocked" onClose={onClose} accent={GREEN} maxWidth={560}>
+      <div style={{ textAlign: "center" }}>
+        <ArtBadge art={SEAL_UNLOCKED} emoji="🔓" size={78} />
+        <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11.5, letterSpacing: "0.18em", color: GREEN, fontWeight: 800, marginTop: 6 }}>
+          NEWLY UNLOCKED!
+        </div>
+        <h2 style={{ fontFamily: "ui-sans-serif, system-ui", fontWeight: 900, fontSize: 23, color: INK, margin: "3px 0 14px" }}>
+          {news.length > 1 ? `${news.length} things have opened up` : "Something has opened up"}
+        </h2>
+      </div>
+      {/* His lines, one card each — at five announcements a single run of prose
+          became a wall of text nobody reads to the end of. */}
+      <div style={{ display: "flex", flexDirection: "column", gap: 9, textAlign: "left" }}>
+        {news.map((n, i) => (
+          <p key={i} style={{ margin: 0, background: "#EAF6EF", border: `2px solid ${GREEN}`, borderRadius: 12,
+            padding: "11px 14px", color: INK, fontSize: 15, lineHeight: 1.5 }}>
+            <span aria-hidden="true">{GRANDPA.emoji} </span>{n}
+          </p>
+        ))}
+      </div>
+      <div style={{ textAlign: "center", marginTop: 18 }}>
+        <button data-primary onClick={onClose} autoFocus
+          style={{ background: GREEN, color: "#fff", border: "none", borderRadius: 12, padding: "12px 26px",
+            fontWeight: 800, fontSize: 16, cursor: "pointer", boxShadow: "0 4px 0 rgba(0,0,0,0.22)" }}>
+          Thanks, Uncle Jonah!
+        </button>
       </div>
     </ModalShell>
   );

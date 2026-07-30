@@ -69,14 +69,12 @@ Last updated **2026-07-29**.
 >   five wrapped rows and the slot holds two, and a scroll a child cannot see is the
 >   same as five routes that do not exist.
 >
-> **Still open — needs your call, not code.** The **"Newly unlocked!" card** in the
-> left column still overflows: five announcements at once (rank-up + medium + tour +
-> hard + expeditions) is a 340px card and runs **329px** past the board; even a
-> single announcement runs about 55px over. This is pre-existing and the change above
-> improved it by ~240px, but it cannot be fixed by moving it — the left column has
-> ~25px of slack and the right column ~25px. It needs a decision about how an unlock
-> is announced at all (its own beat? a modal? one at a time?), which is a product
-> question. `news` is built in `startMeet` (`ANN` caps it at four unlocks + a rank).
+> **~~Still open — needs your call.~~ ANSWERED 2026-07-30: Joshua chose a popup.**
+> The "Newly unlocked!" card ran 329px past the board with five announcements and
+> ~55px with one, and there was nowhere to move it — both columns had ~25px spare.
+> It is now `UnlockNewsModal`, a popup over the meet screen, opened from `startMeet`
+> whenever `news` is non-empty. **The meet screen now fits the board in all six modes
+> in every profile state**, including a traveler with five pending unlocks.
 >
 > **The meet screen needs a viewport ≥882px tall** at 1280px wide, measured. Below
 > that the board (`min(90vh, 820px)`) shrinks and the content does not. Same class as
