@@ -4,22 +4,27 @@
 // being arithmetic and becomes a shopping trip. Every figure is a real observed
 // RETAIL price on one named month, and every one carries the `source` that
 // published it — there is no single global source of everyday prices, so this
-// file is assembled from three:
+// file is assembled from five:
 //
 //   WFP Global Food Prices (HDX, CC BY-IGO)  — one named market per country
 //   US Bureau of Labor Statistics             — national average, already per lb
 //   Statistics Canada, table 18-10-0245       — national average
+//   Statistics Bureau of Japan, Retail Price Survey — rice in Tokyo
+//   INEGI Precios promedio                    — tortillas in Mexico City
 //
 // `price` is in the country's own currency, per POUND or per QUART (rule 3:
-// imperial first), converted from WFP's kilo/litre by one formula in the
-// generator. It is rounded hard, like the exchange rate beside it and for the same
-// reason — this is a magnitude, not a till receipt.
+// imperial first), converted from the source's kilo/litre/pack by one formula in
+// the generator. It is rounded hard, like the exchange rate beside it and for the
+// same reason — this is a magnitude, not a till receipt.
 //
 // `city` is null where the figure is a published NATIONAL average; otherwise it
-// is the city the market is in, and the card names it. That distinction is not
-// decoration: WFP monitors the markets WFP operates in, and for many countries
-// that means refugee camps and conflict zones. The generator's allowlist is what
-// keeps those out — read the warning at the top of it before adding a country.
+// is the city the price was collected in, and the card names it. That distinction
+// is not decoration: WFP monitors the markets WFP operates in, and for many
+// countries that means refugee camps and conflict zones. The generator's allowlist
+// is what keeps those out — read the warning at the top of it before adding a
+// country. Japan and Mexico name a city for a duller reason: neither statistics
+// office publishes a national average retail price, and averaging their cities
+// here would be a number this project computed rather than one anybody published.
 //
 // Regenerate with:  node scripts/gen-price-anchors.mjs
 export const PRICE_ANCHORS = {
@@ -27,8 +32,10 @@ export const PRICE_ANCHORS = {
   "Canada": { item: "bread", unit: "pound", metric: "0.45 kg", price: 2.4, city: null, asOf: "2026-05", source: "Statistics Canada, table 18-10-0245" },
   "Ecuador": { item: "bread", unit: "pound", metric: "0.45 kg", price: 1.7, city: "Quito", asOf: "2026-06", source: "WFP Global Food Prices (HDX)" },
   "Egypt": { item: "rice", unit: "pound", metric: "0.45 kg", price: 13, city: null, asOf: "2026-05", source: "WFP Global Food Prices (HDX)" },
+  "Japan": { item: "rice", unit: "pound", metric: "0.45 kg", price: 420, city: "Tokyo", asOf: "2026-06", source: "Statistics Bureau of Japan, Retail Price Survey, table 1" },
   "Jordan": { item: "bread", unit: "pound", metric: "0.45 kg", price: 0.15, city: "Amman", asOf: "2026-05", source: "WFP Global Food Prices (HDX)" },
   "Madagascar": { item: "rice", unit: "pound", metric: "0.45 kg", price: 1500, city: "Antananarivo", asOf: "2025-10", source: "WFP Global Food Prices (HDX)" },
+  "Mexico": { item: "tortillas", unit: "pound", metric: "0.45 kg", price: 10, city: "Mexico City", asOf: "2026-06", source: "INEGI, Precios promedio (base 2Q Jul 2018)" },
   "Namibia": { item: "flour", unit: "pound", metric: "0.45 kg", price: 9.5, city: "Windhoek", asOf: "2026-06", source: "WFP Global Food Prices (HDX)" },
   "Nepal": { item: "rice", unit: "pound", metric: "0.45 kg", price: 40, city: "Kathmandu", asOf: "2026-06", source: "WFP Global Food Prices (HDX)" },
   "Philippines": { item: "rice", unit: "pound", metric: "0.45 kg", price: 22, city: "Manila", asOf: "2026-06", source: "WFP Global Food Prices (HDX)" },

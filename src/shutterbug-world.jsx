@@ -8792,12 +8792,12 @@ function CurrencyLine({ country }) {
 // trip, and it is the half a child can actually feel — "about 37 córdobas to the
 // dollar" means nothing next to "a pound of rice costs about 25 córdobas".
 //
-// Only ten countries have one (src/data/price-anchors.js), and that is not an
+// Only fourteen countries have one (src/data/price-anchors.js), and that is not an
 // oversight. There is no authoritative global source of everyday retail prices;
 // the one good free source, WFP's, monitors the markets WFP OPERATES IN, which for
 // Kenya and Uganda means refugee camps. So a country gets this line only where a
-// real observed price in its capital or its own national average exists, and the
-// line SAYS which city and which month rather than claiming a national present
+// real observed price in a named city or a published national average exists, and
+// the line SAYS which city and which month rather than claiming a national present
 // tense it can't support. See the warning at the top of the generator.
 //
 // The amount is given in the currency CODE, not its name, on purpose: the line

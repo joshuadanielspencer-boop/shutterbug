@@ -46,6 +46,7 @@
 // Run: node scripts/gen-price-anchors.mjs
 // ===========================================================================
 import { writeFileSync, readFileSync } from "node:fs";
+import { inflateRawSync } from "node:zlib";
 import { fileURLToPath } from "node:url";
 import { COUNTRY_CURRENCY } from "../src/data/currency.js";
 
@@ -316,8 +317,7 @@ for (const [country, spec] of Object.entries(MARKETS)) {
 // this game's places and China 21.
 //
 // For those the source has to be the country's own statistics office, one at a
-// time. Two are reachable with no key, no registration and no scraping, and both
-// publish a real national average retail price:
+// time. Four are reachable with no key, no registration and no scraping:
 //
 //   United States   BLS Average Price Data, series APU0000702111 — "Bread, white,
 //                   pan, per lb." US city average. Already per POUND, so rule 3
@@ -325,9 +325,27 @@ for (const [country, spec] of Object.entries(MARKETS)) {
 //   Canada          Statistics Canada table 18-10-0245, "Monthly average retail
 //                   prices for selected products", geography 11 (Canada),
 //                   product 56 (White bread, 675 grams).
+//   Japan           e-Stat's Retail Price Survey (小売物価統計調査), table 1,
+//                   "Retail Prices of Major Items by Cities" — the published
+//                   monthly Excel, item 1001/1002 うるち米 (non-glutinous rice)
+//                   in 東京都区部 (region 13100).
+//   Mexico          INEGI's average-price tool on the 2Q-Jul-2018 base, genérico
+//                   014 "Tortilla de maíz" in the Mexico City metropolitan area
+//                   (city 01).
+//
+// The last two are NOT national averages — they are one named city each, so they
+// carry a `city` and the card says which, exactly as the WFP block does. That is
+// the honest shape: neither office publishes a national average retail price, and
+// averaging their 55 and 82 cities here would be a number this project computed
+// rather than a number anybody published (rule 2).
+//
+// ⚠ THE TRAP THAT COST A SESSION, twice: for both of these the API wants a
+// registered key and THE PUBLIC SITE DOES NOT. "Requires a key" was written down
+// as a wall for both, and it was wrong both times — the wall was only ever on the
+// API. Before recording a country as blocked, check what the site itself serves.
 //
 // A national office BEATS the WFP block for the same country. Nothing overlaps
-// today — WFP is not in either of these — but the rule should exist before it is
+// today — WFP is in none of these four — but the rule should exist before it is
 // needed rather than after.
 //
 // WHY NOT THE OTHERS. Checked, and each is a specific wall rather than a lack of
@@ -338,17 +356,81 @@ for (const [country, spec] of Object.entries(MARKETS)) {
 //                   in them — groceries moved to retailer scanner data, so the
 //                   collector file is leggings, golf balls and blank CDs.
 //   China           data.stats.gov.cn returns 403 to non-Chinese IPs.
-//   Japan           e-Stat requires a registered application ID.
-//   Mexico          INEGI requires an API token.
 //   Australia       ABS's Data API is live but its average-retail-price series
 //                   was discontinued; what remains is CPI indices, not prices.
+//   Germany         Destatis publishes consumer price INDICES only — no average
+//                   price in euros for any staple. A key would not have helped.
 //   Eurozone        Eurostat's detailed average prices are gone (404 on every
-//                   dataset), so France, Germany, Italy, Greece and Spain each
-//                   need their own office, and Destatis GENESIS wants
-//                   registration too.
+//                   dataset), so France, Italy, Greece and Spain each need their
+//                   own office.
 //
-// Every one of those is a "get a key" or "find a mirror" task, not a code task.
 // Adding one is a new entry in NATIONAL below plus its fetch.
+
+// ---------------------------------------------------------------------------
+// Just enough .xlsx to read one published table, because Japan publishes this as
+// a spreadsheet and nothing else. An xlsx is a ZIP of XML: read the central
+// directory, inflate the members, pull the shared strings and the cells. Sixty
+// lines of node:zlib beats adding a parser dependency to a game that has three.
+// ---------------------------------------------------------------------------
+const unzip = (buf) => {
+  let eocd = -1;
+  for (let i = buf.length - 22; i >= 0; i--) if (buf.readUInt32LE(i) === 0x06054b50) { eocd = i; break; }
+  if (eocd < 0) throw new Error("not a zip file");
+  let off = buf.readUInt32LE(eocd + 16);
+  const files = {};
+  for (let i = 0, n = buf.readUInt16LE(eocd + 10); i < n; i++) {
+    if (buf.readUInt32LE(off) !== 0x02014b50) throw new Error("bad zip central directory");
+    const method = buf.readUInt16LE(off + 10);
+    const csize = buf.readUInt32LE(off + 20);
+    const nameLen = buf.readUInt16LE(off + 28), extraLen = buf.readUInt16LE(off + 30);
+    const commentLen = buf.readUInt16LE(off + 32);
+    const lho = buf.readUInt32LE(off + 42);
+    const name = buf.toString("utf8", off + 46, off + 46 + nameLen);
+    const start = lho + 30 + buf.readUInt16LE(lho + 26) + buf.readUInt16LE(lho + 28);
+    const raw = buf.subarray(start, start + csize);
+    files[name] = method === 0 ? raw : inflateRawSync(raw);
+    off += 46 + nameLen + extraLen + commentLen;
+  }
+  return files;
+};
+
+const unesc = (s) => s.replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"')
+  .replace(/&apos;/g, "'").replace(/&#(\d+);/g, (_, d) => String.fromCodePoint(+d)).replace(/&amp;/g, "&");
+
+// Sheet 1 as { rowNumber: { column: value } }, e.g. rows[12].AM. Furigana (<rPh>)
+// is dropped first — it is a phonetic gloss stored inside the same shared string,
+// and leaving it in turns 札幌市 into 札幌市サッポロシ.
+const readSheet = (buf) => {
+  const files = unzip(buf);
+  const sharedXml = files["xl/sharedStrings.xml"]?.toString("utf8") || "";
+  const shared = [...sharedXml.matchAll(/<si>([\s\S]*?)<\/si>/g)].map(([, si]) =>
+    [...si.replace(/<rPh[\s\S]*?<\/rPh>/g, "").matchAll(/<t[^>]*>([\s\S]*?)<\/t>/g)]
+      .map((m) => unesc(m[1])).join(""));
+  const sheet = files["xl/worksheets/sheet1.xml"].toString("utf8");
+  const rows = {};
+  for (const [, attrs, body] of sheet.matchAll(/<row([^>]*)>([\s\S]*?)<\/row>/g)) {
+    const n = Number(/ r="(\d+)"/.exec(attrs)?.[1]);
+    const cells = {};
+    for (const [, cAttrs, v] of body.matchAll(/<c([^>]*)>[\s\S]*?<v>([\s\S]*?)<\/v>[\s\S]*?<\/c>/g)) {
+      const ref = / r="([A-Z]+)\d+"/.exec(cAttrs)?.[1];
+      if (!ref) continue;
+      cells[ref] = / t="s"/.test(cAttrs) ? shared[Number(v)] : unesc(v);
+    }
+    rows[n] = cells;
+  }
+  return rows;
+};
+
+// "1袋･5kg" -> 5, "1kg" -> 1, "100g" -> 0.1. The pack size is spelled into the
+// unit column rather than given as a number, and getting it wrong is a factor-of-
+// five error that still looks like a price, so the LAST mass in the string wins
+// and anything unreadable throws rather than guessing.
+const packKg = (unit) => {
+  const ms = [...unit.matchAll(/(\d+(?:\.\d+)?)\s*(kg|g)\b/gi)];
+  if (!ms.length) throw new Error(`cannot read a pack size out of "${unit}"`);
+  const [, n, u] = ms[ms.length - 1];
+  return u.toLowerCase() === "kg" ? Number(n) : Number(n) / 1000;
+};
 const NATIONAL = [
   {
     country: "United States",
@@ -389,6 +471,124 @@ const NATIONAL = [
       return { perLb: latest.value * 453.59237 / 675, asOf: latest.refPer.slice(0, 7) };
     },
   },
+  {
+    country: "Japan",
+    city: "Tokyo",
+    source: "Statistics Bureau of Japan, Retail Price Survey, table 1",
+    item: "rice",
+    // Rice, not bread, and not because rice is the cheaper number: 食パン is in
+    // the same table at 534 yen a kilo. うるち米 is what a Japanese kitchen
+    // actually runs on, and the point of this line is a shopping trip a child can
+    // picture, not a like-for-like row in a spreadsheet.
+    async fetchPerLb() {
+      // e-Stat's month filter uses an opaque code per calendar month. They are
+      // stable across years (verified back to 2021) and there is no pattern to
+      // derive, so they are a table.
+      const MONTH = { 1: "11010301", 2: "11010302", 3: "11010303", 4: "12040604", 5: "12040605", 6: "12040606",
+        7: "23070907", 8: "23070908", 9: "23070909", 10: "24101210", 11: "24101211", 12: "24101212" };
+      const LIST = "https://www.e-stat.go.jp/stat-search/files?page=1&layout=datalist&cycle=1"
+        + "&toukei=00200571&tstat=000000680001&tclass1val=0";
+      const DL = (id) => `https://www.e-stat.go.jp/stat-search/file-download?statInfId=${id}&fileKind=0`;
+      const now = new Date();
+      // A month's table is published late in the FOLLOWING month, so the newest
+      // one is never the current month. Walk back until a listing has it.
+      for (let back = 0; back < 14; back++) {
+        const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - back, 1));
+        const y = d.getUTCFullYear(), m = d.getUTCMonth() + 1;
+        const html = await (await get(`${LIST}&year=${y}0&month=${MONTH[m]}`)).text();
+        // One month's listing holds several tables and each table can be split
+        // across files. The wanted one is table 1 ("主要品目の都市別小売価格"),
+        // in the part whose item range starts at 1001 — matched on the block of
+        // page text that precedes each download link.
+        const ids = [];
+        for (const hit of html.matchAll(/statInfId=(\d+)&fileKind=0/g)) {
+          const before = html.slice(Math.max(0, hit.index - 5000), hit.index).replace(/<[^>]+>/g, " ");
+          if (/主要品目の都市別小売価格/.test(before) && /「1001/.test(before)) ids.push(hit[1]);
+        }
+        for (const id of ids) {
+          const rows = readSheet(Buffer.from(await (await get(DL(id))).arrayBuffer()));
+          // Row 10 is the region-code header; 13100 is 東京都区部, the 23 wards.
+          const col = Object.entries(rows[10] || {}).find(([, v]) => v === "13100")?.[0];
+          if (!col) continue;
+          // Both varieties of うるち米 the survey prices — Koshihikari and not —
+          // and the median across them, which is what "a pound of rice" honestly
+          // means where the shop sells two kinds. Column J is the item code, K its
+          // name, L the pack the price is for.
+          const priced = Object.values(rows)
+            .filter((r) => (r.J === "1001" || r.J === "1002") && Number(r[col]) > 0)
+            .map((r) => ({ perKg: Number(r[col]) / packKg(r.L), name: r.K }));
+          if (priced.length !== 2) continue;
+          return { perLb: median(priced.map((p) => p.perKg)) * KG_PER_LB, asOf: `${y}-${String(m).padStart(2, "0")}` };
+        }
+      }
+      throw new Error("no Retail Price Survey table 1 with item 1001 in the last 14 months");
+    },
+  },
+  {
+    country: "Mexico",
+    city: "Mexico City",
+    source: "INEGI, Precios promedio (base 2Q Jul 2018)",
+    item: "tortillas",
+    // INEGI's export is an ASP.NET app that keeps the chosen product in SESSION
+    // and posts an EMPTY `series` field — which is why "read the series id off the
+    // page" was a dead end for a previous session. There is no series id to read.
+    // The sequence is: take a cookie, tell the count service what you want (that
+    // is what writes the session), then post the export form.
+    async fetchPerLb() {
+      const B = "https://www.inegi.org.mx/app/preciospromedio";
+      const jar = new Map();
+      const keep = (res) => {
+        for (const c of res.headers.getSetCookie?.() ?? []) {
+          const pair = c.split(";")[0];          // "name=value", dropping Path/HttpOnly/…
+          const eq = pair.indexOf("=");
+          if (eq > 0) jar.set(pair.slice(0, eq).trim(), pair.slice(eq + 1).trim());
+        }
+        return res;
+      };
+      const headers = () => ({ "User-Agent": UA, Cookie: [...jar].map(([k, v]) => `${k}=${v}`).join("; ") });
+      const asmx = async (method, body) => {
+        const r = keep(await get(`${B}/Servicios/ArbolAjaxInteraccion.asmx/${method}`, 4, {
+          method: "POST", headers: { ...headers(), "Content-Type": "application/json; charset=utf-8" },
+          body: JSON.stringify(body),
+        }));
+        return (await r.json()).d;
+      };
+
+      keep(await get(`${B}/?bs=18a`, 4, { headers: { "User-Agent": UA } }));
+      // Periods come back newest-first as "2026/06_202606_2026/05_202605_…".
+      const period = (await asmx("ObtienePeriodo", { cab: "18a" })).split("_")[1];
+      if (!/^\d{6}$/.test(period)) throw new Error(`INEGI gave no usable period ("${period}")`);
+      // 014 is the genérico "Tortilla de maíz" — the app sends only the last three
+      // digits of the tree code 001011111001014, and they are unique across the
+      // whole basket. 01 is the Mexico City metropolitan area.
+      await asmx("ObtieneCountReg", { obsolet_series: "014", series2: "", pi: period, pf: period,
+        entidades: ",01_01,", countreg: "1", cab: "18a" });
+      const res = await get(`${B}/Exportacion.aspx`, 4, {
+        method: "POST", headers: { ...headers(), "Content-Type": "application/x-www-form-urlencoded" },
+        body: `series=&tipo=CSV&pi=${period}&pf=${period}&ent=${encodeURIComponent(",01_01,")}&bs=18a`,
+      });
+      // Served as Windows-1252 despite the header saying UTF-8; latin1 covers
+      // every accent that appears in it.
+      const text = Buffer.from(await res.arrayBuffer()).toString("latin1");
+      const lines = text.split(/\r?\n/);
+      const h = lines.findIndex((l) => l.includes("Precio promedio"));
+      if (h < 0) throw new Error("INEGI returned no price table (the export needs the session cookie)");
+      const ix = Object.fromEntries(splitCsv(lines[h]).map((c, i) => [c.trim(), i]));
+      const rows = lines.slice(h + 1).filter(Boolean).map(splitCsv)
+        .filter((f) => f[ix["Clave ciudad"]] === "01" && f[ix["Clave genérico"]] === "014");
+      if (!rows.length) throw new Error("INEGI returned no rows for genérico 014 in city 01");
+      // Guard the two things a silently-changed code would break: that this is
+      // still tortillas, and that it is still priced by the kilo.
+      if (!/Tortilla/i.test(rows[0][ix["Genérico"]])) throw new Error(`genérico 014 is now "${rows[0][ix["Genérico"]]}"`);
+      const kg = rows.map((f) => {
+        if (f[ix.Unidad].trim().toUpperCase() !== "KG") throw new Error(`tortillas priced per ${f[ix.Unidad]}, not KG`);
+        return Number(f[ix["Precio promedio"]]) / Number(f[ix.Cantidad]);
+      }).filter((n) => Number.isFinite(n) && n > 0);
+      // Every quote INEGI collected in that city that month — dozens of shops, and
+      // the median across them is the one number that means "what it costs there".
+      return { perLb: median(kg) * KG_PER_LB, asOf: `${period.slice(0, 4)}-${period.slice(4)}` };
+    },
+  },
 ];
 
 for (const n of NATIONAL) {
@@ -399,12 +599,12 @@ for (const n of NATIONAL) {
   catch (e) { skipped.push(`${n.country} — ${n.source} unreachable: ${e.message}`); continue; }
   const age = monthsBetween(got.asOf, TODAY);
   if (age > MAX_AGE_MONTHS) { skipped.push(`${n.country} — newest ${n.source} figure is ${got.asOf}, ${age} months old`); continue; }
-  // Same magnitude sanity as the WFP block: a pound of bread between 5c and $10.
+  // Same magnitude sanity as the WFP block: a pound of a staple between 5c and $10.
   const usd = got.perLb / cur.perUsd;
-  if (!(usd > 0.05 && usd < 10)) { skipped.push(`${n.country} — ${got.perLb.toFixed(2)} ${cur.code}/lb is $${usd.toFixed(2)}, which is not a bread price`); continue; }
+  if (!(usd > 0.05 && usd < 10)) { skipped.push(`${n.country} — ${got.perLb.toFixed(2)} ${cur.code}/lb is $${usd.toFixed(2)}, which is not a ${n.item} price`); continue; }
   anchors[n.country] = {
     item: n.item, unit: "pound", metric: "0.45 kg",
-    price: round2sf(got.perLb), city: null, asOf: got.asOf, markets: 1, source: n.source,
+    price: round2sf(got.perLb), city: n.city ?? null, asOf: got.asOf, markets: 1, source: n.source,
   };
 }
 
@@ -423,22 +623,27 @@ writeFileSync(OUT, `// GENERATED by scripts/gen-price-anchors.mjs — do not han
 // being arithmetic and becomes a shopping trip. Every figure is a real observed
 // RETAIL price on one named month, and every one carries the \`source\` that
 // published it — there is no single global source of everyday prices, so this
-// file is assembled from three:
+// file is assembled from five:
 //
 //   WFP Global Food Prices (HDX, CC BY-IGO)  — one named market per country
 //   US Bureau of Labor Statistics             — national average, already per lb
 //   Statistics Canada, table 18-10-0245       — national average
+//   Statistics Bureau of Japan, Retail Price Survey — rice in Tokyo
+//   INEGI Precios promedio                    — tortillas in Mexico City
 //
 // \`price\` is in the country's own currency, per POUND or per QUART (rule 3:
-// imperial first), converted from WFP's kilo/litre by one formula in the
-// generator. It is rounded hard, like the exchange rate beside it and for the same
-// reason — this is a magnitude, not a till receipt.
+// imperial first), converted from the source's kilo/litre/pack by one formula in
+// the generator. It is rounded hard, like the exchange rate beside it and for the
+// same reason — this is a magnitude, not a till receipt.
 //
 // \`city\` is null where the figure is a published NATIONAL average; otherwise it
-// is the city the market is in, and the card names it. That distinction is not
-// decoration: WFP monitors the markets WFP operates in, and for many countries
-// that means refugee camps and conflict zones. The generator's allowlist is what
-// keeps those out — read the warning at the top of it before adding a country.
+// is the city the price was collected in, and the card names it. That distinction
+// is not decoration: WFP monitors the markets WFP operates in, and for many
+// countries that means refugee camps and conflict zones. The generator's allowlist
+// is what keeps those out — read the warning at the top of it before adding a
+// country. Japan and Mexico name a city for a duller reason: neither statistics
+// office publishes a national average retail price, and averaging their cities
+// here would be a number this project computed rather than one anybody published.
 //
 // Regenerate with:  node scripts/gen-price-anchors.mjs
 export const PRICE_ANCHORS = {
