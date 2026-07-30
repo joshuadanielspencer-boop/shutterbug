@@ -4,7 +4,42 @@ A handoff document. Everything here is written so a **new session with no memory
 the previous ones** can pick up a task and finish it. Read `CLAUDE.md` first (the
 three project rules are hard requirements), then the task you're doing.
 
-Last updated **2026-07-28**.
+Last updated **2026-07-29**.
+
+> ### ⚠ 2026-07-29: the meet screen fits the board now — with one state left over
+>
+> The screen ran past the bottom of the painted board, and by more than the last
+> handoff said: **Grand Tour by 207px and Journeys by 152px**, while the other four
+> modes cleared it by 7px. The mode-specific picker (ITINERARY / THE ROUTE) moved
+> into the right column under Uncle Jonah, into a **fixed-height slot** so the camera
+> bag sits in the same place in all six modes. The left column is now the SAME height
+> in every mode. Four other things came out of the same measuring pass:
+>
+> - **The mode grid is pinned to three columns.** `auto-fit, minmax(150px, 1fr)`
+>   dropped to two columns — six cards in three rows, +142px in every mode at once —
+>   below a 1100px-wide window. The board is capped at 1180px, so auto-fit could
+>   never have produced a fourth column; two was the only thing it ever did.
+> - **The ⓘ panels scroll themselves into view.** "About the difficulty levels"
+>   rendered 725px down a 720px board: mounted, correct, and entirely off the screen.
+>   Instant scroll, not smooth — smooth is dropped here, same as the journey map.
+> - **The difficulty control is a painted-paper panel.** It sits squarely on the
+>   passport in the desk art, and bare on the desk "Scout" was ink-on-navy.
+> - **The chip lists have a visible scrollbar** (`.sbw-chiplist`). Eleven routes need
+>   five wrapped rows and the slot holds two, and a scroll a child cannot see is the
+>   same as five routes that do not exist.
+>
+> **Still open — needs your call, not code.** The **"Newly unlocked!" card** in the
+> left column still overflows: five announcements at once (rank-up + medium + tour +
+> hard + expeditions) is a 340px card and runs **329px** past the board; even a
+> single announcement runs about 55px over. This is pre-existing and the change above
+> improved it by ~240px, but it cannot be fixed by moving it — the left column has
+> ~25px of slack and the right column ~25px. It needs a decision about how an unlock
+> is announced at all (its own beat? a modal? one at a time?), which is a product
+> question. `news` is built in `startMeet` (`ANN` caps it at four unlocks + a rank).
+>
+> **The meet screen needs a viewport ≥882px tall** at 1280px wide, measured. Below
+> that the board (`min(90vh, 820px)`) shrinks and the content does not. Same class as
+> the desk's ≥872px, and for the same reason.
 
 > ### ⚠ 2026-07-29: the avatar range is generated now, not painted
 >

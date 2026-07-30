@@ -510,6 +510,27 @@ describe("journeys", () => {
     }
   });
 
+  // The meet screen's route picker lives in a slot of FIXED height under Uncle
+  // Jonah — fixed so that the camera bag below it sits in the same place in all six
+  // modes, and so the board (which cannot grow; see boardBox) never overflows. The
+  // slot's budget was measured against the eleven blurbs that exist today, which is
+  // exactly the kind of number that is a guess about the twelfth. Its era, region and
+  // blurb are printed as ONE line of 12.5px text in a 508px column: two rendered
+  // lines fit the slot, three overflow it by about 8px and push the bag off the
+  // board. Measured in a browser, prose starts a third line at ~170 characters; 160
+  // is that with a margin, and the longest route today is 150.
+  //
+  // Nothing throws if this is exceeded. The route simply ships with the bag pushed
+  // past the painted edge, which is the failure this whole layout was fixing.
+  it("a route's era, region and blurb fit the two lines the picker slot allows", () => {
+    for (const j of JOURNEYS) {
+      const printed = `${j.era} · ${j.region}. ${j.blurb}`;
+      expect(printed.length,
+        `${j.id}: the picker prints "${printed.slice(0, 60)}…" as one line of ${printed.length} characters — over 160 it wraps to a third line and pushes the camera bag off the board`)
+        .toBeLessThanOrEqual(160);
+    }
+  });
+
   it("the map window holds every stop", () => {
     for (const j of JOURNEYS) {
       const b = journeyBox(j);

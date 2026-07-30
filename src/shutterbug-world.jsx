@@ -1867,6 +1867,7 @@ export default function ShutterbugWorld() {
   const [journeyId, setJourneyId] = useState(JOURNEYS[0].id);   // which route is picked on the meet screen
   const [journey, setJourney] = useState(null);                 // live run: { id, at, wrong, done, reveal }
   const journeyMapRef = useRef(null);
+  const meetInfoRef = useRef(null);       // whichever meet-screen ⓘ panel is open
 
   // Player profiles (localStorage). profileName === null means "Guest — no saving".
   // Nobody is auto-selected at launch (hasChosen === false) so a player can't
@@ -2301,6 +2302,21 @@ export default function ShutterbugWorld() {
     // and jumping straight to the stop orients the player without a distracting slide.
     el.scrollTo({ left: Math.max(0, frac * el.scrollWidth - el.clientWidth / 2), behavior: "auto" });
   }, [journey?.id, journey?.at, journey?.reveal]);
+
+  // The meet screen's ⓘ panels — "About Journeys", "About the difficulty levels" —
+  // open UNDER the block they explain, which on this screen is already at the bottom
+  // of a board that is a fixed height. The panel is 70–100px tall, so it opened below
+  // the painted edge and the child who pressed ⓘ saw nothing happen at all. Nothing
+  // errored, nothing was missing: it was rendered, mounted and off the board. So the
+  // board scrolls to whichever panel just opened.
+  // Instant, not smooth, for the same reason the journey map is (see above): a smooth
+  // scroll in this container is dropped outright by some engines, and a scroll that
+  // silently does nothing is the exact bug this is here to fix.
+  useEffect(() => {
+    if (screen !== "meet" || !modeInfo) return;
+    const el = meetInfoRef.current;
+    if (el) el.scrollIntoView({ block: "nearest", behavior: "auto" });
+  }, [modeInfo, screen]);
 
   const sfx = (name, ...args) => { if (soundOn && SFX[name]) SFX[name](...args); };
   // A shot's REWARD sound lands after the photo finishes developing, not at the
@@ -4125,6 +4141,80 @@ export default function ShutterbugWorld() {
       journey: "A Journey retraces a real expedition stop by stop, in the order it happened — there's no day budget to make harder or easier.",
       mystery: "Mystery Photos scores by how close your pin lands, so the photograph itself sets the difficulty — there's no tier to pick.",
     };
+    // Two of the six modes want a second choice after the mode itself — WHICH
+    // itinerary, WHICH route. Both live in the right column, under Jonah, because
+    // the left column has no room for them: the board is a fixed height (see
+    // boardBox) and Jonah's card + the six mode cards + difficulty already fill it
+    // to within a few pixels. Stacked into the left column as well, Grand Tour ran
+    // 207px past the painted bottom edge and Journeys 152px, taking the difficulty
+    // row and the wardrobe link off the board with them.
+    //
+    // The slot is a FIXED height whether or not a mode fills it, so the camera bag
+    // below it sits in the same place in all six modes. A bag that jumped up the
+    // screen when you picked Explore is the same complaint that made the board a
+    // fixed height in the first place — the furniture of the room should not move
+    // when you choose a game mode.
+    //
+    // It also puts the choice directly above the button that names it: you pick
+    // "Lewis & Clark" and press "Set out: Lewis & Clark" ten pixels below it.
+    const TUNER_SLOT = 152;
+    // Both chip lists are capped at two rows and scroll past that. The itinerary is
+    // six themes and the routes eleven; uncapped they wrap to four rows and three,
+    // and the difference between the two modes moved everything under them. A list
+    // that scrolls is still a list — a screen cut off at a painted wooden edge is
+    // what looks broken.
+    const tunerChips = { display: "flex", gap: 7, flexWrap: "wrap", justifyContent: "center",
+                         maxHeight: 76, overflowY: "auto", padding: "2px 4px" };
+    const tunerLabel = { fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.22em", color: INK, opacity: 0.65, marginBottom: 8 };
+    const tunerBlurb = { fontSize: 12.5, color: INK, opacity: 0.8, margin: "9px auto 0", maxWidth: 520, lineHeight: 1.45, textAlign: "left" };
+    const runTuner =
+      gameMode === "tour" ? (
+        <div>
+          <div style={tunerLabel}>ITINERARY</div>
+          <div className="sbw-chiplist" style={tunerChips}>
+            {TOUR_THEMES.map((t) => {
+              const on = tourTheme === t.id;
+              const locked = t.id !== "classic" && !u.expeditions; // themed expeditions unlock at 25 places
+              return (
+                <button key={t.id} onClick={() => { if (locked) return; setTourTheme(t.id); }} aria-pressed={on}
+                  aria-label={locked ? `${t.title} — locked. ${UNLOCK_REQ.expeditions}` : t.title} title={locked ? `🔒 ${UNLOCK_REQ.expeditions} to unlock` : ""}
+                  style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "5px 13px 5px 6px", borderRadius: 18, cursor: locked ? "default" : "pointer",
+                    fontWeight: 700, fontSize: 12.5, opacity: locked ? 0.55 : 1,
+                    border: `1.5px solid ${on ? CORAL : INK}`, background: on ? CORAL : "transparent", color: on ? "#fff" : INK }}>
+                  <ArtBadge art={THEME_ART[t.id]} emoji={t.emoji} size={26} dim={locked} />
+                  {locked && <span aria-hidden="true">🔒</span>}{t.title}
+                </button>
+              );
+            })}
+          </div>
+          <p style={tunerBlurb}>
+            {!u.expeditions && <span style={{ color: CORAL, fontWeight: 700 }}>🔒 Themed expeditions unlock once you've photographed 25 places. </span>}
+            {TOUR_THEMES.find((t) => t.id === tourTheme)?.lesson}
+          </p>
+        </div>
+      ) : gameMode === "journey" ? (
+        <div>
+          {/* No difficulty here: a route you're retracing isn't a race. */}
+          <div style={tunerLabel}>THE ROUTE</div>
+          <div className="sbw-chiplist" style={tunerChips}>
+            {JOURNEYS.map((jr) => {
+              const on = journeyId === jr.id;
+              return (
+                <button key={jr.id} onClick={() => setJourneyId(jr.id)} aria-pressed={on}
+                  aria-label={`${jr.title}, ${jr.era}, ${jr.region}`}
+                  style={{ padding: "6px 13px", borderRadius: 16, cursor: "pointer", fontWeight: 700, fontSize: 12.5,
+                    border: `1.5px solid ${on ? CORAL : INK}`, background: on ? CORAL : "transparent", color: on ? "#fff" : INK }}>
+                  <span aria-hidden="true">{jr.emoji} </span>{jr.title}
+                </button>
+              );
+            })}
+          </div>
+          <p style={tunerBlurb}>
+            <b>{JOURNEY_BY_ID[journeyId].era} · {JOURNEY_BY_ID[journeyId].region}.</b>{" "}
+            {JOURNEY_BY_ID[journeyId].blurb}
+          </p>
+        </div>
+      ) : null;
     return (
       <Frame>
         <DeskBoard>
@@ -4199,9 +4289,19 @@ export default function ShutterbugWorld() {
               talking, so nobody clicks past his greeting before it's on screen. */}
           <div style={{ opacity: meetReady ? 1 : 0.5, pointerEvents: meetReady ? "auto" : "none", transition: "opacity .25s" }}>
           {/* Pick a way to play */}
-          <div style={{ marginTop: 18 }}>
+          <div style={{ marginTop: 14 }}>
             <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 15, fontWeight: 700, letterSpacing: "0.16em", color: INK, opacity: 0.75, marginBottom: 10 }}>PICK A WAY TO PLAY</div>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 10 }}>
+            {/* THREE columns, always — six modes in two rows, at every width.
+                `auto-fit, minmax(150px, 1fr)` looks more adaptable and isn't: the
+                board is capped at 1180px wide, so this column never gets wide enough
+                for a fourth column, and the only thing auto-fit ever did was drop to
+                TWO columns — six cards in THREE rows — once the column fell under
+                470px. That is a 1100px-wide window, and it added 142px to the left
+                column in every mode at once, taking the bottom of the board off with
+                it. Pinning the count makes the cards narrower on a small window
+                instead of making the screen taller, which is the trade this fixed
+                board wants. */}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10 }}>
               {MODE_CARDS.map((c) => {
                 const active = gameMode === c.id;
                 const locked = !u[c.id];
@@ -4210,7 +4310,7 @@ export default function ShutterbugWorld() {
                     <button onClick={() => { if (locked) { setModeInfo(c.id); return; } setGameMode(c.id); setModeInfo(null); }} aria-pressed={active}
                       aria-label={locked ? `${c.name} — locked. ${UNLOCK_REQ[c.id] || ""}` : c.name}
                       style={{ position: "relative", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 2,
-                        width: "100%", height: 132, borderRadius: 12, overflow: "hidden", cursor: "pointer",
+                        width: "100%", height: 126, borderRadius: 12, overflow: "hidden", cursor: "pointer",
                         border: active ? `3px solid ${CORAL}` : `1.5px solid ${PAPER_LINE}`, padding: 0, textAlign: "center",
                         background: `url("${UI}atlas-paper-texture.png") center / cover, ${PAPER}`,
                         boxShadow: active ? "0 4px 14px rgba(233,106,76,0.35)" : "0 2px 8px rgba(74,50,20,0.18)" }}>
@@ -4237,80 +4337,37 @@ export default function ShutterbugWorld() {
               const c = MODE_CARDS.find((x) => x.id === modeInfo);
               const locked = !u[c.id];
               return (
-                <p role="status" style={{ fontSize: 13, color: INK, background: PAPER, border: `1px solid ${locked ? CORAL : PAPER_LINE}`, borderRadius: 8, padding: "9px 12px", margin: "10px auto 0", maxWidth: 560, lineHeight: 1.5, textAlign: "left" }}>
+                <p ref={meetInfoRef} role="status" style={{ fontSize: 13, color: INK, background: PAPER, border: `1px solid ${locked ? CORAL : PAPER_LINE}`, borderRadius: 8, padding: "9px 12px", margin: "10px auto 0", maxWidth: 560, lineHeight: 1.5, textAlign: "left" }}>
                   <b>{c.emoji} {c.name}:</b> {locked ? `🔒 Locked — ${UNLOCK_REQ[c.id]} to unlock it.` : c.blurb}
                 </p>
               );
             })()}
           </div>
 
-          {/* Grand Tour itinerary */}
-          {gameMode === "tour" && (
-            <div style={{ marginTop: 18 }}>
-              <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.22em", color: INK, opacity: 0.65, marginBottom: 8 }}>ITINERARY</div>
-              <div style={{ display: "flex", gap: 7, flexWrap: "wrap", justifyContent: "center" }}>
-                {TOUR_THEMES.map((t) => {
-                  const on = tourTheme === t.id;
-                  const locked = t.id !== "classic" && !u.expeditions; // themed expeditions unlock at 25 places
-                  return (
-                    <button key={t.id} onClick={() => { if (locked) return; setTourTheme(t.id); }} aria-pressed={on}
-                      aria-label={locked ? `${t.title} — locked. ${UNLOCK_REQ.expeditions}` : t.title} title={locked ? `🔒 ${UNLOCK_REQ.expeditions} to unlock` : ""}
-                      style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "5px 13px 5px 6px", borderRadius: 18, cursor: locked ? "default" : "pointer",
-                        fontWeight: 700, fontSize: 12.5, opacity: locked ? 0.55 : 1,
-                        border: `1.5px solid ${on ? CORAL : INK}`, background: on ? CORAL : "transparent", color: on ? "#fff" : INK }}>
-                      <ArtBadge art={THEME_ART[t.id]} emoji={t.emoji} size={26} dim={locked} />
-                      {locked && <span aria-hidden="true">🔒</span>}{t.title}
-                    </button>
-                  );
-                })}
-              </div>
-              <p style={{ fontSize: 12.5, color: INK, opacity: 0.75, margin: "9px auto 0", maxWidth: 520, lineHeight: 1.45 }}>
-                {!u.expeditions && <span style={{ color: CORAL, fontWeight: 700 }}>🔒 Themed expeditions unlock once you've photographed 25 places. </span>}
-                {TOUR_THEMES.find((t) => t.id === tourTheme)?.lesson}
-              </p>
-            </div>
-          )}
-
-          {/* Which journey. No difficulty here: a route you're retracing isn't a race. */}
-          {gameMode === "journey" && (
-            <div style={{ marginTop: 18 }}>
-              <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.22em", color: INK, opacity: 0.65, marginBottom: 8 }}>THE ROUTE</div>
-              {/* Eleven routes wrap to four rows and are the one thing on this screen
-                  that outgrows the board. The board is a fixed height on purpose (see
-                  boardBox), so the overflow is confined HERE rather than left to push
-                  the whole panel: a list that scrolls is a list, where a whole screen
-                  quietly cut off at a painted wooden edge just looks broken. */}
-              <div style={{ display: "flex", gap: 7, flexWrap: "wrap", justifyContent: "center",
-                            maxHeight: 76, overflowY: "auto", padding: "2px 4px" }}>
-                {JOURNEYS.map((jr) => {
-                  const on = journeyId === jr.id;
-                  return (
-                    <button key={jr.id} onClick={() => setJourneyId(jr.id)} aria-pressed={on}
-                      aria-label={`${jr.title}, ${jr.era}, ${jr.region}`}
-                      style={{ padding: "6px 13px", borderRadius: 16, cursor: "pointer", fontWeight: 700, fontSize: 12.5,
-                        border: `1.5px solid ${on ? CORAL : INK}`, background: on ? CORAL : "transparent", color: on ? "#fff" : INK }}>
-                      <span aria-hidden="true">{jr.emoji} </span>{jr.title}
-                    </button>
-                  );
-                })}
-              </div>
-              <p style={{ fontSize: 12.5, color: INK, opacity: 0.75, margin: "9px auto 0", maxWidth: 520, lineHeight: 1.45 }}>
-                <b>{JOURNEY_BY_ID[journeyId].era} · {JOURNEY_BY_ID[journeyId].region}.</b>{" "}
-                {JOURNEY_BY_ID[journeyId].blurb}
-              </p>
-            </div>
-          )}
+          {/* The mode-specific tuner — WHICH itinerary, WHICH route — is NOT here.
+              It sits under Jonah in the right column, where the room is; see
+              runTuner above for why. */}
 
           {/* Difficulty — always shown, but greyed and inert for the modes that don't
               use it. The box runs the full width of this column so its four emblems are
               big and legible. A tap anywhere on it while it's greyed explains why. */}
-          <div style={{ marginTop: 18, opacity: needsDifficulty ? 1 : 0.5 }}>
-            <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 15, fontWeight: 700, letterSpacing: "0.16em", color: INK, opacity: 0.75, marginBottom: 8 }}>
+          {/* Label and emblems are ONE painted-paper panel, the same surface the mode
+              cards use. The bottom-left corner of the desk art is the PASSPORT — a
+              dark navy cover with gold lettering — and it reaches about 150px further
+              in than the board's padding allows for, so this block sits squarely on
+              it. Bare on the desk, "DIFFICULTY" lost its first letters to the cover
+              and "Scout" was ink-on-navy: rule 4's contrast requirement failing on
+              the one control a child has to read in order to choose. Everything
+              above this lands on clean paper and is left alone. */}
+          <div style={{ marginTop: 14, opacity: needsDifficulty ? 1 : 0.5 }}>
+            <div style={{ border: `1.5px solid ${INK}`, borderRadius: 8, overflow: "hidden",
+                          background: `url("${UI}atlas-paper-texture.png") center / cover, ${PAPER}` }}>
+            <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 15, fontWeight: 700, letterSpacing: "0.16em", color: INK, opacity: 0.75, padding: "9px 12px 5px" }}>
               DIFFICULTY
               <button onClick={() => setModeInfo((m) => (m === "difficulty" ? null : "difficulty"))} aria-expanded={modeInfo === "difficulty"} aria-label="About the difficulty levels"
                 style={{ marginLeft: 7, width: 20, height: 20, borderRadius: "50%", border: `1px solid ${INK}`, background: "transparent", color: INK, fontWeight: 900, fontSize: 11, lineHeight: 1, cursor: "pointer", verticalAlign: "-4px" }}>?</button>
             </div>
-            <div style={{ display: "flex", width: "100%", border: `1.5px solid ${INK}`, borderRadius: 8, overflow: "hidden" }}>
+            <div style={{ display: "flex", width: "100%" }}>
               {MODE_ORDER.map((k) => {
                 const locked = !u[k];
                 const on = difficulty === k;
@@ -4330,13 +4387,14 @@ export default function ShutterbugWorld() {
                 );
               })}
             </div>
+            </div>
             {modeInfo === "difficulty-na" && (
-              <p role="status" style={{ fontSize: 13, color: INK, background: PAPER, border: `1px solid ${CORAL}`, borderRadius: 8, padding: "9px 12px", marginTop: 10, lineHeight: 1.5, textAlign: "left" }}>
+              <p ref={meetInfoRef} role="status" style={{ fontSize: 13, color: INK, background: PAPER, border: `1px solid ${CORAL}`, borderRadius: 8, padding: "9px 12px", marginTop: 10, lineHeight: 1.5, textAlign: "left" }}>
                 <b>No difficulty for this trip.</b> {DIFF_NA_WHY[gameMode] || "This mode doesn't use difficulty."}
               </p>
             )}
             {modeInfo === "difficulty" && (
-              <p role="status" style={{ fontSize: 13, color: INK, background: PAPER, border: `1px solid ${PAPER_LINE}`, borderRadius: 8, padding: "9px 12px", marginTop: 10, lineHeight: 1.5, textAlign: "left" }}>
+              <p ref={meetInfoRef} role="status" style={{ fontSize: 13, color: INK, background: PAPER, border: `1px solid ${PAPER_LINE}`, borderRadius: 8, padding: "9px 12px", marginTop: 10, lineHeight: 1.5, textAlign: "left" }}>
                 {MODE_ORDER.filter((k) => !u[k]).length > 0 && (
                   <span style={{ display: "block", color: CORAL, fontWeight: 700, marginBottom: 6 }}>
                     🔒 {MODE_ORDER.filter((k) => !u[k]).map((k) => `${MODES[k].label}: ${UNLOCK_REQ[k]}`).join(" · ")}
@@ -4347,6 +4405,20 @@ export default function ShutterbugWorld() {
             )}
           </div>
 
+          </div>
+          {/* Pickles's wardrobe used to sit in a full-width strip UNDER both columns,
+              where it was the last 33px of a screen that had already run past the
+              board's painted edge. It is a small link, the left column is the shorter
+              of the two, and it is not part of the run you're configuring — so it
+              lives here, outside the greyed-out choices, readable while Jonah talks.
+              Right-aligned, because the left end of this line is the painted passport
+              and teal-on-navy is not a legible link. */}
+          <div style={{ textAlign: "right" }}>
+            <button onClick={() => setWardrobeOpen(true)}
+              style={{ marginTop: 12, background: "none", border: "none", padding: 0,
+                color: OCEAN, opacity: 0.85, fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
+              🐾 Pickles's wardrobe
+            </button>
           </div>
           </div>{/* end LEFT COLUMN */}
           {/* His face follows the conversation: the mood of the run he's nodding to
@@ -4364,13 +4436,19 @@ export default function ShutterbugWorld() {
                 : gameMode === "explore" ? "modeExplore"
                 : gameMode === "journey" ? "modeJourney"
                 : "meetAsk"}
-              style={{ width: "100%" }} />
-            {/* Sits well clear of the portrait above it: at a small gap the bag read as
-                part of the picture rather than as the thing to press, and its bob kept
-                knocking against the frame. */}
+              style={{ width: "100%", maxWidth: 420 }} />
+            {/* The tuner slot. Always this tall, empty or not (see runTuner), and
+                greyed with the rest of the choices until Jonah has finished talking. */}
+            <div style={{ width: "100%", minHeight: TUNER_SLOT, marginTop: 10,
+                          opacity: meetReady ? 1 : 0.5, pointerEvents: meetReady ? "auto" : "none", transition: "opacity .25s" }}>
+              {runTuner}
+            </div>
+            {/* The empty slot above is what now keeps the bag clear of the portrait —
+                at a small gap the bag read as part of the picture rather than as the
+                thing to press, and its bob kept knocking against the frame. */}
             <button data-primary onClick={setOff} disabled={!meetReady} aria-disabled={!meetReady}
               className={meetReady ? "sbw-bob" : undefined}
-              style={{ background: "none", border: "none", padding: 0, marginTop: 46, width: 210, maxWidth: "62%",
+              style={{ background: "none", border: "none", padding: 0, marginTop: 4, width: 210, maxWidth: "62%",
                 cursor: meetReady ? "pointer" : "default", opacity: meetReady ? 1 : 0.45,
                 filter: meetReady ? "none" : "grayscale(0.7)", transition: "opacity .2s ease, filter .2s ease" }}>
               <img src={`${UI}camera-bag.png`} alt="" aria-hidden="true"
@@ -4383,12 +4461,6 @@ export default function ShutterbugWorld() {
             </button>
           </div>
           </div>{/* end flex row */}
-          <div style={{ display: "flex", gap: 18, alignItems: "center", flexWrap: "wrap" }}>
-            <button onClick={() => setWardrobeOpen(true)}
-              style={{ marginTop: 14, background: "none", border: "none", color: OCEAN, opacity: 0.85, fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
-              🐾 Pickles's wardrobe
-            </button>
-          </div>
         </DeskBoard>
         {wardrobeOpen && <WardrobeModal unlocked={dogUnlocked} mode={dogMode} pick={dogPick}
           onSet={saveWardrobe} onClose={() => setWardrobeOpen(false)} />}
@@ -7101,6 +7173,24 @@ function Frame({ children, desk = false }) {
         /* The camera bag Uncle hands you: bobbing so a child knows to take it. */
         .sbw-bob{ animation: sbw-bob 1.5s ease-in-out infinite }
         @keyframes sbw-bob{ 0%,100%{ transform: translateY(0) } 50%{ transform: translateY(-9px) } }
+        /* The mode tuner's chip lists (the Grand Tour's itineraries, the Journeys'
+           routes). Eleven routes need five wrapped rows and the board can spare two,
+           so the box scrolls — and a scroll a child cannot SEE is the same as five
+           routes that do not exist. macOS hides overlay scrollbars until you scroll,
+           which is exactly the wrong default here, so this one is always drawn, in
+           the desk's own ink. */
+        /* The standard properties go behind @supports on purpose: where BOTH are
+           understood, setting scrollbar-width makes the engine ignore the
+           ::-webkit- rules below and fall back to an overlay scrollbar that is
+           invisible until you already know to scroll — which is the whole problem.
+           Firefox, which has no ::-webkit-scrollbar, gets them. */
+        @supports not selector(::-webkit-scrollbar) {
+          .sbw-chiplist{ scrollbar-width: thin; scrollbar-color: rgba(74,50,20,0.45) transparent }
+        }
+        .sbw-chiplist::-webkit-scrollbar{ width: 8px; -webkit-appearance: none }
+        .sbw-chiplist::-webkit-scrollbar-track{ background: rgba(74,50,20,0.10); border-radius: 4px }
+        .sbw-chiplist::-webkit-scrollbar-thumb{ background: rgba(74,50,20,0.45); border-radius: 4px }
+        .sbw-chiplist::-webkit-scrollbar-thumb:hover{ background: rgba(74,50,20,0.65) }
         /* Uncle changing expression — a cross-fade, not a cut. */
         .sbw-fade{ animation: sbw-fade 0.45s ease-out }
         @keyframes sbw-fade{ 0%{ opacity: 0.25 } 100%{ opacity: 1 } }
