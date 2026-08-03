@@ -1938,6 +1938,10 @@ export default function ShutterbugWorld() {
     return pickDogOutfit(country, dogUnlockedHas); // auto
   };
   const [newBadges, setNewBadges] = useState([]); // achievements newly earned this game
+  // Is the end screen's "what you earned" popup open? Opened once, on a delay, by the
+  // effect below — so the confetti and Jonah's face get their moment first — and
+  // reopenable from the button it leaves behind.
+  const [extrasOpen, setExtrasOpen] = useState(false);
   const [confirmRemove, setConfirmRemove] = useState(false); // passport delete confirmation
   const [passportPage, setPassportPage] = useState("id"); // passport booklet page: id | stamps | collections | badges
   const [avatarEdit, setAvatarEdit] = useState(false);        // avatar editor open (start screen)
@@ -2332,6 +2336,14 @@ export default function ShutterbugWorld() {
   // and immediately, so the sound plays at once too.
   const DEVELOP_MS = 1900;
   const rewardSfx = (name) => { if (prefersReduced) sfx(name); else setTimeout(() => sfx(name), DEVELOP_MS); };
+  // Pressing the shutter, as one gesture: the sound, the white flash, and the photo
+  // starting to develop. One function because these three must never drift apart —
+  // the "hold for the light" offer defers all three together (see photographCity).
+  const takeShot = () => {
+    sfx("shutter");
+    if (!prefersReduced) setFlashKey((k) => k + 1);
+    setRevealed(true);
+  };
   // The typing components call SFX.type() straight from their per-character tick,
   // so the sound module needs to know about the toggle on its own.
   useEffect(() => { SFX.setMuted(!soundOn); }, [soundOn]);
@@ -2410,8 +2422,19 @@ export default function ShutterbugWorld() {
   // on the way to the one it wants, and speakEn cancels whatever is mid-sentence —
   // without the wait you'd hear twelve first syllables instead of one name.
   const hoverSayRef = useRef(null);
+  // ...and SILENT for a moment after the map appears. The pointer does not have to
+  // move for onMouseEnter to fire: a map that mounts under a resting cursor counts
+  // as an enter, so arriving on the world map announced whichever continent the
+  // mouse happened to be sitting over — a name nobody asked for, spoken over the
+  // arrival, and easily mistaken for the answer to the clue (Joshua's report).
+  // A hover is only a question if the player made it, so the first moment of a new
+  // map doesn't count.
+  const HOVER_SAY_MUTE_MS = 1000;
+  const hoverMuteUntilRef = useRef(0);
+  useEffect(() => { hoverMuteUntilRef.current = Date.now() + HOVER_SAY_MUTE_MS; }, [phase, screen, pickedContinent, pickedCountry]);
   const sayOnHover = (text) => {
     if (!soundOn || !text || !MODES[difficulty]?.sayOnHover) return;
+    if (Date.now() < hoverMuteUntilRef.current) return;
     if (hoverSayRef.current) clearTimeout(hoverSayRef.current);
     hoverSayRef.current = setTimeout(() => speakEn(text), 260);
   };
@@ -3119,7 +3142,10 @@ export default function ShutterbugWorld() {
     const g = gamble; if (!g) return;
     setGamble(null);
     const card = g.card;
-    if (!hold) { setPending(card); return; }
+    // photographCity held the shutter back for this moment (see the comment there):
+    // whichever way the child chooses, the picture is taken NOW.
+    takeShot();
+    if (!hold) { rewardSfx("perfect"); setPending(card); return; }
     if (rnd() < HOLD_WIN_CHANCE) {
       setScore((s) => tidyScore(s + HOLD_BONUS));
       rewardSfx("perfect");
@@ -3172,6 +3198,25 @@ export default function ShutterbugWorld() {
       clueText: t ? (t[tier] || t.hard) : "",
     };
   }
+
+  // The end screen's earnings popup opens by itself, a beat after the screen does.
+  // The beat matters: arriving straight into a dialog steps on the confetti and on
+  // Jonah's face, which are the celebration the popup is reporting. Long enough to
+  // read the tally and see him, short enough that nobody has started reaching for
+  // "Continue" — and it only ever opens ONCE per run, because `extrasOpen` is reset
+  // on the way in and the effect doesn't re-fire while the screen stays "end".
+  const END_EXTRAS_DELAY_MS = 1600;
+  useEffect(() => {
+    if (screen !== "end") { setExtrasOpen(false); return undefined; }
+    const anything = (gameMode === "longtrip" && longDebrief)
+      || (gameMode === "daily" && dailyBanked)
+      || (profileName && (lastResult?.isBest || lastResult?.isBestTime))
+      || (profileName && newBadges.length > 0)
+      || unlockBeat || dreamPending;
+    if (!anything) return undefined;
+    const t = setTimeout(() => setExtrasOpen(true), END_EXTRAS_DELAY_MS);
+    return () => clearTimeout(t);
+  }, [screen, gameMode, longDebrief, dailyBanked, lastResult, newBadges, profileName, unlockBeat, dreamPending]);
 
   // When a game ends, record its outcome once against the active profile.
   useEffect(() => {
@@ -3709,9 +3754,14 @@ export default function ShutterbugWorld() {
     const clicked = loc(id);
     setCurrent(id);
     setVisitedIds((v) => (v.includes(id) ? v : [...v, id]));
-    sfx("shutter");
-    if (!prefersReduced) setFlashKey((k) => k + 1);
-    setRevealed(true);
+    // Taking the picture — the shutter, the white flash, the developing photo — is
+    // SCHEDULED rather than done here, so that the one branch which hasn't actually
+    // taken the picture yet can call it back. That branch is "hold for the light":
+    // the whole question it asks is whether to press the shutter now or wait, and
+    // answering it to the sound of a shutter that already fired makes the choice
+    // look decorative (Joshua's report). A zero-delay timer is inaudible, and the
+    // synchronous body below runs first, so a cancel always wins the race.
+    const shutterTimer = setTimeout(takeShot, 0);
 
     if (gameMode === "explore") {
       // Just reveal the place and file it into the album — no cost, no scoring.
@@ -3880,7 +3930,10 @@ export default function ShutterbugWorld() {
           fact: clicked.fact, buttonLabel: "See my results" });
       } else {
         setScore((s) => s + shotGain + pBonus + firstBonus);
-        rewardSfx(perfect ? "perfect" : "success");
+        // The reward chime is NOT played here — it belongs to whichever of the two
+        // branches at the end of this block actually shows the photo. Played here it
+        // also landed 1.9s into the "hold for the light" question, cheering a shot
+        // the child had not decided to take, and then cheering it again afterwards.
         const cheer = pickForShot(perfect);
         // "Perfect shot!" is now earned — a first-try shot. A shot filed after a
         // wrong guess still counts, but it's a plainer "Nice shot!".
@@ -3894,8 +3947,17 @@ export default function ShutterbugWorld() {
         // the light. Offering it defers the reward card to resolveGamble; otherwise the
         // card shows now. The base points above are already banked either way.
         const canHold = perfect && (isCoverShot || rnd() < HOLD_ELIGIBLE_CHANCE);
-        if (canHold) setGamble({ card: correctCard, cover: isCoverShot });
-        else setPending(correctCard);
+        if (canHold) {
+          // Hold the camera. resolveGamble fires the shutter, the flash and the
+          // reward chime together the moment the choice is made — so the picture
+          // is taken when the child decides to take it, and the celebration lands
+          // on the photo rather than over the question.
+          clearTimeout(shutterTimer);
+          setGamble({ card: correctCard, cover: isCoverShot });
+        } else {
+          rewardSfx(perfect ? "perfect" : "success");
+          setPending(correctCard);
+        }
       }
     } else {
       const wantTxt = a.type === "category" ? `a ${CATEGORIES[a.category].noun}` : target.subject;
@@ -4169,6 +4231,9 @@ export default function ShutterbugWorld() {
     // It also puts the choice directly above the button that names it: you pick
     // "Lewis & Clark" and press "Set out: Lewis & Clark" ten pixels below it.
     const TUNER_SLOT = 152;
+    // What stands in for the tuner in the three modes that have none. Enough air to
+    // keep the bag off the portrait's frame (its bob needs the room), and no more.
+    const TUNER_GAP = 22;
     // Both chip lists are capped at two rows and scroll past that. The itinerary is
     // six themes and the routes eleven; uncapped they wrap to four rows and three,
     // and the difference between the two modes moved everything under them. A list
@@ -4441,15 +4506,25 @@ export default function ShutterbugWorld() {
                 : gameMode === "journey" ? "modeJourney"
                 : "meetAsk"}
               style={{ width: "100%", maxWidth: 420 }} />
-            {/* The tuner slot. Always this tall, empty or not (see runTuner), and
-                greyed with the rest of the choices until Jonah has finished talking. */}
-            <div style={{ width: "100%", minHeight: TUNER_SLOT, marginTop: 10,
+            {/* The tuner slot — as tall as the tuner, and only as tall as a GAP when
+                the mode has no tuner. It used to reserve its full height in all six
+                modes so the bag never moved. That kept the bag still and left 174px
+                of bare parchment between Jonah and it in the three modes with nothing
+                to tune, which is what "the bag is too low" turned out to mean: the
+                bag wasn't low relative to the board, it was cast adrift from the
+                picture it belongs to.
+                The steadiness that cost was worth less than it looked. It was
+                inferred from an older complaint about the BOARD resizing, never
+                reported about the bag — and the bag moving down to make room for a
+                tuner that visibly appears in the gap reads as cause and effect,
+                which a permanent void does not. Keep TUNER_SLOT as the reserve for
+                modes that use it; TUNER_GAP is the resting distance otherwise, wide
+                enough that the bag still reads as a separate thing to press rather
+                than part of the painting. */}
+            <div style={{ width: "100%", minHeight: runTuner ? TUNER_SLOT : TUNER_GAP, marginTop: 10,
                           opacity: meetReady ? 1 : 0.5, pointerEvents: meetReady ? "auto" : "none", transition: "opacity .25s" }}>
               {runTuner}
             </div>
-            {/* The empty slot above is what now keeps the bag clear of the portrait —
-                at a small gap the bag read as part of the picture rather than as the
-                thing to press, and its bob kept knocking against the frame. */}
             <button data-primary onClick={setOff} disabled={!meetReady} aria-disabled={!meetReady}
               className={meetReady ? "sbw-bob" : undefined}
               style={{ background: "none", border: "none", padding: 0, marginTop: 4, width: 210, maxWidth: "62%",
@@ -5228,6 +5303,15 @@ export default function ShutterbugWorld() {
     const isTourEnd = gameMode === "tour";
     const isDailyEnd = gameMode === "daily";
     const isLongEnd = gameMode === "longtrip";
+    // What the run EARNED, as opposed to what it scored. Any of these may be absent,
+    // and on a good run in the Long Trip all four land at once — which is exactly
+    // when the end screen used to scroll. See endExtras below.
+    const hasDebrief = !!(isLongEnd && longDebrief);
+    const hasDaily = !!(isDailyEnd && dailyBanked);
+    const hasRecords = !!(profileName && (lastResult?.isBest || lastResult?.isBestTime));
+    const hasBadges = !!(profileName && newBadges.length > 0);
+    const hasBeat = !!(unlockBeat || dreamPending);
+    const hasEndExtras = hasDebrief || hasDaily || hasRecords || hasBadges || hasBeat;
     const totalTargets = isTourEnd ? tourReqs.length : assignments.length;
     const maxScore = isTourEnd ? tourMaxScore(tourReqs.length, difficulty) : maxScoreFor(assignments.length, mode);
     // Clamp at 1: distance flights vary slightly by the exact cities visited, so a
@@ -5239,91 +5323,10 @@ export default function ShutterbugWorld() {
       ? Math.min(1, album.length / 12)
       : (maxScore > 0 ? Math.min(1, score / maxScore) : 0);
     const r = rankFor(pct);
-    return (
-      <Frame>
-        {(isLongEnd ? longWon : (totalTargets > 0 && album.length >= totalTargets)) && <Confetti reduced={prefersReduced} />}
-        <DeskBoard>
-          {/* The tally reads as ONE compact banner across the top rather than six
-              centred lines. Those lines were what pushed the roll and Uncle below the
-              fold — the two things the screen exists to show — so the score is stated
-              once, in a row, and the rest of the height goes to the pictures. */}
-          <div style={{ display: "flex", alignItems: "baseline", justifyContent: "center", gap: "clamp(10px, 2vw, 22px)",
-            flexWrap: "wrap", textAlign: "center", marginBottom: 4 }}>
-            <Stamp>Roll Developed</Stamp>
-            <h2 style={{ fontFamily: "ui-sans-serif, system-ui", fontWeight: 900, letterSpacing: "0.06em", fontSize: "clamp(19px, 2.3vw, 26px)", color: INK, margin: 0 }}>
-              {isLongEnd ? `${album.length} place${album.length === 1 ? "" : "s"} before the days ran out` : `${album.length} / ${totalTargets} shots filed`}
-            </h2>
-            <p style={{ fontFamily: "ui-monospace, monospace", fontSize: "clamp(15px, 1.7vw, 20px)", color: CORAL, fontWeight: 700, margin: 0 }}>{score} pts · ⏱ {fmtTime(elapsedMs)}</p>
-            <p style={{ color: INK, fontWeight: 700, margin: 0, fontSize: 15 }}>{r.title}</p>
-          </div>
-          <p style={{ fontFamily: "ui-monospace, monospace", fontSize: 11.5, color: INK, opacity: 0.6, margin: "0 0 2px", letterSpacing: "0.06em", textAlign: "center" }}>
-            {isDailyEnd ? `Daily Expedition · Day ${dailyDay}` : isTourEnd ? "Grand Tour" : isLongEnd ? "The Long Trip" : "Assignments"} · {mode.label}
-            {isLongEnd ? "" : ` · ${Math.round(pct * 100)}% of a perfect run`}
-            {quizBonus > 0 && <span style={{ color: GREEN, fontWeight: 700 }}>{"  ·  "}+{tidyScore(quizBonus)} review extra credit ✔</span>}
-          </p>
-
-          {/* Jonah's word on the trip — proud on a clean sweep, encouraging when
-              the days ran out. He is the emotional bookend to every expedition, so
-              he gets the room to be one: the whole scene, in the face that matches
-              what he's saying. Under it, the reason to go again. */}
-          {/* The developed roll on the LEFT, Uncle's word on the RIGHT — the pictures
-              you brought back beside the man you brought them back to. */}
-          <div style={{ display: "flex", alignItems: "flex-start", gap: 22, margin: "12px auto 0", maxWidth: 1180, flexWrap: "wrap", justifyContent: "center" }}>
-            {album.length > 0 && (
-              <div style={{ flex: "1.5 1 440px", minWidth: 300 }}>
-                <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.18em", color: CORAL, marginBottom: 8, textAlign: "left" }}>📸 YOUR ROLL, DEVELOPED</div>
-                <div style={{ display: "flex", gap: Math.max(8, Math.round(14 * polaroidWidth(album.length) / 172)), flexWrap: "wrap", justifyContent: "flex-start" }}>
-                  {album.map((p, i) => (<Polaroid key={`${p.id}-${i}`} p={p} w={polaroidWidth(album.length)} />))}
-                </div>
-              </div>
-            )}
-            {/* The right-hand column carries EVERYTHING that isn't the roll: Jonah,
-                his word on the trip, the record chips, any badge earned, and the way
-                onward. All of that used to stack down the page under both columns,
-                which is what put the buttons below the fold on a widescreen — the
-                left column is tall (it's photographs), so the page was as tall as the
-                photos PLUS all of this. Beside them, it costs no height at all. */}
-            <div style={{ flex: "1 1 330px", minWidth: 300, maxWidth: 460, display: "flex", flexDirection: "column", gap: 12 }}>
-              {endLine && <NigelScene mood={endWon() ? "endWin" : "endLose"} style={{ width: "100%" }} />}
-              {endLine && (
-                <div style={{ ...CARD_SURFACE, border: `2px solid ${GOLD}`, borderRadius: 14, padding: "16px 18px", textAlign: "left" }}>
-                  <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.16em", color: CORAL, marginBottom: 5 }}>{GRANDPA.name.toUpperCase()}</div>
-                  <p style={{ margin: 0, color: INK, fontSize: 17, lineHeight: 1.5 }}>{endLine}</p>
-                  {/* ---- Why you'd go again. This is the whole point of the screen. ---- */}
-                  {nextUp && (
-                    <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 14, paddingTop: 12, borderTop: `1px dashed ${PAPER_LINE}` }}>
-                      <ArtBadge art={nextUp.art} emoji={nextUp.emoji} size={40} dim />
-                      <div>
-                        <div style={{ fontWeight: 800, color: INK, fontSize: 15 }}>
-                          {nextUp.name} — {nextUp.have} of {nextUp.need}
-                        </div>
-                        <div style={{ color: CORAL, fontWeight: 700, fontSize: 14 }}>
-                          {nextUp.left === 1 ? "Just one more." : `Only ${nextUp.left} to go.`}
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                  {grandpaWant && (
-                    <p style={{ margin: "12px 0 0", color: INK, fontSize: 15, lineHeight: 1.5, fontStyle: "italic", opacity: 0.9 }}>
-                      {grandpaWant}
-                    </p>
-                  )}
-                  {rankNear && (
-                    <div style={{ display: "flex", alignItems: "center", gap: 9, marginTop: 12 }}>
-                      <ArtBadge art={RANK_ART[rankNear.tier + 1]} emoji="★" size={30} dim />
-                      <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 12.5, color: INK, opacity: 0.85 }}>
-                        {rankNear.nextNeed - rankNear.have} more place{rankNear.nextNeed - rankNear.have === 1 ? "" : "s"} to <b>{rankNear.next}</b>
-                      </span>
-                    </div>
-                  )}
-                </div>
-              )}
-
-          {/* The Long Trip's debrief (slice 4). The days running out is the expected
-              ending here, so the end screen has to bank something rather than just
-              tally a loss: renown earned on the wire, the reporter standing it climbs,
-              and the farthest run yet. Every cue is spelled out in words as well as
-              colour (rule 4) — "PROMOTED", "NEW RECORD" — never colour alone. */}
+    // The run's earnings, built here so the end screen can put them in a popup
+    // rather than stack them under Jonah. See the comment at their old home below.
+    const endExtras = (
+      <>
           {isLongEnd && longDebrief && (
             <div style={{ background: "linear-gradient(160deg, #16324E, #10262E)", color: "#F4E3B8", borderRadius: 14, padding: "16px 18px", textAlign: "left" }}>
               <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.2em", color: "#EAB94E", fontWeight: 800, marginBottom: 8 }}>📡 PRESS DEBRIEF</div>
@@ -5405,7 +5408,10 @@ export default function ShutterbugWorld() {
               </p>
             </div>
           )}
-
+        {/* Jonah's "something new opened up" and the dream-complete beat come here
+            too. They are announcements with a button, exactly like the meet screen's
+            unlock news that became a popup for the same reason, and inline they were
+            the last ~140px that kept the board scrolling. */}
           {unlockBeat && !dreamPending && (
             <div style={{ textAlign: "center" }}>
               <div style={{ background: "linear-gradient(160deg, #5A3E12, #3E2A0C)", color: "#F6E7BE", borderRadius: 12, padding: "14px 18px", maxWidth: 480, margin: "0 auto", border: `2px solid ${GOLD}` }}>
@@ -5425,8 +5431,125 @@ export default function ShutterbugWorld() {
               </div>
             </div>
           )}
+      </>
+    );
+    return (
+      <Frame>
+        {(isLongEnd ? longWon : (totalTargets > 0 && album.length >= totalTargets)) && <Confetti reduced={prefersReduced} />}
+        <DeskBoard>
+          {/* The tally reads as ONE compact banner across the top rather than six
+              centred lines. Those lines were what pushed the roll and Uncle below the
+              fold — the two things the screen exists to show — so the score is stated
+              once, in a row, and the rest of the height goes to the pictures. */}
+          <div style={{ display: "flex", alignItems: "baseline", justifyContent: "center", gap: "clamp(10px, 2vw, 22px)",
+            flexWrap: "wrap", textAlign: "center", marginBottom: 4 }}>
+            <Stamp>Roll Developed</Stamp>
+            <h2 style={{ fontFamily: "ui-sans-serif, system-ui", fontWeight: 900, letterSpacing: "0.06em", fontSize: "clamp(19px, 2.3vw, 26px)", color: INK, margin: 0 }}>
+              {isLongEnd ? `${album.length} place${album.length === 1 ? "" : "s"} before the days ran out` : `${album.length} / ${totalTargets} shots filed`}
+            </h2>
+            <p style={{ fontFamily: "ui-monospace, monospace", fontSize: "clamp(15px, 1.7vw, 20px)", color: CORAL, fontWeight: 700, margin: 0 }}>{score} pts · ⏱ {fmtTime(elapsedMs)}</p>
+            <p style={{ color: INK, fontWeight: 700, margin: 0, fontSize: 15 }}>{r.title}</p>
+          </div>
+          <p style={{ fontFamily: "ui-monospace, monospace", fontSize: 11.5, color: INK, opacity: 0.6, margin: "0 0 2px", letterSpacing: "0.06em", textAlign: "center" }}>
+            {isDailyEnd ? `Daily Expedition · Day ${dailyDay}` : isTourEnd ? "Grand Tour" : isLongEnd ? "The Long Trip" : "Assignments"} · {mode.label}
+            {isLongEnd ? "" : ` · ${Math.round(pct * 100)}% of a perfect run`}
+            {quizBonus > 0 && <span style={{ color: GREEN, fontWeight: 700 }}>{"  ·  "}+{tidyScore(quizBonus)} review extra credit ✔</span>}
+          </p>
+
+          {/* Jonah's word on the trip — proud on a clean sweep, encouraging when
+              the days ran out. He is the emotional bookend to every expedition, so
+              he gets the room to be one: the whole scene, in the face that matches
+              what he's saying. Under it, the reason to go again. */}
+          {/* The developed roll on the LEFT, Uncle's word on the RIGHT — the pictures
+              you brought back beside the man you brought them back to. */}
+          <div style={{ display: "flex", alignItems: "flex-start", gap: 22, margin: "8px auto 0", maxWidth: 1180, flexWrap: "wrap", justifyContent: "center" }}>
+            {album.length > 0 && (
+              <div style={{ flex: "1.5 1 440px", minWidth: 300 }}>
+                <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.18em", color: CORAL, marginBottom: 8, textAlign: "left" }}>📸 YOUR ROLL, DEVELOPED</div>
+                <div style={{ display: "flex", gap: Math.max(8, Math.round(14 * polaroidWidth(album.length) / 172)), flexWrap: "wrap", justifyContent: "flex-start" }}>
+                  {album.map((p, i) => (<Polaroid key={`${p.id}-${i}`} p={p} w={polaroidWidth(album.length)} />))}
+                </div>
+              </div>
+            )}
+            {/* The right-hand column carries EVERYTHING that isn't the roll: Jonah,
+                his word on the trip, the record chips, any badge earned, and the way
+                onward. All of that used to stack down the page under both columns,
+                which is what put the buttons below the fold on a widescreen — the
+                left column is tall (it's photographs), so the page was as tall as the
+                photos PLUS all of this. Beside them, it costs no height at all. */}
+            <div style={{ flex: "1 1 330px", minWidth: 300, maxWidth: 460, display: "flex", flexDirection: "column", gap: 12 }}>
+              {/* His picture is the tallest single thing on this screen, and it is the
+                  one thing here that can give up height without losing anything: it is
+                  a portrait, so a smaller one is still the whole portrait. Capping it
+                  against the VIEWPORT rather than the column is what keeps the board
+                  from scrolling on a 13-inch laptop — 4:3, so 42vh of width is 31vh of
+                  height, and on a tall window the column's own width wins instead. */}
+              {endLine && <NigelScene mood={endWon() ? "endWin" : "endLose"}
+                style={{ width: "100%", maxWidth: "min(100%, 38vh)", alignSelf: "center" }} />}
+              {endLine && (
+                <div style={{ ...CARD_SURFACE, border: `2px solid ${GOLD}`, borderRadius: 14, padding: "16px 18px", textAlign: "left" }}>
+                  <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.16em", color: CORAL, marginBottom: 5 }}>{GRANDPA.name.toUpperCase()}</div>
+                  <p style={{ margin: 0, color: INK, fontSize: 17, lineHeight: 1.5 }}>{endLine}</p>
+                  {/* ---- Why you'd go again. This is the whole point of the screen. ---- */}
+                  {nextUp && (
+                    <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 14, paddingTop: 12, borderTop: `1px dashed ${PAPER_LINE}` }}>
+                      <ArtBadge art={nextUp.art} emoji={nextUp.emoji} size={40} dim />
+                      <div>
+                        <div style={{ fontWeight: 800, color: INK, fontSize: 15 }}>
+                          {nextUp.name} — {nextUp.have} of {nextUp.need}
+                        </div>
+                        <div style={{ color: CORAL, fontWeight: 700, fontSize: 14 }}>
+                          {nextUp.left === 1 ? "Just one more." : `Only ${nextUp.left} to go.`}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  {grandpaWant && (
+                    <p style={{ margin: "12px 0 0", color: INK, fontSize: 15, lineHeight: 1.5, fontStyle: "italic", opacity: 0.9 }}>
+                      {grandpaWant}
+                    </p>
+                  )}
+                  {rankNear && (
+                    <div style={{ display: "flex", alignItems: "center", gap: 9, marginTop: 12 }}>
+                      <ArtBadge art={RANK_ART[rankNear.tier + 1]} emoji="★" size={30} dim />
+                      <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 12.5, color: INK, opacity: 0.85 }}>
+                        {rankNear.nextNeed - rankNear.have} more place{rankNear.nextNeed - rankNear.have === 1 ? "" : "s"} to <b>{rankNear.next}</b>
+                      </span>
+                    </div>
+                  )}
+                </div>
+              )}
+
+          {/* ---- What the run EARNED. These four used to render right here, stacked
+              under Jonah in the right-hand column, and together they are taller than
+              he is: on a Long Trip that set a record and unlocked a badge the column
+              ran ~1040px in a 900px window and the whole screen scrolled — so the
+              buttons, and often the badge itself, sat below the fold on the one screen
+              that is supposed to be a celebration (Joshua's report).
+              They are a popup now, opened once the confetti has had its moment. Same
+              call the meet screen's unlock news made and for the same reason: this is
+              the part about the child rather than the part about the trip, and it was
+              the part being squeezed. The end screen keeps the roll, Jonah's word and
+              the way onward — which always fit — and a button to look again. */}
+          {/* The four blocks that used to sit here are in a popup now — see
+              endExtras above. This is the way back to them. */}
+            </div>
+          </div>
+          {/* The way onward sits UNDER both columns, full width, not inside the
+              right-hand one. In a 460px column these four buttons wrap to three rows
+              and cost 157px of height; across the board they are one row of 54. That
+              was most of what still made the board scroll once the extras moved out,
+              and a row of primary actions spanning the page is where a reader looks
+              for them anyway. */}
           <div style={{ display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap", marginTop: 4 }}>
             <button onClick={() => { startMusicMaybe(); enterMeetScreen(); }} style={{ ...primaryBtn, marginTop: 0, padding: "12px 22px", fontSize: 15 }}>Continue your adventure ✈</button>
+            {hasEndExtras && (
+              <button onClick={() => setExtrasOpen(true)}
+                style={{ ...primaryBtn, marginTop: 0, padding: "12px 22px", fontSize: 15,
+                  background: "transparent", color: INK, border: `2px dashed ${GOLD}`, boxShadow: "none" }}>
+                🏅 What you earned
+              </button>
+            )}
             <button onClick={() => { startMusicMaybe(); setScreen("start"); }} style={{ ...primaryBtn, marginTop: 0, padding: "12px 22px", fontSize: 15, background: "transparent", color: INK, border: `2px solid ${INK}`, boxShadow: "none" }}>
               🏠 Main screen
             </button>
@@ -5436,9 +5559,10 @@ export default function ShutterbugWorld() {
               </button>
             )}
           </div>
-            </div>
-          </div>
         </DeskBoard>
+        {hasEndExtras && extrasOpen && (
+          <EarnedModal onClose={() => setExtrasOpen(false)} reduced={prefersReduced}>{endExtras}</EarnedModal>
+        )}
         {passportOpen && <PassportModal profile={profileName ? getProfile(profileName) : null} onClose={() => setPassportOpen(false)} />}
       </Frame>
     );
@@ -8679,7 +8803,7 @@ function LocalTransport({ mode }) {
   if (!mode) return null;
   const art = TRANSPORT_ART[mode.id];
   return (
-    <div style={{ marginTop: 10, display: "flex", alignItems: "center", gap: 12,
+    <div style={{ display: "flex", alignItems: "center", gap: 12,
       background: "#FFF8E6", border: `1px solid ${GOLD}`, borderLeft: `4px solid ${GOLD}`,
       borderRadius: 8, padding: "10px 12px", textAlign: "left" }}>
       {art
@@ -8695,7 +8819,10 @@ function LocalTransport({ mode }) {
   );
 }
 
-function CountryCard({ country }) {
+// `facts: false` leaves off the capital and the money — the arrival popup stands
+// those beside the people instead of under them (see CountryFacts and
+// CountryPopup). Everywhere else the card is a single narrow column and keeps them.
+function CountryCard({ country, facts = true }) {
   if (!country || country === "Antarctica") return null;
   const info = COUNTRY_INFO[country], g = COUNTRY_GREETING[country];
   const people = peopleCards(country);
@@ -8739,11 +8866,33 @@ function CountryCard({ country }) {
           prose stapled to the bottom of an arrival a child is trying to get past, and
           the way you read a paragraph like that is: you don't. See COUNTRY_INFO.blurb
           in src/data/countries.js for the text itself. */}
-      {info && (
+      {facts && info && (
         <div style={{ marginTop: 8, fontSize: 12, color: INK, lineHeight: 1.5 }}>
           <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.06em", color: GREEN, fontWeight: 700 }}>
             <span aria-hidden="true">★ </span>Capital: {info.capital}
           </div>
+        </div>
+      )}
+      {facts && <CurrencyLine country={country} />}
+    </div>
+  );
+}
+
+// The capital and the money, lifted out of CountryCard so the arrival popup can put
+// them in a white box BESIDE the people rather than below them. On arrival this card
+// carries five things — people, greeting, capital, money, and the time and season —
+// and stacked in one 420px column they ran past the bottom of the popup, so the
+// price of the money line was a scroll a child had to discover (Joshua's report).
+// Side by side they all land in one screenful.
+function CountryFacts({ country }) {
+  const info = COUNTRY_INFO[country];
+  const hasMoney = !!COUNTRY_CURRENCY[country];
+  if (!info && !hasMoney) return null;
+  return (
+    <div style={{ background: "#fff", border: `1px solid ${PAPER_LINE}`, borderRadius: 8, padding: "9px 11px", textAlign: "left" }}>
+      {info && (
+        <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.06em", color: GREEN, fontWeight: 700, lineHeight: 1.5 }}>
+          <span aria-hidden="true">★ </span>Capital: {info.capital}
         </div>
       )}
       <CurrencyLine country={country} />
@@ -8844,11 +8993,14 @@ const COUNTRY_CARD_DWELL_MS = 3000;
 // The time-and-season pair on the arrival card. Its own component so the `now`
 // snapshot is taken once, when the card appears: recomputing on every render would
 // let the minute roll over while a child is still reading the sentence about it.
-function ArrivalWorld({ country, from }) {
+// `flush` drops the top margin for callers that space their children with a flex
+// gap — the arrival popup's fact column does, and a margin on top of a gap reads as
+// one box having drifted away from the rest.
+function ArrivalWorld({ country, from, flush = false }) {
   const [lines] = useState(() => countryArrivalLines(country, LOCATIONS, from, new Date(), displayCountry(country)));
   if (!lines.length) return null;
   return (
-    <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 7 }}>
+    <div style={{ marginTop: flush ? 0 : 10, display: "flex", flexDirection: "column", gap: 7 }}>
       {lines.map((l) => (
         <div key={l.kind} style={{ display: "flex", gap: 8, alignItems: "flex-start",
           background: "#fff", border: `1px solid ${PAPER_LINE}`, borderRadius: 8, padding: "8px 10px" }}>
@@ -8856,6 +9008,39 @@ function ArrivalWorld({ country, from }) {
           <span style={{ fontSize: 13, color: INK, lineHeight: 1.5 }}>{l.text}</span>
         </div>
       ))}
+    </div>
+  );
+}
+
+// "What you earned" — the end screen's press debrief, record chips and achievements,
+// in a window of their own. They are the part of the results that is about the child
+// rather than about the trip, and stacked under Jonah they were the part that got
+// pushed off the bottom of the screen. A popup gives them the whole middle of it.
+//
+// Scrolls internally if a run somehow earns more than a screenful; the END SCREEN
+// behind it never does, which is the point.
+function EarnedModal({ onClose, reduced, children }) {
+  const ref = useRef(null);
+  useModalFocus(ref, onClose);
+  return (
+    <div ref={ref} role="dialog" aria-modal="true" aria-label="What you earned on this trip"
+      onClick={onClose}
+      style={{ position: "fixed", inset: 0, background: "rgba(16,38,46,0.62)", display: "flex",
+        alignItems: "center", justifyContent: "center", padding: 16, zIndex: 64 }}>
+      <div className={reduced ? "" : "sbw-pop"} onClick={(e) => e.stopPropagation()}
+        style={{ background: PAPER, borderRadius: 16, border: `3px solid ${GOLD}`,
+          boxShadow: "0 14px 44px rgba(0,0,0,0.35)", maxWidth: 560, width: "100%",
+          padding: "18px 20px 20px", maxHeight: "88vh", overflowY: "auto", textAlign: "center" }}>
+        <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.18em", color: CORAL, marginBottom: 12 }}>
+          ★ WHAT YOU EARNED
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 12, textAlign: "left" }}>
+          {children}
+        </div>
+        <button onClick={onClose} style={{ ...primaryBtn, marginTop: 16, width: "100%", padding: "11px 0" }}>
+          Thanks, Uncle Jonah!
+        </button>
+      </div>
     </div>
   );
 }
@@ -8881,14 +9066,28 @@ function CountryPopup({ country, ride, onClose, reduced, from = null }) {
       onClick={canGo ? onClose : undefined}
       style={{ position: "fixed", inset: 0, background: "rgba(16,38,46,0.55)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16, zIndex: 60 }}>
       <div className={reduced ? "" : "sbw-pop"} onClick={(e) => e.stopPropagation()}
-        style={{ background: PAPER, borderRadius: 16, border: `3px solid ${CORAL}`, boxShadow: "0 14px 44px rgba(0,0,0,0.35)", maxWidth: 420, width: "100%", padding: "16px 18px", maxHeight: "88vh", overflowY: "auto" }}>
+        style={{ background: PAPER, borderRadius: 16, border: `3px solid ${CORAL}`, boxShadow: "0 14px 44px rgba(0,0,0,0.35)", maxWidth: 880, width: "100%", padding: "16px 18px", maxHeight: "92vh", overflowY: "auto" }}>
         <div style={{ textAlign: "center", fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.18em", color: CORAL }}>✈ YOU'VE ARRIVED IN…</div>
-        <CountryCard country={country} />
-        {/* Two lines of live geography: what time it is here, and what season —
-            each said against where the player just came from. Computed on mount
-            (not on every render) so the clock doesn't tick under a child reading it. */}
-        <ArrivalWorld country={country} from={from} />
-        {ride && <LocalTransport mode={ride} />}
+        {/* Two columns: the country and its people on the left, everything the card
+            says ABOUT it in white boxes on the right. Stacked in one column — which
+            is how this started — the money and the time fell below the fold and the
+            popup scrolled, so the half of the card that teaches what a place costs
+            and what hour it is there was reached only by a child who thought to drag
+            it (Joshua's report). The wrap keeps a narrow window working: below about
+            620px the two columns become the old single stack. */}
+        <div style={{ display: "flex", gap: 14, alignItems: "flex-start", flexWrap: "wrap" }}>
+          <div style={{ flex: "1 1 320px", minWidth: 290 }}>
+            <CountryCard country={country} facts={false} />
+          </div>
+          <div style={{ flex: "1 1 280px", minWidth: 260, display: "flex", flexDirection: "column", gap: 7, marginTop: 10 }}>
+            <CountryFacts country={country} />
+            {/* Two lines of live geography: what time it is here, and what season —
+                each said against where the player just came from. Computed on mount
+                (not on every render) so the clock doesn't tick under a child reading it. */}
+            <ArrivalWorld country={country} from={from} flush />
+            {ride && <LocalTransport mode={ride} />}
+          </div>
+        </div>
         {/* Greyed rather than absent, and it keeps its size and its words the whole
             time: a button that appears late moves the layout under a thumb already on
             its way down, and a child who can see where it will be waits for it. */}
