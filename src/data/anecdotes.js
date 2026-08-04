@@ -23,6 +23,12 @@
 // inspired Disney's castle; Uluru continues underground; Niagara headward
 // erosion retreat; Victoria Falls "Mosi-oa-Tunya"; Brandenburg Quadriga taken
 // by Napoleon 1806, returned 1814; Hagia Sophia largest cathedral ~1,000 yrs.
+//
+// Added 2026-08-03: Buckingham Fountain — sculptor Marcel Loyau studied the sea
+// horse collection at a Paris zoological institution before casting the bronzes,
+// and the fountain's sculptural elements won him the Prix National at the 1927
+// Paris Salon. Source: Chicago Park District's own page for the Clarence F.
+// Buckingham Memorial Fountain (the fountain's operator).
 // ===========================================================================
 
 export const ANECDOTES = {
@@ -148,7 +154,7 @@ export const ANECDOTES = {
   brycecanyon: "The park's name comes from pioneer Ebenezer Bryce, who grazed cattle nearby and is remembered for grumbling that it was 'a hell of a place to lose a cow.'",
   craterlake: "The water is so vividly blue and clear because no streams feed it, my dear, it is filled almost entirely by rain and melting snow that carry little sediment.",
   gatewayarch: "Architect Eero Saarinen shaped it as a weighted catenary, the curve a hanging chain makes, and inside each hollow leg a little tram of pod-like cars carries you to the top.",
-  cloudgate: "It weighs around 110 tons, my dear, and because its mirror surface catches the sky overhead, the artist named it 'Cloud Gate.'",
+  buckinghamfountain: "Before he cast those bronze sea horses, my dear, the sculptor went and studied the live ones at a zoological institution in Paris — and the work won him a national prize at the Paris Salon that same year.",
   spaceneedle: "It was engineered to stand up to strong earthquakes and high winds, and in 2018 it gained 'the Loupe,' the world's first revolving glass floor.",
   hollywoodsign: "It went up in 1923 as a billboard for a housing development and originally read 'HOLLYWOODLAND'; the final four letters were removed in 1949.",
   whitesands: "Unlike ordinary sand, gypsum doesn't hold the sun's heat well, my dear, so even on a scorching day the glittering dunes stay cool enough to walk on with bare feet.",

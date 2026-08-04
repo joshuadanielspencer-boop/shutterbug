@@ -148,7 +148,7 @@ export const COUNTRY_TZ = {
 export const LOCATION_TZ = {
   // ---- United States ----
   // Eastern is the default, so only the other five zones appear.
-  cloudgate: "America/Chicago",        // Chicago
+  buckinghamfountain: "America/Chicago", // Chicago
   gatewayarch: "America/Chicago",      // St. Louis
   jacksonsquare: "America/Chicago",    // New Orleans
   mississippi: "America/Chicago",      // Lake Itasca, Minnesota

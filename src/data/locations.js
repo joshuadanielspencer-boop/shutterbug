@@ -4059,16 +4059,31 @@ export const LOCATIONS = [
       credit: "David K. Staub", license: "CC BY-SA 2.5", licenseUrl: "https://creativecommons.org/licenses/by-sa/2.5/",
       source: "https://commons.wikimedia.org/wiki/File:Gateway_Arch.jpg" },
     greeting: {"text":"Hello","language":"English","pronunciation":null} },
-  { id: "cloudgate", city: "Chicago", country: "United States", flag: "🇺🇸", continent: "North America",
+  // Chicago's subject was Cloud Gate ("the Bean") until 2026-08-03, and it was
+  // changed for a licensing reason that cannot be worked around. The United States
+  // grants freedom of panorama to BUILDINGS only, not to sculptures, so every
+  // photograph of Cloud Gate is a derivative of Anish Kapoor's copyrighted work:
+  // Commons tags the category {{NoFoP-US}} and has deleted its way down to five
+  // files, none of which shows the finished sculpture. The photo this game shipped
+  // was "Chicago from under the Cloud Gate" — mostly skyline, with the Bean's edge
+  // intruding at one side — which is a poor picture of a subject the clue describes
+  // as a giant silver bean, and it was the least-bad option rather than an oversight.
+  // Do not "fix" this by finding a better Bean photo. There isn't one, and a clearer
+  // one would mean the licence is wrong.
+  //
+  // Buckingham Fountain has no such problem (a 1927 fountain, photographed freely)
+  // and is the better teaching subject anyway: its four pairs of sea horses are a
+  // geography lesson about the Great Lakes, which the Bean never was.
+  { id: "buckinghamfountain", city: "Chicago", country: "United States", flag: "🇺🇸", continent: "North America",
     x: 92.38, y: 48.12,
-    subject: "Cloud Gate sculpture", icon: "", category: "cityscape", tags: ["sculpture","mirror","skyline"],
-    easy: "In North America, in the United States, a giant mirror-polished silver bean reflects the Chicago skyline in a downtown park. Photograph the Cloud Gate sculpture.",
-    medium: "Word from the United States: locals fondly call this seamless silver blob 'the Bean'; its mirror skin swallows the whole downtown skyline. Photograph the Cloud Gate sculpture.",
-    hard: "A smooth silver drop, built from 168 hidden steel plates, bends the reflected towers and clouds across its curved skin. Bring me the mirror-bean sculpture.",
-    fact: "Cloud Gate, nicknamed 'the Bean,' is a public sculpture by British artist Anish Kapoor in Chicago's Millennium Park, made of 168 stainless-steel plates welded so no seams show.",
-    photo: { src: "https://commons.wikimedia.org/wiki/Special:FilePath/Chicago_from_under_the_Cloud_Gate_(9694666470).jpg?width=800",
-      credit: "Roman Boed", license: "CC BY 2.0", licenseUrl: "https://creativecommons.org/licenses/by/2.0/",
-      source: "https://commons.wikimedia.org/wiki/File:Chicago_from_under_the_Cloud_Gate_(9694666470).jpg" },
+    subject: "Buckingham Fountain", icon: "", category: "monument", tags: ["fountain","park","skyline"],
+    easy: "In North America, in the United States, a huge pink-marble fountain in a lakefront park sends a jet of water 150 feet (46 m) straight up, with the Chicago skyline standing behind it. Photograph Buckingham Fountain.",
+    medium: "Word from the United States: four pairs of bronze sea horses guard a wedding-cake fountain that stands for Lake Michigan itself, and every hour its middle jet climbs 150 feet (46 m). Photograph Buckingham Fountain.",
+    hard: "Modelled on a basin at Versailles but built twice the size, this pink-marble giant throws water 150 feet (46 m) into the air on the hour, and its bronze sea horses stand for the four states that touch one great lake. Bring me the fountain.",
+    fact: "Buckingham Fountain in Chicago's Grant Park stands for Lake Michigan, and its four pairs of bronze sea horses stand for the four states that touch the lake — Illinois, Indiana, Michigan and Wisconsin. On the hour, its center jet climbs about 150 feet (46 m).",
+    photo: { src: "https://commons.wikimedia.org/wiki/Special:FilePath/Buckingham_Fountain_%26_Chicago_skyline%2C_Aug_10.jpg?width=800",
+      credit: "An Errant Knight", license: "CC BY-SA 4.0", licenseUrl: "https://creativecommons.org/licenses/by-sa/4.0/",
+      source: "https://commons.wikimedia.org/wiki/File:Buckingham_Fountain_%26_Chicago_skyline,_Aug_10.jpg" },
     greeting: {"text":"Hello","language":"English","pronunciation":null} },
   { id: "spaceneedle", city: "Seattle", country: "United States", flag: "🇺🇸", continent: "North America",
     x: 57.65, y: 42.38,
