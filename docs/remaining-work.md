@@ -2,9 +2,9 @@
 
 A handoff document. Everything here is written so a **new session with no memory of
 the previous ones** can pick up a task and finish it. Read `CLAUDE.md` first (the
-three project rules are hard requirements), then the task you're doing.
+five project rules are hard requirements), then the task you're doing.
 
-Last updated **2026-07-29**.
+Last updated **2026-09-23**.
 
 > ### ⚠ 2026-07-30: why the app "just restarted in the middle of a game"
 >
@@ -443,6 +443,47 @@ backend (§7) sits off to the side whenever he wants it.
 
 ### Recently shipped
 
+**2026-08-03 — Chicago's subject changed, because the Bean cannot be photographed.**
+Cloud Gate was replaced by **Buckingham Fountain** (`a3a2f6e`), with Joshua's
+go-ahead. The US grants freedom of panorama to *buildings* only, not sculptures, so
+every photograph of the Bean is a derivative of Kapoor's copyrighted work: Commons
+tags the category `{{NoFoP-US}}` and has deleted its way down to five files, none of
+which shows the finished sculpture. The photo we shipped was the least-bad of those
+five, not an oversight. **Do not "fix" the Chicago photo** — a clearer picture of the
+Bean would mean the licence is wrong, and a comment on the entry in
+`src/data/locations.js` says so. The fountain is the better teaching subject anyway
+(its four pairs of sea horses stand for the four states touching Lake Michigan), and
+the id moved `cloudgate` → `buckinghamfountain` with the category `cityscape` →
+`monument`; an existing profile loses that one stamp and nothing else. Verified
+against the Chicago Park District's own history page.
+
+**2026-08-03 — two sounds that fired before the thing they were about, and three
+screens that scrolled** (`4656a79`; six items off Joshua's list, all in
+`shutterbug-world.jsx`).
+- **The world map spoke a continent nobody pointed at.** `onMouseEnter` doesn't need
+  the pointer to *move* — a map mounting under a resting cursor counts as an enter —
+  so arrival spoke whichever continent the mouse happened to sit over, which reads as
+  the answer to the clue. The first second of a new map no longer counts as a hover.
+- **"Hold for the light" was answered to a shutter that had already fired**, and the
+  reward chime landed on top of the question and then played again. Taking the picture
+  is one scheduled gesture now, so the branch that hasn't taken it yet can call it back.
+- **Uncle Jonah's bag** sat 174px below him on the meet screen, because the tuner slot
+  reserved its full height in all six modes and three modes have no tuner. Gap 174px → 37px.
+- **The country arrival card is two columns** — country and people left, capital,
+  money, prices, local time, season and transport in white boxes right. It stacks back
+  to one column under ~620px.
+- **The end screen's earnings moved to a popup**, opened 1.6s in so the confetti and
+  Jonah's face get their moment, with a "What you earned" button to reopen it. Same
+  call the meet screen's unlock news made, for the same reason. With the buttons
+  unwrapped and his portrait capped against the viewport rather than the column, board
+  overflow went 261px → 0 at **1440×900 and 1280×800** (the 13-inch case).
+
+> **Worth knowing, from that session:** the passport is written at the **END** of a
+> run — `recordGame` writes every stamp in one go from the results screen, and Explore
+> writes its lot on "Done exploring". Nothing is written mid-run, so a trip abandoned
+> halfway leaves no trace. Changing that is not small: the stamp counts and the
+> spaced-repetition schedule are both derived from that single write.
+
 **2026-07-17/18 — the recast + a long polish run.** Grandpa Nigel became **Uncle
 Jonah** (new art, new signature, backstory reworked from "never went" to "went young,
 passing it on"); his expression set grew to 17 faces mapped per mood, including a
@@ -675,10 +716,11 @@ threads are all playtest/feel, not build:
   `offerNextRoute`.
 
 **Notes for slices 3 & 4 (feedback welcome):**
-- The debrief adds a card to the results screen's right column. For a short run the
-  left roll is short, so at a 1280×720 window the right column can run a touch past the
-  fold before the `DeskBoard` scrolls. Worth a glance if the no-scroll fit matters —
-  making the debrief more compact, or moving it under the score banner, are both easy.
+- ~~The debrief adds a card to the results screen's right column, which at a 1280×720
+  window could run past the fold.~~ **FIXED 2026-08-03** (`4656a79`) — the debrief now
+  lives in the "What you earned" popup with the record chips, achievements and Jonah's
+  unlock line, so the right column no longer stacks them under him at all. Board
+  overflow is 0 at 1440×900 and 1280×800.
 - The route board withholds the continent name deliberately (teaching), but the easy
   tier's clue text still names the place, exactly as the note does — that's consistent,
   not a leak. If a future tier wanted the board to tease *less*, `assignmentBrief` is
@@ -939,7 +981,9 @@ was it. If there was a stamp awarded or a game mode unlocked, it wasn't clear."*
 He is right, and the code confirms it. **Earning an achievement grants nothing.**
 `achievements()` in `profiles.js` derives 24 badges live from `profile.loc` on every
 call — nothing about them is persisted, nothing is awarded, and the only consequence
-is a chip on the results screen plus a line from Jonah. Separately, `UNLOCK_REQ` has
+is a chip plus a line from Jonah — which, since 2026-08-03, live in the end screen's
+**"What you earned"** popup rather than in a column beside him. That was a fit fix,
+not a payout: the beat is still a chip. Separately, `UNLOCK_REQ` has
 five real gates (Adventurer, Grand Tour, Expert, Expeditions) but they unlock quietly
 and are announced only in passing.
 
