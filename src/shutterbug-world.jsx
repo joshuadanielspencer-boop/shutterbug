@@ -4579,6 +4579,36 @@ export default function ShutterbugWorld() {
                 style={{ width: "78%", height: "auto", display: "block", filter: "drop-shadow(0 3px 7px rgba(0,0,0,0.4))" }} />
             </button>
 
+            {/* "Begin your adventure" is painted at the FOOT of the splash but sits
+                here, second in the DOM, because on this screen the two orders are
+                independent — everything on the splash is absolutely positioned — and
+                the keyboard only gets the DOM one. It used to come fifth, so a
+                first-time player pressing Tab met three decorative greeting bubbles
+                before the one button the screen exists to offer (keyboard-audit.md,
+                finding 5). The bubbles sit between 33% and 55% down and this sits at
+                96%, so moving it above them in the paint order costs nothing.
+                Enter also presses it from anywhere via the global [data-primary]
+                handler — but that is deliberately unadvertised, so it cannot be the
+                reason the visible route is long. */}
+            <div style={{ position: "absolute", left: 0, right: 0, bottom: "4%", display: "flex", flexDirection: "column", alignItems: "center", gap: 8, padding: "0 12px" }}>
+              {(() => {
+                const prof = profileName ? getProfile(profileName) : null;
+                const returning = !!prof && (prof.metNigel || (prof.games || 0) > 0);
+                const label = returning ? "Continue your adventure ✈" : "Begin your adventure ✈";
+                return (
+                  <button data-primary onClick={() => { startMusicMaybe(); setPromptTraveler(false); setScreen("travelers"); }}
+                    className="sbw-beckon"
+                    // Sized and lettered to read as a sibling of the sign above it, not
+                    // as generic chrome: the splash's one job is to be clicked.
+                    style={{ ...primaryBtn, marginTop: 0, fontFamily: TYPEWRITER,
+                      fontSize: "clamp(18px, 2.07vw, 28px)", padding: "clamp(13px, 1.35vw, 20px) clamp(27px, 3.6vw, 54px)",
+                      fontWeight: 700, letterSpacing: "0.06em", borderRadius: 12 }}>
+                    {label}
+                  </button>
+                );
+              })()}
+            </div>
+
             {/* Three greetings in the clear sky left of the boy's head, reshuffled on
                 every visit to the splash. Pointing at one speaks it AND names the
                 language and what the word literally means — the sound on its own
@@ -4623,25 +4653,6 @@ export default function ShutterbugWorld() {
                 </div>
               );
             })()}
-
-            <div style={{ position: "absolute", left: 0, right: 0, bottom: "4%", display: "flex", flexDirection: "column", alignItems: "center", gap: 8, padding: "0 12px" }}>
-              {(() => {
-                const prof = profileName ? getProfile(profileName) : null;
-                const returning = !!prof && (prof.metNigel || (prof.games || 0) > 0);
-                const label = returning ? "Continue your adventure ✈" : "Begin your adventure ✈";
-                return (
-                  <button data-primary onClick={() => { startMusicMaybe(); setPromptTraveler(false); setScreen("travelers"); }}
-                    className="sbw-beckon"
-                    // Sized and lettered to read as a sibling of the sign above it, not
-                    // as generic chrome: the splash's one job is to be clicked.
-                    style={{ ...primaryBtn, marginTop: 0, fontFamily: TYPEWRITER,
-                      fontSize: "clamp(18px, 2.07vw, 28px)", padding: "clamp(13px, 1.35vw, 20px) clamp(27px, 3.6vw, 54px)",
-                      fontWeight: 700, letterSpacing: "0.06em", borderRadius: 12 }}>
-                    {label}
-                  </button>
-                );
-              })()}
-            </div>
 
             {/* Build stamp. Faint, in the corner, deliberately easy to ignore — it
                 exists to answer "is this actually the latest version, or is a stale

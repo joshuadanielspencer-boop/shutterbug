@@ -135,3 +135,43 @@ describe("recordLongTrip — banking a finished run", () => {
     expect(profiles.recordLongTrip("Nobody", { places: 4 })).toBeNull();
   });
 });
+
+// ---------------------------------------------------------------------------
+// Who can reach the mode at all.
+//
+// The Long Trip was unreachable for guests for two months, not by decision but
+// because unlocks() answered a hand-written object literal for the no-profile
+// case and nobody added the new key to it. Nothing threw: `u.longtrip` came back
+// undefined, which is falsy, which is "locked" — and the card still displayed the
+// requirement from UNLOCK_REQ, so a guest was shown a gate with a price on it
+// that no amount of play could ever pay.
+// ---------------------------------------------------------------------------
+describe("unlocks — what a guest can reach", () => {
+  let profiles;
+  beforeEach(async () => {
+    installStorage();
+    profiles = await import("../src/profiles.js?t=" + Math.random());
+  });
+
+  it("opens every mode and difficulty for a guest", () => {
+    const u = profiles.unlocks(null);
+    for (const key of profiles.UNLOCK_KEYS) {
+      expect(u[key], `guests should have ${key}`).toBe(true);
+    }
+  });
+
+  it("answers the same set of keys for a guest and for a named traveler", () => {
+    // The real bug was a SHAPE difference between the two branches, so this is
+    // the assertion that would have caught it. A key added to one branch and not
+    // the other fails here rather than silently reading as locked.
+    profiles.createProfile("Shapes");
+    const named = profiles.unlocks(profiles.getProfile("Shapes"));
+    expect(Object.keys(named).sort()).toEqual([...profiles.UNLOCK_KEYS].sort());
+    expect(Object.keys(profiles.unlocks(null)).sort()).toEqual(Object.keys(named).sort());
+  });
+
+  it("still gates The Long Trip for a named traveler who hasn't earned it", () => {
+    profiles.createProfile("Fresh");
+    expect(profiles.unlocks(profiles.getProfile("Fresh")).longtrip).toBe(false);
+  });
+});

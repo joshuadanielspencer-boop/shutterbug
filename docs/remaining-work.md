@@ -256,9 +256,13 @@ Last updated **2026-09-23**.
 >   `shutterbug-world.jsx` is the engineering debt named below, and this did not
 >   have to add to it.
 > - It has **no badge art yet** (it falls back to the 📷 emoji, the same way The
->   Long Trip does). `MODE_ART` in `src/data/art.js` and `MODE_KEYS` in
->   `test/art.test.js` both still list the two dead modes (`quiz`, `daily`) and
->   neither lists `longtrip` or `mystery`. Worth a tidy when the next art batch lands.
+>   Long Trip does). ~~`MODE_ART` and `MODE_KEYS` still list the two dead modes.~~
+>   **TIDIED 2026-09-23:** the dead `quiz`/`daily` keys are gone along with their
+>   two PNGs (210 KB the PWA was installing on every iPad to draw a mode that no
+>   longer exists), `MODE_KEYS` in `test/art.test.js` names the real six, and the
+>   test now checks from both ends — no key may name a mode the game doesn't have,
+>   and the set of modes *missing* art must be exactly `longtrip` + `mystery`. So
+>   when that art lands, wiring the key is what makes the test pass again.
 >
 > Two things learned building it that the next map feature will want:
 > - A country's centre is NOT its path's bounding-box centre. France's box takes in
@@ -341,10 +345,13 @@ Last updated **2026-09-23**.
 >   other playtester may be reporting bugs against days-old code.**
 > - **[`keyboard-audit.md`](keyboard-audit.md)** — the rule-4 keyboard pass, finally
 >   done, and *measured* in the running game rather than assumed. The core loop is
->   keyboard-operable and every control has a focus ring; the two real findings are
->   that the gold ring fails contrast on every light surface (1.7–2.1:1 against a
->   3:1 requirement) and that none of the 13 `aria-modal` dialogs traps or restores
->   focus. Order to fix is at the bottom of that file.
+>   keyboard-operable and every control has a focus ring. **All five findings are
+>   now FIXED** — re-verified 2026-09-23, and that file's status table is the
+>   current word. The two that mattered were the gold focus ring failing contrast
+>   on light surfaces (now a two-tone ink+gold ring) and no dialog trapping or
+>   restoring focus (now `useModalFocus`, on all 15 of them). Do not re-do this
+>   work: the file told anyone reading it cold that none of it was done, for two
+>   months after it was.
 >
 > Also corrected there: this repo now holds **447 locations across 106 countries**,
 > not the 144 `CLAUDE.md` still claims.
@@ -750,9 +757,16 @@ knobs listed at the end of this section.
 threads are all playtest/feel, not build:
 - Balance: `LONG_TRIP_DAYS`, the `renownGain`/`renownRank` numbers, `COVER_DAYS`/
   `COVER_MIN_CAPTURES` (how often the cover appears), and the hold-for-the-light odds.
-- Guests can't reach the Long Trip at all — `unlocks(null)` (profiles.js) predates the
-  mode and omits its key, so `longtrip` is undefined→locked for guests. A named
-  traveler unlocks it at 20 mastered places. Decide whether guests should get it.
+- ~~Guests can't reach the Long Trip at all.~~ **FIXED 2026-09-23 — and it was an
+  omission, not a policy.** `unlocks(null)` was a hand-written object literal that
+  predated the mode, so `longtrip` came back `undefined` → locked. The tell that it
+  was accidental: that branch grants `true` to *every* other gated thing — Grand
+  Tour, Expeditions, Adventurer, Expert — because a guest's play is recorded
+  nowhere, so a gate would stay shut forever while the card told the child exactly
+  what to do to open it. A guest was looking at "🔒 The Long Trip — Photograph 20
+  places", a price the game could never accept. The guest branch is now derived
+  from `UNLOCK_KEYS`, and `test/longtrip.test.js` pins that both branches answer
+  the same set of keys, which is the assertion that would have caught it.
 - The cover is drawn from the pool's next SPECIFIC assignment and framed as marquee;
   it isn't hand-curated to the world's most iconic landmarks. If you want the front
   page to always be an Eiffel-Tower-tier place, add a curated id set and prefer it in

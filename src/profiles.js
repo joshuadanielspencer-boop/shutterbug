@@ -586,8 +586,25 @@ export const UNLOCK_REQ = {
   // map well enough that running out of days is a fair fight rather than a mystery.
   longtrip: "Photograph 20 places",
 };
+// Every key unlocks() answers. It exists so the guest branch below is DERIVED
+// rather than hand-listed: the hand-listed version silently omitted `longtrip`
+// when that mode shipped, and the symptom was a guest looking at a locked card
+// that promised "Photograph 20 places" — a bargain the game could never honour,
+// because the guest branch is a constant and never consults progress at all.
+// A mode added to the returned object below and not to this list fails a test.
+export const UNLOCK_KEYS = [
+  "assignments", "journey", "explore", "mystery", "daily", "quiz",
+  "tour", "expeditions", "longtrip",
+  "scout", "easy", "medium", "hard",
+];
+
 export function unlocks(profile) {
-  if (!profile) return { assignments: true, daily: true, journey: true, explore: true, quiz: true, mystery: true, tour: true, scout: true, easy: true, medium: true, hard: true, expeditions: true };
+  // A guest gets everything. Not generosity — there is nowhere to record that a
+  // guest photographed fifteen places, so every gate would stay shut forever
+  // while telling the child exactly what to do to open it. That was already the
+  // rule for Grand Tour, Expeditions, Adventurer and Expert; The Long Trip was
+  // the one that got left out.
+  if (!profile) return Object.fromEntries(UNLOCK_KEYS.map((k) => [k, true]));
   const mastered = distinctMastered(profile);
   const games = profile.games || 0;
   const contTouched = Object.values(continentTotals(passportData(profile).countries)).filter((v) => v.mastered > 0).length;

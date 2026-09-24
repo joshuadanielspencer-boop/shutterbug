@@ -42,7 +42,16 @@ const ART_FOLDERS = ["badges", "modes", "themes", "difficulty", "ranks", "medals
 // it here would drag React and every asset into the test run. If a tier/mode/theme
 // is ever added there, this list is the checklist that says "draw art for it".
 const DIFFICULTY_KEYS = ["scout", "easy", "medium", "hard"];
-const MODE_KEYS = ["assignments", "tour", "explore", "quiz", "journey", "daily"];
+// The six live MODE_CARDS ids. This list had drifted badly — it still named
+// `quiz` and `daily`, removed as modes in July, and named neither of the two
+// modes added since, so the "covers every mode" assertion below was checking
+// MODE_ART against a world that no longer existed and passing.
+const MODE_KEYS = ["assignments", "tour", "explore", "longtrip", "journey", "mystery"];
+// …and of those, the ones the illustrator has not drawn yet. They render the
+// emoji from their own mode card instead, which is this registry's documented
+// fallback. Listed rather than inferred so that when the art lands, wiring the
+// key is what makes the test pass again — the checklist is the point.
+const MODES_WITHOUT_ART = ["longtrip", "mystery"];
 const THEME_KEYS = ["classic", "wildlife", "volcano", "mountain", "waterfall", "ruins", "heritage"];
 const CONTINENTS = ["North America", "South America", "Europe", "Africa", "Asia", "Oceania", "Antarctica"];
 
@@ -69,10 +78,22 @@ describe("art registry", () => {
     expect(all.length).toBe(new Set(all).size);
   });
 
-  it("covers every difficulty tier, mode, and tour theme", () => {
+  it("covers every difficulty tier and tour theme", () => {
     expect(Object.keys(DIFFICULTY_ART).sort()).toEqual([...DIFFICULTY_KEYS].sort());
-    expect(Object.keys(MODE_ART).sort()).toEqual([...MODE_KEYS].sort());
     expect(Object.keys(THEME_ART).sort()).toEqual([...THEME_KEYS].sort());
+  });
+
+  // Modes are the one registry allowed to be incomplete, because two of them are
+  // genuinely undrawn. So it is checked from both ends instead: no key may name a
+  // mode that does not exist (a dead key is art being precached onto a child's
+  // iPad for a screen nobody can reach), and the set that is missing must be
+  // exactly the set we know is missing.
+  it("names only real modes, and is missing only the modes we know are undrawn", () => {
+    for (const key of Object.keys(MODE_ART)) {
+      expect(MODE_KEYS, `MODE_ART.${key} is not a mode the game has`).toContain(key);
+    }
+    const missing = MODE_KEYS.filter((k) => !MODE_ART[k]).sort();
+    expect(missing).toEqual([...MODES_WITHOUT_ART].sort());
   });
 
   it("covers all 14 subject categories, and invents no key that isn't one", () => {

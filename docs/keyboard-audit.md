@@ -1,8 +1,38 @@
 # Keyboard & focus audit — 2026-07-21
 
 Rule 4 requires full keyboard operation with visible focus states. This is the
-first time that has actually been *tested* rather than assumed. Nothing here has
-been fixed yet — this is the findings list, in the order I'd fix it.
+first time that has actually been *tested* rather than assumed.
+
+> ## ✅ ALL FIVE FINDINGS ARE FIXED (re-verified 2026-09-23)
+>
+> **This file used to say "nothing here has been fixed yet", and it said it for
+> two months after the work was done.** Anyone reading it cold would have set out
+> to redo a day's work. Verified against the shipped source and in the running
+> game:
+>
+> | | finding | where it landed |
+> |---|---|---|
+> | 1 | Focus ring fails 3:1 on light surfaces | **Fixed.** Two-tone ring — ink outline + gold `box-shadow` band — at the `:where(...)` floor in `shutterbug-world.jsx`, with the bands swapped on the dark chrome so neither reads as muddy. |
+> | 2 | No modal traps or restores focus | **Fixed.** `useModalFocus` in `src/components/modal.jsx`: remembers the opener, moves focus in, cycles Tab/Shift-Tab, restores on unmount. All **15** dialogs in `shutterbug-world.jsx` call it, plus `avatar.jsx`, `ModalShell` and `OpenBook`. |
+> | 3 | Six modals ignore Escape | **Fixed.** Escape lives in the same hook, with an `{ escape: false }` opt-out for the ones that are gates rather than dismissals (the result card, the riddle, the route board, the gamble). |
+> | 4 | Bag screen has no live region | **Fixed.** `role="status"` on the "2 of 2 packed" line. |
+> | 5 | Splash tab order | **Fixed 2026-09-23.** "How to play" had already moved first, but "Begin your adventure" was still *fifth*, behind the three greeting bubbles. It is second now. Everything on the splash is absolutely positioned, so DOM order and paint order are independent and this cost nothing. The mode picker's "← Back to travelers" being last is left alone, as this file recommended. |
+>
+> Two things worth keeping from finding 2's fix, because both were bugs found
+> while writing it and both are recorded in the hook's own comments: the
+> focusable-element selector must carry `:not([tabindex="-1"])` on **every**
+> branch (without it the passport's untabbable file input counted as the last
+> focusable thing and focus escaped on every lap), and the escape/close callbacks
+> go through refs so a popup that changes its mind mid-life — the arrival card
+> refuses Escape until its dwell timer is up — doesn't tear the effect down and
+> yank the player out of a dialog that is still on screen.
+>
+> **What is NOT covered here:** this was a keyboard and focus audit. Screen-reader
+> narration beyond the live regions named above, and colour-contrast of ordinary
+> text (as opposed to the focus ring), have still never been measured.
+
+The findings list below is kept as written, for the reasoning and the
+measurements. **Read the table above first for what is still true.**
 
 **How it was tested.** The running dev build was driven with real `Tab` / `Enter`
 keystrokes (not synthetic events, which don't move focus), with a capture-phase

@@ -25,14 +25,25 @@ export const DIFFICULTY_ART = {
   hard:   "difficulty/difficulty-expert-emblem.png",
 };
 
-// The six ways to play, keyed by MODE_CARDS id.
+// The ways to play, keyed by MODE_CARDS id.
+//
+// FOUR of the six modes have art. **The Long Trip (`longtrip`) and Mystery Photos
+// (`mystery`) do not** — they land on the mode picker wearing the 🎒 and 📷 emoji
+// their cards carry as fallbacks. That is the documented behaviour of this file
+// (see the header: only add a key once the file exists), not an oversight, and it
+// is what the two of them have looked like since they shipped in July.
+//
+// `quiz` and `daily` used to be here and are gone, along with their two PNGs.
+// Both modes were REMOVED in July — the review quiz moved to the end of every
+// scored run and the Daily Expedition was deleted outright — so neither key could
+// ever be read: `MODE_ART[c.id]` is only ever indexed by a live MODE_CARDS id.
+// They were dead keys pointing at 210 KB of art the PWA was putting on every
+// child's iPad at install time to render a mode that does not exist.
 export const MODE_ART = {
   assignments: "modes/mode-assignments-icon.png",
   tour:        "modes/mode-grand-tour-icon.png",
   explore:     "modes/mode-explore-icon.png",
-  quiz:        "modes/mode-quiz-icon.png",
   journey:     "modes/mode-journeys-icon.png",
-  daily:       "modes/mode-daily-expedition-icon.png",
 };
 
 // The Grand Tour's itinerary crests, keyed by TOUR_THEMES id (classic + the six
