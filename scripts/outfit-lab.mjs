@@ -93,26 +93,65 @@ const ALPHA_FLOOR = 8;
 
 // Hand corrections, keyed by source filename, applied on top of the automatic
 // fit: `{ scale, dx, dy }`, each optional, scale MULTIPLYING what the fit found
-// and dx/dy ADDED to it (in reference-canvas pixels). These come out of the
-// lab page's own nudge sliders, which print the line to paste.
+// and dx/dy ADDED to it (in reference-canvas pixels). The lab page's nudge
+// sliders print the line to paste.
 //
-// Two of the twenty-three needed one, and they failed the same way: the fit put
-// them at about HALF size. Both are garments whose neckline sits far lower
-// relative to the shoulders than anything in the shipped set — a cowl-neck
-// sweater with a scarf, and a hood worn up — so the collar the search is trying
-// to match is not where the search expects a collar to be, and shrinking the
-// whole garment until it nests inside the shoulder band scores better than any
-// honest placement. Worth knowing before the next delivery: a garment drawn
-// with a high collar or a raised hood is the shape this fit cannot do alone.
+// Two of the twenty-three are here, both flagged automatically by the scale
+// check below, and both set by LADDER rather than by eye: the garment rendered
+// at a row of scales and collar heights, composited under the real head plate at
+// the real canvas size, and the row compared. That is the method, and it matters,
+// because the first attempt at these two was a pair of numbers I judged against a
+// 400px preview — they came out visibly off to one side, and Joshua caught it
+// immediately at full size. A scarf hanging down one side is exactly the thing
+// that makes "looks centred" a bad judgement, and half the eventual error was in
+// the diagnostic rather than the art: my first ladder composited the 600px head
+// plates onto the 1183px reference canvas and invented a gap that was never there.
 //
-// Their scores are LEFT as the automatic fit produced them, deliberately. The
-// number is a record of what the fit managed, not of what the plate looks like
-// now — if a corrected plate reported a good score, the next person would trust
-// the fit for a case where it does not work.
+// Before reaching for a hand number, read the paragraph under SCALE_BAND on what
+// was tried automatically and why none of it worked for these two shapes.
 const MANUAL = {
-  "8f47d6ba-b234-4c82-8350-a193797a3514.png": { scale: 1.95, dx: -95, dy: -150 },
-  "c41541d7-42cf-457b-ab1b-6f6bf5d9ccc2.png": { scale: 1.85, dx: -90, dy: -140 },
+  // Chunky cowl-neck sweater with a scarf. Fitted scale 0.4655 → 0.75.
+  "8f47d6ba-b234-4c82-8350-a193797a3514.png": { scale: 1.6112, dx: -146, dy: -56 },
+  // Padded coat, hood worn up. Fitted scale 0.5051 → 0.72.
+  "c41541d7-42cf-457b-ab1b-6f6bf5d9ccc2.png": { scale: 1.4255, dx: -115, dy: -96 },
 };
+
+// DETECTING a fit that has gone wrong, which turns out to be the part worth
+// automating. A garment whose collar is not where the shipped collars are — a
+// high cowl, a raised hood — can score BETTER by shrinking until its whole
+// silhouette nests inside the shoulder band than by sitting on the shoulders
+// honestly. The objective is genuinely maximised there. It is a real optimum and
+// the wrong answer, so a low score does not distinguish it from a legitimately
+// unusual garment: 0.66 and 0.72 are unremarkable numbers.
+//
+// The SCALE is what gives it away. Every plate on the 1024x1536 canvas fitted
+// between 0.86 and 1.05; these two came back at 0.47 and 0.51. Nothing that is
+// really a garment for this body is half the size of every other garment drawn on
+// the same sheet. So: take the median scale of the fits that scored well, grouped
+// by source canvas, and flag anything far outside it. That reads the threshold off
+// the plates that worked rather than off a number anyone chose, and it caught both
+// failures with no false positives.
+//
+// CORRECTING them automatically is what did not work, and the record is here so
+// the next person does not spend the afternoon I did:
+//
+//   - Re-running the search with the scale confined to the peer band pins itself
+//     to the floor of whatever band it is given. For these shapes the objective
+//     really is monotone — every pixel smaller is every pixel less spill — so
+//     constraining the range only moves where it bottoms out.
+//   - Matching the shoulder SPAN instead (same width, same midpoint, same row)
+//     centres them correctly and sizes them plausibly, and still sits them a
+//     neck's width too low. The measurement is consistent enough to calibrate —
+//     the ratio between the two families came back at 0.857 across 21 trusted
+//     fits, spread 0.809-0.908 — but a chunky knit's outer shoulder is not the
+//     same landmark as a jacket's, so matching it oversizes the sweater by about
+//     a fifth and the cowl then dwarfs the head.
+//
+// Both are plausible and both are wrong, which is the argument for a lab rather
+// than a cleverer objective: two plates out of twenty-three need a person to look,
+// and what is worth automating is making sure that person is TOLD which two.
+const TRUSTED_IOU = 0.85;   // a fit good enough to vote on what "normal scale" is
+const SCALE_BAND = 0.25;    // outside ±25% of its peers' median, a fit is not believed
 
 // ---------------------------------------------------------------------------
 // pixels
@@ -335,14 +374,48 @@ console.log(`${all.length} files, ${unique.length} unique (${dupes.length} exact
 await rm(DEST, { recursive: true, force: true });
 await mkdir(DEST, { recursive: true });
 
-const plates = [], skipped = [];
+// ---- pass 1: fit every garment freely -------------------------------------
+const skipped = [];
+const fits = [];
 for (const f of unique) {
   const px = await rgba(SRC + f);
-  const mix = hueMix(px);
-  const kind = classify(mix);
+  const kind = classify(hueMix(px));
   if (kind !== "outfit") { skipped.push({ file: f, kind }); continue; }
   const mask = alphaMask(px);
-  const found = fit(ref, mask);
+  fits.push({ f, px, mask, found: fit(ref, mask), suspect: null });
+}
+
+// ---- pass 2: re-fit anything whose SCALE disagrees with its peers ----------
+// Grouped by source canvas, because a garment painted on a 1536x1024 sheet is a
+// different number from the same garment on 1024x1536 and averaging them would
+// say nothing. See SCALE_PRIOR above for why scale, not score, is the tell.
+const median = (xs) => [...xs].sort((a, b) => a - b)[xs.length >> 1];
+const groups = new Map();
+for (const e of fits) {
+  if (e.found.iou < TRUSTED_IOU) continue;
+  const key = e.px.w + "x" + e.px.h;
+  if (!groups.has(key)) groups.set(key, []);
+  groups.get(key).push(e.found.scale);
+}
+for (const [key, scales] of groups) {
+  console.log(`  scale prior for ${key}: median ${median(scales).toFixed(4)} from ${scales.length} trusted fits`);
+}
+for (const e of fits) {
+  const key = e.px.w + "x" + e.px.h;
+  const peers = groups.get(key);
+  if (!peers || peers.length < 3) continue;          // too few to have an opinion
+  const mid = median(peers);
+  const lo = mid * (1 - SCALE_BAND), hi = mid * (1 + SCALE_BAND);
+  if (e.found.scale >= lo && e.found.scale <= hi) continue;
+  e.suspect = { band: [+lo.toFixed(4), +hi.toFixed(4)], peerMedian: +mid.toFixed(4) };
+  const fixed = MANUAL[e.f] ? "corrected in MANUAL" : "⚠ NOT CORRECTED — open the lab and set it";
+  console.log(`  ⚠ ${e.f.slice(0, 8)} fitted at ${e.found.scale.toFixed(4)}, outside ${lo.toFixed(3)}-${hi.toFixed(3)} for ${key} — ${fixed}`);
+}
+
+// ---- write ----------------------------------------------------------------
+const plates = [];
+for (const e of fits) {
+  const { f, px, found } = e;
   const man = MANUAL[f] || {};
   const t = {
     scale: found.scale * (man.scale ?? 1),
@@ -358,10 +431,14 @@ for (const f of unique) {
     canvas: [px.w, px.h],
     fit: { scale: +t.scale.toFixed(5), dx: Math.round(t.dx), dy: Math.round(t.dy) },
     manual: Object.keys(man).length ? man : null,
+    // A plate whose fitted scale disagreed with its peers records that, so the
+    // lab can say "this one was placed by hand and here is why" rather than the
+    // judgement quietly disappearing into a number.
+    suspect: e.suspect,
     quality: { iou: +found.iou.toFixed(3), cover: +found.cover.toFixed(3), spill: +found.spill.toFixed(3) },
     kb: Math.round(buf.length / 1024),
   });
-  console.log(`  ${out}  scale=${t.scale.toFixed(4)} dx=${Math.round(t.dx)} dy=${Math.round(t.dy)}  IoU=${found.iou.toFixed(3)} cover=${found.cover.toFixed(3)} spill=${found.spill.toFixed(3)}  ${Math.round(buf.length / 1024)}KB`);
+  console.log(`  ${out}  scale=${t.scale.toFixed(4)} dx=${Math.round(t.dx)} dy=${Math.round(t.dy)}  IoU=${found.iou.toFixed(3)} cover=${found.cover.toFixed(3)} spill=${found.spill.toFixed(3)}  ${Math.round(buf.length / 1024)}KB${e.suspect ? "  ⚠ hand-placed" : ""}`);
 }
 
 plates.sort((a, b) => a.quality.iou - b.quality.iou);

@@ -25,21 +25,28 @@
     1536
    ],
    "fit": {
-    "scale": 0.90774,
-    "dx": 305,
-    "dy": 326
+    "scale": 0.75003,
+    "dx": 254,
+    "dy": 420
    },
    "manual": {
-    "scale": 1.95,
-    "dx": -95,
-    "dy": -150
+    "scale": 1.6112,
+    "dx": -146,
+    "dy": -56
+   },
+   "suspect": {
+    "band": [
+     0.7351,
+     1.2252
+    ],
+    "peerMedian": 0.9802
    },
    "quality": {
     "iou": 0.661,
     "cover": 0.664,
     "spill": 0.006
    },
-   "kb": 56
+   "kb": 46
   },
   {
    "id": "outfit_lab_c41541d7",
@@ -50,21 +57,28 @@
     1536
    ],
    "fit": {
-    "scale": 0.93444,
-    "dx": 278,
-    "dy": 336
+    "scale": 0.72002,
+    "dx": 253,
+    "dy": 380
    },
    "manual": {
-    "scale": 1.85,
-    "dx": -90,
-    "dy": -140
+    "scale": 1.4255,
+    "dx": -115,
+    "dy": -96
+   },
+   "suspect": {
+    "band": [
+     0.7351,
+     1.2252
+    ],
+    "peerMedian": 0.9802
    },
    "quality": {
     "iou": 0.722,
     "cover": 0.73,
     "spill": 0.014
    },
-   "kb": 50
+   "kb": 46
   },
   {
    "id": "outfit_lab_152dd1bd",
@@ -80,6 +94,7 @@
     "dy": 287
    },
    "manual": null,
+   "suspect": null,
    "quality": {
     "iou": 0.864,
     "cover": 0.969,
@@ -101,6 +116,7 @@
     "dy": 488
    },
    "manual": null,
+   "suspect": null,
    "quality": {
     "iou": 0.872,
     "cover": 0.972,
@@ -122,6 +138,7 @@
     "dy": 312
    },
    "manual": null,
+   "suspect": null,
    "quality": {
     "iou": 0.875,
     "cover": 0.966,
@@ -143,6 +160,7 @@
     "dy": 381
    },
    "manual": null,
+   "suspect": null,
    "quality": {
     "iou": 0.876,
     "cover": 0.942,
@@ -164,6 +182,7 @@
     "dy": 289
    },
    "manual": null,
+   "suspect": null,
    "quality": {
     "iou": 0.876,
     "cover": 0.933,
@@ -185,6 +204,7 @@
     "dy": 330
    },
    "manual": null,
+   "suspect": null,
    "quality": {
     "iou": 0.884,
     "cover": 0.954,
@@ -206,6 +226,7 @@
     "dy": 177
    },
    "manual": null,
+   "suspect": null,
    "quality": {
     "iou": 0.894,
     "cover": 0.942,
@@ -227,6 +248,7 @@
     "dy": 481
    },
    "manual": null,
+   "suspect": null,
    "quality": {
     "iou": 0.902,
     "cover": 0.983,
@@ -248,6 +270,7 @@
     "dy": 291
    },
    "manual": null,
+   "suspect": null,
    "quality": {
     "iou": 0.911,
     "cover": 0.934,
@@ -269,6 +292,7 @@
     "dy": 291
    },
    "manual": null,
+   "suspect": null,
    "quality": {
     "iou": 0.913,
     "cover": 0.966,
@@ -290,6 +314,7 @@
     "dy": 376
    },
    "manual": null,
+   "suspect": null,
    "quality": {
     "iou": 0.917,
     "cover": 0.973,
@@ -311,6 +336,7 @@
     "dy": 558
    },
    "manual": null,
+   "suspect": null,
    "quality": {
     "iou": 0.922,
     "cover": 0.976,
@@ -332,6 +358,7 @@
     "dy": 261
    },
    "manual": null,
+   "suspect": null,
    "quality": {
     "iou": 0.925,
     "cover": 0.983,
@@ -353,6 +380,7 @@
     "dy": 178
    },
    "manual": null,
+   "suspect": null,
    "quality": {
     "iou": 0.926,
     "cover": 0.952,
@@ -374,6 +402,7 @@
     "dy": 301
    },
    "manual": null,
+   "suspect": null,
    "quality": {
     "iou": 0.93,
     "cover": 0.951,
@@ -395,6 +424,7 @@
     "dy": 516
    },
    "manual": null,
+   "suspect": null,
    "quality": {
     "iou": 0.954,
     "cover": 0.986,
@@ -416,6 +446,7 @@
     "dy": 318
    },
    "manual": null,
+   "suspect": null,
    "quality": {
     "iou": 0.958,
     "cover": 0.984,
@@ -437,6 +468,7 @@
     "dy": 248
    },
    "manual": null,
+   "suspect": null,
    "quality": {
     "iou": 0.962,
     "cover": 0.991,
@@ -458,6 +490,7 @@
     "dy": 549
    },
    "manual": null,
+   "suspect": null,
    "quality": {
     "iou": 0.963,
     "cover": 0.981,
@@ -479,6 +512,7 @@
     "dy": 260
    },
    "manual": null,
+   "suspect": null,
    "quality": {
     "iou": 0.963,
     "cover": 0.979,
@@ -500,6 +534,7 @@
     "dy": 268
    },
    "manual": null,
+   "suspect": null,
    "quality": {
     "iou": 0.966,
     "cover": 0.986,

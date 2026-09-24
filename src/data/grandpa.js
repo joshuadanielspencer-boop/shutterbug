@@ -293,9 +293,18 @@ export const MEET_ASK = "Now then — what sort of adventure are we after today?
 // meet screen. Keyed by the unlock id (see profiles.js → unlocks()).
 export const UNLOCK_LINES = {
   medium: "You've got a trip under your belt now — I reckon you're ready for a tougher clue. Medium's open to you!",
+  // DEAD, kept only so it isn't rewritten from scratch if the Quiz ever comes
+  // back as a mode. It can't be reached: the announce list is UNLOCK_BEAT_KEYS
+  // now, and `quiz` is not in it — the review quiz happens at the end of every
+  // run instead of being something you unlock.
   quiz: "And here's a treat: fancy a quick Quiz between expeditions? It's yours to play now.",
   tour: "Fifteen places in the album! That's a proper photographer. The Grand Tour is open — a whole itinerary in one trip.",
   hard: "Stamps on three continents — you know your way around the globe now. If you're brave, Hard mode is unlocked. No hints, mind!",
+  // Twenty places. The other four lines name what opened and what it costs you;
+  // this one also has to explain the bag, because taking two of the three things
+  // he offers is the decision that makes the Long Trip different from every other
+  // mode, and a child meeting that screen cold doesn't know it's coming.
+  longtrip: "Twenty places! There comes a point where a traveler stops planning trips and simply goes. The Long Trip is yours now — one journey that runs until your days do. Come and look in my old bag before you set off; you'll have to choose what to carry.",
   expeditions: "Twenty-five places! Extraordinary. I've unlocked the Themed Expeditions — curated grand tours, each with a little lesson.",
 };
 // When the traveler's press rank goes up, Uncle tips his hat. Filled with the

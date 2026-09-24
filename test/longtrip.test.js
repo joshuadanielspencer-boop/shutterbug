@@ -175,3 +175,45 @@ describe("unlocks — what a guest can reach", () => {
     expect(profiles.unlocks(profiles.getProfile("Fresh")).longtrip).toBe(false);
   });
 });
+
+// ---------------------------------------------------------------------------
+// What Uncle Jonah says when it opens.
+//
+// Every gate that gets a full-screen unlock beat needs a line from him, and the
+// Long Trip had none for two months — so the one mode whose unlock is a real
+// event announced itself with silence where the other four got a sentence.
+//
+// The list of gates lived in three places (UNLOCK_BEAT_KEYS, a literal `ANN` on
+// the meet screen, UNLOCK_LINES) and they disagreed. That is not only a missing
+// line: both screens write `seenUnlocks`, so the meet screen's shorter list
+// overwrote the results screen's record every session and the Long Trip's beat
+// fired again after EVERY run. These assertions are against the data files,
+// which is as close as a test can get without importing the 9k-line component.
+// ---------------------------------------------------------------------------
+describe("unlock announcements", () => {
+  // Mirrors UNLOCK_BEAT_KEYS in shutterbug-world.jsx. Kept literal for the same
+  // reason test/art.test.js keeps its mode list literal — importing the game
+  // component drags React and every asset into the run.
+  const BEAT_KEYS = ["medium", "tour", "hard", "expeditions", "longtrip"];
+
+  it("gives every announced unlock a line from Jonah", async () => {
+    const { UNLOCK_LINES } = await import("../src/data/grandpa.js");
+    for (const k of BEAT_KEYS) {
+      expect(UNLOCK_LINES[k], `no line for ${k}`).toBeTruthy();
+    }
+  });
+
+  it("states the requirement for every announced unlock", async () => {
+    const { UNLOCK_REQ } = await import("../src/profiles.js");
+    for (const k of BEAT_KEYS) {
+      expect(UNLOCK_REQ[k], `no requirement text for ${k}`).toBeTruthy();
+    }
+  });
+
+  it("announces only gates that unlocks() can actually report", async () => {
+    const profiles = await import("../src/profiles.js");
+    for (const k of BEAT_KEYS) {
+      expect(profiles.UNLOCK_KEYS, `${k} is announced but unlocks() never returns it`).toContain(k);
+    }
+  });
+});

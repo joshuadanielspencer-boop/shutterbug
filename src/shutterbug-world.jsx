@@ -2528,10 +2528,18 @@ export default function ShutterbugWorld() {
     if (profile) {
       const u = unlocks(profile);
       const rank = careerRank(profile);
-      // "quiz" is intentionally not here: it's no longer a mode to announce as
-      // unlocked (the review quiz just happens at the end of every run now).
-      const ANN = ["medium", "tour", "hard", "expeditions"];
-      const nowUnlocked = ANN.filter((k) => u[k]);
+      // UNLOCK_BEAT_KEYS, not a second list. This used to be a literal that
+      // omitted `longtrip`, and the cost was not just a missing line — it was a
+      // beat that fired FOREVER. Both screens write `seenUnlocks`, and they wrote
+      // it from different lists: the results screen recorded the Long Trip as
+      // announced, and then the meet screen, which runs at the start of every
+      // session, overwrote the whole array with its shorter one and dropped it
+      // again. So a traveler past twenty places was handed the full-screen "The
+      // Long Trip is open!" card after every single run.
+      //
+      // ("quiz" is in neither list, which is correct: the review quiz is not a
+      // mode you unlock any more, it just happens at the end of every run.)
+      const nowUnlocked = UNLOCK_BEAT_KEYS.filter((k) => u[k]);
       const seen = profile.seenUnlocks;
       const seenRank = typeof profile.seenRank === "number" ? profile.seenRank : rank.tier;
       if (Array.isArray(seen)) {

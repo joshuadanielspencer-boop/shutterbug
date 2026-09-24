@@ -685,14 +685,30 @@ reach the game: the plates go to `public/outfit-lab/`, `src/data/avatar.js` is n
 regenerated, and the wardrobe is untouched. Results:
 
 - **21 of 23 registered automatically**, IoU 0.86–0.97 against the shipped body.
-- **2 needed a hand nudge**, and they failed the same way — placed at about half
-  size. Both are garments whose neckline sits far lower relative to the shoulders
-  than anything shipped: a cowl-neck sweater with a scarf, and a hood worn up. The
-  fit finds it scores better to shrink such a garment until it nests inside the
-  shoulder band than to place it honestly. **Worth knowing before the next
-  delivery: a high collar or a raised hood is the shape this cannot do alone.**
-  Both are corrected in `MANUAL` and both landed at scale ≈0.92, inside the cluster
-  the other 21 found by themselves.
+- **2 needed placing by hand**, and they failed the same way — fitted at about
+  half size. Both are garments whose neckline sits far lower relative to the
+  shoulders than anything shipped: a cowl-neck sweater with a scarf, and a hood
+  worn up. For those the fit scores *better* by shrinking the garment until it
+  nests inside the shoulder band than by placing it honestly, so it is a real
+  optimum and the wrong answer. **Worth knowing before the next delivery: a high
+  collar or a raised hood is the shape this cannot do alone.**
+  - **Detecting them is automated; correcting them is not, and that is settled.**
+    A low score doesn't identify them (0.66 and 0.72 are unremarkable) — the
+    *scale* does: every plate on the same 1024×1536 sheet fitted between 0.86 and
+    1.05 and these came back at 0.47 and 0.51. The script now flags anything far
+    outside its peers' median and says whether `MANUAL` covers it.
+  - Two automatic corrections were tried and both failed, recorded in the script
+    so nobody repeats them: re-searching with the scale confined to the peer band
+    just pins to the floor of whatever band it's given (the objective really is
+    monotone for these shapes), and matching the shoulder *span* centres and sizes
+    them plausibly but still sits them a neck too low — a chunky knit's outer
+    shoulder isn't the same landmark as a jacket's.
+  - The two in `MANUAL` were set by **ladder** — rendered at a row of scales and
+    collar heights, composited under the real head plate at the real canvas size,
+    and compared — after a first attempt judged against a 400px preview came out
+    visibly off to one side and Joshua caught it immediately. Half that error was
+    in the diagnostic, not the art: the first ladder composited 600px head plates
+    onto the 1183px reference canvas and invented a gap that was never there.
 
 The alignment is derived from the art that is already correct rather than from
 landmarks — the silhouette at least three of the five shipped outfits agree on IS
