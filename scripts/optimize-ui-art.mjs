@@ -37,11 +37,43 @@ import { join } from "node:path";
 //
 // `test/precache-size.test.js` is the thing that will actually catch the next
 // one — a list you must remember to update is not a guard.
+// The THIRD policy, and the one the other two should probably become.
+//
+// "." is the root of shutterbug-ui/ — the loose files: Mr O's ten portraits, the
+// desk and paper textures, the open-book plates, the camera bag. It was in
+// neither list above, and the cost of that was visible: SIX of Mr O's ten plates
+// are stored as palette PNGs and FOUR are truecolour at ~1 MB each. Nobody chose
+// that. Somebody quantized the folder by hand, missed four, and there was no run
+// to repeat and nothing to notice.
+//
+// The root can't just be added to PALETTE_DIRS, because it also holds the paper
+// and wood textures, which are exactly the gradient-heavy art the header above
+// says not to quantize. So this policy does not decide from a list at all: it
+// quantizes, MEASURES the result against the original, and keeps it only if the
+// difference is invisible. A file it would damage is reported and left alone.
+//
+// That is the same move `test/precache-size.test.js` made — judge what is
+// actually there rather than trusting a list somebody has to maintain — and it
+// means a new loose file is handled correctly the first time without anyone
+// deciding which bucket it belongs in.
 const PALETTE_DIRS = ["badges", "modes", "themes", "difficulty", "ranks", "medals", "roundels", "transport", "hello", "dog"];
 const RESIZE_DIRS = { "dog-outfits": 800 };
-const ART_DIRS = [...PALETTE_DIRS, ...Object.keys(RESIZE_DIRS)];
+const MEASURED_DIRS = ["."];
+const ART_DIRS = [...PALETTE_DIRS, ...Object.keys(RESIZE_DIRS), ...MEASURED_DIRS];
 const COLORS = 256;
 const WEBP_QUALITY = 88;
+// Mean absolute per-channel difference, 0-255, of the FLATTENED copies (see
+// compare()), below which the quantized version is treated as the same picture.
+// The dog resize (2026-07-30) measured 0.94 at the size she is actually drawn and
+// was accepted by eye, so this is in the same territory as a change that has
+// already shipped and been looked at. The max is printed alongside because a low
+// mean can still hide banding concentrated in one gradient — that is the failure
+// this is guarding against, and it is the number to look at before trusting a
+// pass on any art with a big smooth area.
+const SAME_PICTURE = 1.5;
+// Below this there is nothing worth the risk — the whole root folder's small
+// files together are a rounding error next to one Mr O plate.
+const MEASURE_FLOOR_KB = 300;
 
 // True if the PNG is already stored as a palette. Read from the file header
 // rather than sharp's metadata: sharp decodes a palette PNG to RGBA and reports
@@ -56,6 +88,44 @@ async function isPalettePng(path) {
   } finally {
     await fh.close();
   }
+}
+
+// The paper the UI is painted on. Both copies are flattened onto it before they
+// are compared, and that is the whole trick — see compare().
+const PAPER = { r: 244, g: 236, b: 216 };
+
+// How far the quantized copy moved from the original, MEASURED THE WAY IT IS
+// SEEN: flattened onto the background it is drawn against, so every pixel's
+// contribution is weighted by its own opacity, for free.
+//
+// Comparing the raw RGBA buffers instead does not work on art with alpha, and it
+// fails in the direction that costs you. Mr O's four truecolour plates came back
+// at 1.55-1.86 mean with a max near 200, comfortably "damaged" — and they are
+// not. The number was almost entirely the anti-aliased fringe, where alpha is
+// near zero and RGB is therefore very nearly meaningless: a quantizer may put
+// anything it likes in a pixel nobody can see, and a naive comparison counts
+// that as a catastrophe. Flattened first, the same four plates measure 0.42-0.51
+// mean with a max in the 60s, and at the size Mr O is actually drawn (630 px
+// tall) it is 0.29-0.35. The threshold below is calibrated for the flattened
+// figure, so changing this function means recalibrating it.
+async function compare(a, b) {
+  const meta = await sharp(a).metadata();
+  const flat = async (path) => {
+    // sharp applies resize before composite regardless of call order, so this
+    // stays a separate pipeline from anything that scales.
+    const onPaper = await sharp({ create: { width: meta.width, height: meta.height, channels: 3, background: PAPER } })
+      .composite([{ input: path }]).png().toBuffer();
+    return sharp(onPaper).raw().toBuffer();
+  };
+  const [x, y] = await Promise.all([flat(a), flat(b)]);
+  if (x.length !== y.length) throw new Error(`size mismatch comparing ${a}`);
+  let sum = 0, max = 0;
+  for (let i = 0; i < x.length; i++) {
+    const d = Math.abs(x[i] - y[i]);
+    sum += d;
+    if (d > max) max = d;
+  }
+  return { mean: sum / x.length, max };
 }
 
 const root = fileURLToPath(new URL("../public/assets/shutterbug-ui/", import.meta.url));
@@ -79,6 +149,34 @@ for (const dir of dirs) {
   // as webp, replacing the PNG. Idempotent for free — once converted there are
   // no PNGs left here, so a re-run after dropping in ONE new plate touches only
   // that plate.
+  // Quantize, compare, keep only if the picture did not change. See MEASURED_DIRS.
+  if (MEASURED_DIRS.includes(dir)) {
+    for (const name of files) {
+      const src = join(abs, name);
+      const size = (await stat(src)).size;
+      if (size < MEASURE_FLOOR_KB * 1024) { before += size; after += size; skipped++; continue; }
+      if (await isPalettePng(src)) {
+        console.log(`  · ${name.padEnd(38)} ${kb(size).padStart(8)}  already a palette, skipped`);
+        before += size; after += size; skipped++;
+        continue;
+      }
+      const tmp = `${src}.tmp`;
+      await sharp(src).png({ palette: true, colors: COLORS, effort: 10 }).toFile(tmp);
+      const { mean, max } = await compare(src, tmp);
+      const out = (await stat(tmp)).size;
+      if (mean > SAME_PICTURE) {
+        await unlink(tmp);
+        console.log(`  ✗ ${name.padEnd(38)} ${kb(size).padStart(8)}  LEFT ALONE — quantizing shifts it by ${mean.toFixed(2)} (max ${max}); would have been ${kb(out)}`);
+        before += size; after += size; skipped++;
+        continue;
+      }
+      await rename(tmp, src);
+      console.log(`  ✓ ${name.padEnd(38)} ${kb(size).padStart(8)} → ${kb(out).padStart(8)}  (${Math.round((100 * out) / size)}%)  diff ${mean.toFixed(2)} mean / ${max} max`);
+      before += size; after += out; done++;
+    }
+    continue;
+  }
+
   if (RESIZE_DIRS[dir]) {
     const edge = RESIZE_DIRS[dir];
     for (const name of files) {

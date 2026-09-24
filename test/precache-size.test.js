@@ -54,12 +54,21 @@ describe("what an install downloads", () => {
   // world at ~5 MB, and it is the map, so it earns its size. Nothing else should
   // come close — this is UI art rendered between 22 and 390 px.
   const ALLOWED_BIG = ["relief-world-hyp2.jpg", "relief-antarctica.jpg"];
-  // 1100 KB is not a target, it is a tripwire: it clears the heaviest thing on
-  // disk today (a ~1 MB Mr O plate) and still catches a 2.7 MB dog plate by two
-  // and a half times. The plates between 700 KB and this line — five of Mr O,
-  // two paper textures, the splash — are all bigger than they need to be and are
-  // the next thing to shrink; lowering this number is how that gets finished.
-  const CAP_KB = 1100;
+  // Not a target, a tripwire, and a RATCHET: it is lowered every time the art
+  // above it comes down, so the space that was won cannot quietly be given back.
+  //
+  // It was 1100, clearing four Mr O plates at ~1 MB. Those are palette PNGs now
+  // (2026-09-23) at ~260 KB each, measured as identical at the size he is drawn,
+  // and `public/splash.jpg` — 833 KB, referenced by nothing since the splash went
+  // widescreen — is gone. So the line comes down to 1000.
+  //
+  // What is left above 500 KB is four paper/wood/leather textures (690-980 KB)
+  // and two open-book plates. All six are ALREADY palette PNGs, so there is
+  // nothing more to win in this format — shrinking them further means webp or
+  // jpeg and therefore changing the filenames they are referenced by, which is a
+  // real change rather than a re-encode. That is the next move if this number is
+  // to keep falling.
+  const CAP_KB = 1000;
 
   it("no single piece of art is larger than the map itself", () => {
     const heavy = files

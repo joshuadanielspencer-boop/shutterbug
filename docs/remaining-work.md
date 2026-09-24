@@ -34,7 +34,7 @@ Last updated **2026-09-23**.
 > at 390px the mean pixel difference is **0.94/255**. The camera bag came down too
 > (1146px and 2.5 MB, drawn at 210px → 640px, 692 KB).
 >
-> **Precache total: 326 MB → 59 MB.**
+> **Precache total: 326 MB → 59 MB** (and 55.7 MB after the 2026-09-23 pass below).
 >
 > It happened because `scripts/optimize-ui-art.mjs` walks a hard-coded folder list
 > and nobody added `dog-outfits` to it. That list now has two policies (palette
@@ -42,10 +42,36 @@ Last updated **2026-09-23**.
 > is `test/precache-size.test.js`, which walks what is actually on disk — so a
 > folder nobody thought about is checked anyway.
 >
-> **Still oversized, and the obvious next pass:** five Mr O plates at ~1 MB each,
-> `airmail-paper-texture` (980 KB), `leather-texture` (756 KB),
-> `atlas-paper-texture` (724 KB), `splash.jpg` (836 KB). The per-file tripwire sits
-> at 1100 KB; lowering it is how that gets finished.
+> **~~Still oversized, and the obvious next pass.~~ DONE 2026-09-23 — precache
+> 60.1 MB → 55.7 MB.** It was *four* Mr O plates, not five, and the reason they
+> were oversized is the point: **six of his ten plates were already palette PNGs
+> and four were not.** Somebody quantized the folder by hand, missed four, and
+> there was no run to repeat and nothing to notice. `splash.jpg` (833 KB) went
+> too — nothing has referenced it since the splash went widescreen and started
+> using `splash-wide.jpg`.
+>
+> `scripts/optimize-ui-art.mjs` now has a **third policy** for the loose files at
+> the root of `shutterbug-ui/`, and it decides from measurement rather than from a
+> list: quantize, compare against the original, keep it only if the difference is
+> invisible, report and leave alone anything it would damage. The root could never
+> have gone in `PALETTE_DIRS` because it also holds the gradient-heavy paper and
+> wood textures that quantizing *would* band — so the measurement is what makes
+> the folder safe to walk at all.
+>
+> ⚠ **If you touch that comparison, recalibrate the threshold.** Comparing the raw
+> RGBA buffers scores art with alpha far too harshly: the four Mr O plates came
+> back at 1.55–1.86 "damaged", and it was almost entirely the anti-aliased fringe,
+> where alpha is near zero and RGB is meaningless — a quantizer may write anything
+> into a pixel nobody can see. Flattened onto the paper first, the same plates
+> measure 0.42–0.51 (0.29–0.35 at the 630 px Mr O is actually drawn), and a
+> before/after at draw size is indistinguishable.
+>
+> **What is left, and why the easy wins are finished:** four textures (690–980 KB)
+> and two open-book plates, **all already palette PNGs**. There is nothing more to
+> win in that format. Going further means webp or jpeg, which changes the
+> filenames they are referenced by — a real change, not a re-encode. The per-file
+> tripwire has been ratcheted 1100 → **1000 KB** so the space won cannot quietly
+> be given back.
 
 > ### ⚠ 2026-07-29: the meet screen fits the board now — with one state left over
 >
