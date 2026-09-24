@@ -554,6 +554,7 @@ Journeys, and the Grandpa Nigel story frame.
 | `node scripts/gen-price-anchors.mjs` | Rebuilds `src/data/price-anchors.js` from WFP food prices **plus four national statistics offices** (US, Canada, Japan, Mexico). `--csv a.csv b.csv` to work from local copies. **Read the warning at the top before adding a country** (§12). |
 | `npm run dev` → `/tune-lab.html` | Listen to every arrival bed, played by the game's own synth, with the countries each carries. The only way to judge whether a bed sounds right (§11). |
 | `npm run dev` → `/avatar-lab.html` | Review the avatar art layer by layer (§1). |
+| `node scripts/outfit-lab.mjs` → `/outfit-lab.html` | Fit the 2026-09 garment delivery onto the avatar body and judge whether the alignment is shippable (§1). Writes only to `public/outfit-lab/`; the game's wardrobe is untouched. |
 
 > ⚠ **The two relief scripts cannot be run on this machine as it stands.** Both want
 > the Natural Earth source raster (`NE1_HR_LR.tif` / `HYP_HR_SR_W.tif`) as an
@@ -629,6 +630,48 @@ no offsets, no scaling.
 **Still to come from Joshua:** male/female variants (different eyelashes and hair
 options — the filename grammar already parses a `male`/`female` token) and more
 garment kinds in the same colour range.
+
+### ⚠ 2026-09-23: a delivery is sitting in the repo unused, and it is big
+
+`NOT YET USED Shutterbug more avatar assets/` (untracked, ~100 MB) holds **43
+plates: 23 unique garments in red and 15 unique hairstyles in blonde**, plus five
+exact duplicates. That is the single largest content win available — the wardrobe
+today is 5 outfits and 8 hairstyles, and every new SHAPE arrives in the whole
+colour range for free, so 23 garments is the outfit range multiplied by nearly six.
+
+**It cannot go through `build-avatar-layers.mjs` as delivered.** That script is
+thirty lines because the art it reads is pre-registered: one 1200×1200 canvas, every
+plate a recolour of one drawing. This batch is 1024×1536, 1536×1024 and 1024×1024,
+each garment floating on an invisible mannequin at whatever size suited the
+painting, carrying a neck stub the shipped plates don't have. Dropped into the
+delivery folder it would put collars a hundred pixels off a child's shoulders.
+
+**So there is a lab, and the answer is mostly yes.** `node scripts/outfit-lab.mjs`
+→ `npm run dev` → <http://localhost:5173/outfit-lab.html>. Nothing it produces can
+reach the game: the plates go to `public/outfit-lab/`, `src/data/avatar.js` is not
+regenerated, and the wardrobe is untouched. Results:
+
+- **21 of 23 registered automatically**, IoU 0.86–0.97 against the shipped body.
+- **2 needed a hand nudge**, and they failed the same way — placed at about half
+  size. Both are garments whose neckline sits far lower relative to the shoulders
+  than anything shipped: a cowl-neck sweater with a scarf, and a hood worn up. The
+  fit finds it scores better to shrink such a garment until it nests inside the
+  shoulder band than to place it honestly. **Worth knowing before the next
+  delivery: a high collar or a raised hood is the shape this cannot do alone.**
+  Both are corrected in `MANUAL` and both landed at scale ≈0.92, inside the cluster
+  the other 21 found by themselves.
+
+The alignment is derived from the art that is already correct rather than from
+landmarks — the silhouette at least three of the five shipped outfits agree on IS
+the child's shoulders — because the two families are drawn to different conventions
+and every landmark rule needed a special case for that. Read the script's header
+before changing any of it.
+
+**What this still needs from Joshua:** a look, and then a decision. The style is
+crisper and more illustrative than the soft-shaded painting the current avatar
+uses, which is a judgement no measurement settles. **The 15 hairstyles are not
+fitted** — hair registers against the head, which is a different reference and a
+separate job of the same shape.
 
 ---
 

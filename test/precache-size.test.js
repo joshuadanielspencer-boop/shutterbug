@@ -27,8 +27,12 @@ const PUBLIC = fileURLToPath(new URL("../public/", import.meta.url));
 
 // Everything vite.config.js's globPatterns will precache.
 const PRECACHED = /\.(png|jpg|jpeg|webp|svg|ico|woff2|mp3)$/i;
-// The per-country relief plates are runtime-cached, not precached (globIgnores).
-const NOT_PRECACHED = ["relief"];
+// Folders vite.config.js keeps out of the precache with globIgnores. `relief`
+// holds the per-country plates, which are runtime-cached on first visit.
+// `outfit-lab` holds a batch of art nobody has accepted yet, shown only by
+// outfit-lab.html — it must track the globIgnores list, or this test measures a
+// download that never happens and misses one that does.
+const NOT_PRECACHED = ["relief", "outfit-lab"];
 
 function walk(dir, base = "") {
   const out = [];

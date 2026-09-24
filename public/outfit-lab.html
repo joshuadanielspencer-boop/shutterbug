@@ -1,0 +1,306 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Outfit lab — does the new batch line up?</title>
+<!--
+  A standalone review page for the 2026-09 garment delivery. NOTHING in the game
+  imports it and nothing it shows can reach a child: the plates come from
+  public/outfit-lab/, written by scripts/outfit-lab.mjs, and the shipped wardrobe
+  in public/assets/shutterbug-ui/avatar-v2/ is untouched.
+
+  It exists to answer one question — can a garment painted floating on a
+  mannequin be registered onto the avatar's body automatically, well enough to
+  ship? So it is built to make a BAD fit obvious rather than to flatter a good
+  one: the shipped jacket sits beside every new garment at the same size, the
+  reference body can be ghosted over the top, and the sizes strip shows each one
+  at the four sizes the game actually draws an avatar at, because a collar that
+  is two pixels high at 87px is not a problem and the same error at 390px is.
+
+  Served at /outfit-lab.html by `npm run dev`. Excluded from the PWA precache by
+  the *-lab.html rule in vite.config.js, same as the other two labs.
+-->
+<style>
+  :root {
+    --ink: #F4ECD8; --bg: #2f1d0f; --panel: #3d2715; --amber: #F0A500;
+    --dim: rgba(244,236,216,.62); --line: rgba(244,236,216,.22);
+    --good: #7FD99A; --warn: #F0A500; --bad: #FF8A6B; --paper: #F4ECD8;
+  }
+  * { box-sizing: border-box; }
+  body { font: 15px/1.5 system-ui, sans-serif; background: var(--bg); color: var(--ink); margin: 0; padding: 24px 28px 80px; }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  h2 { font-size: 13px; letter-spacing: .12em; text-transform: uppercase; color: var(--amber); margin: 26px 0 12px; }
+  p.lede { margin: 0 0 20px; color: var(--dim); max-width: 78ch; }
+  a { color: var(--amber); }
+  code { font: 12.5px ui-monospace, monospace; background: rgba(0,0,0,.3); padding: 1px 5px; border-radius: 4px; }
+
+  .bar { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin: 0 0 18px; }
+  .ctl { display: flex; align-items: center; gap: 8px; background: var(--panel); border: 1px solid var(--line);
+         border-radius: 9px; padding: 7px 13px; }
+  .ctl:focus-within { outline: 3px solid #7EC8E3; outline-offset: 2px; }
+  .ctl input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--amber); }
+  select, button { font: inherit; color: var(--ink); background: var(--panel); border: 1px solid var(--line);
+                   border-radius: 9px; padding: 7px 12px; cursor: pointer; }
+  button:focus-visible, select:focus-visible, a:focus-visible { outline: 3px solid #7EC8E3; outline-offset: 2px; }
+  button[aria-pressed=true] { border-color: var(--amber); background: rgba(240,165,0,.2); }
+  button[aria-pressed=true]::before { content: "✓ "; color: var(--amber); font-weight: 700; }
+
+  /* ---- an avatar ---- */
+  .av { position: relative; aspect-ratio: 1; background: var(--paper); border-radius: 10px; overflow: hidden; }
+  .av img, .av .ghostimg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
+  .av .garment { transform-origin: 0 0; }
+  .av .ghostimg { opacity: .42; filter: grayscale(1) contrast(1.6); mix-blend-mode: multiply; }
+
+  /* ---- the grid ---- */
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 16px; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 10px; margin: 0; }
+  .card.sel { border-color: var(--amber); box-shadow: 0 0 0 2px rgba(240,165,0,.35); }
+  .card figcaption { font-size: 11.5px; color: var(--dim); margin-top: 8px; display: flex; justify-content: space-between; gap: 8px; }
+  .card button.pick { display: block; width: 100%; padding: 0; background: none; border: none; border-radius: 10px; }
+  .score { font: 12px ui-monospace, monospace; white-space: nowrap; }
+  /* Rule 4: quality never reads as colour alone — the glyph carries it too. */
+  .score.good { color: var(--good); } .score.good::before { content: "● "; }
+  .score.warn { color: var(--warn); } .score.warn::before { content: "▲ "; }
+  .score.bad  { color: var(--bad);  } .score.bad::before  { content: "■ "; }
+
+  /* ---- the detail bench ---- */
+  .bench { display: grid; grid-template-columns: minmax(260px, 380px) minmax(260px, 380px) 1fr; gap: 24px; align-items: start; }
+  .bench .lbl { font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--dim); margin: 8px 0 0; }
+  .sizes { display: flex; align-items: flex-end; gap: 16px; flex-wrap: wrap; margin-top: 14px; }
+  .sizes figure { margin: 0; text-align: center; }
+  .sizes figcaption { font-size: 11px; color: var(--dim); margin-top: 6px; }
+  .sizes .av { border-radius: 50%; }
+  .nudge { display: grid; grid-template-columns: auto 1fr auto; gap: 8px 12px; align-items: center; margin-top: 12px; }
+  .nudge label { font-size: 12px; color: var(--dim); }
+  .nudge input[type=range] { width: 100%; accent-color: var(--amber); }
+  .nudge output { font: 12px ui-monospace, monospace; min-width: 5ch; text-align: right; }
+  pre.out { background: #1d1208; border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px;
+            font: 12px/1.6 ui-monospace, monospace; overflow-x: auto; margin: 12px 0 0; white-space: pre-wrap; }
+  .empty { border: 1px dashed var(--line); border-radius: 12px; padding: 22px; color: var(--dim); }
+</style>
+
+<h1>Outfit lab</h1>
+<p class="lede">
+  The 2026-09 delivery, painted floating on a mannequin, fitted onto the avatar body by
+  <code>scripts/outfit-lab.mjs</code>. Nothing here is in the game — these plates live in
+  <code>public/outfit-lab/</code> and the shipped wardrobe is untouched. The question is only
+  whether the alignment is good enough to ship. Compare against the shipped jacket on the left of
+  the bench, turn on <strong>Ghost the shipped body</strong> to see where the shoulders ought to be,
+  and check the small sizes — the game draws this avatar at 390px at its largest and 87px in the
+  wardrobe.
+</p>
+
+<div class="bar">
+  <label class="ctl">Head
+    <select id="head"></select>
+  </label>
+  <label class="ctl">Hair
+    <select id="hair"></select>
+  </label>
+  <label class="ctl">Eyes
+    <select id="eyes"></select>
+  </label>
+  <label class="ctl"><input type="checkbox" id="ghost"> Ghost the shipped body</label>
+  <label class="ctl"><input type="checkbox" id="nohead"> Garment only (no head)</label>
+  <button type="button" id="sort" aria-pressed="false">Worst fit first</button>
+</div>
+
+<div id="bench" class="empty">Pick a garment below to put it on the bench.</div>
+
+<h2 id="gridhead">The batch</h2>
+<div class="grid" id="grid"></div>
+
+<h2>Not fitted</h2>
+<p class="lede" id="skipped"></p>
+
+<script type="module">
+const LAB = "outfit-lab/";
+const AV = "assets/shutterbug-ui/avatar-v2/";
+
+const [lab, av] = await Promise.all([
+  fetch(LAB + "manifest.json").then((r) => r.json()),
+  fetch(AV + "manifest.json").then((r) => r.json()),
+]);
+
+// The shipped stack, used as the body every new garment is judged against. The
+// z-order comes from the built manifest rather than being retyped here, so if
+// the real pipeline ever reorders the parts this page follows it.
+const ORDER = av.order;
+const parts = av.parts;
+const byId = (part, id) => parts[part].find((p) => p.id === id) || parts[part][0];
+
+const el = (tag, props = {}, kids = []) => {
+  const n = Object.assign(document.createElement(tag), props);
+  for (const k of [].concat(kids)) n.append(k);
+  return n;
+};
+
+// ---- pickers -------------------------------------------------------------
+const pick = { head: null, hair: null, eyes: null };
+for (const [part, sel] of [["head", head], ["hair", hair], ["eyes", eyes]]) {
+  for (const p of parts[part]) sel.append(el("option", { value: p.id, textContent: `${p.label}${p.sex !== "any" ? ` (${p.sex})` : ""}${p.variant !== "1" ? ` ${p.variant}` : ""}` }));
+  pick[part] = parts[part][Math.floor(parts[part].length / 3)].id;
+  sel.value = pick[part];
+  sel.addEventListener("change", () => { pick[part] = sel.value; redraw(); });
+}
+
+// The brow is derived from the hair colour, exactly as the game derives it.
+const browFor = (hairId) => {
+  const h = byId("hair", hairId);
+  return parts.brow?.find((b) => b.colour === h.colour) || parts.brow?.[0] || null;
+};
+
+// ---- one avatar ----------------------------------------------------------
+// `garment` is a lab plate (already baked at its fitted transform) or null for
+// the shipped reference outfit. `tweak` is a live nudge on top of the bake.
+function avatar(garment, { size = null, tweak = null, ghost = false, nohead = false } = {}) {
+  const box = el("div", { className: "av" });
+  if (size) { box.style.width = size + "px"; box.style.flex = "0 0 auto"; }
+
+  const layers = [];
+  if (garment) {
+    const img = el("img", { className: "garment", src: LAB + garment.file, alt: "" });
+    if (tweak) {
+      // The plate is baked with the garment at (dx, dy) scaled by s on the
+      // reference canvas. A hand nudge {scale: k, dx: ex, dy: ey} means "scale
+      // by s·k and offset by (dx+ex, dy+ey)". Scaling the BAKED plate about the
+      // canvas origin multiplies its offset by k too, so the translate has to
+      // put that back: T = (dx + ex) − k·dx. Getting this right is what lets a
+      // slider in the browser produce numbers that mean the same thing when
+      // they are pasted into MANUAL in the build script.
+      const { scale: k, dx: ex, dy: ey } = tweak;
+      const tx = (garment.fit.dx + ex - k * garment.fit.dx) / lab.refCanvas * 100;
+      const ty = (garment.fit.dy + ey - k * garment.fit.dy) / lab.refCanvas * 100;
+      img.style.transform = `translate(${tx.toFixed(3)}%, ${ty.toFixed(3)}%) scale(${k})`;
+    }
+    layers.push(img);
+  } else {
+    layers.push(el("img", { src: AV + byId("outfit", "").file, alt: "" }));
+  }
+  if (ghost) layers.push(el("img", { className: "ghostimg", src: AV + parts.outfit[0].file, alt: "" }));
+  if (!nohead) {
+    for (const part of ORDER) {
+      if (part === "outfit") continue;
+      const p = part === "brow" ? browFor(pick.hair) : byId(part, pick[part]);
+      if (p) layers.push(el("img", { src: AV + p.file, alt: "" }));
+    }
+  }
+  box.append(...layers);
+  return box;
+}
+
+const band = (iou) => (iou >= 0.9 ? "good" : iou >= 0.82 ? "warn" : "bad");
+const bandWord = (iou) => (iou >= 0.9 ? "close" : iou >= 0.82 ? "check it" : "look hard");
+
+// ---- the grid ------------------------------------------------------------
+let selected = lab.plates[lab.plates.length - 1];
+let worstFirst = false;
+
+function drawGrid() {
+  grid.textContent = "";
+  const list = [...lab.plates].sort((a, b) => (worstFirst ? a.quality.iou - b.quality.iou : a.source.localeCompare(b.source)));
+  for (const p of list) {
+    const fig = el("figure", { className: "card" + (p === selected ? " sel" : "") });
+    const btn = el("button", { className: "pick", type: "button" });
+    btn.setAttribute("aria-pressed", String(p === selected));
+    btn.append(avatar(p, { ghost: ghost.checked, nohead: nohead.checked }));
+    btn.addEventListener("click", () => { selected = p; drawGrid(); drawBench(); bench.scrollIntoView({ block: "nearest" }); });
+    // A hand-corrected plate shows its score struck through: the number still
+    // says what the automatic fit managed, but it no longer describes what you
+    // are looking at, and a good-looking garment beside a red score is otherwise
+    // just confusing.
+    const score = el("span", { className: "score " + band(p.quality.iou), textContent: p.quality.iou.toFixed(2) });
+    if (p.manual) { score.style.textDecoration = "line-through"; score.title = "hand-corrected in the lab"; }
+    fig.append(btn, el("figcaption", {}, [
+      el("span", { textContent: p.source.slice(0, 8) + (p.manual ? " ✎" : "") }),
+      score,
+    ]));
+    grid.append(fig);
+  }
+  gridhead.textContent = `The batch — ${lab.plates.length} garments`;
+}
+
+// ---- the bench -----------------------------------------------------------
+const tweak = { scale: 1, dx: 0, dy: 0 };
+
+function drawBench() {
+  tweak.scale = 1; tweak.dx = 0; tweak.dy = 0;
+  bench.className = "bench";
+  bench.textContent = "";
+
+  const shipped = el("div", {}, [avatar(null, { ghost: false, nohead: nohead.checked }), el("p", { className: "lbl", textContent: "Shipped — outfit 1" })]);
+
+  const liveBox = el("div");
+  const live = avatar(selected, { ghost: ghost.checked, nohead: nohead.checked });
+  liveBox.append(live, el("p", { className: "lbl", textContent: `New — ${selected.source.slice(0, 8)}` }));
+
+  const q = selected.quality;
+  const panel = el("div");
+  panel.append(
+    el("p", { className: "lbl", textContent: "Fit" }),
+    el("p", { className: "score " + band(q.iou), textContent: `IoU ${q.iou.toFixed(3)} — ${bandWord(q.iou)}` }),
+    el("p", { className: "lede", style: "margin:6px 0 0;font-size:13px",
+      textContent: `Covers ${(q.cover * 100).toFixed(0)}% of the shipped shoulders; ${(q.spill * 100).toFixed(0)}% of the garment falls outside them. Source canvas ${selected.canvas[0]}×${selected.canvas[1]}, ${selected.kb} KB.` }),
+  );
+  if (selected.manual) {
+    panel.append(el("p", { className: "lede", style: "margin:6px 0 0;font-size:13px;color:var(--amber)",
+      textContent: `✎ Hand-corrected (scale ×${selected.manual.scale ?? 1}, ${selected.manual.dx ?? 0}, ${selected.manual.dy ?? 0}). The score above is what the automatic fit managed BEFORE that correction — it is not a description of the plate you are looking at.` }));
+  }
+
+  // Live nudge. Three sliders, and the numbers they produce are the numbers the
+  // build script takes — no conversion step for whoever pastes them.
+  // Wide on purpose. A plate the automatic fit got badly wrong is baked at
+  // roughly HALF the right size — the cowl-neck sweater is the example — so a
+  // ±25% nudge could not rescue the one case the nudge exists for.
+  const rows = [
+    ["scale", "Scale", 0.5, 2.2, 0.005],
+    ["dx", "Move ↔", -320, 320, 1],
+    ["dy", "Move ↕", -320, 320, 1],
+  ];
+  const nudge = el("div", { className: "nudge" });
+  const out = el("pre", { className: "out" });
+  const refresh = () => {
+    const fresh = avatar(selected, { tweak, ghost: ghost.checked, nohead: nohead.checked });
+    liveBox.replaceChild(fresh, liveBox.firstChild);
+    sizes.textContent = "";
+    for (const [px, what] of [[390, "390 — largest"], [132, "132 — passport"], [96, "96 — face-crop line"], [87, "87 — wardrobe"]]) {
+      sizes.append(el("figure", {}, [avatar(selected, { size: px, tweak, nohead: nohead.checked }), el("figcaption", { textContent: what })]));
+    }
+    const changed = tweak.scale !== 1 || tweak.dx !== 0 || tweak.dy !== 0;
+    out.textContent = changed
+      ? `// paste into MANUAL in scripts/outfit-lab.mjs\n"${selected.source}": { scale: ${tweak.scale}, dx: ${tweak.dx}, dy: ${tweak.dy} },`
+      : "// no hand correction — the automatic fit is what you see";
+  };
+  for (const [key, label, min, max, step] of rows) {
+    const o = el("output", { textContent: String(tweak[key]) });
+    const r = el("input", { type: "range", min, max, step, value: tweak[key] });
+    r.id = "nudge-" + key;
+    r.addEventListener("input", () => { tweak[key] = Number(r.value); o.textContent = r.value; refresh(); });
+    nudge.append(el("label", { htmlFor: r.id, textContent: label }), r, o);
+  }
+  const reset = el("button", { type: "button", textContent: "Reset nudge" });
+  reset.addEventListener("click", () => { drawBench(); });
+  panel.append(el("p", { className: "lbl", textContent: "Nudge by hand" }), nudge, reset, out);
+
+  const sizes = el("div", { className: "sizes" });
+  bench.append(shipped, liveBox, panel, el("div", { style: "grid-column:1/-1" }, [el("p", { className: "lbl", textContent: "At the sizes the game draws it" }), sizes]));
+  refresh();
+}
+
+// ---- wiring --------------------------------------------------------------
+for (const box of [ghost, nohead]) box.addEventListener("change", () => { drawGrid(); drawBench(); });
+sort.addEventListener("click", () => {
+  worstFirst = !worstFirst;
+  sort.setAttribute("aria-pressed", String(worstFirst));
+  drawGrid();
+});
+
+const hairSkips = lab.skipped.filter((s) => s.kind === "hair").length;
+const unsure = lab.skipped.filter((s) => s.kind !== "hair");
+skipped.textContent =
+  `${hairSkips} plates in the delivery are hairstyles, not garments, and are not fitted here — hair registers against the head, which is a different reference and a separate job. `
+  + (unsure.length ? `⚠ ${unsure.length} could not be classified: ${unsure.map((s) => s.file).join(", ")}. ` : "")
+  + `${lab.duplicates.length} files were exact duplicates of another and were skipped.`;
+
+drawGrid();
+drawBench();
+</script>

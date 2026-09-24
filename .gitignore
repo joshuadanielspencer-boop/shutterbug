@@ -24,6 +24,11 @@ Images/
 # 30 MB of these into history via a `git add -A` before this rule existed.
 Shutterbug new image assets*/
 art-drops/
+# The 2026-09 avatar drop, ~100 MB of 1024x1536 PNG. The rule above does not
+# catch it because the folder is named for what it is NOT yet, so it is named
+# here. scripts/outfit-lab.mjs reads it and writes the small fitted copies under
+# public/outfit-lab/, which ARE tracked (§1 of docs/remaining-work.md).
+NOT YET USED Shutterbug more avatar assets/
 
 # Natural Earth source data cached by scripts/gen-geography.mjs (hundreds of MB)
 scripts/.cache/

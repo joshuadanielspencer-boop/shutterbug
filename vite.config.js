@@ -106,7 +106,12 @@ export default defineConfig({
         // no reason to put them on a child's iPad at install time. (tune-lab.html
         // imports from /src/ and therefore only works under the dev server at all;
         // it says so on the page if opened from a build.)
-        globIgnores: ["relief/**", "*-lab.html"],
+        // outfit-lab/ is the fitted-garment review batch that outfit-lab.html
+        // reads (scripts/outfit-lab.mjs writes it). It is a question being asked
+        // about art that has not been accepted yet, not part of the game, and
+        // the precache is a permanent storage claim on a tablet — see
+        // test/precache-size.test.js for what that has already cost once.
+        globIgnores: ["relief/**", "outfit-lab/**", "*-lab.html"],
         // …and once they are out of the precache, the service worker's navigation
         // fallback would answer /tune-lab.html with index.html — i.e. open the GAME
         // at the lab's URL, which is a more confusing failure than a missing page.
