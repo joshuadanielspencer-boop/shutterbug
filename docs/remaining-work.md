@@ -6,6 +6,54 @@ five project rules are hard requirements), then the task you're doing.
 
 Last updated **2026-09-23**.
 
+> ### ⚠ 2026-09-28: the overseas-territory boxes were sitting on the landmarks
+>
+> Joshua: *"On some maps (like France), the extra boxes cover up the locations of
+> landmarks so the player can't click on them."* Measured in the game it was worse
+> than reported — France's row of four sat over **five of its ten pins** (Pont du
+> Gard, the Dune du Pilat, the Verdon gorge, the Calanques), and the fourth box ran
+> **14% off the right edge** of the frame because a compass gutter was added to
+> the row's start and never subtracted from its width.
+>
+> He asked to "zoom out a little" as well. **That is not available:** every
+> country's relief plate is cut to exactly the ground its box draws
+> (`test/relief-plates.test.js`), widening a box needs the Natural Earth raster,
+> and it is not on this machine. So the fix is placement only, and the placement is
+> no longer chosen by hand — `OverseasInsets` in `shutterbug-world.jsx` now:
+>
+> - **Splits the territories by side** (rule 5, taken literally): France's Guiana
+>   and Antilles are Atlantic, Réunion and Mayotte are Indian Ocean, and the old
+>   code averaged the two into "along the bottom". Two boxes fit down an edge;
+>   four do not.
+> - **Scores four placements per group** — bottom row, top row, left column, right
+>   column — by how many of the country's pins each would cover (`cityPinLayout.pos`
+>   is passed in as `avoid`), and takes the emptiest. Preference order breaks ties
+>   so the historical layouts are what you get when nothing is in the way, and
+>   `layout: "column"` (the USA, whose box was widened to make room on the left)
+>   restricts that country to columns.
+> - **Falls back to a compact size** (0.14 of the frame instead of 0.26/0.19) ten
+>   preference points down, so it is only ever chosen when every standard placement
+>   hits something. France's east pair needed it: the only empty region was the
+>   top-right corner, and two standard boxes there reach the Paris cluster.
+> - **Works in display space.** The insets render inside the map's vertical-stretch
+>   group, so "5% from the top of the frame" in plate coordinates was 5% from the
+>   top of the *plate*, which on France (stretch 1.27) put a box above the frame.
+>   Positions are computed as fractions of the frame the child sees and converted
+>   through `{ s: mapStretchY, pivot: mapPivotY }` only when drawn.
+>
+> **Result, measured:** France `column-left + row-top-east-compact`, **0 pins
+> covered, 0 boxes off-frame** (was 5 and 1). USA unchanged (`column-left`, the
+> two boxes it asked for). Chile is a single westward box and falls out as the same
+> bottom row it had — reasoned from the code, not seen: the Explore map would not
+> open Chile from the automated browser (three real clicks inside its outline did
+> nothing, while every other country opened), which is worth a human look on its
+> own. One thing the probe still flags on the USA: San Francisco's pin sits
+> touching the Alaska box's corner. That was true before today and is a 5px
+> matter; the scorer's margin is one pin radius and does not count it.
+>
+> No test covers this — it lives in the component, which the suite deliberately
+> does not import. The evidence is the three measured layouts above.
+
 > ### ⚠ 2026-07-30: why the app "just restarted in the middle of a game"
 >
 > Joshua reported this and it was two separate faults, both now fixed.

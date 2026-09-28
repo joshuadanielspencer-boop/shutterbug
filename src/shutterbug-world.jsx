@@ -1377,49 +1377,154 @@ function ShapeView({ d }) {
 // window onto the region the territory sits in — nearby land drawn as a tan
 // silhouette, a coral marker on the territory, its name on a banner. All in the
 // plate's coordinate space, so it rides inside the same map <svg>.
-function OverseasInsets({ spec, box }) {
-  // Accept either a plain array (a row along the bottom, the default) or
-  // { layout: "column", items } for a vertical stack on the left (the USA).
-  const specs = Array.isArray(spec) ? spec : spec.items;
-  const column = !Array.isArray(spec) && spec.layout === "column";
-  const n = specs.length;
+// `avoid` is the country's landmark pins in plate coordinates. The insets are
+// placed AROUND them, and that is not a nicety: Joshua found France's four
+// boxes sitting on top of five of its ten pins — Pont du Gard, the Dune du
+// Pilat, the Verdon gorge and the Calanques all under the row, where a child
+// could neither see nor click them. The insets carry pointer-events: none, so
+// technically a click went through; a pin you cannot see is still a pin you
+// cannot find.
+//
+// So the layout is not chosen by hand any more. Four candidates are tried — a
+// row along the bottom, a row along the top, a column down the left, a column
+// down the right — each is scored by how many pins it would cover, and the
+// emptiest wins. Rule 5's "the side the territory lies towards" breaks ties, so a
+// country with room everywhere still points the right way, but a country whose
+// landmarks crowd one edge gets its boxes on the other. The old `layout:
+// "column"` hint is still honoured as a preference for the USA, whose box was
+// widened specifically to make room on the left.
+//
+// This is done here rather than by zooming the country out. A wider box would
+// put open sea back under the row, but every country's relief plate is cut to
+// exactly the ground its box draws (test/relief-plates.test.js) and regenerating
+// one needs the Natural Earth raster, which is not on this machine. Moving the
+// boxes costs nothing and needs nothing.
+// `stretch` is the map's vertical stretch — `{ s, pivot }` for the group this
+// renders inside, which draws plate y at pivot + s·(y − pivot). Every position
+// below is worked out in DISPLAY space (fractions of the frame the child sees)
+// and converted to plate space only when a rectangle is finally drawn. Without
+// that, "5% from the top of the frame" was 5% from the top of the PLATE, and on
+// France (s = 1.27) that put the top of a column above the frame.
+function OverseasInsets({ spec, box, avoid = [], stretch = { s: 1, pivot: 0 } }) {
+  const all = Array.isArray(spec) ? spec : spec.items;
+  const preferColumn = !Array.isArray(spec) && spec.layout === "column";
+  const { s: sY, pivot } = stretch;
+  const toDisplayY = (y) => pivot + sY * (y - pivot);
+  const toPlateY = (Y) => pivot + (Y - pivot) / sY;
+  const toPlate = (r) => ({ ...r, y: toPlateY(r.y), h: r.h / sY });
+  const pins = avoid.map((p) => ({ x: p.x, y: toDisplayY(p.y) }));
   const gap = 0.012 * box.w;
   const inset = 0.02 * box.w;
   const bandH = 0.03 * box.h;
-  // ---- Column: stacked on the left, smaller (the USA's Alaska over Hawaiʻi) ----
-  // The widened USA box leaves open Pacific on the left; the boxes sit there,
-  // clear of the mainland, well above the bottom-left compass rose.
   const colIw = box.w * 0.19;
   const colIh = colIw * 0.8;
-  // ---- Row: along the bottom (France's four, Chile's one) ----
-  // Cap the width per inset. This used to divide 96% of the map between however
-  // many insets there were, which was fine for France's four and absurd for one:
-  // Chile's single Easter Island window covered most of the country map.
-  const rowIw = Math.min((box.w * 0.96 - gap * (n - 1)) / n, box.w * 0.26);
-  const iw = column ? colIw : rowIw;
-  const ih = column ? colIh : iw * 0.72;
-  const rowW = iw * n + gap * (n - 1);
-  // Rule 5: put the row on the side of the frame the territory actually lies
-  // towards, so it points the right way — Rapa Nui off Chile's west, France's
-  // Caribbean and Indian Ocean holdings along the bottom.
-  const meanX = specs.reduce((a, s) => a + (s.cLon + 180), 0) / n;
-  const westward = meanX < box.x + box.w / 2;
-  // The compass rose is pinned to the map's bottom-LEFT (a DOM element over the
-  // frame), so a westward ROW starts clear of it. The column sits up top, away
-  // from it, so it needs no gutter.
-  const compassGutter = westward && !column ? 0.17 * box.w : 0;
-  const rowX0 = westward ? box.x + inset + compassGutter : box.x + box.w - inset - rowW;
-  const rowY0 = box.y + box.h - ih - 0.12 * box.h;
-  // Column origin: upper-left, in the open Pacific the widened box leaves — started
-  // low enough to clear the 🌍 World-map button pinned to the frame's top-left.
-  const colX0 = box.x + inset;
-  const colY0 = box.y + 0.15 * box.h;
   const colGapY = 0.03 * box.h;
+  // The compass rose is a DOM element pinned to the frame's bottom-LEFT, and the
+  // 🌍 World-map button to its top-left, so anything on the left has to leave
+  // room for both. The right edge has neither.
+  const compassGutter = 0.17 * box.w;
+  const midX = box.x + box.w / 2;
+
+  // Rule 5 says each territory's box goes on the side of the frame it lies
+  // towards. The old code took the MEAN of all of them and put the whole set on
+  // that one side — which for France averaged the Caribbean against the Indian
+  // Ocean and landed everything along the bottom. Splitting by side is not only
+  // more honest about where Réunion is; it is what makes a fit possible at all.
+  // Four boxes have to shrink to fit down one edge of France's frame; two do not.
+  const groups = [
+    { side: "west", items: all.filter((s) => s.cLon + 180 < midX) },
+    { side: "east", items: all.filter((s) => s.cLon + 180 >= midX) },
+  ].filter((g) => g.items.length);
+
+  // Every placement of ONE group as a list of rectangles, in display space.
+  // `cap` is the widest a box may be, as a fraction of the frame: the standard
+  // sizes first, and a COMPACT size the scorer may fall back to when nothing at
+  // standard size clears the pins. France is why: its east pair had one empty
+  // region left, the top-right corner, and two standard boxes there reach the
+  // Paris cluster; two compact ones do not.
+  const rowRects = (items, top, west, cap) => {
+    const n = items.length;
+    const gutter = !top && west ? compassGutter : 0;       // only a bottom-left row meets the compass
+    // The gutter used to be added to the row's start and never subtracted from
+    // its width, so France's fourth inset ran 14% off the right edge of the frame.
+    // And the width per box is capped: dividing the whole row between however
+    // many there are was absurd for one — Chile's single Easter Island window
+    // covered most of the country map.
+    const iw = Math.min((box.w - 2 * inset - gutter - gap * (n - 1)) / n, box.w * cap);
+    const ih = iw * 0.72;
+    const rowW = iw * n + gap * (n - 1);
+    const x0 = west ? box.x + inset + gutter : box.x + box.w - inset - rowW;
+    const y0 = top ? box.y + 0.14 * box.h : box.y + box.h - ih - 0.12 * box.h;
+    return items.map((_, i) => ({ x: x0 + i * (iw + gap), y: y0, w: iw, h: ih }));
+  };
+  const colRects = (items, left, cap) => {
+    const n = items.length;
+    // A left column starts below the 🌍 button and stops above the compass; a
+    // right column has the whole edge. Boxes shrink until the column fits, and a
+    // column that would have to shrink below usefulness is rejected below —
+    // the first version of this let two of France's four run off the bottom.
+    const y0 = box.y + (left ? 0.15 : 0.05) * box.h;
+    const y1 = box.y + box.h - (left ? 0.18 : 0.05) * box.h;
+    const perBox = (y1 - y0 - (n - 1) * colGapY) / n;
+    const ih = Math.min(box.w * cap * 0.8, perBox - bandH);
+    const iw = ih / 0.8;
+    const x0 = left ? box.x + inset : box.x + box.w - inset - iw;
+    return items.map((_, i) => ({ x: x0, y: y0 + i * (ih + colGapY + bandH), w: iw, h: ih }));
+  };
+  const STANDARD = { row: 0.26, col: 0.19 };
+  const COMPACT = { row: 0.14, col: 0.14 };
+  // A pin counts as covered if its centre lands in a box or within a pin's own
+  // radius of one — an icon half under a banner is as lost as one fully under it.
+  // The pin disc is drawn at 0.032 of the frame width across (see the pin
+  // render), so its radius is 0.016; 0.02 is that plus a hair of air. A first
+  // version used 0.035, and on the USA that counted San Francisco — which sits a
+  // clear pin's width right of the Alaska box — as covered, and shrank the two
+  // boxes Joshua asked for to dodge an overlap that was not there.
+  const margin = 0.02 * box.w;
+  const overlaps = (r, q, m) => q.x + q.w >= r.x - m && q.x <= r.x + r.w + m && q.y + q.h >= r.y - m && q.y <= r.y + r.h + m;
+  const covered = (rects, taken) =>
+    pins.filter((p) => rects.some((r) => overlaps(r, { x: p.x, y: p.y, w: 0, h: 0 }, margin))).length
+    // …plus a heavy penalty for landing on a box the other group already placed.
+    + rects.filter((r) => taken.some((t) => overlaps(r, t, gap))).length * 100;
+  // A layout that leaves the frame, or whose boxes are too small to read, does
+  // not get to compete on pin count — it is scored as covering everything.
+  const usable = (rects) => rects.every((r) =>
+    r.x >= box.x && r.x + r.w <= box.x + box.w && r.y >= box.y && r.y + r.h <= box.y + box.h && r.w >= 0.12 * box.w);
+
+  // Place each group in turn, the larger first so it gets first pick of the
+  // room. Fewest pins covered wins; the preference order decides between
+  // equals, and it is ordered so the historical layouts — a bottom row for a
+  // one-sided country like Chile, a left column for the USA (whose box was
+  // widened specifically to make room there, so `layout: "column"` restricts
+  // it to columns) — are what you get when nothing is in the way.
+  const placed = [];
+  const layouts = [];
+  for (const g of [...groups].sort((a, b) => b.items.length - a.items.length)) {
+    const west = g.side === "west";
+    // Standard sizes first; the compact set is the same shapes ten preference
+    // points down, so it is only ever chosen when every standard placement
+    // covers something and a compact one does not.
+    const shapes = (sz, bump) => [
+      { name: `column-${west ? "left" : "right"}`,  rects: colRects(g.items, west, sz.col),  pref: bump + (preferColumn ? 0 : 2) },
+      { name: `column-${west ? "right" : "left"}`,  rects: colRects(g.items, !west, sz.col), pref: bump + (preferColumn ? 1 : 3) },
+      ...(preferColumn ? [] : [
+        { name: `row-bottom-${g.side}`, rects: rowRects(g.items, false, west, sz.row), pref: bump + 0 },
+        { name: `row-top-${g.side}`,    rects: rowRects(g.items, true, west, sz.row),  pref: bump + 1 },
+      ]),
+    ];
+    const candidates = [...shapes(STANDARD, 0), ...shapes(COMPACT, 10).map((c) => ({ ...c, name: c.name + "-compact" }))]
+      .map((c) => ({ ...c, hits: usable(c.rects) ? covered(c.rects, placed) : Infinity }));
+    candidates.sort((a, b) => a.hits - b.hits || a.pref - b.pref);
+    const best = candidates[0];
+    g.items.forEach((s, i) => placed.push({ ...best.rects[i], spec: s }));
+    layouts.push(best.name);
+  }
   return (
-    <g style={{ pointerEvents: "none" }}>
-      {specs.map((s, i) => {
-        const ix = column ? colX0 : rowX0 + i * (iw + gap);
-        const iy = column ? colY0 + i * (ih + colGapY + bandH) : rowY0;
+    <g style={{ pointerEvents: "none" }} data-inset-layout={layouts.join("+")}>
+      {placed.map(({ spec: s, ...disp }, i) => {
+        // The window's geometry is in plate space from here down; the banner
+        // height stays in display units, since the text under it does not stretch.
+        const { x: ix, y: iy, w: iw, h: ih } = toPlate(disp);
         const cx = s.cLon + 180, cy = 90 - s.cLat;     // window centre, plate coords
         const sc = iw / s.w;                            // plate units → inset units
         const halfWx = s.w / 2, halfWy = (ih / sc) / 2; // window half-extents (degrees)
@@ -6881,7 +6986,8 @@ export default function ShutterbugWorld() {
                 </g>
               )}
               {countryBox && pickedCountry && OVERSEAS_INSETS[pickedCountry] && (
-                <OverseasInsets spec={OVERSEAS_INSETS[pickedCountry]} box={box} />
+                <OverseasInsets spec={OVERSEAS_INSETS[pickedCountry]} box={box}
+                  avoid={Object.values(cityPinLayout.pos)} stretch={{ s: mapStretchY, pivot: mapPivotY }} />
               )}
               </g>
               {/* The overland hop is drawn OUTSIDE the map's vertical-stretch group
