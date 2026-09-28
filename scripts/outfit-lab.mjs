@@ -114,6 +114,14 @@ const MANUAL = {
   "8f47d6ba-b234-4c82-8350-a193797a3514.png": { scale: 1.6112, dx: -146, dy: -56 },
   // Padded coat, hood worn up. Fitted scale 0.5051 → 0.72.
   "c41541d7-42cf-457b-ab1b-6f6bf5d9ccc2.png": { scale: 1.4255, dx: -115, dy: -96 },
+  // Two hairstyles, same failure as the scarf but in the other axis: the scale
+  // check passed them (1.20 and 1.03, well inside the band) and they still sat
+  // wrong, because an asymmetric MASS — a side ponytail, a pair of buns — drags
+  // the crown fit sideways until the scalp shows on the other side. Neither a
+  // scale prior nor a score catches a placement error; only looking does. Both
+  // set by dx/dy ladder on the head at the real canvas size.
+  "1c662219-3d45-4253-9a7d-f3cb12c7e13b.png": { dx: 80, dy: -40 },   // side ponytail
+  "f981d36f-5f8c-48d5-afd5-66c23642b0c2.png": { dx: 60, dy: -40 },   // space buns
 };
 
 // DETECTING a fit that has gone wrong, which turns out to be the part worth
@@ -247,30 +255,46 @@ const classify = (mix) => {
 // the reference body
 // ---------------------------------------------------------------------------
 
-async function referenceBody() {
-  const files = (await readdir(REF)).filter((f) => /^outfit_/.test(f));
-  if (files.length < 3) throw new Error(`need at least 3 shipped outfits in ${REF}, found ${files.length}`);
+// One reference per part, from the shipped plates of that part. The garments
+// are fitted to the shoulders; the hair is fitted to the CROWN — the cap of the
+// skull that every hairstyle covers whatever it does below it. A bob, a braid
+// and a spiky crop disagree about everything except that.
+//
+//   band   how far down the majority silhouette counts. 42% of the body is the
+//          shoulders; 45% of the hair is the crown and the temples, and stops
+//          before the styles diverge into fringes and lengths.
+//   need   how many shipped plates must agree for a pixel to be "the part".
+//          Half, rounded up: 3 of 5 outfits, 4 of 8 hairstyles.
+const REFERENCE = {
+  outfit: { prefix: /^outfit_/, band: 0.42 },
+  hair:   { prefix: /^hair_/,   band: 0.45 },
+};
+
+async function referenceFor(part) {
+  const spec = REFERENCE[part];
+  const files = (await readdir(REF)).filter((f) => spec.prefix.test(f));
+  if (files.length < 3) throw new Error(`need at least 3 shipped ${part} plates in ${REF}, found ${files.length}`);
   const vote = new Uint16Array(CANVAS * CANVAS);
   for (const f of files) {
     const m = alphaMask(await rgba(REF + f, { deframe: true }));
     if (m.w !== CANVAS || m.h !== CANVAS) throw new Error(`${f} de-frames to ${m.w}x${m.h}, expected ${CANVAS}`);
     for (let i = 0; i < vote.length; i++) vote[i] += m.a[i];
   }
-  // "At least three of five" — a simple majority of the shipped garments. Union
-  // would inflate the body to the widest sleeve in the set; intersection would
-  // shrink it to the narrowest cardigan. The majority is the child.
+  // A simple majority of the shipped plates. Union would inflate the body to the
+  // widest sleeve (or the hair to the longest braid); intersection would shrink
+  // it to the narrowest cardigan (or the shortest crop). The majority is the child.
   const need = Math.ceil(files.length / 2);
   const body = new Uint8Array(CANVAS * CANVAS);
   for (let i = 0; i < body.length; i++) body[i] = vote[i] >= need ? 1 : 0;
   const bb = boxOf({ a: body, w: CANVAS, h: CANVAS });
 
-  const bandY1 = bb.y0 + Math.round(bb.h * 0.42);
+  const bandY1 = bb.y0 + Math.round(bb.h * spec.band);
   const band = new Uint8Array(CANVAS * CANVAS);
   let n = 0;
   for (let y = bb.y0; y <= bandY1; y++) for (let x = 0; x < CANVAS; x++) {
     if (body[y * CANVAS + x]) { band[y * CANVAS + x] = 1; n++; }
   }
-  return { band, n, bb, bandY1, sources: files.length };
+  return { part, band, n, bb, bandY1, sources: files.length };
 }
 
 // ---------------------------------------------------------------------------
@@ -352,8 +376,12 @@ async function place(file, { scale, dx, dy }, size) {
 
 // ---------------------------------------------------------------------------
 
-const ref = await referenceBody();
-console.log(`reference body from ${ref.sources} shipped outfits: bbox ${ref.bb.x0},${ref.bb.y0} ${ref.bb.w}x${ref.bb.h}, shoulder band to y=${ref.bandY1} (${ref.n.toLocaleString()} px)`);
+const refs = {};
+for (const part of Object.keys(REFERENCE)) {
+  const r = await referenceFor(part);
+  refs[part] = r;
+  console.log(`${part}: reference from ${r.sources} shipped plates, bbox ${r.bb.x0},${r.bb.y0} ${r.bb.w}x${r.bb.h}, band to y=${r.bandY1} (${r.n.toLocaleString()} px)`);
+}
 
 const all = (await readdir(SRC)).filter((f) => /\.png$/i.test(f)).sort();
 if (!all.length) throw new Error(`no PNGs in ${SRC}`);
@@ -380,9 +408,9 @@ const fits = [];
 for (const f of unique) {
   const px = await rgba(SRC + f);
   const kind = classify(hueMix(px));
-  if (kind !== "outfit") { skipped.push({ file: f, kind }); continue; }
+  if (!REFERENCE[kind]) { skipped.push({ file: f, kind }); continue; }
   const mask = alphaMask(px);
-  fits.push({ f, px, mask, found: fit(ref, mask), suspect: null });
+  fits.push({ f, part: kind, px, mask, found: fit(refs[kind], mask), suspect: null });
 }
 
 // ---- pass 2: re-fit anything whose SCALE disagrees with its peers ----------
@@ -393,7 +421,7 @@ const median = (xs) => [...xs].sort((a, b) => a - b)[xs.length >> 1];
 const groups = new Map();
 for (const e of fits) {
   if (e.found.iou < TRUSTED_IOU) continue;
-  const key = e.px.w + "x" + e.px.h;
+  const key = e.part + " " + e.px.w + "x" + e.px.h;
   if (!groups.has(key)) groups.set(key, []);
   groups.get(key).push(e.found.scale);
 }
@@ -401,7 +429,7 @@ for (const [key, scales] of groups) {
   console.log(`  scale prior for ${key}: median ${median(scales).toFixed(4)} from ${scales.length} trusted fits`);
 }
 for (const e of fits) {
-  const key = e.px.w + "x" + e.px.h;
+  const key = e.part + " " + e.px.w + "x" + e.px.h;
   const peers = groups.get(key);
   if (!peers || peers.length < 3) continue;          // too few to have an opinion
   const mid = median(peers);
@@ -422,12 +450,12 @@ for (const e of fits) {
     dx: found.dx + (man.dx ?? 0),
     dy: found.dy + (man.dy ?? 0),
   };
-  const out = `outfit_lab_${f.replace(/\.png$/i, "").slice(0, 8)}.webp`;
+  const out = `${e.part}_lab_${f.replace(/\.png$/i, "").slice(0, 8)}.webp`;
   const buf = await place(SRC + f, t, SIZE);
   if (!buf) { skipped.push({ file: f, kind: "off-canvas" }); continue; }
   await writeFile(DEST + out, buf);
   plates.push({
-    id: out.replace(/\.webp$/, ""), file: out, source: f,
+    id: out.replace(/\.webp$/, ""), file: out, source: f, part: e.part,
     canvas: [px.w, px.h],
     fit: { scale: +t.scale.toFixed(5), dx: Math.round(t.dx), dy: Math.round(t.dy) },
     manual: Object.keys(man).length ? man : null,
@@ -447,16 +475,17 @@ await writeFile(DEST + "manifest.json", JSON.stringify({
   src: arg("src", "NOT YET USED Shutterbug more avatar assets"),
   canvas: SIZE,
   refCanvas: CANVAS,
-  reference: { sources: ref.sources, bbox: ref.bb, bandY1: ref.bandY1 },
+  reference: Object.fromEntries(Object.entries(refs).map(([p, r]) => [p, { sources: r.sources, bbox: r.bb, bandY1: r.bandY1 }])),
   plates,
   skipped,
   duplicates: dupes.map(([a, b]) => ({ file: a, sameAs: b })),
 }, null, 1) + "\n");
 
-const worst = plates.slice(0, 3).map((p) => `${p.source.slice(0, 8)} ${p.quality.iou}`).join(", ");
-console.log(`\n${plates.length} garments written to public/outfit-lab/`);
-console.log(`${skipped.filter((s) => s.kind === "hair").length} hair plates skipped (this lab fits torsos; hair needs the head as its reference)`);
+for (const part of Object.keys(REFERENCE)) {
+  const mine = plates.filter((p) => p.part === part);
+  const worst = mine.slice(0, 3).map((p) => `${p.source.slice(0, 8)} ${p.quality.iou}`).join(", ");
+  console.log(`\n${mine.length} ${part} plates written to public/outfit-lab/ — worst three: ${worst}`);
+}
 const unsure = skipped.filter((s) => s.kind === "unsure");
 if (unsure.length) console.log(`⚠ ${unsure.length} plates could not be classified by colour: ${unsure.map((s) => s.file).join(", ")}`);
-console.log(`worst three fits: ${worst}`);
 console.log(`\nnpm run dev  →  http://localhost:5173/outfit-lab.html`);

@@ -45,6 +45,17 @@ const CANVAS = 1200;
 const DEFAULT_SIZE = 600;
 
 const SRC = fileURLToPath(new URL("../Images/Avatar designs/", import.meta.url));
+// `--also <folder>`: a second delivery read alongside the first, as if its plates
+// were in the same folder. It exists for scripts/register-avatar-batch.mjs, which
+// writes plates the outfit lab has fitted onto this delivery's template — the
+// same 1200x1200 canvas, the same frame, the same filename grammar — into a
+// sibling folder, so that the pristine paintings and the derived plates never
+// share a directory. Everything below treats the two folders as one set: the
+// canvas check runs across both, which is exactly what should catch a badly
+// registered batch, and a name that collides between them is an error rather
+// than a silent overwrite.
+const alsoAt = process.argv.indexOf("--also");
+const ALSO = alsoAt === -1 ? null : fileURLToPath(new URL(process.argv[alsoAt + 1].replace(/\/?$/, "/"), new URL("../", import.meta.url)));
 const DEST = fileURLToPath(new URL("../public/assets/shutterbug-ui/avatar-v2/", import.meta.url));
 
 // The parts, bottom to top. This IS the z-order the game composites in, and it
@@ -152,11 +163,25 @@ async function inkBox(buffer) {
   return x1 < 0 ? null : { x: x0 / w, y: y0 / h, w: (x1 - x0 + 1) / w, h: (y1 - y0 + 1) / h };
 }
 
-function union(a, b) {
-  if (!a) return b;
-  if (!b) return a;
-  const x = Math.min(a.x, b.x), y = Math.min(a.y, b.y);
-  return { x, y, w: Math.max(a.x + a.w, b.x + b.w) - x, h: Math.max(a.y + a.h, b.y + b.h) - y };
+// The part's focus box is the MEDIAN of its plates' ink boxes, edge by edge —
+// not their union. The union was fine while every plate of a part was the same
+// drawing recoloured; it broke the moment the 2026-09 batch added a braid that
+// reaches 99% of the way down the plate. One long hairstyle made the hair's
+// "focus" the whole canvas, so every thumbnail in the picker zoomed OUT, and the
+// round portrait crop — derived from the hair box — framed the whole bust with
+// the face a few pixels across. A test caught it. The median frames the typical
+// plate of the part; a braid's tail crops in its thumbnail, which is right — the
+// fringe and the sides are what tell one style from another at 58px, and a
+// picker where every style is a tiny head tells nothing apart at all.
+// For a part whose plates are recolours of one drawing (head, eyes, brows) the
+// median and the union are the same box.
+function medianBox(boxes) {
+  const bs = boxes.filter(Boolean);
+  if (!bs.length) return null;
+  const med = (vals) => { const s = [...vals].sort((a, b) => a - b); return s[s.length >> 1]; };
+  const x0 = med(bs.map((b) => b.x)), y0 = med(bs.map((b) => b.y));
+  const x1 = med(bs.map((b) => b.x + b.w)), y1 = med(bs.map((b) => b.y + b.h));
+  return { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
 }
 
 const round4 = (box) => box && Object.fromEntries(Object.entries(box).map(([k, v]) => [k, Number(v.toFixed(4))]));
@@ -222,10 +247,24 @@ const plate = async (img) => {
   return sharp(deframed).resize(size, size).webp({ quality: 88, effort: 6, alphaQuality: 100 }).toBuffer();
 };
 
+// Where each delivered file lives. Two folders at most, and a filename may not
+// appear in both — that would be two plates claiming one id.
+const DIR_OF = new Map();
+for (const dir of [SRC, ALSO].filter(Boolean)) {
+  for (const f of (await readdir(dir)).filter((f) => /\.png$/i.test(f))) {
+    if (DIR_OF.has(f)) throw new Error(`${f} is in both ${DIR_OF.get(f)} and ${dir}`);
+    DIR_OF.set(f, dir);
+  }
+}
+const pathOf = (file) => join(DIR_OF.get(file), file);
 const rawOf = async (file) =>
-  (await sharp(join(SRC, file)).ensureAlpha().raw().toBuffer({ resolveWithObject: true })).data;
+  (await sharp(pathOf(file)).ensureAlpha().raw().toBuffer({ resolveWithObject: true })).data;
 
-const files = (await readdir(SRC)).filter((f) => /\.png$/i.test(f)).sort();
+const files = [...DIR_OF.keys()].sort();
+if (ALSO) {
+  const nAlso = [...DIR_OF.values()].filter((d) => d === ALSO).length;
+  console.log(`  reading ${files.length - nAlso} plates from the delivery + ${nAlso} registered from ${ALSO}`);
+}
 
 // ---- Is this batch registered against the others? --------------------------
 // The whole pipeline rests on one property: every plate is the same canvas with
@@ -240,7 +279,7 @@ const files = (await readdir(SRC)).filter((f) => /\.png$/i.test(f)).sort();
 // average ink box of its own part. A head that suddenly sits 200px lower than the
 // other heads is caught here rather than by Joshua noticing a floating face.
 async function canvasOf(file) {
-  const m = await sharp(join(SRC, file)).metadata();
+  const m = await sharp(pathOf(file)).metadata();
   return `${m.width}x${m.height}`;
 }
 const canvases = new Map();
@@ -265,7 +304,7 @@ if (canvases.size > 1) {
 }
 
 const layers = [];
-const focus = Object.fromEntries(PARTS.map((p) => [p, null]));
+const focus = Object.fromEntries(PARTS.map((p) => [p, []]));   // every plate's ink box, reduced by medianBox at the end
 let bytesIn = 0, bytesOut = 0;
 
 for (const file of files) {
@@ -277,7 +316,7 @@ for (const file of files) {
     continue;
   }
 
-  const srcBytes = (await stat(join(SRC, file))).size;
+  const srcBytes = (await stat(pathOf(file))).size;
   bytesIn += srcBytes;
 
   // ONE delivered painting becomes the whole palette for its part. The delivery
@@ -317,7 +356,7 @@ for (const file of files) {
     const raw = tone.source ? srcRaw : recolourPlate(spec.part, srcRaw, CANVAS, CANVAS, found, tone);
     const out = await plate(sharp(raw, { raw: { width: CANVAS, height: CANVAS, channels: 4 } }));
     const one = { ...spec, colour, id: idFor({ ...spec, colour }) };
-    focus[spec.part] = union(focus[spec.part], await inkBox(out));
+    focus[spec.part].push(await inkBox(out));
     const name = `${one.id}.webp`;
     await writeFile(join(DEST, name), out);
     // `tone` and `srcFile` are build-time bookkeeping (the brow pass needs the
@@ -382,7 +421,7 @@ if (drawnBrows) {
     const out = await plate(sharp(rgba, { raw: { width: CANVAS, height: CANVAS, channels: 4 } }));
     const name = `brow_${colour.replace(/\s+/g, "-")}.webp`;
     await writeFile(join(DEST, name), out);
-    focus.brow = union(focus.brow, await inkBox(out));
+    focus.brow.push(await inkBox(out));
     // The brow's `colour` is the HAIR colour it belongs with — that is the key
     // the picker matches on, since the player never chooses brows directly.
     layers.push({ part: "brow", sex: "any", variant: "1", style: "brow",
@@ -410,7 +449,7 @@ const manifest = {
   canvas: size,
   order: PARTS,
   derived: DERIVED,
-  focus: Object.fromEntries(PARTS.map((part) => [part, round4(focus[part])])),
+  focus: Object.fromEntries(PARTS.map((part) => [part, round4(medianBox(focus[part]))])),
   parts: Object.fromEntries(
     PARTS.map((part) => [
       part,

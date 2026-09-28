@@ -101,11 +101,13 @@ function PartRow({ label, value, onStep }) {
 // The stack of part rows plus a randomize button. Shared by the editor and the
 // create-traveler popup, which used to carry two copies of the same layout.
 //
-// SEX comes first because it narrows what the rows under it will offer: the eyes
-// and the hair are drawn per sex, the skin and the outfits are the same paintings
-// for everybody. Every arrow steps inside that sex's own set (stepAxis), so a
-// boy's arrows never walk into the girls' hairstyles, and switching sex carries
-// each choice to its nearest equivalent rather than resetting the face.
+// SEX comes first because it narrows what the rows under it will offer: the eyes,
+// the hair and — since the 2026-09 batch — the outfits are drawn per sex; only
+// the skin is the same painting for everybody. (The first five outfits carry no
+// sex and stay on offer to both; Joshua's call.) Every arrow steps inside that
+// sex's own set (stepAxis), so a boy's arrows never walk into the girls'
+// hairstyles or dresses, and switching sex carries each choice to its nearest
+// equivalent rather than resetting the face.
 //
 // The rows themselves come from AVATAR_ROWS, which splits each part into its
 // STYLE and its COLOUR wherever there is more than one style to choose. One row

@@ -57,11 +57,13 @@ export const AVATAR_ROWS = PICKABLE.flatMap((part) =>
 // ---------------------------------------------------------------------------
 // Sex
 // ---------------------------------------------------------------------------
-// A traveler is male or female, and that choice narrows two of the four things
-// they pick: the eyes and the hair are drawn per sex (different lashes, four
-// hairstyles each), while the skin and the outfit are the same paintings for
-// everybody. So sex is not a fifth wardrobe row — it is a filter over two of the
-// existing ones.
+// A traveler is male or female, and that choice narrows what they pick: the
+// eyes and the hair are drawn per sex (different lashes, and their own run of
+// hairstyles), and since the 2026-09 batch so are most of the outfits — 12 for
+// boys, 11 for girls, on top of the first five, which carry no sex and stay on
+// offer to both. Only the skin is the same painting for everybody. So sex is not
+// a fifth wardrobe row — it is a filter over the existing ones, and WHICH ones it
+// filters is read off the art below rather than listed here.
 export const SEXES = ["male", "female"];
 
 // WHICH parts it filters is read off the art, not listed here. A part is
@@ -100,6 +102,11 @@ function matchAcrossSex(part, index, fromSex, toSex) {
   const to = optionsFor(part, toSex);
   const cur = PARTS[part]?.[index];
   if (!cur) return to[0].i;
+  // A plate both sexes may wear — one of the five first-delivery outfits — is
+  // not "the other sex's" and does not need translating. Switching sex in the
+  // shipped blue jacket keeps the shipped blue jacket; anything else would hand
+  // the child a different coat for no reason they can see.
+  if (!cur.sex || cur.sex === "any") return index;
   const rank = variantsOf(optionsFor(part, fromSex)).indexOf(cur.variant);
   const toVariants = variantsOf(to);
   const want = toVariants[Math.min(Math.max(rank, 0), toVariants.length - 1)];

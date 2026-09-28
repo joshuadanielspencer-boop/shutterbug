@@ -764,11 +764,76 @@ the child's shoulders — because the two families are drawn to different conven
 and every landmark rule needed a special case for that. Read the script's header
 before changing any of it.
 
-**What this still needs from Joshua:** a look, and then a decision. The style is
-crisper and more illustrative than the soft-shaded painting the current avatar
-uses, which is a judgement no measurement settles. **The 15 hairstyles are not
-fitted** — hair registers against the head, which is a different reference and a
-separate job of the same shape.
+**~~What this still needs from Joshua.~~ DECIDED 2026-09-28.** He looked, caught
+two garments sitting off to one side (fixed — see the script's `MANUAL` block for
+how, and how not to), and gave the go-ahead: the batch ships **as extra options
+alongside the existing art, with boys' and girls' clothes and hair locked
+separately by the traveler's boy/girl choice**. His split of all 38 items is in
+`scripts/register-avatar-batch.mjs` (`SPLIT`), keyed by the numbered review
+sheets; the five shipped outfits stay unisex.
+
+**The hair is fitted too, now.** `outfit-lab.mjs` handles both parts: garments
+against the shipped shoulders, hair against the shipped **crown** — the cap of the
+skull that ≥4 of the 8 shipped styles agree on, which is the one thing a bob, a
+braid and a spiky crop have in common. **13 of 15 sat right first time.** The two
+that didn't — a side ponytail and a pair of buns — are the scarf's failure in the
+other axis: an asymmetric mass drags the crown fit sideways until the scalp shows.
+The scale check *cannot* catch these (scales 1.20 and 1.03, well inside the band):
+it is a placement error, and only looking finds it. Both are in `MANUAL`, set by
+dx/dy ladder on the head at the real canvas size.
+
+**How it reaches the game — three steps, deliberately separate:**
+
+1. `node scripts/outfit-lab.mjs` → judge at `/outfit-lab.html` (Garments /
+   Hairstyles toggle). The lab is allowed to be wrong, flagged, nudged, re-run.
+2. `node scripts/register-avatar-batch.mjs` → writes each approved plate at its
+   fitted transform onto the **first delivery's own template** (1200×1200, black
+   frame, the filename grammar) into `Images/Avatar designs-registered/` — a
+   sibling of the delivery, gitignored like it, so pristine paintings and derived
+   plates never share a folder. No fitting logic of its own: if the lab is wrong,
+   fix the lab.
+3. `node scripts/build-avatar-layers.mjs --also "Images/Avatar designs-registered"`
+   → the real build reads both folders as one set. Its canvas check runs across
+   both — exactly the guard that should catch a badly registered batch — the sex
+   token in each name makes `SEXED.outfit` true in `avatar-spec.js` with **no code
+   change** (that file says so in its own comment), and the recolour dyes each red
+   garment into the seven cloth colours and each blonde style into the six hair
+   colours. Variant numbering continues each sex's run: male hair 5–11, female
+   e–l; outfits 6+ per sex.
+
+Adding a garment to the wardrobe is now: drop the painting in the delivery
+folder, run the lab, look, add its line to `SPLIT`, run steps 2 and 3.
+
+**SHIPPED 2026-09-28.** The wardrobe is **358 layers** (was 108): 196 outfits
+(35 unisex, 84 boys', 77 girls'), 138 hairstyles (66 boys', 72 girls'), on top of
+the same 6 skins, 12 eyes, 6 brows. Verified in the create-traveler editor: a girl
+cycles 5 shared + 11 girls' outfit styles, a boy 5 + 12, and neither ever sees the
+other's. The 108 shipped plates came out byte-identical.
+
+Two things the build exposed, both fixed:
+
+- **The focus box had to stop being a union.** Each part's `FOCUS` (what the
+  picker thumbnails zoom to, and what the round portrait crop is derived from) was
+  the union of its plates' ink boxes — fine while every plate of a part was one
+  drawing recoloured, and wrong the moment one hairstyle (the braid) reached 99%
+  of the way down the plate: the hair's focus became the whole canvas, every
+  thumbnail zoomed *out*, and the portrait crop framed the whole bust with the
+  face a few pixels across. `test/avatar.test.js` caught it. It is the per-edge
+  **median** now, which frames the typical plate and lets a braid's tail crop in
+  its 58px thumbnail.
+- **Unisex plates on a sex switch.** `matchAcrossSex` translated *every* sexed
+  part to the other sex's nearest plate; with the five shared outfits that meant
+  flipping boy→girl in the shipped blue jacket handed the child a different coat.
+  A plate both may wear is left alone now, and the sex tests say "wearable by this
+  sex" (own sex *or* `any`) rather than "is this sex".
+
+**⚠ The cost: precache 55.7 MB → 66.9 MB.** The wardrobe is 14.3 MB on disk, up
+from 3.1. The doc's own note from the first delivery already names the lever: *"if
+that ever matters, `--size 400` is the lever — the largest render in the game is
+the 132 px passport frame, so 600 is already 2× for retina."* At 400 the set would
+be roughly 6.5 MB. That is Joshua's trade to make (sharpness he will never see at
+132 px against 8 MB on every iPad), not one made here; the build takes the flag
+and nothing else changes.
 
 ---
 

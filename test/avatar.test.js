@@ -240,9 +240,12 @@ describe("focusStyle", () => {
 });
 
 // ===========================================================================
-// Sex, which is a FILTER over two of the four wardrobe rows rather than a fifth
-// row of its own. The eyes and the hair are drawn per sex; the skin and the
-// outfit are the same paintings for everybody.
+// Sex, which is a FILTER over the wardrobe rows rather than a fifth row of its
+// own. The eyes and the hair are drawn per sex, and since the 2026-09 batch so
+// are most outfits — with the five first-delivery outfits carrying no sex and
+// staying on offer to everyone (Joshua's call). So "wearable by this sex" means
+// the plate's sex is this one OR `any`, and the assertions below say exactly
+// that; before that batch they said "is this one", which was the same thing.
 //
 // The failure mode worth guarding is silent: a spec's numbers are indices into
 // the FULL plate list, and the moment anything treats them as indices into the
@@ -258,7 +261,10 @@ describe("choosing a sex", () => {
     for (const part of PICKABLE) {
       const m = optionsFor(part, "male"), f = optionsFor(part, "female");
       if (SEXED[part]) {
-        expect(m.length + f.length, part).toBe(PARTS[part].length);
+        // Each sex-specific plate is offered to exactly one sex; each `any` plate
+        // to both, so it is counted twice.
+        const shared = PARTS[part].filter((o) => !o.sex || o.sex === "any").length;
+        expect(m.length + f.length, part).toBe(PARTS[part].length + shared);
         expect(m.map((o) => o.i)).not.toEqual(f.map((o) => o.i));
       } else {
         // Skin and outfits: everybody sees every plate, same indices.
@@ -267,10 +273,12 @@ describe("choosing a sex", () => {
     }
   });
 
+  const wearable = (o, sex) => o.sex === sex || !o.sex || o.sex === "any";
+
   it("only ever offers a traveler plates their own sex can wear", () => {
     for (const sex of SEXES) {
       for (const part of sexed) {
-        for (const { o } of optionsFor(part, sex)) expect(o.sex, `${part}/${sex}`).toBe(sex);
+        for (const { o } of optionsFor(part, sex)) expect(wearable(o, sex), `${part}/${sex}: ${o.id}`).toBe(true);
       }
     }
   });
@@ -285,7 +293,7 @@ describe("choosing a sex", () => {
         const seen = new Set();
         for (let n = 0; n < opts.length; n++) {
           seen.add(spec[part]);
-          expect(PARTS[part][spec[part]].sex, `${part}/${sex}`).toBe(sex);
+          expect(wearable(PARTS[part][spec[part]], sex), `${part}/${sex}`).toBe(true);
           spec = stepPart(spec, part, 1);
         }
         expect(seen.size, `${part}/${sex} lap`).toBe(opts.length);
@@ -301,9 +309,25 @@ describe("choosing a sex", () => {
       for (const { o, i } of optionsFor(part, "male")) {
         const after = withSex({ sex: "male", [part]: i }, "female");
         expect(PARTS[part][after[part]].colour, `${part} ${o.colour}`).toBe(o.colour);
-        expect(PARTS[part][after[part]].sex).toBe("female");
-        // …and back again lands on the plate it started from.
-        expect(withSex(after, "male")[part]).toBe(i);
+        if (o.sex === "male") {
+          expect(PARTS[part][after[part]].sex).toBe("female");
+        } else {
+          // A plate both may wear is not translated at all — the same jacket,
+          // whoever is wearing it.
+          expect(after[part], `${part} ${o.id} is unisex`).toBe(i);
+        }
+        // …and back again lands on the plate it started from — where a round
+        // trip is possible. Variants are matched by POSITION in each sex's run,
+        // and the runs are not the same length any more (12 boys' outfits to 11
+        // girls', 7 boys' hairstyles to 8 girls'), so the last variant of the
+        // longer run has no partner: it maps to the other run's last and comes
+        // back one short. No bijection exists between sets of different sizes;
+        // the guarantee is for the positions both runs have.
+        const variants = (sex) => [...new Set(optionsFor(part, sex).map((x) => x.o.variant))];
+        const rank = variants("male").indexOf(o.variant);
+        if (o.sex !== "male" || rank < variants("female").length) {
+          expect(withSex(after, "male")[part], `${part} ${o.id} round trip`).toBe(i);
+        }
       }
     }
   });
@@ -320,11 +344,11 @@ describe("choosing a sex", () => {
     for (const name of ["Rosa", "Sam", "Ada", "Kai", "Jo", "Wren", "Bo"]) {
       const spec = defaultAvatar(name);
       expect(SEXES).toContain(spec.sex);
-      for (const part of sexed) expect(PARTS[part][spec[part]].sex, `${name}/${part}`).toBe(spec.sex);
+      for (const part of sexed) expect(wearable(PARTS[part][spec[part]], spec.sex), `${name}/${part}`).toBe(true);
     }
     for (let n = 0; n < 40; n++) {
       const spec = randomAvatar(() => (n * 0.137 + 0.01) % 1);
-      for (const part of sexed) expect(PARTS[part][spec[part]].sex, `random ${n}/${part}`).toBe(spec.sex);
+      for (const part of sexed) expect(wearable(PARTS[part][spec[part]], spec.sex), `random ${n}/${part}`).toBe(true);
     }
   });
 
@@ -336,7 +360,7 @@ describe("choosing a sex", () => {
         const spec = normalizeAvatar({ head: 0, outfit: 0, eyes: 0, hair: 0, [part]: i }, "Rosa");
         expect(SEXES).toContain(spec.sex);
         for (const p of sexed)
-          expect(PARTS[p][spec[p]].sex, `${part}=${i} → ${p}`).toBe(spec.sex);
+          expect(wearable(PARTS[p][spec[p]], spec.sex), `${part}=${i} → ${p}`).toBe(true);
       }
     }
   });
@@ -345,7 +369,7 @@ describe("choosing a sex", () => {
     for (let skin = 0; skin < 8; skin++) {
       for (let hairColor = 0; hairColor < 15; hairColor += 3) {
         const spec = migrateAvatar({ skin, hairColor, shirt: 0 }, "Rosa");
-        for (const part of sexed) expect(PARTS[part][spec[part]].sex).toBe(spec.sex);
+        for (const part of sexed) expect(wearable(PARTS[part][spec[part]], spec.sex), `legacy skin${skin}/hair${hairColor}/${part}`).toBe(true);
       }
     }
   });

@@ -1,9 +1,10 @@
 <!doctype html>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Outfit lab — does the new batch line up?</title>
+<title>Wardrobe lab — does the new batch line up?</title>
 <!--
-  A standalone review page for the 2026-09 garment delivery. NOTHING in the game
+  A standalone review page for the 2026-09 delivery — 23 garments and 15
+  hairstyles. NOTHING in the game
   imports it and nothing it shows can reach a child: the plates come from
   public/outfit-lab/, written by scripts/outfit-lab.mjs, and the shipped wardrobe
   in public/assets/shutterbug-ui/avatar-v2/ is untouched.
@@ -78,10 +79,12 @@
   .empty { border: 1px dashed var(--line); border-radius: 12px; padding: 22px; color: var(--dim); }
 </style>
 
-<h1>Outfit lab</h1>
+<h1>Wardrobe lab</h1>
 <p class="lede">
-  The 2026-09 delivery, painted floating on a mannequin, fitted onto the avatar body by
-  <code>scripts/outfit-lab.mjs</code>. Nothing here is in the game — these plates live in
+  The 2026-09 delivery — 23 garments painted floating on a mannequin, 15 hairstyles painted
+  floating in space — fitted onto the avatar by <code>scripts/outfit-lab.mjs</code>: garments
+  against the shipped shoulders, hair against the shipped crown. Switch between them with the
+  Garments / Hairstyles buttons. Nothing here is in the game — these plates live in
   <code>public/outfit-lab/</code> and the shipped wardrobe is untouched. The question is only
   whether the alignment is good enough to ship. Compare against the shipped jacket on the left of
   the bench, turn on <strong>Ghost the shipped body</strong> to see where the shoulders ought to be,
@@ -102,6 +105,10 @@
   <label class="ctl"><input type="checkbox" id="ghost"> Ghost the shipped body</label>
   <label class="ctl"><input type="checkbox" id="nohead"> Garment only (no head)</label>
   <button type="button" id="sort" aria-pressed="false">Worst fit first</button>
+  <span class="ctl" role="group" aria-label="Which part to review">
+    <button type="button" data-part="outfit" aria-pressed="true">Garments</button>
+    <button type="button" data-part="hair" aria-pressed="false">Hairstyles</button>
+  </span>
 </div>
 
 <div id="bench" class="empty">Pick a garment below to put it on the bench.</div>
@@ -150,15 +157,32 @@ const browFor = (hairId) => {
 };
 
 // ---- one avatar ----------------------------------------------------------
-// `garment` is a lab plate (already baked at its fitted transform) or null for
-// the shipped reference outfit. `tweak` is a live nudge on top of the bake.
-function avatar(garment, { size = null, tweak = null, ghost = false, nohead = false } = {}) {
+// `plate` is a lab plate (already baked at its fitted transform) or null for
+// the all-shipped reference. Its `part` says which shipped layer it stands in
+// for — a lab garment replaces the outfit, a lab hairstyle replaces the hair —
+// and every other layer comes from the shipped set, so what is judged is only
+// the one thing that is new. `tweak` is a live nudge on top of the bake.
+// With `plate` null it renders the all-shipped reference; `refPart` then says
+// which part the reference is standing beside, so the "shipped" column shows
+// shipped HAIR when a lab hairstyle is on the bench, not the shipped outfit.
+function avatar(plate, { size = null, tweak = null, ghost = false, nohead = false, refPart = "outfit" } = {}) {
   const box = el("div", { className: "av" });
   if (size) { box.style.width = size + "px"; box.style.flex = "0 0 auto"; }
+  const part = plate?.part || refPart;
 
   const layers = [];
-  if (garment) {
-    const img = el("img", { className: "garment", src: LAB + garment.file, alt: "" });
+  for (const layerPart of ORDER) {
+    if (layerPart === part) continue;               // the lab plate goes here instead
+    if (nohead && layerPart !== "outfit") continue;
+    const p = layerPart === "brow" ? browFor(pick.hair)
+            : layerPart === "outfit" ? parts.outfit[0]
+            : byId(layerPart, pick[layerPart]);
+    if (p) layers.push({ part: layerPart, el: el("img", { src: AV + p.file, alt: "" }) });
+  }
+  let mine;
+  if (plate) {
+    const img = el("img", { className: "garment", src: LAB + plate.file, alt: "" });
+    const garment = plate;
     if (tweak) {
       // The plate is baked with the garment at (dx, dy) scaled by s on the
       // reference canvas. A hand nudge {scale: k, dx: ex, dy: ey} means "scale
@@ -172,19 +196,26 @@ function avatar(garment, { size = null, tweak = null, ghost = false, nohead = fa
       const ty = (garment.fit.dy + ey - k * garment.fit.dy) / lab.refCanvas * 100;
       img.style.transform = `translate(${tx.toFixed(3)}%, ${ty.toFixed(3)}%) scale(${k})`;
     }
-    layers.push(img);
+    mine = img;
   } else {
-    layers.push(el("img", { src: AV + byId("outfit", "").file, alt: "" }));
+    const p = part === "hair" ? byId("hair", pick.hair) : parts.outfit[0];
+    mine = el("img", { src: AV + p.file, alt: "" });
   }
-  if (ghost) layers.push(el("img", { className: "ghostimg", src: AV + parts.outfit[0].file, alt: "" }));
-  if (!nohead) {
-    for (const part of ORDER) {
-      if (part === "outfit") continue;
-      const p = part === "brow" ? browFor(pick.hair) : byId(part, pick[part]);
-      if (p) layers.push(el("img", { src: AV + p.file, alt: "" }));
-    }
+  // Slot the lab plate in at its part's z-position, so a lab hairstyle sits over
+  // the head exactly as the shipped hair would, not on top of everything.
+  const ordered = [];
+  for (const layerPart of ORDER) {
+    if (layerPart === part) { ordered.push(mine); continue; }
+    const found = layers.find((l) => l.part === layerPart);
+    if (found) ordered.push(found.el);
   }
-  box.append(...layers);
+  // The ghost is the shipped plate for the same part, so the eye can see where
+  // the shoulders — or the crown — ought to be.
+  if (ghost) {
+    const g = part === "hair" ? byId("hair", pick.hair) : parts.outfit[0];
+    ordered.push(el("img", { className: "ghostimg", src: AV + g.file, alt: "" }));
+  }
+  box.append(...ordered);
   return box;
 }
 
@@ -192,12 +223,14 @@ const band = (iou) => (iou >= 0.9 ? "good" : iou >= 0.82 ? "warn" : "bad");
 const bandWord = (iou) => (iou >= 0.9 ? "close" : iou >= 0.82 ? "check it" : "look hard");
 
 // ---- the grid ------------------------------------------------------------
-let selected = lab.plates[lab.plates.length - 1];
+let part = "outfit";
 let worstFirst = false;
+const platesOf = (p) => lab.plates.filter((x) => (x.part || "outfit") === p);
+let selected = platesOf(part)[platesOf(part).length - 1];
 
 function drawGrid() {
   grid.textContent = "";
-  const list = [...lab.plates].sort((a, b) => (worstFirst ? a.quality.iou - b.quality.iou : a.source.localeCompare(b.source)));
+  const list = [...platesOf(part)].sort((a, b) => (worstFirst ? a.quality.iou - b.quality.iou : a.source.localeCompare(b.source)));
   for (const p of list) {
     const fig = el("figure", { className: "card" + (p === selected ? " sel" : "") });
     const btn = el("button", { className: "pick", type: "button" });
@@ -216,7 +249,7 @@ function drawGrid() {
     ]));
     grid.append(fig);
   }
-  gridhead.textContent = `The batch — ${lab.plates.length} garments`;
+  gridhead.textContent = `The batch — ${platesOf(part).length} ${part === "hair" ? "hairstyles" : "garments"}`;
 }
 
 // ---- the bench -----------------------------------------------------------
@@ -227,7 +260,8 @@ function drawBench() {
   bench.className = "bench";
   bench.textContent = "";
 
-  const shipped = el("div", {}, [avatar(null, { ghost: false, nohead: nohead.checked }), el("p", { className: "lbl", textContent: "Shipped — outfit 1" })]);
+  const shippedNote = selected.part === "hair" ? "Shipped — current hair pick" : "Shipped — outfit 1";
+  const shipped = el("div", {}, [avatar(null, { refPart: selected.part, nohead: nohead.checked }), el("p", { className: "lbl", textContent: shippedNote })]);
 
   const liveBox = el("div");
   const live = avatar(selected, { ghost: ghost.checked, nohead: nohead.checked });
@@ -288,17 +322,23 @@ function drawBench() {
 
 // ---- wiring --------------------------------------------------------------
 for (const box of [ghost, nohead]) box.addEventListener("change", () => { drawGrid(); drawBench(); });
+for (const b of document.querySelectorAll("[data-part]")) {
+  b.addEventListener("click", () => {
+    part = b.dataset.part;
+    for (const o of document.querySelectorAll("[data-part]")) o.setAttribute("aria-pressed", String(o === b));
+    selected = platesOf(part)[platesOf(part).length - 1];
+    drawGrid(); drawBench();
+  });
+}
 sort.addEventListener("click", () => {
   worstFirst = !worstFirst;
   sort.setAttribute("aria-pressed", String(worstFirst));
   drawGrid();
 });
 
-const hairSkips = lab.skipped.filter((s) => s.kind === "hair").length;
-const unsure = lab.skipped.filter((s) => s.kind !== "hair");
+const unsure = lab.skipped.filter((s) => s.kind !== "hair" && s.kind !== "outfit");
 skipped.textContent =
-  `${hairSkips} plates in the delivery are hairstyles, not garments, and are not fitted here — hair registers against the head, which is a different reference and a separate job. `
-  + (unsure.length ? `⚠ ${unsure.length} could not be classified: ${unsure.map((s) => s.file).join(", ")}. ` : "")
+  (unsure.length ? `⚠ ${unsure.length} could not be classified by colour: ${unsure.map((s) => s.file).join(", ")}. ` : "Every plate in the delivery classified as a garment or a hairstyle and was fitted. ")
   + `${lab.duplicates.length} files were exact duplicates of another and were skipped.`;
 
 drawGrid();
