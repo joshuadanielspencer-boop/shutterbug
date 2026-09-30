@@ -44,6 +44,30 @@ Last updated **2026-09-23**.
 > `emoji` (until art lands), and a thank-you per item. The test checks the hub
 > exists, is in the stall's country, and that the country has a currency.
 >
+> **Five stalls now (2026-09-30):** Tokyo, Toronto, Cairo, Mexico City, Istanbul —
+> every anchor country that has a hub, 18 objects, each verified from its
+> Wikipedia intro and dropped if the intro didn't state the connection (a hockey
+> puck's article never says Canada; hibiscus tea's never says Egypt). Joshua asked
+> for "the other thirteen" and got four, because:
+>
+> - **Nine anchor countries have no hub** — Cameroon, Ecuador, Jordan, Madagascar,
+>   Namibia, Nepal, the Philippines, Sri Lanka. The stall opens on landing at a
+>   hub, and there is nowhere to land. **Decision needed:** either a second trigger
+>   (a stall when the last leg lands you *in* the country — the child is then
+>   buying in rupees in Nepal, which is arguably the better lesson, but it is a
+>   popup on every country arrival unless rationed), or real hubs in those
+>   countries (Kathmandu, Manila, Colombo are plausible; Antananarivo is not).
+> - **The United States is left out on purpose.** Three hubs, but it's the home
+>   currency, and the stall exists to teach judging *foreign* money.
+>
+> ⚠ **Two exchange tables disagree.** `travel.js` has a hand-typed `CURRENCIES`
+> (lira 32/USD, pound 48) that every money display uses — the hub chooser, the
+> stall; `currency.js` is generated from live rates (lira 47, pound 51, July 2026).
+> The stall uses `travel.js` so the game agrees with itself, which means Turkey's
+> "pounds of bread" line is ~30% off the fresher rate. The fix is to make
+> `travel.js` read its rates from `currency.js` and delete the hand table. Small,
+> touches every price the game prints, and it should be its own change.
+>
 > **Not built, from the same note:** *"hub airports are where you change money, and
 > whatever you don't spend before leaving is lost to exchange fees."* That is a
 > second mechanic (a per-currency purse), and it changes how the wallet works

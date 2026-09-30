@@ -8626,7 +8626,12 @@ function SouvenirStall({ hub, money, bought, onBuy, onClose }) {
     if (!anchor) return null;
     const lbs = localOf(usd) / anchor.price;
     const n = lbs >= 10 ? Math.round(lbs) : lbs >= 1 ? Math.round(lbs * 2) / 2 : Math.round(lbs * 10) / 10;
-    return `about ${n} ${n === 1 ? "pound" : "pounds"} of ${anchor.item} at a ${anchor.city || s.country} market`;
+    // A city anchor names the market ("at a Tokyo market"); a national average
+    // has no city and reads "at a market in Turkey" — the first version wrote
+    // "at a Turkey market", which is what happens when you drop a country name
+    // into a slot shaped for a city.
+    const where = anchor.city ? `at a ${anchor.city} market` : `at a market in ${s.country}`;
+    return `about ${n} ${n === 1 ? "pound" : "pounds"} of ${anchor.item} ${where}`;
   };
   const row = (it) => {
     const have = bought.includes(`${hub.code}/${it.id}`);
