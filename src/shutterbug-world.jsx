@@ -1978,8 +1978,12 @@ export default function ShutterbugWorld() {
   // that is open, if one is. Run-scoped like the wallet: they go to the profile
   // with the stamps at the end of the run, not before.
   const [souvenirs, setSouvenirs] = useState([]);
-  const [stall, setStall] = useState(null);          // { hub } | null
-  const stallsSeenRef = useRef(new Set());            // one visit per hub per run
+  const [stall, setStall] = useState(null);          // { country } | null
+  const stallsSeenRef = useRef(new Set());            // one visit per COUNTRY per run
+  // A stall that is waiting for the country arrival card to close. Two popups
+  // at once is the one thing worse than none; the card has the country's name,
+  // money and season on it, and the stall is what you do with that money.
+  const stallAfterCardRef = useRef(null);
   const [travelChoice, setTravelChoice] = useState(null); // { cont, from, to, penalty, target, hubs } | null
   const [journeyId, setJourneyId] = useState(JOURNEYS[0].id);   // which route is picked on the meet screen
   const [journey, setJourney] = useState(null);                 // live run: { id, at, wrong, done, reveal }
@@ -3699,9 +3703,9 @@ export default function ShutterbugWorld() {
       // says no, because money is never a fail state here — see souvenirs.js.
       // Assignments has no wallet, so no stall; that is the mode where a child
       // is still learning to answer a clue, and a shop on the way would be a tax.
-      if (SOUVENIR_STALLS[hub.code] && !stallsSeenRef.current.has(hub.code)) {
-        stallsSeenRef.current.add(hub.code);
-        setTimeout(() => setMoney((m) => { if (m > 0) setStall({ hub }); return m; }), 1400);
+      if (SOUVENIR_STALLS[hub.country] && !stallsSeenRef.current.has(hub.country)) {
+        stallsSeenRef.current.add(hub.country);
+        setTimeout(() => setMoney((m) => { if (m > 0) setStall({ country: hub.country }); return m; }), 1400);
       }
     };
     if (prefersReduced) { finalize(); return; }
@@ -3767,7 +3771,21 @@ export default function ShutterbugWorld() {
         setCityPlan({ ids: tourIds, wide: !hasBox || !optionsFitCountry(tourIds, pickedContinent, country) });
         setPickedCountry(country);
         setPhase("city"); setCurrent(null); setRevealed(false);
-        if (COUNTRY_INFO[country] && poppedCountryRef.current !== country) { poppedCountryRef.current = country; setCountryPopup(country); }
+        const cardOpens = COUNTRY_INFO[country] && poppedCountryRef.current !== country;
+        if (cardOpens) { poppedCountryRef.current = country; setCountryPopup(country); }
+        // The souvenir stall's second door: arriving IN a country on the last leg.
+        // It is how the countries with no hub airport get a stall at all — Joshua's
+        // choice over inventing hubs for them, since buying in rupees in Nepal is
+        // the better lesson than buying them in Delhi. Once per country per run,
+        // shared with the hub door, so landing at Haneda and then reaching Japan
+        // is one stall, not two. Only with money in the wallet; and if the country
+        // card is opening it waits its turn behind it (see CountryPopup's onClose)
+        // rather than stacking on top.
+        if (SOUVENIR_STALLS[country] && !stallsSeenRef.current.has(country)) {
+          stallsSeenRef.current.add(country);
+          if (cardOpens) stallAfterCardRef.current = country;
+          else setTimeout(() => setMoney((m) => { if (m > 0) setStall({ country }); return m; }), 1400);
+        }
         // Arrival audio, in order: a beat, the country's name, its tune once, hello.
         arriveInCountry(country, pickedContinent);
         const targetHere = tourReqs.some((r) => !r.done && (COUNTRY_LOCS[pickedContinent]?.[country] || []).some((id) => r.kind === "category" ? BY_ID[id].category === r.category : r.targetId === id));
@@ -7168,13 +7186,18 @@ export default function ShutterbugWorld() {
       {/* A photo is only ever opened FROM the album, so closing it returns there
           (not to the map behind it). */}
       {albumView && <LandmarkModal p={albumView} onClose={() => { setAlbumView(null); setAlbumOpen(true); }} reduced={prefersReduced} />}
-      {countryPopup && <CountryPopup country={countryPopup} ride={arrivalRide} onClose={() => setCountryPopup(null)} reduced={prefersReduced}
+      {countryPopup && <CountryPopup country={countryPopup} ride={arrivalRide} reduced={prefersReduced}
+        onClose={() => {
+          setCountryPopup(null);
+          const waiting = stallAfterCardRef.current;
+          if (waiting) { stallAfterCardRef.current = null; setTimeout(() => setMoney((m) => { if (m > 0) setStall({ country: waiting }); return m; }), 500); }
+        }}
         /* Where they were standing a moment ago — the last place actually
            photographed. Without it the time and season lines are facts; with it
            they are a comparison, which is the half that teaches. */
         from={album.length ? BY_ID[album[album.length - 1].id] || null : null} />}
       {travelChoice && <TravelChooser choice={travelChoice} money={money} onConfirm={confirmTravel} onCancel={() => setTravelChoice(null)} />}
-      {stall && <SouvenirStall hub={stall.hub} money={money} bought={souvenirs}
+      {stall && <SouvenirStall country={stall.country} money={money} bought={souvenirs}
         onBuy={(key, usd) => { setMoney((m) => Math.max(0, Math.round(m - usd))); setSouvenirs((l) => (l.includes(key) ? l : [...l, key])); sfx("stamp"); }}
         onClose={() => setStall(null)} />}
       {/* Customize Traveler, reachable mid-trip by tapping the header avatar. No
@@ -8371,7 +8394,7 @@ function PassportModal({ profile, onClose }) {
                   <div style={{ marginTop: 10, fontSize: 11.5, opacity: 0.85 }}>
                     <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 9.5, letterSpacing: "0.14em", color: OCEAN, marginBottom: 3 }}>🎁 FOR UNCLE JONAH</div>
                     {got.slice(0, 4).map((x) => (
-                      <div key={x.hub + x.id} style={{ display: "flex", gap: 6, alignItems: "baseline" }}>
+                      <div key={x.country + x.id} style={{ display: "flex", gap: 6, alignItems: "baseline" }}>
                         <span aria-hidden="true">{x.emoji}</span><b>{x.name}</b><span style={{ opacity: 0.7 }}>· {x.city}</span>
                       </div>
                     ))}
@@ -8604,14 +8627,14 @@ function PassportBackup({ profile }) {
 // visible trade a child can reason about, and the stall closes with "Not now"
 // as easily as with a purchase. Buying is one click per item and the thank-you
 // arrives on the spot, because a gift for Jonah should feel like a gift.
-function SouvenirStall({ hub, money, bought, onBuy, onClose }) {
-  const s = SOUVENIR_STALLS[hub.code];
+function SouvenirStall({ country, money, bought, onBuy, onClose }) {
+  const s = SOUVENIR_STALLS[country];
   const ref = useRef(null);
   useModalFocus(ref, onClose);
   const [thanks, setThanks] = useState(null);
   if (!s) return null;
-  const cur = currencyFor(s.country);
-  const anchor = PRICE_ANCHORS[s.country] || null;
+  const cur = currencyFor(country);
+  const anchor = PRICE_ANCHORS[country] || null;
   const localOf = (usd) => usd * cur.perUsd;
   const localTxt = (usd) => {
     const v = localOf(usd);
@@ -8630,11 +8653,11 @@ function SouvenirStall({ hub, money, bought, onBuy, onClose }) {
     // has no city and reads "at a market in Turkey" — the first version wrote
     // "at a Turkey market", which is what happens when you drop a country name
     // into a slot shaped for a city.
-    const where = anchor.city ? `at a ${anchor.city} market` : `at a market in ${s.country}`;
+    const where = anchor.city ? `at a ${anchor.city} market` : `at a market in ${country}`;
     return `about ${n} ${n === 1 ? "pound" : "pounds"} of ${anchor.item} ${where}`;
   };
   const row = (it) => {
-    const have = bought.includes(`${hub.code}/${it.id}`);
+    const have = bought.includes(`${country}/${it.id}`);
     const can = money >= it.usd;
     return (
       <div key={it.id} style={{ display: "grid", gridTemplateColumns: "44px 1fr auto", gap: 12, alignItems: "start",
@@ -8653,7 +8676,7 @@ function SouvenirStall({ hub, money, bought, onBuy, onClose }) {
             {anchor && <div style={{ fontSize: 12, opacity: 0.8, marginTop: 1 }}>That's {compare(it.usd)}.</div>}
           </div>
         </div>
-        <button onClick={() => { onBuy(`${hub.code}/${it.id}`, it.usd); setThanks(SOUVENIR_THANKS[`${hub.code}/${it.id}`] || null); }}
+        <button onClick={() => { onBuy(`${country}/${it.id}`, it.usd); setThanks(SOUVENIR_THANKS[`${country}/${it.id}`] || null); }}
           disabled={have || !can} aria-disabled={have || !can}
           style={{ ...primaryBtn, marginTop: 0, padding: "9px 14px", fontSize: 13, opacity: have || !can ? 0.5 : 1, whiteSpace: "nowrap" }}>
           {have ? "Bought" : can ? "Buy for Jonah" : "Not enough"}
@@ -8666,7 +8689,7 @@ function SouvenirStall({ hub, money, bought, onBuy, onClose }) {
       style={{ position: "fixed", inset: 0, background: "rgba(16,38,46,0.62)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16, zIndex: 55 }}>
       <div onClick={(e) => e.stopPropagation()}
         style={{ background: PAPER, borderRadius: 16, border: `3px solid ${GOLD}`, boxShadow: "0 14px 44px rgba(0,0,0,0.35)", maxWidth: 600, width: "100%", maxHeight: "92vh", overflowY: "auto", padding: "18px 20px 20px" }}>
-        <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.16em", color: OCEAN, fontWeight: 700 }}>🎁 SOUVENIR STALL · {s.city.toUpperCase()} ({hub.code})</div>
+        <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.16em", color: OCEAN, fontWeight: 700 }}>🎁 SOUVENIR STALL · {s.city.toUpperCase()}{s.hub ? ` (${s.hub})` : ""}</div>
         <p style={{ margin: "4px 0 2px", color: INK, fontWeight: 700 }}>Something for Uncle Jonah, from {s.stall}.</p>
         <p style={{ margin: "0 0 12px", fontSize: 13, color: INK, opacity: 0.8 }}>
           Wallet: <b>${money.toLocaleString("en-US")}</b> · prices are in {cur.name}{cur.symbol !== cur.code ? ` (${cur.symbol})` : ""}.

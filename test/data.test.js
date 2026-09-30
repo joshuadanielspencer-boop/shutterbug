@@ -839,12 +839,13 @@ describe("travel modes", () => {
   });
 
   it("a country using the dollar by policy is not a country we failed to map", () => {
-    // Ecuador and Panama are dollarized, so they render bare "$120" — identical to
-    // the unmapped fallback. The map entry is the only thing recording that we know.
-    for (const c of ["Ecuador", "Panama"]) {
-      expect(COUNTRY_CURRENCY[c], `${c} must be explicitly mapped`).toBe("USD");
-      expect(money(120, c)).toBe("$120");
-    }
+    // Ecuador adopted the dollar in 2000; Panama's balboa is at exact par with it
+    // and dollars circulate. Both render bare "$120" — identical to the unmapped
+    // fallback — so the map entry is the only thing recording that we know.
+    expect(COUNTRY_CURRENCY["Ecuador"]).toBe("USD");
+    expect(COUNTRY_CURRENCY["Panama"]).toBe("PAB");
+    expect(CURRENCIES.PAB.perUsd).toBe(1);
+    for (const c of ["Ecuador", "Panama"]) expect(money(120, c)).toBe("$120");
   });
 
   it("a word-like currency symbol is spaced off its number", () => {

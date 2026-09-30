@@ -179,48 +179,41 @@ export function destinationContexts(loc) {
 }
 
 // ---- Currencies ------------------------------------------------------------
-// name + symbol + ISO code are stable; `perUsd` is an APPROXIMATE rate that drifts,
-// so it carries `asOf` and the game shows "(as of YYYY)". Eurozone and a few shared
-// currencies cover many countries at once; everything else falls back to USD.
-export const CURRENCY_AS_OF = 2026;
-export const CURRENCIES = {
-  USD: { name: "US dollar", symbol: "$", perUsd: 1 },
-  EUR: { name: "euro", symbol: "€", perUsd: 0.92 },
-  GBP: { name: "British pound", symbol: "£", perUsd: 0.79 },
-  JPY: { name: "Japanese yen", symbol: "¥", perUsd: 150 },
-  CNY: { name: "Chinese yuan", symbol: "¥", perUsd: 7.2 },
-  INR: { name: "Indian rupee", symbol: "₹", perUsd: 83 },
-  THB: { name: "Thai baht", symbol: "฿", perUsd: 36 },
-  AED: { name: "UAE dirham", symbol: "د.إ", perUsd: 3.67 },
-  BRL: { name: "Brazilian real", symbol: "R$", perUsd: 5.0 },
-  MXN: { name: "Mexican peso", symbol: "$", perUsd: 18 },
-  CAD: { name: "Canadian dollar", symbol: "$", perUsd: 1.36 },
-  AUD: { name: "Australian dollar", symbol: "$", perUsd: 1.52 },
-  NZD: { name: "New Zealand dollar", symbol: "$", perUsd: 1.65 },
-  ZAR: { name: "South African rand", symbol: "R", perUsd: 18.5 },
-  EGP: { name: "Egyptian pound", symbol: "£", perUsd: 48 },
-  MAD: { name: "Moroccan dirham", symbol: "DH", perUsd: 10 },
-  KES: { name: "Kenyan shilling", symbol: "KSh", perUsd: 130 },
-  TRY: { name: "Turkish lira", symbol: "₺", perUsd: 32 },
-  RUB: { name: "Russian ruble", symbol: "₽", perUsd: 92 },
-  PEN: { name: "Peruvian sol", symbol: "S/", perUsd: 3.7 },
-  ARS: { name: "Argentine peso", symbol: "$", perUsd: 950 },
-  CLP: { name: "Chilean peso", symbol: "$", perUsd: 950 },
-  COP: { name: "Colombian peso", symbol: "$", perUsd: 4000 },
-  CHF: { name: "Swiss franc", symbol: "Fr", perUsd: 0.88 },
-  ISK: { name: "Icelandic króna", symbol: "kr", perUsd: 138 },
-  NOK: { name: "Norwegian krone", symbol: "kr", perUsd: 10.7 },
-  IDR: { name: "Indonesian rupiah", symbol: "Rp", perUsd: 16000 },
-  VND: { name: "Vietnamese đồng", symbol: "₫", perUsd: 25000 },
-  KRW: { name: "South Korean won", symbol: "₩", perUsd: 1350 },
-};
+// ONE source of rates, not two. Until 2026-09-30 this file carried its own
+// hand-typed table of 28 currencies with rates typed in July, and
+// src/data/currency.js carried a GENERATED table of every country's money at
+// live rates. They disagreed — lira 32 here, 47 there — and every price the
+// game prints (the hub chooser, the last-leg fares, the souvenir stall) came
+// from this one, while the culture card came from the other. Worse, this table
+// knew 28 currencies and the game has 108 countries: Nepal, Sri Lanka, the
+// Philippines and Madagascar were not in it at all and silently priced in
+// dollars. So the floating rates now come from currency.js, and this file keeps
+// only the two things the generator cannot know:
+//
+//   - the PEGGED currencies, whose parity to an anchor is a published fact that
+//     does not drift (655.957 CFA to the euro since 1999), and is therefore
+//     derived from the anchor's live rate rather than read as a rounded snapshot;
+//   - the display names and symbols a child reads ("CFA 72,420" rather than
+//     "XOF 72,420"), for those pegged ones — the generator's own symbol list is
+//     hand-checked and is used for everything else. Names are Title Case to
+//     match the generated ones, since both print in the same sentence.
+import { COUNTRY_CURRENCY as GENERATED } from "./currency.js";
+
+// code → { name, symbol, perUsd }, one entry per currency the game has a country
+// for. Built from the generated table, so a refreshed rate lands here with no
+// edit. USD is guaranteed present because currencyFor() falls back to it.
+export const CURRENCIES = {};
+for (const m of Object.values(GENERATED)) {
+  if (!CURRENCIES[m.code]) CURRENCIES[m.code] = { name: m.name, symbol: m.symbol, perUsd: m.perUsd };
+}
+CURRENCIES.USD = CURRENCIES.USD || { name: "US Dollar", symbol: "$", perUsd: 1 };
 
 // ---- Pegged currencies -----------------------------------------------------
-// Unlike the rates above, these do not float: each is fixed to an anchor by treaty
-// or central-bank policy, so the PARITY is a durable fact even though the anchor's
-// own dollar rate drifts. They are therefore DERIVED from their anchor rather than
-// frozen as a second approximation — refresh `EUR` above and every euro-pegged
-// currency follows for free, still exactly 655.957 to the euro.
+// These do not float: each is fixed to an anchor by treaty or central-bank
+// policy, so the PARITY is a durable fact even though the anchor's own dollar
+// rate drifts. They are DERIVED from their anchor rather than taken from the
+// generated table, whose rates are rounded to two figures — 580 CFA to the
+// dollar is a snapshot, 655.957 to the euro is the law.
 //
 // Sources (checked 2026-07-16, rule 2). Every parity below has held for decades:
 //   XOF/XAF  655.957 per EUR, fixed since 1 Jan 1999, guaranteed by the French
@@ -234,43 +227,24 @@ export const CURRENCIES = {
 //   NAD      1:1 with the rand (Common Monetary Area); the rand is also legal
 //            tender in Namibia
 const PEGGED = {
-  XOF: { name: "West African CFA franc",   symbol: "CFA",  per: 655.957,  of: "EUR" },
-  XAF: { name: "Central African CFA franc", symbol: "FCFA", per: 655.957,  of: "EUR" },
-  XPF: { name: "CFP franc",                symbol: "F",    per: 119.3317, of: "EUR" },
-  DKK: { name: "Danish krone",             symbol: "kr",   per: 7.46038,  of: "EUR" },
-  SAR: { name: "Saudi riyal",              symbol: "SR",   per: 3.75,     of: "USD" },
-  JOD: { name: "Jordanian dinar",          symbol: "JD",   per: 0.709,    of: "USD" },
-  BZD: { name: "Belize dollar",            symbol: "BZ$",  per: 2,        of: "USD" },
-  NAD: { name: "Namibian dollar",          symbol: "N$",   per: 1,        of: "ZAR" },
+  XOF: { name: "West African CFA Franc",   symbol: "CFA",  per: 655.957,  of: "EUR" },
+  XAF: { name: "Central African CFA Franc", symbol: "FCFA", per: 655.957,  of: "EUR" },
+  XPF: { name: "CFP Franc",                symbol: "F",    per: 119.3317, of: "EUR" },
+  DKK: { name: "Danish Krone",             symbol: "kr",   per: 7.46038,  of: "EUR" },
+  SAR: { name: "Saudi Riyal",              symbol: "SR",   per: 3.75,     of: "USD" },
+  JOD: { name: "Jordanian Dinar",          symbol: "JD",   per: 0.709,    of: "USD" },
+  BZD: { name: "Belize Dollar",            symbol: "BZ$",  per: 2,        of: "USD" },
+  NAD: { name: "Namibian Dollar",          symbol: "N$",   per: 1,        of: "ZAR" },
 };
 for (const [code, p] of Object.entries(PEGGED)) {
+  if (!CURRENCIES[p.of]) continue;   // an anchor the game has no country for — nothing to derive from
   CURRENCIES[code] = { name: p.name, symbol: p.symbol, perUsd: p.per * CURRENCIES[p.of].perUsd, pegged: p.of };
 }
-// Country → currency code. Anything not listed falls back to USD for the display.
-export const COUNTRY_CURRENCY = {
-  "United States": "USD", "Canada": "CAD", "Mexico": "MXN",
-  "United Kingdom": "GBP", "Japan": "JPY", "China": "CNY", "India": "INR",
-  "Thailand": "THB", "United Arab Emirates": "AED", "Brazil": "BRL",
-  "Australia": "AUD", "New Zealand": "NZD", "South Africa": "ZAR", "Egypt": "EGP",
-  "Morocco": "MAD", "Kenya": "KES", "Turkey": "TRY", "Russia": "RUB",
-  "Peru": "PEN", "Argentina": "ARS", "Chile": "CLP", "Colombia": "COP",
-  "Switzerland": "CHF", "Iceland": "ISK", "Norway": "NOK", "Indonesia": "IDR",
-  "Vietnam": "VND", "South Korea": "KRW",
-  // Eurozone
-  "France": "EUR", "Germany": "EUR", "Spain": "EUR", "Italy": "EUR",
-  "Greece": "EUR", "Portugal": "EUR", "Netherlands": "EUR", "Austria": "EUR",
-  "Ireland": "EUR", "Croatia": "EUR", "Belgium": "EUR", "Finland": "EUR",
-  // Officially dollarized — the USD *is* the national currency, not a fallback.
-  // Listed so it's clear we know, and so nobody "fixes" it by adding a sucre.
-  "Ecuador": "USD",  // adopted 2000
-  "Panama": "USD",   // adopted 1904; the balboa is pegged 1:1 and coins circulate
-  // Pegged (see PEGGED above)
-  "Denmark": "DKK", "Greenland": "DKK",
-  "Benin": "XOF", "Côte d'Ivoire": "XOF", "Mali": "XOF", "Senegal": "XOF",
-  "Cameroon": "XAF",
-  "French Polynesia": "XPF", "New Caledonia": "XPF",
-  "Saudi Arabia": "SAR", "Jordan": "JOD", "Belize": "BZD", "Namibia": "NAD",
-};
+
+// Country → currency code, from the generated table. Antarctica is absent there
+// on purpose (it has no money) and so falls back to USD for display here.
+export const COUNTRY_CURRENCY = Object.fromEntries(Object.entries(GENERATED).map(([c, m]) => [c, m.code]));
+
 export function currencyFor(country) {
   return CURRENCIES[COUNTRY_CURRENCY[country]] || CURRENCIES.USD;
 }
@@ -324,7 +298,9 @@ export function money(usd, country) {
   const local = usd * c.perUsd;
   const localTxt = local >= 1000 ? Math.round(local / 10) * 10 : Math.round(local);
   const dollars = `$${usd}`;
-  if (c.symbol === "$" && c.perUsd === 1) return dollars; // home currency — no parenthetical
+  // The home currency, or one at exact par with it (Panama's balboa, Ecuador's
+  // adopted dollar): the parenthetical would repeat the number, so it is dropped.
+  if (c.perUsd === 1) return dollars;
   // A word-like symbol needs air before the number ("CFA 72,420", "kr 824"); a
   // glyph doesn't ("€110", "฿4,320"). Without this "CFA72420" reads as one token,
   // which is exactly the wrong first impression of an unfamiliar currency.
