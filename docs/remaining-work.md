@@ -6,6 +6,49 @@ five project rules are hard requirements), then the task you're doing.
 
 Last updated **2026-09-23**.
 
+> ### ⚠ 2026-09-30: the first souvenir stall — Haneda
+>
+> Joshua's brief: *"buy something for Uncle Jonah in local money. The child has to
+> judge whether 1,500 yen is a lot. Souvenirs collect into the passport. Money is
+> never a fail state."* Built as ONE stall, at the HND hub, on his word to build one
+> and show it before doing more.
+>
+> - **Where it opens:** Grand Tour on Adventurer/Expert (the modes with a wallet),
+>   1.4 s after landing at a hub that has a stall, once per hub per run, and only
+>   if the wallet is above zero — an empty wallet gets no stall rather than a stall
+>   that says no. Assignments has no wallet, so no stall; a shop on the way would
+>   tax a child still learning to answer a clue.
+> - **What it costs:** the leftover-cash bonus at the end (1 pt per $500), nothing
+>   else. `test/souvenirs.test.js` pins every stall's total under $100 so buying
+>   everything can never be a choice about reaching the next target.
+> - **What is a fact and what is not (rule 2):** the *objects* are real and each
+>   carries a source on its entry (`src/data/souvenirs.js`, Wikipedia intros
+>   checked 2026-09-30). The *prices* are game prices in dollars, shown in local
+>   money through the exchange magnitude the culture card already uses. The stall
+>   never claims "a daruma costs ¥1,500 in Tokyo"; it claims "this one does". The
+>   teaching is the conversion — verified — and, for the fourteen countries with a
+>   price anchor, the line under each price: *"that's about 3.5 pounds of rice at a
+>   Tokyo market"*, which is a real observed retail price from the Statistics Bureau
+>   of Japan. That line is the one number on the screen a child can take home as
+>   true, and it is the reason the first stall is in Japan.
+> - **Persistence:** written with the stamps at the END of the run (`recordGame`
+>   takes `souvenirs`), so an abandoned trip leaves no souvenir — the same rule as
+>   everything else in the passport. Shown on the passport's profile page under
+>   "FOR UNCLE JONAH", newest first, with the city it came from.
+> - **Jonah's thank-yous** are one line per item in `SOUVENIR_THANKS`, drafted by
+>   me. **Joshua has not reviewed them.** They are the only content on the stall
+>   that is his voice rather than a sourced fact.
+>
+> **Adding a stall** is an entry in `SOUVENIR_STALLS` keyed by hub code: items with
+> `name`, `about` (written from the source, not from memory), `source`, `usd`,
+> `emoji` (until art lands), and a thank-you per item. The test checks the hub
+> exists, is in the stall's country, and that the country has a currency.
+>
+> **Not built, from the same note:** *"hub airports are where you change money, and
+> whatever you don't spend before leaving is lost to exchange fees."* That is a
+> second mechanic (a per-currency purse), and it changes how the wallet works
+> everywhere; it wants its own decision.
+
 > ### ⚠ 2026-09-28: the overseas-territory boxes were sitting on the landmarks
 >
 > Joshua: *"On some maps (like France), the extra boxes cover up the locations of

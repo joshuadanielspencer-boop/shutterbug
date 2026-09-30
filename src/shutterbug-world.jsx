@@ -11,6 +11,7 @@ import { COUNTRY_INFO, COUNTRY_LAYER_CONTINENTS, COUNTRY_NATIVE, ALWAYS_RING, di
 import { RIVERS, LAKES, MARINE } from "./data/geography.js";
 import { JOURNEYS, JOURNEY_BY_ID, journeyBox, unrolledX, closestStops } from "./data/journeys.js";
 import { HUBS, TRANSPORT_BY_ID, transportOptionsFor, countryTransport, money as fmtMoney, currencyFor } from "./data/travel.js";
+import { SOUVENIR_STALLS, SOUVENIR_BY_KEY, SOUVENIR_THANKS } from "./data/souvenirs.js";
 import { COUNTRY_PEOPLE, peopleCards, greetingMeaning } from "./data/culture.js";
 import { COUNTRY_CURRENCY, CURRENCY_AS_OF } from "./data/currency.js";
 import { PRICE_ANCHORS } from "./data/price-anchors.js";
@@ -1973,6 +1974,12 @@ export default function ShutterbugWorld() {
   // Travel-modes layer (Grand Tour, Adventurer/Expert): a money budget alongside the
   // day budget, and a pending "getting there" chooser (pick a hub + last-leg transport).
   const [money, setMoney] = useState(0);
+  // Souvenirs bought for Jonah THIS run (keys into SOUVENIR_BY_KEY), and the stall
+  // that is open, if one is. Run-scoped like the wallet: they go to the profile
+  // with the stamps at the end of the run, not before.
+  const [souvenirs, setSouvenirs] = useState([]);
+  const [stall, setStall] = useState(null);          // { hub } | null
+  const stallsSeenRef = useRef(new Set());            // one visit per hub per run
   const [travelChoice, setTravelChoice] = useState(null); // { cont, from, to, penalty, target, hubs } | null
   const [journeyId, setJourneyId] = useState(JOURNEYS[0].id);   // which route is picked on the meet screen
   const [journey, setJourney] = useState(null);                 // live run: { id, at, wrong, done, reveal }
@@ -2900,6 +2907,7 @@ export default function ShutterbugWorld() {
     setDays(budget); setScore(0); setAlbum([]); setVisitedIds([]);
     // Travel money — only the higher tiers budget cash for hubs + local transport.
     setMoney((difficulty === "medium" || difficulty === "hard") ? (difficulty === "hard" ? 2500 : 3500) : 0);
+    setSouvenirs([]); setStall(null); stallsSeenRef.current = new Set();
     setTravelChoice(null);
     setRevealed(false); setLastResult(null); setNewBadges([]); setPending(null);
     setElapsedMs(0); startRef.current = Date.now(); recorded.current = false;
@@ -3359,7 +3367,7 @@ export default function ShutterbugWorld() {
         // with the best score for the leaderboard.
         const maxScore = gameMode === "tour" ? tourMaxScore(tourReqs.length, difficulty) : maxScoreFor(assignments.length, MODES[difficulty]);
         const runRank = rankFor(maxScore > 0 ? Math.min(1, score / maxScore) : 0).title;
-        const res = recordGame(profileName, { difficulty, score, timeMs: elapsedMs, won, rank: runRank, mode: gameMode, visitedIds, correctIds, missedIds });
+        const res = recordGame(profileName, { difficulty, score, timeMs: elapsedMs, won, rank: runRank, mode: gameMode, visitedIds, correctIds, missedIds, souvenirs });
         setLastResult(res);
         const earnedNow = achievements(getProfile(profileName)).filter((a) => a.earned && !beforeEarned.has(a.id));
         setNewBadges(earnedNow);
@@ -3685,6 +3693,16 @@ export default function ShutterbugWorld() {
         : { type: "warn", text: `Touched down in ${cont} via ${legTxt} — nothing on your list is here. Fly on when ready.` });
       say(cont);
       maybeMrO(cont);
+      // The souvenir stall, at the hub, once per hub per run. It opens AFTER the
+      // arrival message and Mr O have had their say, and only if there is money
+      // left to spend: an empty wallet gets no stall rather than a stall that
+      // says no, because money is never a fail state here — see souvenirs.js.
+      // Assignments has no wallet, so no stall; that is the mode where a child
+      // is still learning to answer a clue, and a shop on the way would be a tax.
+      if (SOUVENIR_STALLS[hub.code] && !stallsSeenRef.current.has(hub.code)) {
+        stallsSeenRef.current.add(hub.code);
+        setTimeout(() => setMoney((m) => { if (m > 0) setStall({ hub }); return m; }), 1400);
+      }
     };
     if (prefersReduced) { finalize(); return; }
     music("travelJig");
@@ -7156,6 +7174,9 @@ export default function ShutterbugWorld() {
            they are a comparison, which is the half that teaches. */
         from={album.length ? BY_ID[album[album.length - 1].id] || null : null} />}
       {travelChoice && <TravelChooser choice={travelChoice} money={money} onConfirm={confirmTravel} onCancel={() => setTravelChoice(null)} />}
+      {stall && <SouvenirStall hub={stall.hub} money={money} bought={souvenirs}
+        onBuy={(key, usd) => { setMoney((m) => Math.max(0, Math.round(m - usd))); setSouvenirs((l) => (l.includes(key) ? l : [...l, key])); sfx("stamp"); }}
+        onClose={() => setStall(null)} />}
       {/* Customize Traveler, reachable mid-trip by tapping the header avatar. No
           remove option here (deleting the traveler you're playing as would end the
           run); that lives on the start screen. */}
@@ -8338,6 +8359,26 @@ function PassportModal({ profile, onClose }) {
                   </div>
                 </div>
               )}
+              {/* Souvenirs bought for Jonah, on the profile page beside the other
+                  things a traveler has to show. Newest first, and it says where each
+                  one came from — that is the geography, the object is the memory. */}
+              {(() => {
+                const got = Object.entries(profile.souvenirs || {})
+                  .map(([k, at]) => ({ ...SOUVENIR_BY_KEY[k], at })).filter((x) => x.name)
+                  .sort((a, b) => b.at - a.at);
+                if (!got.length) return null;
+                return (
+                  <div style={{ marginTop: 10, fontSize: 11.5, opacity: 0.85 }}>
+                    <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 9.5, letterSpacing: "0.14em", color: OCEAN, marginBottom: 3 }}>🎁 FOR UNCLE JONAH</div>
+                    {got.slice(0, 4).map((x) => (
+                      <div key={x.hub + x.id} style={{ display: "flex", gap: 6, alignItems: "baseline" }}>
+                        <span aria-hidden="true">{x.emoji}</span><b>{x.name}</b><span style={{ opacity: 0.7 }}>· {x.city}</span>
+                      </div>
+                    ))}
+                    {got.length > 4 && <div style={{ opacity: 0.7 }}>…and {got.length - 4} more</div>}
+                  </div>
+                );
+              })()}
             </div>
           </>
         ) : isProgress ? (
@@ -8550,6 +8591,97 @@ function PassportBackup({ profile }) {
 // Grand Tour "getting there" chooser (Adventurer/Expert travel modes): pick a hub
 // airport to fly into, then a last-leg transport, trading time against money — with
 // each cost shown in dollars and the local currency. Real budgeting practice.
+// The souvenir stall at a hub airport (Grand Tour, Adventurer/Expert — the modes
+// with a wallet). The child buys something for Uncle Jonah in the LOCAL money,
+// and the whole point is the moment before they buy: is ¥1,600 a lot? The stall
+// answers in two ways a child can use — the dollar figure they already know, and
+// for a country with a verified price anchor, what that money buys at a real
+// market there ("about four pounds of rice"). See src/data/souvenirs.js for what
+// is a fact on this screen and what is a game number.
+//
+// Money is never a fail state: nothing here can stop the trip. A souvenir costs
+// the leftover-cash bonus at the end (1 point per $500), which is a real and
+// visible trade a child can reason about, and the stall closes with "Not now"
+// as easily as with a purchase. Buying is one click per item and the thank-you
+// arrives on the spot, because a gift for Jonah should feel like a gift.
+function SouvenirStall({ hub, money, bought, onBuy, onClose }) {
+  const s = SOUVENIR_STALLS[hub.code];
+  const ref = useRef(null);
+  useModalFocus(ref, onClose);
+  const [thanks, setThanks] = useState(null);
+  if (!s) return null;
+  const cur = currencyFor(s.country);
+  const anchor = PRICE_ANCHORS[s.country] || null;
+  const localOf = (usd) => usd * cur.perUsd;
+  const localTxt = (usd) => {
+    const v = localOf(usd);
+    const n = v >= 1000 ? Math.round(v / 10) * 10 : Math.round(v);
+    const gap = /[A-Za-z]$/.test(cur.symbol) ? " " : "";
+    return `${cur.symbol}${gap}${n.toLocaleString("en-US")}`;
+  };
+  // "About four pounds of rice" — the anchor is a real observed retail price per
+  // pound in the local currency, so this ratio is the one number on the screen a
+  // child can take home as true. Under one pound reads as a fraction of one.
+  const compare = (usd) => {
+    if (!anchor) return null;
+    const lbs = localOf(usd) / anchor.price;
+    const n = lbs >= 10 ? Math.round(lbs) : lbs >= 1 ? Math.round(lbs * 2) / 2 : Math.round(lbs * 10) / 10;
+    return `about ${n} ${n === 1 ? "pound" : "pounds"} of ${anchor.item} at a ${anchor.city || s.country} market`;
+  };
+  const row = (it) => {
+    const have = bought.includes(`${hub.code}/${it.id}`);
+    const can = money >= it.usd;
+    return (
+      <div key={it.id} style={{ display: "grid", gridTemplateColumns: "44px 1fr auto", gap: 12, alignItems: "start",
+        padding: "10px 12px", borderRadius: 10, border: `2px solid ${have ? GREEN : PAPER_LINE}`, background: have ? "#EAF6EF" : "#fff" }}>
+        <span aria-hidden="true" style={{ fontSize: 30, lineHeight: "44px", textAlign: "center" }}>{it.emoji}</span>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontWeight: 800, color: INK }}>{it.name}
+            {have && <span style={{ marginLeft: 8, color: GREEN, fontWeight: 800, fontSize: 12 }}>✓ bought for Jonah</span>}
+          </div>
+          <div style={{ fontSize: 12.5, color: INK, opacity: 0.85, lineHeight: 1.4, marginTop: 2 }}>{it.about}</div>
+          {/* The local price is the big one — it is the thing being taught. The
+              dollar figure is the child's footing, and the rice line is the proof. */}
+          <div style={{ marginTop: 6, fontSize: 13, color: INK }}>
+            <b style={{ fontSize: 17, color: CORAL }}>{localTxt(it.usd)}</b>
+            <span style={{ opacity: 0.7 }}> {cur.name} · about ${it.usd}</span>
+            {anchor && <div style={{ fontSize: 12, opacity: 0.8, marginTop: 1 }}>That's {compare(it.usd)}.</div>}
+          </div>
+        </div>
+        <button onClick={() => { onBuy(`${hub.code}/${it.id}`, it.usd); setThanks(SOUVENIR_THANKS[`${hub.code}/${it.id}`] || null); }}
+          disabled={have || !can} aria-disabled={have || !can}
+          style={{ ...primaryBtn, marginTop: 0, padding: "9px 14px", fontSize: 13, opacity: have || !can ? 0.5 : 1, whiteSpace: "nowrap" }}>
+          {have ? "Bought" : can ? "Buy for Jonah" : "Not enough"}
+        </button>
+      </div>
+    );
+  };
+  return (
+    <div ref={ref} role="dialog" aria-modal="true" aria-label={`Souvenir stall in ${s.city}`} onClick={onClose}
+      style={{ position: "fixed", inset: 0, background: "rgba(16,38,46,0.62)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16, zIndex: 55 }}>
+      <div onClick={(e) => e.stopPropagation()}
+        style={{ background: PAPER, borderRadius: 16, border: `3px solid ${GOLD}`, boxShadow: "0 14px 44px rgba(0,0,0,0.35)", maxWidth: 600, width: "100%", maxHeight: "92vh", overflowY: "auto", padding: "18px 20px 20px" }}>
+        <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.16em", color: OCEAN, fontWeight: 700 }}>🎁 SOUVENIR STALL · {s.city.toUpperCase()} ({hub.code})</div>
+        <p style={{ margin: "4px 0 2px", color: INK, fontWeight: 700 }}>Something for Uncle Jonah, from {s.stall}.</p>
+        <p style={{ margin: "0 0 12px", fontSize: 13, color: INK, opacity: 0.8 }}>
+          Wallet: <b>${money.toLocaleString("en-US")}</b> · prices are in {cur.name}{cur.symbol !== cur.code ? ` (${cur.symbol})` : ""}.
+          {anchor && <> One US dollar is about {cur.symbol}{Math.round(cur.perUsd).toLocaleString("en-US")} here.</>}
+          {" "}Whatever you spend comes off your leftover-cash bonus at the end — nothing else.
+        </p>
+        <div style={{ display: "grid", gap: 8 }}>{s.items.map(row)}</div>
+        {thanks && (
+          <p role="status" style={{ margin: "12px 0 0", padding: "10px 12px", borderRadius: 10, background: "#FFF7E0", border: `1px solid ${GOLD}`, fontSize: 13.5, color: INK, lineHeight: 1.45 }}>
+            <b>Uncle Jonah:</b> {thanks}
+          </p>
+        )}
+        <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 14 }}>
+          <button data-primary onClick={onClose} style={{ ...primaryBtn, marginTop: 0 }}>{thanks ? "Back to the trip ✈" : "Not now"}</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function TravelChooser({ choice, money, onConfirm, onCancel }) {
   const { cont, from, target, hubs, baseDays } = choice;
   const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);

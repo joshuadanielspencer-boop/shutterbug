@@ -16,6 +16,7 @@ import { JOURNEYS, journeyBox, closestStops, unrolledX } from "../src/data/journ
 import { flightLegs, ROBINSON_W } from "../src/robinson.js";
 import { DOG_LINES, ALL_DOG_LINES } from "../src/data/pickles.js";
 import { CURIOSITY_DECKS, CURIOSITY_DECK_BY_ID, ALL_CURIOSITY_IDS } from "../src/data/curiosities.js";
+import { SOUVENIR_BY_KEY, SOUVENIR_THANKS } from "../src/data/souvenirs.js";
 import { KIT_ITEMS, KIT_OFFERED, KIT_TAKEN } from "../src/data/kit.js";
 import { eqToRobinson } from "../src/robinson.js";
 import { CONDITIONS } from "../src/data/conditions.js";
@@ -447,6 +448,9 @@ describe("measurements read imperial first", () => {
   }
   for (const d of CURIOSITY_DECKS)
     for (const c of d.cards) strings.push([`curio/${c.id}`, `${c.title} ${c.body}`]);
+  // The souvenir stalls: what each object is, and what Jonah says when it arrives.
+  for (const [k, it] of Object.entries(SOUVENIR_BY_KEY)) strings.push([`souvenir/${k}`, it.about]);
+  for (const [k, line] of Object.entries(SOUVENIR_THANKS)) strings.push([`souvenir/${k}.thanks`, line]);
 
   it("no player-facing text gives metric without an imperial equivalent", () => {
     for (const [where, text] of strings) {

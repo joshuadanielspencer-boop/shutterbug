@@ -160,10 +160,21 @@ export function renameProfile(oldName, rawNew) {
 
 // Record one finished game against a profile.
 // Returns { isBest, best, isBestTime, bestTime }.
-export function recordGame(name, { difficulty, score, timeMs = 0, won = false, rank = null, mode = "assignments", visitedIds = [], correctIds = [], missedIds = [] }) {
+export function recordGame(name, { difficulty, score, timeMs = 0, won = false, rank = null, mode = "assignments", visitedIds = [], correctIds = [], missedIds = [], souvenirs = [] }) {
   const s = read();
   const p = s.profiles[name];
   if (!p) return { isBest: false, best: 0, isBestTime: false, bestTime: 0 };
+
+  // Souvenirs bought for Jonah this run, keyed `HUB/item` (src/data/souvenirs.js).
+  // Written here, at the END of the run, like every other stamp — a trip abandoned
+  // halfway leaves no souvenir, the same way it leaves no stamp. Kept as a map of
+  // key → first-bought timestamp, so a second daruma is still one daruma on the
+  // shelf and the shelf can be ordered by when things arrived.
+  if (souvenirs.length) {
+    p.souvenirs = p.souvenirs || {};
+    const at = Date.now();
+    for (const k of souvenirs) if (!p.souvenirs[k]) p.souvenirs[k] = at;
+  }
 
   p.games = (p.games || 0) + 1;
   p.lastPlayed = Date.now();
