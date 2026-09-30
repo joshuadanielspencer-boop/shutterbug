@@ -53,18 +53,22 @@ Last updated **2026-09-23**.
 > `HND/daruma`-style keys still resolve, so nobody's daruma vanishes.
 >
 > Tokyo, Toronto, Cairo, Mexico City, Istanbul (hub countries) plus **Kathmandu,
-> Manila, Colombo, Antananarivo, Amman, Yaoundé** — each of those in the city its
-> price anchor was measured in, so the shop and the "pounds of rice" line are the
-> same place. 35 objects, every one verified from its Wikipedia intro and dropped
-> if the intro didn't state the connection. Three anchor countries have no stall,
-> each on purpose and pinned by a test:
+> Manila, Colombo, Antananarivo, Amman, Yaoundé, Windhoek** — each of those in the
+> city its price anchor was measured in, so the shop and the "pounds of rice"
+> line are the same place. **Twelve stalls, 38 objects**, every one verified from
+> its source and dropped if the source didn't state the connection. Two anchor
+> countries have no stall, on purpose and pinned by a test: **the United States
+> and Ecuador**, both priced in dollars (Ecuador adopted it in 2000), and the
+> stall exists to teach judging *foreign* money.
 >
-> - **United States, Ecuador** — priced in dollars (Ecuador adopted it in 2000),
->   and the stall exists to teach judging *foreign* money.
-> - **Namibia** — one object verified (Karakul wool; the sheep article says
->   "raised in large numbers in Namibia"). One object isn't a stall. Wants a
->   second; the Herero dress and makalani-nut carvings are the obvious ones but
->   neither article's intro says Namibia.
+> **Namibia (added 2026-09-30 at Joshua's ask)** is the one stall whose sourcing
+> needed the *full* articles rather than the intros: the Herero people article's
+> body has the ohorokova gown, the otjikaiva headdress and Windhoek by name, and
+> the makalani carving rests on two articles read together — the palm's (grows in
+> Namibia; the nut's core is vegetable ivory) and vegetable ivory's (lists that
+> palm as a source; "used in buttons, jewelry, and artistic carving"). Neither
+> says "carved in Namibia" in one sentence, and the description says only what
+> the two say between them.
 >
 > **Cameroon has two objects** (Penja pepper, a Bamum-script print), not three —
 > the same reason. A third that verifies would be welcome.

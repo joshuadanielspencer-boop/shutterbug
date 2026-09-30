@@ -35,12 +35,10 @@
 //     (2026-09-30) over inventing hubs for them: a child buying in rupees in
 //     Nepal is the better lesson than buying them in Delhi.
 //
-// WHO IS HERE: every country with a verified price anchor, except three, each
-// for a reason worth keeping —
+// WHO IS HERE: every country with a verified price anchor, except two, for one
+// reason worth keeping —
 //   United States, Ecuador  the stall teaches judging FOREIGN money, and both
-//                           price in dollars (Ecuador adopted the dollar in 2000);
-//   Namibia                 one object verified (Karakul wool), and one object
-//                           is not a stall. Wants a second, sourced.
+//                           price in dollars (Ecuador adopted the dollar in 2000).
 // ===========================================================================
 
 export const SOUVENIR_STALLS = {
@@ -291,6 +289,40 @@ export const SOUVENIR_STALLS = {
     ],
   },
 
+  //   Herero people — "Herero women adopted the floor-length gowns worn by German
+  //     missionaries in the late 19th century, but now make them in vivid colors
+  //     and prints … locally known as ohorokova … The most distinctive feature of
+  //     Herero women's dress is their horizontal horned headdress, the otjikaiva,
+  //     which is a symbol of respect, worn to pay homage to the cows that have
+  //     historically sustained the Herero … In urban Windhoek, fashion designers
+  //     and models are updating Herero dress" (full article, not the intro — the
+  //     intro says only that 178,987 Namibians identified as Ovaherero in 2023)
+  //   Hyphaene petersiana — "the real fan palm or makalani palm … found in …
+  //     Namibia … Beneath the outer fibrous husk of the fruit is a core of white
+  //     endosperm known as vegetable ivory"; and Vegetable ivory — lists
+  //     "Hyphaene petersiana (makalani palm)" as a source and says the material
+  //     "is commonly used in buttons, jewelry, and artistic carving"
+  //     (en.wikipedia.org/wiki/Vegetable_ivory). Neither article says "makalani
+  //     nuts are carved in Namibia" in one sentence; the description below says
+  //     only what the two say between them.
+  //   Karakul sheep — "Karakul are also raised in large numbers in Namibia,
+  //     having first been brought there by German colonists in the early 20th century"
+  Namibia: {
+    city: "Windhoek",
+    stall: "a craft market stall in Windhoek",
+    items: [
+      { id: "hererodoll", name: "Herero dress doll", emoji: "👗", usd: 18,
+        about: "A doll in the dress Herero women wear: the ohorokova, a floor-length gown in vivid prints adopted from German missionaries' clothes in the 1800s, under the otjikaiva — a horned headdress worn in respect for the cattle that have sustained the Herero.",
+        source: "https://en.wikipedia.org/wiki/Herero_people" },
+      { id: "makalani", name: "Makalani nut carving", emoji: "🥥", usd: 8,
+        about: "A nut of the makalani palm, which grows in Namibia. Under the husk its core is vegetable ivory — a hard white material used for buttons, jewellery and carving.",
+        source: "https://en.wikipedia.org/wiki/Hyphaene_petersiana" },
+      { id: "karakulwool", name: "Karakul wool beanie", emoji: "🐑", usd: 15,
+        about: "Knitted from the wool of Karakul sheep, which are raised in large numbers in Namibia — first brought there by German colonists in the early 1900s.",
+        source: "https://en.wikipedia.org/wiki/Karakul_sheep" },
+    ],
+  },
+
   //   Penja pepper — "a type of pepper (Piper nigrum) grown in the volcanic soil
   //     of the Penja Valley in Cameroon"
   //   Bamum script — "an evolutionary series of six scripts created for the Bamum
@@ -359,6 +391,9 @@ export const SOUVENIR_THANKS = {
   "Jordan/madabamosaic": "A mosaic — like the map on the church floor at Madaba. Fifteen hundred years old, that map, and it still shows you the way.",
   "Jordan/zaatar": "Za'atar! Bread, oil, za'atar — that's breakfast in Amman, and it's breakfast here tomorrow.",
   "Jordan/deadseasalt": "Dead Sea salt. You float in that water whether you want to or not. I have a photograph of my feet sticking up to prove it.",
+  "Namibia/hererodoll": "A Herero doll! That headdress is for the cattle, you know — a whole way of life in a hat. She'll stand by the window.",
+  "Namibia/makalani": "A makalani nut, carved. Ivory that grows on a palm tree — I remember turning one over in my hand in Windhoek and not believing it.",
+  "Namibia/karakulwool": "Karakul wool. Warm as anything. The desert gets cold at night, and so does this house.",
   "Cameroon/penjapepper": "Penja pepper! Grown in volcanic soil — you can taste it. This is going on everything.",
   "Cameroon/bamumprint": "The Bamum script! A king invented a whole alphabet for his people. I'll frame this and think about that every time I pass it.",
 };
