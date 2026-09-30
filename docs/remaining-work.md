@@ -870,13 +870,15 @@ Two things the build exposed, both fixed:
   A plate both may wear is left alone now, and the sex tests say "wearable by this
   sex" (own sex *or* `any`) rather than "is this sex".
 
-**⚠ The cost: precache 55.7 MB → 66.9 MB.** The wardrobe is 14.3 MB on disk, up
-from 3.1. The doc's own note from the first delivery already names the lever: *"if
-that ever matters, `--size 400` is the lever — the largest render in the game is
-the 132 px passport frame, so 600 is already 2× for retina."* At 400 the set would
-be roughly 6.5 MB. That is Joshua's trade to make (sharpness he will never see at
-132 px against 8 MB on every iPad), not one made here; the build takes the flag
-and nothing else changes.
+**The cost, and Joshua's call on it (2026-09-30):** at 600 px the wardrobe was
+14.3 MB and the precache went 55.7 → 66.9 MB. He took the lever the first
+delivery's note had already named — **`--size 400`** — and the set is **7.9 MB,
+precache 59.9 MB**. Measured against the 600 px plates drawn at the sizes the game
+uses: mean difference **0.7/255 at 132 px** (the passport frame, the largest
+in-game render) and 1.5 at 390 px; the dog resize accepted in July measured 0.94.
+`AVATAR_CANVAS` is 400 now and nothing else changed. **Every rebuild must pass
+`--size 400`** — the script's default is still 600, and a rebuild without the flag
+silently puts the 7 MB back.
 
 ---
 

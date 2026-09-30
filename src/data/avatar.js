@@ -14,38 +14,38 @@
 // ===========================================================================
 
 export const AVATAR_BASE = "assets/shutterbug-ui/avatar-v2/";
-export const AVATAR_CANVAS = 600;
+export const AVATAR_CANVAS = 400;
 export const ORDER = ["outfit","head","brow","eyes","hair"];
 export const DERIVED = {"brow":"hair"};
 export const FOCUS = {
   "outfit": {
-    "x": 0.1733,
+    "x": 0.1725,
     "y": 0.55,
-    "w": 0.7017,
-    "h": 0.4417
+    "w": 0.7025,
+    "h": 0.4425
   },
   "head": {
-    "x": 0.2667,
+    "x": 0.265,
     "y": 0.145,
-    "w": 0.49,
+    "w": 0.4925,
     "h": 0.54
   },
   "brow": {
-    "x": 0.3467,
-    "y": 0.3033,
-    "w": 0.2933,
-    "h": 0.0983
+    "x": 0.345,
+    "y": 0.3025,
+    "w": 0.295,
+    "h": 0.1
   },
   "eyes": {
-    "x": 0.3517,
-    "y": 0.3367,
+    "x": 0.3525,
+    "y": 0.3375,
     "w": 0.29,
     "h": 0.125
   },
   "hair": {
-    "x": 0.205,
-    "y": 0.0717,
-    "w": 0.5633,
+    "x": 0.21,
+    "y": 0.07,
+    "w": 0.56,
     "h": 0.52
   }
 };
