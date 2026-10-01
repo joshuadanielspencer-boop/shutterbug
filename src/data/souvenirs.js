@@ -297,14 +297,17 @@ export const SOUVENIR_STALLS = {
   //     historically sustained the Herero … In urban Windhoek, fashion designers
   //     and models are updating Herero dress" (full article, not the intro — the
   //     intro says only that 178,987 Namibians identified as Ovaherero in 2023)
-  //   Hyphaene petersiana — "the real fan palm or makalani palm … found in …
-  //     Namibia … Beneath the outer fibrous husk of the fruit is a core of white
-  //     endosperm known as vegetable ivory"; and Vegetable ivory — lists
-  //     "Hyphaene petersiana (makalani palm)" as a source and says the material
-  //     "is commonly used in buttons, jewelry, and artistic carving"
-  //     (en.wikipedia.org/wiki/Vegetable_ivory). Neither article says "makalani
-  //     nuts are carved in Namibia" in one sentence; the description below says
-  //     only what the two say between them.
+  //   Makalani — The Namibian (the national newspaper), "Namibia: our trees of
+  //     national importance", Absalom Shigwedha, 23 Aug 2007: "Often called
+  //     vegetable ivory, the nuts are often carved into small ornaments and
+  //     trinkets to adorn key rings, necklaces or charms"; the palm is "a
+  //     prominent feature of the oshana landscape … of the Omusati, Oshana and
+  //     western Oshikoto regions" and "protected in Namibia". That is the one
+  //     sentence the two Wikipedia articles could not supply between them
+  //     (Hyphaene petersiana: in Namibia, nut core "known as vegetable ivory";
+  //     Vegetable ivory: lists the makalani palm as a source, "commonly used in
+  //     buttons, jewelry, and artistic carving"). Joshua asked for a third source
+  //     that says it outright, and this is it.
   //   Karakul sheep — "Karakul are also raised in large numbers in Namibia,
   //     having first been brought there by German colonists in the early 20th century"
   Namibia: {
@@ -315,8 +318,8 @@ export const SOUVENIR_STALLS = {
         about: "A doll in the dress Herero women wear: the ohorokova, a floor-length gown in vivid prints adopted from German missionaries' clothes in the 1800s, under the otjikaiva — a horned headdress worn in respect for the cattle that have sustained the Herero.",
         source: "https://en.wikipedia.org/wiki/Herero_people" },
       { id: "makalani", name: "Makalani nut carving", emoji: "🥥", usd: 8,
-        about: "A nut of the makalani palm, which grows in Namibia. Under the husk its core is vegetable ivory — a hard white material used for buttons, jewellery and carving.",
-        source: "https://en.wikipedia.org/wiki/Hyphaene_petersiana" },
+        about: "A nut of the makalani palm of northern Namibia, carved. Under the husk its core is 'vegetable ivory', hard and white, and it is carved into small ornaments for key rings, necklaces and charms.",
+        source: "https://www.namibian.com.na/namibia-our-trees-of-national-importance/" },
       { id: "karakulwool", name: "Karakul wool beanie", emoji: "🐑", usd: 15,
         about: "Knitted from the wool of Karakul sheep, which are raised in large numbers in Namibia — first brought there by German colonists in the early 1900s.",
         source: "https://en.wikipedia.org/wiki/Karakul_sheep" },

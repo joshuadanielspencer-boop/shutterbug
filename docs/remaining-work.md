@@ -61,14 +61,20 @@ Last updated **2026-09-23**.
 > and Ecuador**, both priced in dollars (Ecuador adopted it in 2000), and the
 > stall exists to teach judging *foreign* money.
 >
-> **Namibia (added 2026-09-30 at Joshua's ask)** is the one stall whose sourcing
-> needed the *full* articles rather than the intros: the Herero people article's
-> body has the ohorokova gown, the otjikaiva headdress and Windhoek by name, and
-> the makalani carving rests on two articles read together — the palm's (grows in
-> Namibia; the nut's core is vegetable ivory) and vegetable ivory's (lists that
-> palm as a source; "used in buttons, jewelry, and artistic carving"). Neither
-> says "carved in Namibia" in one sentence, and the description says only what
-> the two say between them.
+> **Namibia (added 2026-09-30 at Joshua's ask)** is the stall whose sourcing
+> needed more than Wikipedia intros, and the two lessons are worth keeping. The
+> Herero dress verified from the *full* Herero people article (the ohorokova
+> gown, the otjikaiva headdress, Windhoek by name) where the intro had nothing.
+> The makalani carving did not verify from Wikipedia at all in one sentence —
+> the palm's article puts it in Namibia and calls the nut vegetable ivory, the
+> vegetable-ivory article says the material is carved, and neither says the nuts
+> are carved in Namibia. Joshua asked for a third source that does, and it is
+> **The Namibian**, the national newspaper (Absalom Shigwedha, 23 Aug 2007):
+> *"Often called vegetable ivory, the nuts are often carved into small ornaments
+> and trinkets to adorn key rings, necklaces or charms."* A national paper is a
+> fine rule-2 source; the entry cites it, and the comment keeps the two Wikipedia
+> articles for the botany. **When Wikipedia won't say it in one sentence, go to
+> the country's own press** — that is the move for the next object like this.
 >
 > **Cameroon has two objects** (Penja pepper, a Bamum-script print), not three —
 > the same reason. A third that verifies would be welcome.
