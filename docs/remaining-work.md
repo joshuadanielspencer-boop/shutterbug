@@ -2,1664 +2,962 @@
 
 A handoff document. Everything here is written so a **new session with no memory of
 the previous ones** can pick up a task and finish it. Read `CLAUDE.md` first (the
-five project rules are hard requirements), then the task you're doing.
+five project rules are hard requirements), then "Start here", then the section for
+the task you're doing.
 
-Last updated **2026-09-23**.
+Last updated **2026-10-03** — a consolidation pass, not new work.
 
-> ### ⚠ 2026-09-30: the first souvenir stall — Haneda
+> **What this pass did, and where the old text went.** This file had grown to 1,665
+> lines by a habit that looked safe and wasn't: each session put a dated ⚠ box at the
+> top and left the sections underneath as they were. Fourteen boxes later the body
+> said the badge art was blocked (it shipped in July), that there were four modes
+> (six), that the dog had no name (she is Pickles), and that 55 of 106 countries had
+> a currency (107 of 108). Every number below was **re-counted from the shipped data
+> on 2026-10-03**, and each box's content now lives in the section it was about.
 >
-> Joshua's brief: *"buy something for Uncle Jonah in local money. The child has to
-> judge whether 1,500 yen is a lot. Souvenirs collect into the passport. Money is
-> never a fail state."* Built as ONE stall, at the HND hub, on his word to build one
-> and show it before doing more.
+> Nothing was thrown away: the full narrative — what was tried, what failed, the
+> measured before-and-afters — is one command away, and most of it is also in the
+> code comments and commit messages it describes.
 >
-> - **Where it opens:** Grand Tour on Adventurer/Expert (the modes with a wallet),
->   1.4 s after landing at a hub that has a stall, once per hub per run, and only
->   if the wallet is above zero — an empty wallet gets no stall rather than a stall
->   that says no. Assignments has no wallet, so no stall; a shop on the way would
->   tax a child still learning to answer a clue.
-> - **What it costs:** the leftover-cash bonus at the end (1 pt per $500), nothing
->   else. `test/souvenirs.test.js` pins every stall's total under $100 so buying
->   everything can never be a choice about reaching the next target.
-> - **What is a fact and what is not (rule 2):** the *objects* are real and each
->   carries a source on its entry (`src/data/souvenirs.js`, Wikipedia intros
->   checked 2026-09-30). The *prices* are game prices in dollars, shown in local
->   money through the exchange magnitude the culture card already uses. The stall
->   never claims "a daruma costs ¥1,500 in Tokyo"; it claims "this one does". The
->   teaching is the conversion — verified — and, for the fourteen countries with a
->   price anchor, the line under each price: *"that's about 3.5 pounds of rice at a
->   Tokyo market"*, which is a real observed retail price from the Statistics Bureau
->   of Japan. That line is the one number on the screen a child can take home as
->   true, and it is the reason the first stall is in Japan.
-> - **Persistence:** written with the stamps at the END of the run (`recordGame`
->   takes `souvenirs`), so an abandoned trip leaves no souvenir — the same rule as
->   everything else in the passport. Shown on the passport's profile page under
->   "FOR UNCLE JONAH", newest first, with the city it came from.
-> - **Jonah's thank-yous** are one line per item in `SOUVENIR_THANKS`, drafted by
->   me. **Joshua has not reviewed them.** They are the only content on the stall
->   that is his voice rather than a sourced fact.
+> ```bash
+> git show 191c589:docs/remaining-work.md
+> ```
 >
-> **Adding a stall** is an entry in `SOUVENIR_STALLS` keyed by hub code: items with
-> `name`, `about` (written from the source, not from memory), `source`, `usd`,
-> `emoji` (until art lands), and a thank-you per item. The test checks the hub
-> exists, is in the stall's country, and that the country has a currency.
->
-> **Eleven stalls (2026-09-30), and the stall has two doors.** Joshua chose a
-> second trigger over inventing hubs: a stall also opens on **arriving in a
-> country on the last leg** of a Grand Tour, once per country per run, shared with
-> the hub door (Haneda then Japan is one stall, not two), and — because two popups
-> at once is worse than none — it waits behind the country arrival card and opens
-> when that closes. Stalls are keyed by **country** now; the first two days'
-> `HND/daruma`-style keys still resolve, so nobody's daruma vanishes.
->
-> Tokyo, Toronto, Cairo, Mexico City, Istanbul (hub countries) plus **Kathmandu,
-> Manila, Colombo, Antananarivo, Amman, Yaoundé, Windhoek** — each of those in the
-> city its price anchor was measured in, so the shop and the "pounds of rice"
-> line are the same place. **Twelve stalls, 38 objects**, every one verified from
-> its source and dropped if the source didn't state the connection. Two anchor
-> countries have no stall, on purpose and pinned by a test: **the United States
-> and Ecuador**, both priced in dollars (Ecuador adopted it in 2000), and the
-> stall exists to teach judging *foreign* money.
->
-> **Namibia (added 2026-09-30 at Joshua's ask)** is the stall whose sourcing
-> needed more than Wikipedia intros, and the two lessons are worth keeping. The
-> Herero dress verified from the *full* Herero people article (the ohorokova
-> gown, the otjikaiva headdress, Windhoek by name) where the intro had nothing.
-> The makalani carving did not verify from Wikipedia at all in one sentence —
-> the palm's article puts it in Namibia and calls the nut vegetable ivory, the
-> vegetable-ivory article says the material is carved, and neither says the nuts
-> are carved in Namibia. Joshua asked for a third source that does, and it is
-> **The Namibian**, the national newspaper (Absalom Shigwedha, 23 Aug 2007):
-> *"Often called vegetable ivory, the nuts are often carved into small ornaments
-> and trinkets to adorn key rings, necklaces or charms."* A national paper is a
-> fine rule-2 source; the entry cites it, and the comment keeps the two Wikipedia
-> articles for the botany. **When Wikipedia won't say it in one sentence, go to
-> the country's own press** — that is the move for the next object like this.
->
-> **Cameroon has two objects** (Penja pepper, a Bamum-script print), not three —
-> the same reason. A third that verifies would be welcome.
->
-> **The two exchange tables are one now.** `travel.js` no longer carries its own
-> rates: `CURRENCIES` is built from the generated `currency.js` (108 countries,
-> live rates), and it keeps only what a generator can't know — the eight **pegged**
-> currencies, derived from their anchor's live rate so 655.957 CFA to the euro
-> stays exactly that, and their child-readable names and symbols. Four stall
-> countries (Nepal, Sri Lanka, the Philippines, Madagascar) weren't in the old
-> hand table at all and had been silently pricing in dollars; every price the game
-> prints moved to the fresher rates in the same change.
->
-> **Not built, from the same note:** *"hub airports are where you change money, and
-> whatever you don't spend before leaving is lost to exchange fees."* That is a
-> second mechanic (a per-currency purse), and it changes how the wallet works
-> everywhere; it wants its own decision.
+> **To keep it from drifting again:** change the section the work belongs to, and add
+> one line to the [Log](#log) at the bottom. Don't add a box at the top.
 
-> ### ⚠ 2026-09-28: the overseas-territory boxes were sitting on the landmarks
->
-> Joshua: *"On some maps (like France), the extra boxes cover up the locations of
-> landmarks so the player can't click on them."* Measured in the game it was worse
-> than reported — France's row of four sat over **five of its ten pins** (Pont du
-> Gard, the Dune du Pilat, the Verdon gorge, the Calanques), and the fourth box ran
-> **14% off the right edge** of the frame because a compass gutter was added to
-> the row's start and never subtracted from its width.
->
-> He asked to "zoom out a little" as well. **That is not available:** every
-> country's relief plate is cut to exactly the ground its box draws
-> (`test/relief-plates.test.js`), widening a box needs the Natural Earth raster,
-> and it is not on this machine. So the fix is placement only, and the placement is
-> no longer chosen by hand — `OverseasInsets` in `shutterbug-world.jsx` now:
->
-> - **Splits the territories by side** (rule 5, taken literally): France's Guiana
->   and Antilles are Atlantic, Réunion and Mayotte are Indian Ocean, and the old
->   code averaged the two into "along the bottom". Two boxes fit down an edge;
->   four do not.
-> - **Scores four placements per group** — bottom row, top row, left column, right
->   column — by how many of the country's pins each would cover (`cityPinLayout.pos`
->   is passed in as `avoid`), and takes the emptiest. Preference order breaks ties
->   so the historical layouts are what you get when nothing is in the way, and
->   `layout: "column"` (the USA, whose box was widened to make room on the left)
->   restricts that country to columns.
-> - **Falls back to a compact size** (0.14 of the frame instead of 0.26/0.19) ten
->   preference points down, so it is only ever chosen when every standard placement
->   hits something. France's east pair needed it: the only empty region was the
->   top-right corner, and two standard boxes there reach the Paris cluster.
-> - **Works in display space.** The insets render inside the map's vertical-stretch
->   group, so "5% from the top of the frame" in plate coordinates was 5% from the
->   top of the *plate*, which on France (stretch 1.27) put a box above the frame.
->   Positions are computed as fractions of the frame the child sees and converted
->   through `{ s: mapStretchY, pivot: mapPivotY }` only when drawn.
->
-> **Result, measured:** France `column-left + row-top-east-compact`, **0 pins
-> covered, 0 boxes off-frame** (was 5 and 1). USA unchanged (`column-left`, the
-> two boxes it asked for). Chile is a single westward box and falls out as the same
-> bottom row it had — reasoned from the code, not seen: the Explore map would not
-> open Chile from the automated browser (three real clicks inside its outline did
-> nothing, while every other country opened), which is worth a human look on its
-> own. One thing the probe still flags on the USA: San Francisco's pin sits
-> touching the Alaska box's corner. That was true before today and is a 5px
-> matter; the scorer's margin is one pin radius and does not count it.
->
-> No test covers this — it lives in the component, which the suite deliberately
-> does not import. The evidence is the three measured layouts above.
+## Contents
 
-> ### ⚠ 2026-07-30: why the app "just restarted in the middle of a game"
->
-> Joshua reported this and it was two separate faults, both now fixed.
->
-> **1. Every deploy restarted every open copy of the game.** `main.jsx` reloaded
-> the page the instant a new service worker claimed it (`controllerchange`), with
-> no idea whether anyone was playing — and **an in-progress run is saved nowhere**:
-> `journey`, `expedition` and `tourPlan` are React state, and localStorage holds
-> only the profile, its bests and its passport. Reproduced exactly: "STOP 1 OF 6" →
-> reload → "Begin your adventure", trip gone. Every `git push` did this to whoever
-> was mid-trip, and this project auto-deploys on push.
->
-> The reload now goes through `src/app-update.js`, which **holds it until the
-> player is on the splash, the traveler picker, or the meet screen** — and every
-> run ends at the splash, so it always lands. Anything not on that list counts as
-> unsafe, deliberately: delaying an update costs a player nothing, interrupting one
-> costs them the trip, so a screen added later has to be named on purpose before it
-> can ever be interrupted. `test/app-update.test.js` covers it, including the case
-> that regressed (verified the tests fail against the old always-reload behaviour).
->
-> **2. The PWA precached 326 MB, and 305 MB of it was the dog.** `dog-outfits`
-> shipped as 108 plates of 1254×1254 truecolour PNG at ~2.7 MB each — for a dog
-> drawn at **390px** at her largest and 87px in the wardrobe. On an iPad that is
-> exactly what makes iOS evict the app or kill the tab. They are now 800px webp
-> (2× her largest render): **305 MB → 12 MB**, and measured against the originals
-> at 390px the mean pixel difference is **0.94/255**. The camera bag came down too
-> (1146px and 2.5 MB, drawn at 210px → 640px, 692 KB).
->
-> **Precache total: 326 MB → 59 MB** (and 55.7 MB after the 2026-09-23 pass below).
->
-> It happened because `scripts/optimize-ui-art.mjs` walks a hard-coded folder list
-> and nobody added `dog-outfits` to it. That list now has two policies (palette
-> PNG for small emblems, resize-to-webp for big character art), but the real guard
-> is `test/precache-size.test.js`, which walks what is actually on disk — so a
-> folder nobody thought about is checked anyway.
->
-> **~~Still oversized, and the obvious next pass.~~ DONE 2026-09-23 — precache
-> 60.1 MB → 55.7 MB.** It was *four* Mr O plates, not five, and the reason they
-> were oversized is the point: **six of his ten plates were already palette PNGs
-> and four were not.** Somebody quantized the folder by hand, missed four, and
-> there was no run to repeat and nothing to notice. `splash.jpg` (833 KB) went
-> too — nothing has referenced it since the splash went widescreen and started
-> using `splash-wide.jpg`.
->
-> `scripts/optimize-ui-art.mjs` now has a **third policy** for the loose files at
-> the root of `shutterbug-ui/`, and it decides from measurement rather than from a
-> list: quantize, compare against the original, keep it only if the difference is
-> invisible, report and leave alone anything it would damage. The root could never
-> have gone in `PALETTE_DIRS` because it also holds the gradient-heavy paper and
-> wood textures that quantizing *would* band — so the measurement is what makes
-> the folder safe to walk at all.
->
-> ⚠ **If you touch that comparison, recalibrate the threshold.** Comparing the raw
-> RGBA buffers scores art with alpha far too harshly: the four Mr O plates came
-> back at 1.55–1.86 "damaged", and it was almost entirely the anti-aliased fringe,
-> where alpha is near zero and RGB is meaningless — a quantizer may write anything
-> into a pixel nobody can see. Flattened onto the paper first, the same plates
-> measure 0.42–0.51 (0.29–0.35 at the 630 px Mr O is actually drawn), and a
-> before/after at draw size is indistinguishable.
->
-> **What is left, and why the easy wins are finished:** four textures (690–980 KB)
-> and two open-book plates, **all already palette PNGs**. There is nothing more to
-> win in that format. Going further means webp or jpeg, which changes the
-> filenames they are referenced by — a real change, not a re-encode. The per-file
-> tripwire has been ratcheted 1100 → **1000 KB** so the space won cannot quietly
-> be given back.
-
-> ### ⚠ 2026-07-29: the meet screen fits the board now — with one state left over
->
-> The screen ran past the bottom of the painted board, and by more than the last
-> handoff said: **Grand Tour by 207px and Journeys by 152px**, while the other four
-> modes cleared it by 7px. The mode-specific picker (ITINERARY / THE ROUTE) moved
-> into the right column under Uncle Jonah, into a **fixed-height slot** so the camera
-> bag sits in the same place in all six modes. The left column is now the SAME height
-> in every mode. Four other things came out of the same measuring pass:
->
-> - **The mode grid is pinned to three columns.** `auto-fit, minmax(150px, 1fr)`
->   dropped to two columns — six cards in three rows, +142px in every mode at once —
->   below a 1100px-wide window. The board is capped at 1180px, so auto-fit could
->   never have produced a fourth column; two was the only thing it ever did.
-> - **The ⓘ panels scroll themselves into view.** "About the difficulty levels"
->   rendered 725px down a 720px board: mounted, correct, and entirely off the screen.
->   Instant scroll, not smooth — smooth is dropped here, same as the journey map.
-> - **The difficulty control is a painted-paper panel.** It sits squarely on the
->   passport in the desk art, and bare on the desk "Scout" was ink-on-navy.
-> - **The chip lists have a visible scrollbar** (`.sbw-chiplist`). Eleven routes need
->   five wrapped rows and the slot holds two, and a scroll a child cannot see is the
->   same as five routes that do not exist.
->
-> **~~Still open — needs your call.~~ ANSWERED 2026-07-30: Joshua chose a popup.**
-> The "Newly unlocked!" card ran 329px past the board with five announcements and
-> ~55px with one, and there was nowhere to move it — both columns had ~25px spare.
-> It is now `UnlockNewsModal`, a popup over the meet screen, opened from `startMeet`
-> whenever `news` is non-empty. **The meet screen now fits the board in all six modes
-> in every profile state**, including a traveler with five pending unlocks.
->
-> **The meet screen needs a viewport ≥882px tall** at 1280px wide, measured. Below
-> that the board (`min(90vh, 820px)`) shrinks and the content does not. Same class as
-> the desk's ≥872px, and for the same reason.
-
-> ### ⚠ 2026-07-29: the avatar range is generated now, not painted
->
-> Joshua's new delivery is **one plate per SHAPE, each in a single colour** — one
-> head in tan, two sets of eyes in brown, eight hairstyles in blonde, five outfits
-> in blue/purple/red. The colour range is **generated** from it by
-> `scripts/avatar-recolour.mjs`: 16 paintings become 107 plates and **120,960
-> distinct travelers**. Adding a colour is one line in a palette; adding a shape is
-> still one correctly-named PNG.
->
-> | part | range |
-> |---|---|
-> | eyes | brown, blue, green, hazel, amber, grey — × 2 sexes |
-> | hair | black, dark brown, brown, light brown, blonde, red — × 8 styles |
-> | skin | deep, dark, brown, medium, tan, light |
-> | outfit | red, orange, yellow, green, blue, purple, pink — × 5 garments |
->
-> **Read the top of `scripts/avatar-recolour.mjs` before touching any of it.** The
-> recolour is easy; the MASKS are the work, and each one is there because a naive
-> version shipped something wrong:
->
-> - **The eyelid crease** is painted in the same warm brown as the iris and passes
->   every colour test there is. It is excluded on SHAPE — the irises come back as
->   ~1,400 px filling 0.45 of their bounding box, the creases as ~200 px at 0.06.
->   Without that a blue-eyed child gets blue eyeliner.
-> - **The outfit colour word names a different garment each time.** 1/2/3 are
->   jackets, 4 is a cardigan, and 5 is a red T-SHIRT under a blue denim jacket —
->   45% of that plate is denim. Masking on the declared colour is self-checking.
-> - **The head recolours its ink too**, because skin and line work are the same
->   hue and leaving the lines put costs the darkest face its features.
-> - **Highlights are damped when darkening.** Blonde art has a huge specular
->   range, and shifting all of it down left "black" hair reading as brown.
->
-> **What this costs:** the built set is **3.1 MB**, up from 496 KB, all precached
-> by the PWA. If that ever matters, `--size 400` is the lever (the largest render
-> in the game is the 132 px passport frame, so 600 is already 2× for retina).
->
-> **Still wanted from Joshua:** nothing is blocked. More SHAPES are the thing that
-> would add most now — more outfits, more hairstyles — since every one arrives in
-> the full colour range for free. Female-specific eyelashes would also land as
-> filenames alone.
-
-> ### ⚠ 2026-07-28 (evening): the rest of the tune-sameness pass, and four questions
->
-> **Shipped:** the four beds still carrying 7–8 countries each — `southeastasia`,
-> `tropical`, `latin`, `westafrica` — plus `mediterranean`, which was carrying six
-> and was the worst of the lot for what it flattened (a Greek bouzouki standing in
-> for flamenco, fado and a tarantella). Seventeen new beds. §11 has the recount:
-> **11 regional beds became 43, and the biggest is now 6, down from 19.** The last
-> one at six is `caribbean`, and the ceiling in `test/tunes.test.js` stays there
-> until it's split. Also: `MUSIC.timbres` now exists purely so a test can catch a
-> tune naming a timbre the synth doesn't have — the one failure mode here that
-> neither throws nor falls silent, it just plays the wrong instrument.
->
-> **Nobody has heard any of them but a synthesizer.** See §11 item 2.
->
-> **Four things need Joshua and were not started:**
-> 1. ~~**`Images/Avatar designs/eyes_female_brown.png.png`** is 1024×1024~~ **FIXED
->    by Joshua, 2026-07-29** — every plate in the new batch is 1200×1200. Three
->    still carry a doubled `.png`, which the build now strips rather than reading
->    as part of the colour.
-> 2. ~~**Currency PRICE anchors**~~ **BUILT, and it reaches 10 countries, not 55.**
->    Joshua asked for all of them. See §12 for why that is not available at any
->    price — the short version is that there is no authoritative global source of
->    everyday retail prices, and the one good free source measures refugee camps.
-> 3. ~~**Trinidad and Tobago's map.**~~ **DONE 2026-07-29.** Joshua's call: only
->    small islands get a lower floor, so nothing trades sharpness away where it
->    isn't buying visible shape. `boxFloorFor` in `src/map-geometry.js` — a mainland
->    country backed off to the floor fills its frame with real neighbouring ground,
->    an island fills it with empty sea, and the island floor is set by how many
->    source pixels are left rather than by taste. Trinidad 28% → 78%, Jamaica 33% →
->    92%, Fiji 46% → 93%; no mainland country moved.
-> 4. ~~**Mr O's "checkered background"**~~ **CLOSED 2026-07-29 — Joshua: "Mr O is
->    good."** It could never be reproduced in the shipped game: all ten images have
->    genuine alpha, live and local are byte-identical, and no UI asset contains a
->    checkerboard. What he had been looking at was almost certainly four of the
->    ORIGINALS in `Images/Mr O complete/` (considering, explaining, sharing,
->    teaching), which are fully opaque with a white-and-grey checkerboard baked in.
->    Worth keeping in mind if it ever comes back: check whether the file being
->    looked at is a delivery or a shipped asset before measuring anything.
-
-> ### ⚠ 2026-07-28: the speech voice, and what would actually fix it
->
-> Joshua: *"The voice pronouncing some of the countries is the old school atrocious
-> pre-Siri voice."* He was right, and the cause is not our code choosing badly — it
-> was our code not choosing at all.
->
-> `utterance.lang = "en-US"` hands the pick to the browser, and the browser hands it
-> to its oldest voice. On macOS that is **Samantha**, the pre-Siri one. Measured on
-> Joshua's Mac: 180 voices installed, **zero** Enhanced/Premium/Siri among them.
->
-> Worse than the default: macOS ships *Bad News, Bahh, Bells, Boing, Bubbles, Cellos,
-> Jester, Organ, Superstar, Trinoids, Whisper, Wobble* and *Zarvox* as ordinary en-US
-> voices, and for French, German, Japanese, Spanish and Chinese the list is DOMINATED
-> by the character voices (Grandma, Grandpa, Rocko…). The game says foreign words
-> aloud to teach a child how they sound, so a comedy voice doing it is worse than
-> silence. `rankVoices()` in `src/audio.js` now scores the list and sets `u.voice`
-> explicitly; joke voices are never eligible, and a language whose ONLY match is a
-> joke voice counts as having no voice, which makes the greeting layer fall back to
-> reading the romanization plainly in English.
->
-> Measured result: French now gets Jacques (was liable to be Grandpa), Japanese Kyoko,
-> German Anna, Spanish Mónica, Chinese Tingting, Russian Milena, Korean Yuna, Greek
-> Melina, Turkish Yelda. Persian, Swahili and Māori correctly report no voice.
->
-> **English is still Samantha, because on that machine she is genuinely the best there
-> is.** Ways forward:
->
-> 1. ~~**Install a better system voice.**~~ **RULED OUT by Joshua, 2026-07-28:** *"I only
->    want us to utilize things that can be done in-game. If someone is playing this game
->    on their browser or downloads an app, I won't be having them search their computer
->    to download a new voice."* This is a product constraint, not a preference — the
->    game ships to players who will never be told to configure anything. Do not
->    re-propose it. It also retires the whole category: nothing that depends on what
->    the player's device happens to have installed counts as a fix. `rankVoices()` in
->    src/audio.js stays as the graceful fallback for whatever voice IS there, but it
->    can never be the plan.
-> 2. **Pre-rendered audio, human.** Wikimedia's **Lingua Libre** holds tens of
->    thousands of free-licensed recordings of real speakers saying single words,
->    including country names and greetings, under CC BY-SA / CC0 — the same licensing
->    lane and the same API the photo work already uses. Best possible quality, and it
->    removes the dependence on the player's device entirely. Cost is a coverage audit
->    (108 country names + ~100 greetings) and about 5–10 MB of audio in the PWA.
-> 3. **Pre-rendered audio, synthesized.** **Piper** (rhasspy/piper) is MIT-licensed
->    neural TTS that runs offline; output is licence-clean to redistribute. Better than
->    any browser voice, worse than a human, and a build-step dependency. Only worth it
->    if Lingua Libre's coverage turns out to be thin.
->
-> Recommendation: (2) is the only real path, treated as a content project of the same
-> shape as the culture-photo audit. Everything the game says aloud that is NOT a
-> country name — Mr O's facts, the Scout read-aloud, hover labels, every greeting —
-> is still on the device synthesizer, and bundling audio is the only way to change
-> that for a player who configures nothing.
->
-> **UPDATE, same day: (2) is DONE for the country names.** The audit came back far
-> better than expected — see below — so it was built rather than filed.
->
-> ### The audit result
->
-> | | coverage | verdict |
-> |---|---|---|
-> | **Country names (English)** | **106 / 108** | built |
-> | **Greetings (right language)** | **16 / 79** | not built, and shouldn't be |
->
-> Country names: one speaker, "Soundguys", had recorded 102 of them, which mattered
-> more than the coverage number — 106 different volunteers would have sounded like a
-> ransom note. Two more speakers fill the gaps. **All 106 are CC0.** Commons
-> auto-generates MP3 transcodes, so no encoder was needed and the set is 2.3 MB.
-> Only French Polynesia and New Caledonia have nothing, and they fall back to
-> synthesis. `node scripts/gen-voices.mjs` rebuilds the set.
->
-> Greetings: 16 of 79 in the RIGHT language. Another 19 exist with the same spelling
-> recorded in some OTHER language — "Hola" by a Polish speaker, "Bonjour" by a
-> Malagasy one — which would teach exactly the wrong sound, which is the thing this
-> whole exercise is about. Not worth a pipeline at 16/79, and half human / half robot
-> on the same UI element would be worse than either. They stay on synthesis, now with
-> the voice ranking picking the plain voice rather than a character one.
->
-> If greetings are wanted later, the route is Lingua Libre's own recording studio —
-> it takes requests, and a speaker of a given language can record a word list in one
-> sitting. That is a community ask, not a code change.
-
-
-> ### ⚠ 2026-07-27: a sixth mode landed
->
-> **Mystery Photos** is in — Uncle Jonah's unsorted archive. It shows one of the 464
-> existing landmark photographs with no caption and asks the child to put a pin on
-> the world map; scoring is by distance with the right continent as a floor, and
-> nothing scores zero. It is the only mode in the game that runs place → knowledge
-> instead of clue → place, which was the largest pedagogical gap in the loop.
->
-> - Pure logic (slide choice, distance scoring, the player-facing strings):
->   `src/mystery.js`, tested in `test/mystery.test.js` (23 tests).
-> - Screen: `src/components/mystery.jsx`. Its own file deliberately —
->   `shutterbug-world.jsx` is the engineering debt named below, and this did not
->   have to add to it.
-> - It has **no badge art yet** (it falls back to the 📷 emoji, the same way The
->   Long Trip does). ~~`MODE_ART` and `MODE_KEYS` still list the two dead modes.~~
->   **TIDIED 2026-09-23:** the dead `quiz`/`daily` keys are gone along with their
->   two PNGs (210 KB the PWA was installing on every iPad to draw a mode that no
->   longer exists), `MODE_KEYS` in `test/art.test.js` names the real six, and the
->   test now checks from both ends — no key may name a mode the game doesn't have,
->   and the set of modes *missing* art must be exactly `longtrip` + `mystery`. So
->   when that art lands, wiring the key is what makes the test pass again.
->
-> Two things learned building it that the next map feature will want:
-> - A country's centre is NOT its path's bounding-box centre. France's box takes in
->   French Guiana and Réunion and centres on **Mali**; the USA's centres on southern
->   **France**. The mode derives centres from the game's own landmark coordinates
->   with a circular mean for longitude (Fiji straddles the antimeridian and a plain
->   mean puts it in the Gulf of Guinea), then snaps to the nearest real landmark.
-> - `SVGGeometryElement.isPointInFill` answers "which country is this point in"
->   exactly, against the real geometry. But a country's centre is usually a coastal
->   city, and against these simplified outlines 16 of 177 hit-test as open sea — so
->   where the country is already known, pass it rather than hit-testing it.
-
-
-> ### ⚠ Read this before anything below
->
-> A long session on 2026-07-17/18 changed things this document still describes the
-> old way. Where they disagree, **this box wins**:
->
-> - **Grandpa Nigel is now Uncle Jonah** — a Vietnamese man who DID travel widely when
->   young (with the camera he lends you) and is too old to travel now. Not a man who
->   never went. Art in `public/assets/shutterbug-ui/jonah2/`; words still in
->   `src/data/grandpa.js` (filename and `GRANDPA`/`NIGEL_*` identifiers are
->   pre-rebrand and intentionally left alone — internal only).
-> - **Quiz mode and Daily Expedition mode were REMOVED.** The review quiz now runs at
->   the end of every scored run (the homecoming). There is no once-a-day mode, no
->   share card, no daily streak. Four modes remain: Assignments, Grand Tour, Explore,
->   Journeys. §7 below says to do Supabase "after the Daily has proved out" — that
->   condition no longer exists and is not a reason to wait.
-> - **The passport is always the booklet popup**, never its own screen.
-> - **Target device is a DESKTOP window.** Phones are explicitly not a target; iPad is
->   secondary. §8's "final single-screen pixel fit" should be tuned to a desktop
->   window. See the amended rule 4 in `CLAUDE.md`.
-> - **The desktop executable (§8) is NOT recommended.** The PWA already installs on
->   desktop; signing costs $99/yr and unsigned builds throw OS warnings at parents.
->   Do it only if a real double-click icon is worth that.
-> - **Recommended next build:** export/import the passport as a file. Today a cleared
->   cache erases months of progress, and that work is the same serialization Supabase
->   (§7) would reuse.
-
-> ### ⚠ 2026-07-19 supersedes parts of the box above
->
-> The **passport export/import** recommended above is **DONE** — "Save a copy" /
-> "Restore from a file" under the passport, serialization in `src/profiles.js`
-> (`exportPassport` / `importPassport`), tests in `test/passport-file.test.js`.
-> §7's Supabase work would reuse that envelope as-is.
->
-> Also landed: teach-on-miss, Mr O's intro fixed to fire once at assignment 2, the
-> homecoming quiz scaled to one question per assignment, the results and quiz screens
-> fitted to one widescreen, Chile/USA/UK map crops, circular pins, a splash drone that
-> swells into the jig, single-pass country tunes, and the music/voice balance. See
-> "Recently shipped" and `git log 8b8a738..HEAD`.
->
-> **Still open from that session's list** (Joshua asked for these; they are not done):
-> 1. **A Progress page in the passport** — mastery by continent and a "keeps getting
->    missed" list. All the data already exists (`passportData`, `profile.loc`,
->    `weightFor`); it needs a view. Highest value per line of code of anything left.
-> 2. **Tint mastered countries on the world map** — `passportData()` returns a
->    `mastered` flag per country and `WORLD_COUNTRIES` has the paths. The satisfying
->    "watch the map fill in" feedback the game currently has no version of.
-> 3. **Content for the thin continents** — South America 34, Oceania 30, Antarctica 6
->    against Europe's 107. Chile is the ONLY country in the game with fewer than three
->    landmarks on a continent layer (2 on the mainland, plus Easter Island filed under
->    Oceania); a code-level floor now borrows nearest neighbours so no map shows fewer
->    than three pins, but Chile still wants real mainland places. Joshua's steer: add
->    genuinely notable places, don't pad to hit a number, and Europe/Asia/North America
->    may still gain places of real cultural or geographic interest.
-> 4. **A rewards/progression layer** — earning an achievement currently grants a chip
->    on the results screen and nothing else. See §10 (new) for the brainstorm.
-> 5. **The dog** — art is in `public/assets/shutterbug-ui/dog/` (6 poses) and already
->    appears beside Jonah in his scenes. No gameplay role yet; see §10.
-
-> ### ⚠ 2026-07-21 — two new lists live in their own files
->
-> This session produced two documents that supersede the priorities below:
->
-> - **[`playtest-2026-07-21.md`](playtest-2026-07-21.md)** — Joshua's playtest pass.
->   Fifteen items, triaged and sized: map crops, the airplane-only travel decision,
->   the Long Trip rail, and the ancient-ruins content gaps. **Item A in that file
->   (returning players are served a stale build) should go first — it means every
->   other playtester may be reporting bugs against days-old code.**
-> - **[`keyboard-audit.md`](keyboard-audit.md)** — the rule-4 keyboard pass, finally
->   done, and *measured* in the running game rather than assumed. The core loop is
->   keyboard-operable and every control has a focus ring. **All five findings are
->   now FIXED** — re-verified 2026-09-23, and that file's status table is the
->   current word. The two that mattered were the gold focus ring failing contrast
->   on light surfaces (now a two-tone ink+gold ring) and no dialog trapping or
->   restoring focus (now `useModalFocus`, on all 15 of them). Do not re-do this
->   work: the file told anyone reading it cold that none of it was done, for two
->   months after it was.
->
-> Also corrected there: this repo now holds **447 locations across 106 countries**,
-> not the 144 `CLAUDE.md` still claims.
-
-> ### ⚠ 2026-07-27 — several items below were ALREADY DONE. Check before you start.
->
-> An overnight session picked up six tasks from this file and found three of them
-> finished months ago. The counts in this document are the least trustworthy thing
-> in it. **Verify against the shipped data before believing any number here.**
->
-> - **The Progress page is DONE** (and so are the Trophy Shelf and the Journals).
->   `PassportModal` has had `PROGRESS_PAGE = 1` with `progressByContinent` and
->   `troubleSpots` since "Show what the child actually knows". The list of "still
->   open" items further down still asks for it.
-> - **"18 countries on the generic music bed" was TWO** — Canada and Malta — and both
->   now have their own. An earlier session added the Nordic, Alpine, Celtic, Slavic
->   and African beds and never updated the note. `test/audio.test.js` now asserts no
->   country can reach `generic` again, so this particular number can't go stale.
-> - **Chile's mainland is fine** (6 places), and South America is 41, not 34.
-> - **Oceania was the real gap** and is now 37, up from 30 — but the useful number was
->   never the total: 13 of those 30 were `coast`, and the continent had no ice, no
->   river, no sacred place and no rock art at all. Seven places fixed the spread.
->
-> **Landed this session:** the Credits & Legal page (reachable from the copyright
-> line in the splash corner); three Journeys (Pony Express, Shackleton's Endurance,
-> the Exodus); the `certainty` warning that contested journey stops were carrying in
-> data but never showing; Canada's and Malta's music; seven Oceania places; and the
-> first slice of the big-file split (`src/components/media.jsx`).
->
-> **Two things worth knowing:**
-> - **Amundsen's polar route is blocked on a polar projection.** The journey map is
->   equirectangular, where the South Pole is the entire bottom edge and every meridian
->   meets there, so a route ending at 90°S draws its last leg sideways along the foot
->   of the world. Shackleton's story stays between 54°S and 69°S, which is why it was
->   the polar route that could be built. Amundsen needs projection work first.
-> - **`nextMrOImage` calls `Math.random()` directly**, which the "every random choice
->   goes through src/rng.js" rule forbids. It only picks which portrait of Mr O to
->   show, so nothing about a run's outcome depends on it — but it is a real exception
->   to a rule this project treats as absolute, and it should either be fixed or the
->   rule should say "except art selection".
-
-### Contents
-
-This document is long enough that things get lost in it. Every section, in order:
-
-| § | | |
+| § | | status |
 |---|---|---|
-| [1](#1-the-avatar-redesign--done-2026-07-28) | Avatar redesign | ✅ done |
-| [2](#2-rotating-people-cards--done-2026-07-15) | Rotating people cards | ✅ done |
-| [3](#3-the-roguelike-layer) | The roguelike layer | ✅ all five slices shipped; playtest and feel only |
-| [4](#4-the-tap-to-learn-curiosity-layer) | Curiosity layer | ✅ done |
-| [5](#5-more-journeys) | More Journeys | ongoing content |
-| [6](#6-wire-the-awardprogression-graphics-into-the-passport) | Award graphics into the passport | ✅ done |
-| [7](#7-backend-for-cross-device-profiles-and-friend-leaderboards) | **Supabase backend** | schema + merge built 2026-07-19; needs the migration run |
-| [8](#8-optionally-package-a-desktop-app) | Desktop app | recommended against |
-| [9](#9-travel-modes--built-2026-07-15-balance-wants-a-playtest) | Travel modes | built; balance wants Joshua's feel |
-| [10](#10-rewards-progression-and-the-dog-brainstorm-2026-07-19) | **Rewards, progression, and the dog** | brainstorm — decisions needed |
-| [11](#11-the-music-honestly-2026-07-19-recounted-2026-07-28) | **The music, honestly** | 55 beds, none carrying more than five; `/tune-lab.html` now plays them all — **waiting on Joshua's ear** |
-| [12](#12-currency-price-anchors--built-2026-07-29-and-it-stops-at-14-countries) | **Currency price anchors** | 14 countries / 95 places; every reachable free source is now taken |
-
-### THE THREE THINGS TO DO NEXT (start here)
-
-> **Read this first: all three are Joshua's, not a coder's.** As of 2026-07-30 the
-> build queue is empty — the roguelike layer (§3), the badge art (§6, 71/73), the
-> avatar (§1) and the price anchors (§12) have all landed. What remains needs a
-> person to play the game and say what feels wrong, or to make a decision. A session
-> that opens this file looking for something to *build* should read §5 (more Journeys
-> — pure data) or §10's option (a), and otherwise say so rather than inventing work.
-
-1. **Travel-modes balance playtest.** The feature is built and live (see §9); its
-   *numbers* want Joshua's feel. He plays a Grand Tour on Adventurer and says "money
-   too tight/loose", "last legs cost too many days", "the bonus is weak". Dial in
-   `src/data/travel.js` (`transportOptionsFor` — the `usd`/`days` formulas), the
-   starting wallet in `startTour` ($3,500 Adventurer / $2,500 Expert), and `legSlack`
-   (the extra day budget per stop). Leftover-money bonus = 1 pt per $500, in the
-   `photographCity` tour-win branch. The same applies to **The Long Trip** (§3), whose
-   knobs are `LONG_TRIP_DAYS`, `renownGain`/`renownRank`, `COVER_DAYS`, the
-   hold-for-the-light odds and the condition/kit strengths.
-2. **Listen to the arrival music** (§11) — newly possible as of 2026-07-30.
-   `npm run dev`, then <http://localhost:5173/tune-lab.html>: all 55 beds, each with
-   the countries it carries, played by the game's own synthesizer. Tap **N** to walk
-   the list. Everything testable about these tunes already passes; whether they sound
-   good has never been checked by a human, and it cannot be checked by anyone else.
-3. **Decide what an achievement is worth** (§10). Earning one currently grants
-   *nothing* — 24 badges derived live from the profile, never persisted, never paid
-   out — and Joshua already reported the hollowness ("he said congratulations and then
-   that was it"). Five options are laid out there; the recommendation is **(a) stage
-   the unlock moment properly, then (c) tie unlocks to Jonah's anecdotes**, both
-   staging and content rather than new systems. This one needs his pick, then it is
-   buildable.
-
-**Then, in Joshua's stated order:** the graphics pass is done, leaving the **desktop
-executable + final single-screen fit** (§8) as the capstone — where the standing
-recommendation is still *don't*, because the PWA already installs. The Supabase
-backend (§7) sits off to the side whenever he wants it.
-
-### Recently shipped
-
-**2026-08-03 — Chicago's subject changed, because the Bean cannot be photographed.**
-Cloud Gate was replaced by **Buckingham Fountain** (`a3a2f6e`), with Joshua's
-go-ahead. The US grants freedom of panorama to *buildings* only, not sculptures, so
-every photograph of the Bean is a derivative of Kapoor's copyrighted work: Commons
-tags the category `{{NoFoP-US}}` and has deleted its way down to five files, none of
-which shows the finished sculpture. The photo we shipped was the least-bad of those
-five, not an oversight. **Do not "fix" the Chicago photo** — a clearer picture of the
-Bean would mean the licence is wrong, and a comment on the entry in
-`src/data/locations.js` says so. The fountain is the better teaching subject anyway
-(its four pairs of sea horses stand for the four states touching Lake Michigan), and
-the id moved `cloudgate` → `buckinghamfountain` with the category `cityscape` →
-`monument`; an existing profile loses that one stamp and nothing else. Verified
-against the Chicago Park District's own history page.
-
-**2026-08-03 — two sounds that fired before the thing they were about, and three
-screens that scrolled** (`4656a79`; six items off Joshua's list, all in
-`shutterbug-world.jsx`).
-- **The world map spoke a continent nobody pointed at.** `onMouseEnter` doesn't need
-  the pointer to *move* — a map mounting under a resting cursor counts as an enter —
-  so arrival spoke whichever continent the mouse happened to sit over, which reads as
-  the answer to the clue. The first second of a new map no longer counts as a hover.
-- **"Hold for the light" was answered to a shutter that had already fired**, and the
-  reward chime landed on top of the question and then played again. Taking the picture
-  is one scheduled gesture now, so the branch that hasn't taken it yet can call it back.
-- **Uncle Jonah's bag** sat 174px below him on the meet screen, because the tuner slot
-  reserved its full height in all six modes and three modes have no tuner. Gap 174px → 37px.
-- **The country arrival card is two columns** — country and people left, capital,
-  money, prices, local time, season and transport in white boxes right. It stacks back
-  to one column under ~620px.
-- **The end screen's earnings moved to a popup**, opened 1.6s in so the confetti and
-  Jonah's face get their moment, with a "What you earned" button to reopen it. Same
-  call the meet screen's unlock news made, for the same reason. With the buttons
-  unwrapped and his portrait capped against the viewport rather than the column, board
-  overflow went 261px → 0 at **1440×900 and 1280×800** (the 13-inch case).
-
-> **Worth knowing, from that session:** the passport is written at the **END** of a
-> run — `recordGame` writes every stamp in one go from the results screen, and Explore
-> writes its lot on "Done exploring". Nothing is written mid-run, so a trip abandoned
-> halfway leaves no trace. Changing that is not small: the stamp counts and the
-> spaced-repetition schedule are both derived from that single write.
-
-**2026-07-17/18 — the recast + a long polish run.** Grandpa Nigel became **Uncle
-Jonah** (new art, new signature, backstory reworked from "never went" to "went young,
-passing it on"); his expression set grew to 17 faces mapped per mood, including a
-difficulty ladder that climbs to wide-eyed astonishment on Expert. **Quiz and Daily
-modes removed.** Uncle Jonah's screens (intro, meet, homecoming, results) share one
-desk backdrop; the results screen fits without scrolling, roll left and Jonah right,
-polaroids title-only in a handwritten face. **Mr O** got a first-time introduction, a
-"bwooop", and now stays away for the whole of assignment 1. Audio: the Star-Spangled
-Banner replaced "When the Saints" (and had a wrong note fixed), country tunes play
-twice at double volume, a 4-second music fade, a shutter at capture with the reward
-chime held until the photo develops, and a quiet thunk under every button. Maps:
-Russia's NE coast regenerated, relief re-rendered at 12288px, North/South America and
-the USA re-cropped, paper grain over the world map, and the compass shrunk out of
-Hawaii's way. Ten new greeting bubbles (with the corrected Russian and Hindi) that now
-tell you the language and what the word means. The passport became popup-only. A build
-stamp sits in the splash corner so you can tell which build you're on.
-
-Earlier this month: **travel modes** (§9 — the big one), plus a small-fixes UI pass (flight
-music plays the full 4s then fades over 2s; hover-only country/landmark labels; the
-Aleutian wrap cut off the world map; Europe/UK/Asia map crops + vertical stretch; the
-polaroid result layout; US-English spellings), CI action bumps, the Mr O riddle
-catchphrase, **Mr O now appears only on arriving at a new continent** (no more
-mid-country interruptions), **landmark pins de-overlap with leader lines to their true
-spots**, **traveller selection moved off the splash to its own screen**, France
-overseas-territory locator insets, the curiosity layer grown to **42 cards**,
-**rotating people cards** for the six multi-ethnic countries (§2 — DONE), and **four
-more Journeys** (now 8 routes) with a height cap so tall north–south routes fit.
-
-Earlier sessions: the Natural Earth water layer, the sharper relief plates, the Seeded
-Daily Expedition, the imperial-first units pass, the Grand Tour rework, the first
-Journeys, and the Grandpa Nigel story frame.
+| — | [Start here](#start-here) | state, what is left, standing decisions, traps, tools |
+| [1](#1-the-avatar) | The avatar | ✅ shipped; adding a garment is a pipeline, not a build |
+| [2](#2-rotating-people-cards) | Rotating people cards | ✅ done |
+| [3](#3-the-long-trip-the-roguelike-layer) | The Long Trip (the roguelike layer) | ✅ all five slices shipped; balance only |
+| [4](#4-the-curiosity-layer) | The curiosity layer | ✅ done; dated cards want re-checking |
+| [5](#5-more-journeys) | More Journeys | **buildable** — pure data, 11 routes ship |
+| [6](#6-award-graphics) | Award graphics | ✅ done, 71 of 73 |
+| [7](#7-the-supabase-backend) | The Supabase backend | built and inert; **needs Joshua** |
+| [8](#8-a-desktop-app) | A desktop app | recommended against; **Joshua's decision** |
+| [9](#9-travel-modes) | Travel modes | built; **balance wants Joshua's play** |
+| [10](#10-rewards-progression-and-pickles) | Rewards, progression, and Pickles | **decision needed** — five options, and the wardrobe already pays out |
+| [11](#11-the-music) | The music | built; **waiting on Joshua's ear** |
+| [12](#12-currency-price-anchors) | Currency price anchors | 14 countries; the cheap sources are spent |
+| [13](#13-souvenir-stalls) | Souvenir stalls | 12 stalls; thank-yous unreviewed; Cameroon wants a third object |
+| [14](#14-maps) | Maps | overseas insets, the relief raster, the island floor |
+| [15](#15-speech) | Speech | country names are human recordings; the rest is the device |
+| [16](#16-install-size-and-updates) | Install size and updates | 59.9 MB precache, guarded |
+| — | [Log](#log) | what shipped, newest first |
 
 ---
 
-## Where things stand
+## Start here
 
-- **Live** at `joshuadanielspencer-boop.github.io/shutterbug/`. `git push` to `main`
-  triggers `.github/workflows/deploy.yml`, which tests, builds and publishes. There
-  is no separate deploy step.
-- `npm test` → **378 tests, 22 files** (2026-07-30). They must stay green; several guard
-  *facts*, not just shapes, and exist because a plausible-looking wrong map shipped
-  once already. Three caught real bugs on their first run: a second bagpipe drone
-  stacking over the splash bed, three missing continent-crossing pairs, and the
-  world-map tint never matching "United States" because the map data calls it
-  "United States of America".
-- **Every random choice must go through `src/rng.js`** (`rnd()`, `shuffled()`), never
-  `Math.random()` — a stray `Math.random()` breaks reproducibility *silently*.
-  `test/daily.test.js` guards the primitives. (It was written for the Daily
-  Expedition; that mode is gone but the primitives are still load-bearing.)
-- The deploy workflow uses `actions/upload-pages-artifact@v5` + `deploy-pages@v5`
-  (bumped off the deprecated Node 20 in July 2025).
-- **Game modes that exist:** Assignments, Grand Tour (route optimisation), Journeys,
-  Themed Expeditions, Explore. **Quiz and Daily Expedition were removed** — the review
-  quiz now runs at the end of every scored run (the homecoming).
-- **The one big file:** `src/shutterbug-world.jsx` (~6,500 lines) is the whole game
-  component. Everything else is data, rules pulled out for testability
-  (`missions.js`, `routes.js`, `rng.js`, `daily.js`, `profiles.js`), or generators
-  under `scripts/`.
+### State, verified 2026-10-03
 
-### Tools you will want
+- **Live** at <https://joshuadanielspencer-boop.github.io/shutterbug/>. `git push` to
+  `main` runs `.github/workflows/deploy.yml`, which tests, builds and publishes.
+  There is no separate deploy step. Working tree clean and deployed through `191c589`.
+- **`npm test` → 397 tests in 23 files**, and they must stay green. Several guard
+  *facts*, not shapes, because a plausible-looking wrong map shipped once. Several
+  pin *decisions* — `test/souvenirs.test.js` asserts the only price-anchor countries
+  without a stall are the two priced in dollars. When a test like that fails, the
+  answer is usually "a decision changed", not "loosen the test".
+- **Content:** 464 places in 108 countries — Europe 110, Asia 109, North America 85,
+  Africa 74, South America 41, Oceania 37, Antarctica 8.
+- **Six modes:** Assignments, Grand Tour (with the itinerary picker: classic plus six
+  themed expeditions), Explore, The Long Trip, Journeys, Mystery Photos. Quiz and the
+  Daily Expedition were removed as modes in July; the review quiz runs at the end of
+  every scored run (the homecoming).
+- **Counts a section below relies on:** 11 Journeys · 12 souvenir stalls holding 38
+  objects · 14 price anchors covering 95 places · 42 curiosity cards in 7 decks of 6 ·
+  24 achievements · 55 tunes, of which 6 are real melodies and no regional bed
+  carries more than five countries · 30 hub airports · currency for 107 of 108
+  countries (Antarctica has none, on purpose).
+- **The one big file:** `src/shutterbug-world.jsx` is **9,895 lines** and is the
+  whole game component. Newer screens have gone into `src/components/` instead
+  (`mystery.jsx`, `avatar.jsx`, `media.jsx`, `modal.jsx`, `text.jsx`) precisely so
+  as not to add to it. Everything else is data, rules pulled out for testability, or
+  generators under `scripts/`.
+- **A run in progress is saved nowhere.** The passport is written at the **end** of a
+  run — `recordGame` writes every stamp in one go from the results screen, and
+  Explore writes on "Done exploring". A trip abandoned halfway leaves no trace, and
+  that includes souvenirs. Changing it is not small: the stamp counts and the
+  spaced-repetition schedule are both derived from that single write.
 
-| Script | What it does |
-|---|---|
-| `node scripts/commons.mjs search "…"` / `cat "Category:…"` / `verify "File:…"` | Search Wikimedia Commons and **verify a file's licence, author and size**. Never add a photo without running `verify` on it. |
-| `node scripts/gen-geography.mjs` | Rebuilds `src/data/geography.js` (rivers/lakes/seas) from Natural Earth. |
-| `node scripts/make-relief.mjs <NE1.tif> --width 8192 --out public/relief-world.jpg` | Rebuilds the relief plates. |
-| `node scripts/imperial-first.mjs --dry` | Finds/rewrites metric-only measurements. Always `--dry` first. |
-| `node scripts/gen-price-anchors.mjs` | Rebuilds `src/data/price-anchors.js` from WFP food prices **plus four national statistics offices** (US, Canada, Japan, Mexico). `--csv a.csv b.csv` to work from local copies. **Read the warning at the top before adding a country** (§12). |
-| `npm run dev` → `/tune-lab.html` | Listen to every arrival bed, played by the game's own synth, with the countries each carries. The only way to judge whether a bed sounds right (§11). |
-| `npm run dev` → `/avatar-lab.html` | Review the avatar art layer by layer (§1). |
-| `node scripts/outfit-lab.mjs` → `/outfit-lab.html` | Fit the 2026-09 garment delivery onto the avatar body and judge whether the alignment is shippable (§1). Writes only to `public/outfit-lab/`; the game's wardrobe is untouched. |
+> **The counts in this file are the least trustworthy thing in it.** A July session
+> picked up six tasks from here and found three already finished. Re-count from the
+> shipped data before believing a number, and check whether a thing is done before
+> starting it.
 
-> ⚠ **The two relief scripts cannot be run on this machine as it stands.** Both want
-> the Natural Earth source raster (`NE1_HR_LR.tif` / `HYP_HR_SR_W.tif`) as an
-> argument, and it is **not in the repo and not anywhere on disk** — `assets-src/`
-> holds only `icon.svg`. It is a ~200 MB download from naturalearthdata.com, and it
-> is deliberately not committed.
->
-> This matters more than it looks, because `test/relief-plates.test.js` asserts every
-> per-country plate covers the ground its zoom box draws. **Making a country's box
-> BIGGER breaks that test and needs the raster to fix**; making one smaller is free,
-> since a smaller box is a subset of ground the existing plate already covers. That
-> asymmetry is why the island floor (2026-07-29) needed no plate regeneration, and
-> it is the first thing to check before touching `fitBox` in the other direction.
+### What is left
 
-### Three traps that have already bitten, and will again
+**Buildable without Joshua:**
+
+1. **More Journeys** (§5) — pure data; every stop verified under rule 2. National
+   Parks is the obvious next one.
+2. **A third object for Cameroon's stall** (§13). It has two. The third must verify
+   from a source that *states* the Cameroon connection.
+3. **Re-verify the dated curiosity cards** (§4) — BRICS membership, most-visited
+   country and city. They carry `asOf` years and drift.
+4. **The loose ends below.** Each is small and none is urgent.
+
+**Not a build, but the next thing Joshua is likely to react to:** Jonah's 38 souvenir
+thank-yous (`SOUVENIR_THANKS` in `src/data/souvenirs.js`) are an AI's drafts in his
+voice, and he has not reviewed them.
+
+**Needs Joshua — don't build these, they are decisions:**
+
+| | what he decides | § |
+|---|---|---|
+| The exchange-fee purse | his note: *"hub airports are where you change money, and whatever you don't spend before leaving is lost to exchange fees"* — a per-currency purse that changes how the wallet works everywhere | 13 |
+| Hubs in The Long Trip | hubs exist only in Grand Tour on Adventurer/Expert | 9 |
+| What an achievement is worth | five options written up; recommendation was (a) then (c), written before Pickles's wardrobe became a payout | 10 |
+| Travel balance | he plays a Grand Tour and a Long Trip and says what feels wrong | 9, 3 |
+| The arrival music | he listens at `/tune-lab.html` | 11 |
+| Supabase | whether a project exists and the migration has run; then the join screen is buildable | 7 |
+| A desktop app | recommendation: don't | 8 |
+
+**Blocked on something outside the repo:**
+
+- **Amundsen's polar journey** — needs a polar projection for the journey map (§5).
+- **Widening any country's map** — needs the Natural Earth raster, which is not on
+  this machine (§14).
+- **Badge art for The Long Trip and Mystery Photos** — the two modes fall back to
+  an emoji. `test/art.test.js` pins the set of modes *missing* art as exactly those
+  two, so wiring the key is what makes the test pass again when the art lands.
+- **More price anchors** — every reachable free source is taken (§12).
+
+**Loose ends, found or confirmed on 2026-10-03.** None was fixed in this pass; they
+are written down so they stop being rediscovered.
+
+- **`startTour` and `startExpedition` build their plans with `Math.random()`** —
+  seven lines in `startTour` (2849–2889 of `shutterbug-world.jsx`: which continents,
+  which categories, which anchors, the option order) and one in `startExpedition`
+  (3027). The standing rule is that every random choice in
+  *generation* code goes through `src/rng.js`, because a stray `Math.random()` makes
+  a seeded run silently non-reproducible. The earlier note recorded only
+  `nextMrOImage` (which portrait of Mr O to show) as the exception; this one is in
+  the generator itself. Nothing seeds a Grand Tour today, so nothing is broken — but
+  either the calls move to `rnd()`/`shuffled()` or the rule gets its exception
+  written down. The other direct calls (confetti, meet-screen lines, audio noise) are
+  presentation and are fine.
+- **`UNLOCK_KEYS` and `UNLOCK_REQ` in `src/profiles.js` still carry `daily` and
+  `quiz`.** The mode art for both was removed in September; the unlock keys were not.
+  Harmless, and `recordDaily`/`dailyResult`/`dailyStreak`/`recordQuiz` are still
+  exported beside them. Check for stored profiles that carry those fields before
+  deleting anything.
+- **Five currencies the project once refused to quote now have a rate.** §9 used to
+  say Venezuela, Zimbabwe, Sudan, Iran and Cuba were deliberately left on the dollar
+  because none has a single honest rate (hyperinflation, or an official rate and a
+  street rate that differ by multiples). The generated `src/data/currency.js` gives
+  all five one — Iran at 1,333,900 rials to the dollar, Cuba at 24 pesos — and since
+  the exchange tables were unified on 2026-09-30, the game prints prices through
+  them. That reversed a rule-2 decision without anyone deciding to. **Joshua's
+  call:** print the central-bank reference rate (what the source says) or go back to
+  dollars for those five.
+- **Chile will not open from the automated browser in Explore** — three real clicks
+  inside its outline did nothing while every other country opened. Its single
+  overseas inset was therefore reasoned from the code, never seen. Worth a human
+  look.
+- **The compass's tap target overlaps the corner of the continent-selection map.**
+  It owns only its own ~104px, every continent stays selectable elsewhere, and it is
+  disabled during a flight. Move its trigger or lower its stacking if it should be
+  zero-conflict.
+- **San Francisco's pin touches the corner of the Alaska inset box** on the USA map.
+  A 5px matter that predates the inset rework.
+- **`src/sync.js` says "the 6,345-line component"** in its header, and `CLAUDE.md`
+  says the music is "6 real melodies + 45 regional beds" (`TUNES` holds 55 entries: 6
+  melodies and 49 beds, of which `latin` and `generic` are carried by no country).
+- **`docs/playtest-2026-07-21.md`** lists four items as not done — the Long Trip
+  rail (N), ten ancient-ruins candidates (O), the full country-framing sweep, and
+  plates for New Caledonia and French Polynesia. Its status box is dated 2026-07-21
+  and was **not** re-verified in this pass; the game has gained 17 places since, so
+  check O against `locations.js` before researching any of them.
+- **`docs/people-photo-audit.md`** — 40 of 51 failing culture photos replaced; 11
+  remain, each with what was searched and why nothing beat what is there, plus one
+  relabelling decision that is Joshua's.
+
+### Standing decisions — do not re-propose
+
+Each of these was decided, usually by Joshua, usually after the alternative was
+tried. They are collected here because a fresh session reliably proposes them again.
+
+- **Nothing may depend on what the player's device has installed.** Joshua, on the
+  speech voice: *"I won't be having them search their computer to download a new
+  voice."* That retires the whole category, not just voices (§15).
+- **Do not "fix" the Chicago photo.** The US grants freedom of panorama to buildings
+  only, so every photograph of Cloud Gate is a derivative of a copyrighted sculpture.
+  Chicago photographs Buckingham Fountain; a comment on the entry says why.
+- **Money is never a fail state.** A souvenir costs only the leftover-cash bonus, an
+  empty wallet gets no stall rather than a stall that says no, and the travel
+  chooser's Go button is never disabled — a broke player would soft-lock.
+- **No estimates for prices.** Joshua asked for them when a source wanted an API key;
+  rule 2 forbids inventing player-facing teaching content. (The website turned out
+  not to need the key — §12.)
+- **No stall in a country priced in dollars.** The United States and Ecuador have
+  price anchors and no stall; the stall exists to teach judging *foreign* money.
+- **Stalls for countries without a price anchor are possible and were not built, on
+  purpose.** The stall works without the "pounds of rice" line but teaches less.
+- **Marco Polo stays out of Journeys** — it is a claim about a book, not a documented
+  route. Contested routes that *are* included carry `certainty` (§5).
+- **Greetings stay on the device synthesizer.** Lingua Libre has 16 of 79 in the
+  right language; half human and half robot on one UI element is worse than either.
+- **No transport chooser in Assignments.** Choosing how to reach a named landmark
+  would spoil that mode's deduction.
+- **Pickles's sprites never go on Uncle Jonah's screens.** She is already *painted
+  into* every one of his scenes, lying by the fire; a cut-out beside a painted dog
+  reads as a bug.
+- **The avatar wardrobe builds at `--size 400`.** The script still defaults to 600,
+  and a rebuild without the flag silently puts 7 MB back into every install (§1).
+- **Phones are not a target** (rule 4). Don't spend effort on narrow layouts.
+- **Germany's price anchor is a dead end** — Destatis publishes indices only. Do not
+  register for GENESIS on this account.
+- **Game content is Joshua's.** Subjects, clues, facts and Jonah's words change with
+  his say-so, not a coder's. New culture photos are shown to him before commit.
+
+### How to work here
+
+- **Verify in the running app, not by reasoning.** `.claude/launch.json` has
+  `shutterbug-dev`. Twice in one week the tests were green and the browser caught the
+  bug: a stall priced Japan in dollars because a re-key dropped a field the component
+  read, and a focus box that would have zoomed every hair thumbnail *out*.
+- The game's country shapes ignore synthetic clicks (`dispatchEvent`) in places. Use
+  real clicks or the keyboard.
+- Jonah's intro has a typewriter; "Take the camera" appears only when it finishes.
+- **Some screens need a tall window.** The meet screen needs a viewport ≥882px at
+  1280 wide, the desk ≥872px. Below that the board shrinks and the content does not.
+- The codebase carries long comments about *why* a thing is the way it is, including
+  what was tried and failed. Match that, especially when reversing an earlier
+  decision.
+- Every stall object, journey stop and curiosity card carries its source. When
+  Wikipedia's intro won't state the connection, read the full article; when that
+  fails, go to the country's own press (§13).
+
+### Traps that have already bitten
+
+The first three are referred to by number from the code and the tests. Don't renumber.
 
 1. **A plausible map is not a correct map.** Natural Earth has a "Colorado" in
    Argentina and a "Mackenzie" in Queensland; long rivers are stored under local
-   names, so a lookup for "Nile" gave a Nile that stopped in Sudan. Both looked
-   completely fine on screen. If you add geographic data, add a test that pins it to
-   an *independent* fact (a basin it must lie in, a city it must pass).
+   names, so a lookup for "Nile" gave a Nile that stopped in Sudan. Both looked fine
+   on screen. If you add geographic data, add a test that pins it to an *independent*
+   fact (a basin it must lie in, a city it must pass).
 2. **An SVG clips to its viewport, not its viewBox.** A map box whose aspect ratio
    doesn't match its frame gets letterboxed, and the relief plate spills into the
-   letterbox showing map that shouldn't be there.
+   letterbox.
 3. **Wikimedia URLs are percent-encoded.** "Belém" contains `%C3%A9m`, whose "9m"
-   reads as a measurement. Any regex sweep over the data files must skip lines
-   containing URLs.
+   reads as a measurement. Any regex sweep over the data files must skip URLs.
+4. **A country's centre is not its path's bounding-box centre.** France's box takes
+   in French Guiana and Réunion and centres on Mali; the USA's centres on southern
+   France. Derive centres from the game's own landmark coordinates, with a circular
+   mean for longitude (Fiji straddles the antimeridian). And
+   `SVGGeometryElement.isPointInFill` is exact against the real geometry, but 16 of
+   177 country centres hit-test as open sea against the simplified outlines — where
+   the country is already known, pass it rather than hit-testing.
+5. **A source that publishes a number is not a source for *your* number.** WFP
+   publishes retail prices for 72 countries and its Kenyan markets are refugee camps
+   (§12). Wikidata's `P38` put Zimbabwe on the Indian rupee. Check what the row is a
+   measurement *of*.
+6. **Before recording a source as blocked on an API key, check what its website
+   serves.** Japan and Mexico were both written off that way, and both were open.
+7. **Comparing raw RGBA scores art with alpha far too harshly** — the anti-aliased
+   fringe has near-zero alpha and meaningless RGB. Flatten onto the paper first.
+   If you touch `optimize-ui-art.mjs`'s comparison, recalibrate its threshold.
+8. **Check whether the file you're measuring is a delivery or a shipped asset.** Mr
+   O's "checkered background" could never be reproduced in the game because it was in
+   four of the *originals* under `Images/`, not in anything that ships.
+9. **An event can fire without the thing it seems to mean.** `onMouseEnter` doesn't
+   need the pointer to move — a map mounting under a resting cursor counts — which is
+   how the world map once spoke aloud a continent nobody had pointed at, and it read
+   as the answer to the clue. Same family: state that is set for exactly as long as
+   a full-screen popup is open cannot drive anything the popup covers.
+
+### Tools
+
+| Script | What it does |
+|---|---|
+| `node scripts/commons.mjs search "…"` / `cat "Category:…"` / `verify "File:…"` | Search Wikimedia Commons and **verify a file's licence, author and size**. Never add a photo without running `verify`. |
+| `node scripts/gen-geography.mjs` | Rebuilds `src/data/geography.js` (rivers, lakes, seas) from Natural Earth. |
+| `node scripts/gen-currency.mjs` | Rebuilds `src/data/currency.js` from the ISO 4217 register and central-bank reference rates. Every price the game prints goes through it. |
+| `node scripts/gen-price-anchors.mjs` | Rebuilds `src/data/price-anchors.js` from WFP plus four national statistics offices. `--csv a.csv b.csv` for local copies. **Read the warning at its top before adding a country** (§12). |
+| `node scripts/gen-voices.mjs` | Re-fetches the spoken country names from Lingua Libre (§15). |
+| `node scripts/imperial-first.mjs --dry` | Finds or rewrites metric-only measurements. Always `--dry` first. |
+| `node scripts/optimize-ui-art.mjs` | Shrinks new UI art to the size it is drawn at. Run after an art batch lands (§16). |
+| `node scripts/outfit-lab.mjs` → `/outfit-lab.html` | Fits a garment or hair delivery onto the avatar body so the alignment can be judged. Writes only to `public/outfit-lab/` (§1). |
+| `node scripts/register-avatar-batch.mjs` | Bakes the approved plates onto the delivery template (§1). |
+| `node scripts/build-avatar-layers.mjs --also "Images/Avatar designs-registered" --size 400` | The real avatar build. **Always with `--size 400`.** |
+| `npm run dev` → `/tune-lab.html` | Every arrival bed, played by the game's own synth (§11). |
+| `npm run dev` → `/avatar-lab.html` | The avatar art, layer by layer (§1). |
+| `node scripts/make-relief.mjs`, `make-country-relief.mjs` | The relief plates. **Cannot be run on this machine** — see §14. |
 
 ---
 
-## 1. The avatar redesign — ✅ DONE (2026-07-28)
+## 1. The avatar
 
-Joshua's painted plates replaced the procedural SVG everywhere it appeared: the
-header, the passport photo frame, the traveler picker, the leaderboard rows, the
-customize popup and the create-traveler popup.
+**Shipped.** Joshua's painted plates replaced the procedural SVG on 2026-07-28; the
+colour range became generated on 2026-07-29; the September batch took the wardrobe
+from 5 outfits and 8 hairstyles to 28 and 23, split boy/girl, on 2026-09-28.
 
-The old sprite sheets are **gone** (`public/assets/shutterbug-ui/avatar/`,
-`public/avatar-preview.html`, `scripts/slice-avatar.mjs`, 2.5 MB), and with them
-the hard part of this task. The old brief was to calibrate a per-layer anchor and
-scale because the sheets were not mutually registered. The new delivery needs
-none of it: every plate is the same 1200×1200 canvas and, verified by comparing
-alpha masks, they are recolours of one drawing. Stacking them IS the assembly —
-no offsets, no scaling.
+**How it fits together:**
 
-**How it fits together now:**
+- **`Images/Avatar designs/*.png`** — Joshua's deliveries, outside the build and
+  gitignored. One plate per *shape*, each in a single colour. The filenames are the
+  content spec.
+- **`scripts/avatar-recolour.mjs`** generates the colour range: 6 skins, 6 eye
+  colours × 2 sexes, 6 hair colours, 7 cloth colours. Adding a colour is one line in
+  a palette. **Read the top of that script before touching it** — the recolour is
+  easy and the *masks* are the work, each there because a naive version shipped
+  something wrong (the eyelid crease is the same brown as the iris and is excluded on
+  shape, or a blue-eyed child gets blue eyeliner).
+- **`scripts/avatar-brows.mjs`** lifts the eyebrows out of the head plates and
+  recolours them to the hair.
+- **`scripts/build-avatar-layers.mjs`** writes WebP to
+  `public/assets/shutterbug-ui/avatar-v2/` and generates `src/data/avatar.js`.
+- **`src/avatar-spec.js`** is the pure logic (tested); **`src/components/avatar.jsx`**
+  is `<Avatar>`, `<AvatarControls>`, `<AvatarEditor>`.
 
-- **`Images/Avatar designs/*.png`** — Joshua's deliveries. Outside the build.
-- **`node scripts/build-avatar-layers.mjs`** — de-frames, scales, writes WebP to
-  `public/assets/shutterbug-ui/avatar-v2/` **and** generates `src/data/avatar.js`.
-  10.7 MB of PNG becomes 610 KB. A new colour or garment is a correctly-named
-  file plus a re-run; a new *kind* of part (a hat) is one line in `PARTS`.
-- **`scripts/avatar-brows.mjs`** — the eyebrows are painted into the head plates
-  in one fixed brown, so they are lifted out and recoloured to match the hair.
-  Five small files cover every combination. Hand-drawn `brow_<colour>.png` in a
-  future delivery would win outright and switch the synthesis off.
-- **`src/avatar-spec.js`** — the pure logic, tested in `test/avatar.test.js`.
-- **`src/components/avatar.jsx`** — `<Avatar>`, `<AvatarControls>`, `<AvatarEditor>`.
-- **`public/avatar-lab.html`** — the standalone review page, still live. It reads
-  the generated manifest, so a new art batch shows up there with no code change.
+The wardrobe is **358 layers**: 196 outfits (35 unisex, 84 boys', 77 girls'), 138
+hairstyles, 6 skins, 12 eyes, 6 brows. The first five outfits stay unisex; a girl
+never sees a boys' plate and the reverse.
 
-**Two things a future session should know:**
+**Adding a garment or hairstyle is three steps, deliberately separate:**
 
-- **Saved avatars are migrated on read, not in storage.** A spec written by the
-  old scheme is detected by its legacy-only keys and matched onto the nearest new
-  plate by colour, so a child's dark skin stays dark and their blonde hair stays
-  blonde. `hair` is the one key BOTH schemes use, meaning different things, which
-  is exactly the trap the detection is written around. Hat, glasses and hair
-  style have no successor and are dropped; the old fantasy hair colours land on
-  whichever real colour is nearest.
-- **The plates are waist-up busts.** Anything under 96px renders a face crop
-  (`FACE_BELOW` in the component) or the face is a few pixels across.
+1. `node scripts/outfit-lab.mjs` → judge at `/outfit-lab.html`. Garments are fitted
+   against the shipped shoulders, hair against the shipped crown. The lab is allowed
+   to be wrong, flagged, nudged and re-run.
+2. Add the item's line to `SPLIT` in `scripts/register-avatar-batch.mjs` (boy, girl —
+   Joshua's assignment), then run it. It bakes each approved plate at its fitted
+   transform onto the first delivery's own 1200×1200 template, into
+   `Images/Avatar designs-registered/`. No fitting logic of its own: if the lab is
+   wrong, fix the lab.
+3. `node scripts/build-avatar-layers.mjs --also "Images/Avatar designs-registered" --size 400`.
 
-**Still to come from Joshua:** male/female variants (different eyelashes and hair
-options — the filename grammar already parses a `male`/`female` token) and more
-garment kinds in the same colour range.
+**What the lab cannot do alone, so look:**
 
-### ⚠ 2026-09-23: a delivery is sitting in the repo unused, and it is big
+- **A high collar or a raised hood** fits at about half size — shrinking it until it
+  nests inside the shoulder band genuinely scores better. A low score doesn't
+  identify these; the *scale* does, and the script flags anything far outside its
+  peers' median.
+- **An asymmetric hairstyle** (a side ponytail, a pair of buns) drags the crown fit
+  sideways. Nothing numeric catches this; only looking does.
+- Both kinds are placed by hand in the script's `MANUAL` block, by a ladder rendered
+  **at the real canvas size under the real head plate**. A first attempt judged at a
+  400px preview came out visibly off to one side.
 
-`NOT YET USED Shutterbug more avatar assets/` (untracked, ~100 MB) holds **43
-plates: 23 unique garments in red and 15 unique hairstyles in blonde**, plus five
-exact duplicates. That is the single largest content win available — the wardrobe
-today is 5 outfits and 8 hairstyles, and every new SHAPE arrives in the whole
-colour range for free, so 23 garments is the outfit range multiplied by nearly six.
+**Three things a future session should know:**
 
-**It cannot go through `build-avatar-layers.mjs` as delivered.** That script is
-thirty lines because the art it reads is pre-registered: one 1200×1200 canvas, every
-plate a recolour of one drawing. This batch is 1024×1536, 1536×1024 and 1024×1024,
-each garment floating on an invisible mannequin at whatever size suited the
-painting, carrying a neck stub the shipped plates don't have. Dropped into the
-delivery folder it would put collars a hundred pixels off a child's shoulders.
+- **Saved avatars are migrated on read, not in storage.** An old-scheme spec is
+  detected by its legacy-only keys and matched to the nearest new plate by colour.
+  `hair` is the one key both schemes use, meaning different things.
+- **The plates are waist-up busts.** Under 96px the component renders a face crop
+  (`FACE_BELOW`).
+- **Each part's `FOCUS` is a per-edge median, not a union.** One braid reaching the
+  bottom of the plate made the union the whole canvas and zoomed every thumbnail out.
 
-**So there is a lab, and the answer is mostly yes.** `node scripts/outfit-lab.mjs`
-→ `npm run dev` → <http://localhost:5173/outfit-lab.html>. Nothing it produces can
-reach the game: the plates go to `public/outfit-lab/`, `src/data/avatar.js` is not
-regenerated, and the wardrobe is untouched. Results:
-
-- **21 of 23 registered automatically**, IoU 0.86–0.97 against the shipped body.
-- **2 needed placing by hand**, and they failed the same way — fitted at about
-  half size. Both are garments whose neckline sits far lower relative to the
-  shoulders than anything shipped: a cowl-neck sweater with a scarf, and a hood
-  worn up. For those the fit scores *better* by shrinking the garment until it
-  nests inside the shoulder band than by placing it honestly, so it is a real
-  optimum and the wrong answer. **Worth knowing before the next delivery: a high
-  collar or a raised hood is the shape this cannot do alone.**
-  - **Detecting them is automated; correcting them is not, and that is settled.**
-    A low score doesn't identify them (0.66 and 0.72 are unremarkable) — the
-    *scale* does: every plate on the same 1024×1536 sheet fitted between 0.86 and
-    1.05 and these came back at 0.47 and 0.51. The script now flags anything far
-    outside its peers' median and says whether `MANUAL` covers it.
-  - Two automatic corrections were tried and both failed, recorded in the script
-    so nobody repeats them: re-searching with the scale confined to the peer band
-    just pins to the floor of whatever band it's given (the objective really is
-    monotone for these shapes), and matching the shoulder *span* centres and sizes
-    them plausibly but still sits them a neck too low — a chunky knit's outer
-    shoulder isn't the same landmark as a jacket's.
-  - The two in `MANUAL` were set by **ladder** — rendered at a row of scales and
-    collar heights, composited under the real head plate at the real canvas size,
-    and compared — after a first attempt judged against a 400px preview came out
-    visibly off to one side and Joshua caught it immediately. Half that error was
-    in the diagnostic, not the art: the first ladder composited 600px head plates
-    onto the 1183px reference canvas and invented a gap that was never there.
-
-The alignment is derived from the art that is already correct rather than from
-landmarks — the silhouette at least three of the five shipped outfits agree on IS
-the child's shoulders — because the two families are drawn to different conventions
-and every landmark rule needed a special case for that. Read the script's header
-before changing any of it.
-
-**~~What this still needs from Joshua.~~ DECIDED 2026-09-28.** He looked, caught
-two garments sitting off to one side (fixed — see the script's `MANUAL` block for
-how, and how not to), and gave the go-ahead: the batch ships **as extra options
-alongside the existing art, with boys' and girls' clothes and hair locked
-separately by the traveler's boy/girl choice**. His split of all 38 items is in
-`scripts/register-avatar-batch.mjs` (`SPLIT`), keyed by the numbered review
-sheets; the five shipped outfits stay unisex.
-
-**The hair is fitted too, now.** `outfit-lab.mjs` handles both parts: garments
-against the shipped shoulders, hair against the shipped **crown** — the cap of the
-skull that ≥4 of the 8 shipped styles agree on, which is the one thing a bob, a
-braid and a spiky crop have in common. **13 of 15 sat right first time.** The two
-that didn't — a side ponytail and a pair of buns — are the scarf's failure in the
-other axis: an asymmetric mass drags the crown fit sideways until the scalp shows.
-The scale check *cannot* catch these (scales 1.20 and 1.03, well inside the band):
-it is a placement error, and only looking finds it. Both are in `MANUAL`, set by
-dx/dy ladder on the head at the real canvas size.
-
-**How it reaches the game — three steps, deliberately separate:**
-
-1. `node scripts/outfit-lab.mjs` → judge at `/outfit-lab.html` (Garments /
-   Hairstyles toggle). The lab is allowed to be wrong, flagged, nudged, re-run.
-2. `node scripts/register-avatar-batch.mjs` → writes each approved plate at its
-   fitted transform onto the **first delivery's own template** (1200×1200, black
-   frame, the filename grammar) into `Images/Avatar designs-registered/` — a
-   sibling of the delivery, gitignored like it, so pristine paintings and derived
-   plates never share a folder. No fitting logic of its own: if the lab is wrong,
-   fix the lab.
-3. `node scripts/build-avatar-layers.mjs --also "Images/Avatar designs-registered"`
-   → the real build reads both folders as one set. Its canvas check runs across
-   both — exactly the guard that should catch a badly registered batch — the sex
-   token in each name makes `SEXED.outfit` true in `avatar-spec.js` with **no code
-   change** (that file says so in its own comment), and the recolour dyes each red
-   garment into the seven cloth colours and each blonde style into the six hair
-   colours. Variant numbering continues each sex's run: male hair 5–11, female
-   e–l; outfits 6+ per sex.
-
-Adding a garment to the wardrobe is now: drop the painting in the delivery
-folder, run the lab, look, add its line to `SPLIT`, run steps 2 and 3.
-
-**SHIPPED 2026-09-28.** The wardrobe is **358 layers** (was 108): 196 outfits
-(35 unisex, 84 boys', 77 girls'), 138 hairstyles (66 boys', 72 girls'), on top of
-the same 6 skins, 12 eyes, 6 brows. Verified in the create-traveler editor: a girl
-cycles 5 shared + 11 girls' outfit styles, a boy 5 + 12, and neither ever sees the
-other's. The 108 shipped plates came out byte-identical.
-
-Two things the build exposed, both fixed:
-
-- **The focus box had to stop being a union.** Each part's `FOCUS` (what the
-  picker thumbnails zoom to, and what the round portrait crop is derived from) was
-  the union of its plates' ink boxes — fine while every plate of a part was one
-  drawing recoloured, and wrong the moment one hairstyle (the braid) reached 99%
-  of the way down the plate: the hair's focus became the whole canvas, every
-  thumbnail zoomed *out*, and the portrait crop framed the whole bust with the
-  face a few pixels across. `test/avatar.test.js` caught it. It is the per-edge
-  **median** now, which frames the typical plate and lets a braid's tail crop in
-  its 58px thumbnail.
-- **Unisex plates on a sex switch.** `matchAcrossSex` translated *every* sexed
-  part to the other sex's nearest plate; with the five shared outfits that meant
-  flipping boy→girl in the shipped blue jacket handed the child a different coat.
-  A plate both may wear is left alone now, and the sex tests say "wearable by this
-  sex" (own sex *or* `any`) rather than "is this sex".
-
-**The cost, and Joshua's call on it (2026-09-30):** at 600 px the wardrobe was
-14.3 MB and the precache went 55.7 → 66.9 MB. He took the lever the first
-delivery's note had already named — **`--size 400`** — and the set is **7.9 MB,
-precache 59.9 MB**. Measured against the 600 px plates drawn at the sizes the game
-uses: mean difference **0.7/255 at 132 px** (the passport frame, the largest
-in-game render) and 1.5 at 390 px; the dog resize accepted in July measured 0.94.
-`AVATAR_CANVAS` is 400 now and nothing else changed. **Every rebuild must pass
-`--size 400`** — the script's default is still 600, and a rebuild without the flag
-silently puts the 7 MB back.
+**Still welcome from Joshua, nothing blocked:** more shapes — each arrives in the
+whole colour range for free.
 
 ---
 
-## 2. Rotating people cards — ✅ DONE (2026-07-15)
+## 2. Rotating people cards
 
-The six multi-ethnic countries that showed a single community now rotate 2–3
-licence-verified cards on arrival, each user-approved before commit:
-Brazil (+Kayapó), South Africa (+Xhosa +Zulu), Malaysia (+Chinese +Indian),
-Canada (+Inuit), Australia (+Aboriginal), New Zealand (+Samoan). Every existing
-single card gained a `people:` field so the rotation names each one.
+**Done (2026-07-15).** The six multi-ethnic countries rotate two or three
+licence-verified cards on arrival: Brazil, South Africa, Malaysia, Canada, Australia,
+New Zealand. `COUNTRY_PEOPLE` in `src/data/culture.js` takes a card or a list of up
+to three; `test/data.test.js` enforces the limit, a named `people` on each, no
+duplicates and a free licence.
 
-The mechanism: `COUNTRY_PEOPLE` in `src/data/culture.js` accepts either a single
-card or a list of up to three; `peopleCards(country)` normalises both; the arrival
-card rotates between visits with prev/next buttons. `test/data.test.js` enforces
-≤3 cards, a named `people` on each, no duplicate peoples, and a free licence.
-
-**Optional future depth** (not required): the US itself is a floor, not a full
-account — Hispanic/Latino and Asian American communities could each be added. To
-add any card: `node scripts/commons.mjs verify "File:…"` (must come back `✓`; copy
-its `src`/`source` verbatim), add to the country's array with `people/caption/
-credit/license`, `npm test`, and **show Joshua the photo first**.
+**Optional depth:** the United States is a floor, not a full account. To add any
+card: `node scripts/commons.mjs verify "File:…"` (it must come back `✓`; copy its
+`src`/`source` verbatim), add it with `people/caption/credit/license`, `npm test`,
+and **show Joshua the photo first**. The wider photo audit is
+`docs/people-photo-audit.md`.
 
 ---
 
-## 3. The roguelike layer
+## 3. The Long Trip (the roguelike layer)
 
-Spec'd in `docs/design-notes.md` §3. This is **The Long Trip** — the fifth mode.
-**All five slices have shipped** (the fifth landed 2026-07-25); each was built to be
-playable on its own. What is left is playtest and feel, not build — see the balance
-knobs listed at the end of this section.
+**Feature-complete** — all five slices shipped by 2026-07-25. Spec in
+`docs/design-notes.md` §3.
 
-1. **Camera-bag loadout** — ✅ SHIPPED (`src/data/kit.js`). Run-scoped items: telephoto
-   lens (first wrong country free), fast film (a perfect shot refunds ½ day), bush
-   plane (one free continent hop), a friend in town (first wrong continent free)…
-   Jonah deals a hand of three at the bag screen; you take two.
-2. **Run modifiers** — ✅ SHIPPED (`src/data/conditions.js`). One condition drawn per
-   run ("Monsoon — flights to Asia +1 day", "Clear skies — perfect shots pay extra"),
-   announced by Jonah on the kit screen and shown on the route board. The `effect` id
-   is the contract; a test pins that every one has a handler.
-3. **Route-choice map** — ✅ SHIPPED (2026-07-25). At the start of every leg the editor
-   wires THREE briefs (`RouteBoard` in `shutterbug-world.jsx`, offered from
-   `offerRouteChoice`/`routeWindow`, taken via `takeRoute`). Each card shows the kind
-   of place, a tier-appropriate clue teaser, and the real day-cost to reach it (same
-   formula `chooseContinent` charges, run modifier included) — but NEVER the continent
-   name, so choosing a brief never hands a child the geography the shot teaches. The
-   pick is swapped into `assignments[step]`, so the rest of the play loop is untouched;
-   briefs you pass over reappear in later windows (the road not taken stays out there).
-4. **Debrief / renown end screen** — ✅ SHIPPED (2026-07-25). Running out of days is the
-   expected ending, so the results screen banks **renown**: two per photo brought home,
-   plus a five-point scoop the first time a run beats your own distance record. It
-   accumulates across every Long Trip (`profile.longtrip.{renown,bestDistance,runs}`,
-   `recordLongTrip`) and climbs a newsroom ladder (`renownRank`: Unknown → Local
-   Stringer → … → Living Legend). The "📡 PRESS DEBRIEF" card on the end screen shows
-   the run's renown, the standing + bar to the next, and the farthest run. Guests see
-   the run tally without the persistent totals. Pure formulas in `src/profiles.js`,
-   tested in `test/longtrip.test.js`; the sync merge takes renown/distance to the MAX.
-5. **Push-your-luck + the boss "Cover Story" finale** — ✅ SHIPPED (2026-07-25). Two
-   climactic beats:
-   - **Hold for the light** (`GambleModal` / `resolveGamble`): after a PERFECT shot
-     (~1 in 3, and always on the cover) the child may gamble the reward — win and the
-     light breaks golden for +points, bust and a cloud costs half a day. It's a coin
-     flip on the REWARD, never on the geography (the place is already found), so it
-     rewards nerve without ever paying for a wrong guess. The base points bank first,
-     so a bust never takes what knowing the answer earned.
-     `HOLD_ELIGIBLE_CHANCE`/`HOLD_WIN_CHANCE`/`HOLD_BONUS` are the knobs.
-   - **Cover Story** (`offerNextRoute` / `coverStepRef` / `coverLandedRef`): once per
-     run, after `COVER_MIN_CAPTURES` places and once `days <= COVER_DAYS`, the route
-     board floats a gold "★ COVER STORY" brief among the choices — a marquee front-page
-     landmark worth `COVER_POINTS_MULT`× points and `+COVER_RENOWN` renown. Chasing it
-     is a strategic gamble (it may cost the days that end the run); landing it stamps
-     "You made the cover!" and shows the cover bonus on the debrief. `recordLongTrip`
-     takes a `coverBonus`, `renownGain` folds it in, and `profile.longtrip.covers`
-     counts them — all pinned in `test/longtrip.test.js`.
+| slice | where |
+|---|---|
+| Camera-bag loadout — Jonah deals three, you take two | `src/data/kit.js` (5 items) |
+| Run conditions — one drawn per run | `src/data/conditions.js` (6); the `effect` id is the contract and a test pins that each has a handler |
+| Route-choice board — three briefs per leg, never naming the continent | `RouteBoard`, `offerRouteChoice`, `takeRoute` |
+| Renown debrief — accumulates across runs, climbs a newsroom ladder | `recordLongTrip`, `renownGain`, `renownRank` in `src/profiles.js`; `test/longtrip.test.js` |
+| Hold for the light, and the Cover Story finale | `GambleModal`, `resolveGamble`, `offerNextRoute` |
 
-**The Long Trip is now feature-complete — all five roguelike slices are in.** Open
-threads are all playtest/feel, not build:
-- Balance: `LONG_TRIP_DAYS`, the `renownGain`/`renownRank` numbers, `COVER_DAYS`/
-  `COVER_MIN_CAPTURES` (how often the cover appears), and the hold-for-the-light odds.
-- ~~Guests can't reach the Long Trip at all.~~ **FIXED 2026-09-23 — and it was an
-  omission, not a policy.** `unlocks(null)` was a hand-written object literal that
-  predated the mode, so `longtrip` came back `undefined` → locked. The tell that it
-  was accidental: that branch grants `true` to *every* other gated thing — Grand
-  Tour, Expeditions, Adventurer, Expert — because a guest's play is recorded
-  nowhere, so a gate would stay shut forever while the card told the child exactly
-  what to do to open it. A guest was looking at "🔒 The Long Trip — Photograph 20
-  places", a price the game could never accept. The guest branch is now derived
-  from `UNLOCK_KEYS`, and `test/longtrip.test.js` pins that both branches answer
-  the same set of keys, which is the assertion that would have caught it.
-- The cover is drawn from the pool's next SPECIFIC assignment and framed as marquee;
-  it isn't hand-curated to the world's most iconic landmarks. If you want the front
-  page to always be an Eiffel-Tower-tier place, add a curated id set and prefer it in
-  `offerNextRoute`.
+Two design points that must survive any rework: the route board withholds the
+continent name because choosing a brief must never hand the child the geography the
+shot teaches; and holding for the light gambles the *reward*, never the geography —
+the base points bank first, so a bust never takes what knowing the answer earned.
 
-**Notes for slices 3 & 4 (feedback welcome):**
-- ~~The debrief adds a card to the results screen's right column, which at a 1280×720
-  window could run past the fold.~~ **FIXED 2026-08-03** (`4656a79`) — the debrief now
-  lives in the "What you earned" popup with the record chips, achievements and Jonah's
-  unlock line, so the right column no longer stacks them under him at all. Board
-  overflow is 0 at 1440×900 and 1280×800.
-- The route board withholds the continent name deliberately (teaching), but the easy
-  tier's clue text still names the place, exactly as the note does — that's consistent,
-  not a leak. If a future tier wanted the board to tease *less*, `assignmentBrief` is
-  the one place to change it.
+**What is open is feel, and it is Joshua's.** The knobs, as they stand:
 
-**Use `src/rng.js` for every random choice** (`rnd()`, `shuffled()`, `pickOne()`).
-Never call `Math.random()` directly in generation code: `withSeed()` is what makes a
-run reproducible from a seed, and a stray `Math.random()` in the generator breaks that
-*silently* — nothing looks wrong until a run that should replay identically doesn't.
-`test/daily.test.js` guards this. (It was written when the Daily Expedition needed
-every player to get the same run; that mode is gone, but seeded reproducibility is
-still what any future shared/replayable run would be built on.)
+| knob | value |
+|---|---|
+| `LONG_TRIP_DAYS` | Scout 17 · Explorer 15 · Adventurer 13 · Expert 11 |
+| `COVER_MIN_CAPTURES` / `COVER_DAYS` | 3 / 5 |
+| `COVER_POINTS_MULT` / `COVER_RENOWN` | ×2 / +10 |
+| `HOLD_ELIGIBLE_CHANCE` / `HOLD_WIN_CHANCE` / `HOLD_BONUS` | 0.34 / 0.55 / +2 |
+
+**Optional:** the cover is the pool's next specific assignment framed as marquee, not
+hand-curated. For a front page that is always an Eiffel-Tower-tier place, add a
+curated id set and prefer it in `offerNextRoute`. And if a future tier should tease
+*less* on the route board, `assignmentBrief` is the one place to change.
+
+Guests can play it (fixed 2026-09-23 — the guest branch of `unlocks()` is derived
+from `UNLOCK_KEYS` now, and a test pins that both branches answer the same keys).
 
 ---
 
-## 4. The "tap to learn" curiosity layer
+## 4. The curiosity layer
 
-**A first slice SHIPPED** (spec'd in `docs/design-notes.md` §6). The engine is built and
-data-driven, so adding cards is now pure content work.
+**Done.** Spec in `docs/design-notes.md` §6. Cards live in `src/data/curiosities.js`
+as decks; each card is `{ id, title, body, source, asOf? }`. Seven decks hang off the
+chrome — the logo, the days calendar, the compass rose and the four guess-stage
+markers — and tapping a saved traveler's header avatar opens the customize editor.
 
-- **Cards** live in `src/data/curiosities.js` as decks (rule 1). Each card is
-  `{ id, title, body, source, asOf? }`; anything time-sensitive carries `asOf` and the
-  card shows "as of YYYY". `npm test` walks the cards: unique ids, a source on every
-  external fact, imperial-first measurements, and an `asOf` on the four known
-  time-sensitive cards (country count, blocs, most-visited country/city).
-- **The card UI** is `CuriosityCard` (a `ModalShell`): title + fact + source + "as of",
-  a "2 of 3" counter, and an **Another ↻** button that reshuffles onward. `narrator:
-  "trivia"` themes it as Mr O the editor (teal); `"story"` as Grandpa (gold).
-- **Wired chrome (7 of 8 elements):** the **logo** (about the game), the **days
-  calendar** (travel & time), the **compass rose** on the map, and the four **guess-stage
-  markers** each carry an ⓘ (continent, country, destination, photograph). Every card a
-  saved traveller reads is recorded via `markCuriositySeen`, and a **"Curiosities found:
-  X / 21"** line shows in the field-journal panel.
-
-**What's left on this item:**
-- **42 cards (2026-07-16), up from 21** — the ~40 target is met, and every deck now holds
-  exactly 6, which is the number that actually matters: the deck reshuffles on each visit,
-  so a short deck repeats sooner than its neighbours. `logo` was on 4 and `calendar` on 5.
-  Every fact is source-cited and `asOf`-dated where it can drift. Adding more is just more
-  objects in the deck's `cards` array; the reshuffle, counter and `CURIOSITY_TOTAL` tracker
-  all scale automatically — **keep the decks equal** if you grow it again.
-- **The avatar → "customise traveller" jump is now WIRED (2026-07-15):** tapping a saved
-  traveller's header avatar opens the Customize Traveler editor (mid-run too).
-- **The compass tap-target overlaps the corner of the continent-selection map.** It only
-  owns its own ~104px footprint (verified: every continent stays selectable elsewhere,
-  and it's disabled during a flight), but if you ever want it truly zero-conflict, move
-  the compass deck's trigger off the world map or lower its stacking below the continent
-  hit-layer.
-- **Re-verify the dated cards periodically** (rule 2): BRICS grew to 11 in 2025, France
-  passed 100M visitors in 2024, Bangkok was the most-visited city in 2024. When these
-  change, update the body and bump `asOf`.
+- **42 cards, 6 per deck.** Equal decks are the number that matters: a deck
+  reshuffles on each visit, so a short one repeats sooner than its neighbours.
+  **Keep the decks equal** if you add more.
+- **Re-verify the dated cards periodically** (rule 2). When they were written: BRICS
+  grew to 11 in 2025, France passed 100M visitors in 2024, Bangkok was the
+  most-visited city in 2024. When one changes, update the body and bump `asOf`.
 
 ---
 
 ## 5. More Journeys
 
-The engine is **built and proven** (`src/data/journeys.js` + the `journey` mode).
-**Eight routes now ship** and a **picker** lets the player choose between them on the
-meet screen. **Adding a route is now just data.**
+The engine is built and proven (`src/data/journeys.js` plus the `journey` mode).
+**Adding a route is data.** Eleven ship:
 
-- **Lewis & Clark** (6 stops) — the original flagship.
-- **The Oregon Trail** (9 stops) — a migration, not an expedition; a tight chain of
-  landmarks across the plains.
-- **Darwin's *Beagle*** (9 stops) — the first **circumnavigation** in the set. Note the
-  Galápagos card deliberately teaches that it was the **mockingbirds**, not the finches,
-  that Darwin noted island-by-island (the finch story is a later myth — rule 2).
-- **Magellan & Elcano** (8 stops) — the second circumnavigation, ending on the lost day
-  at Cape Verde and the Date Line.
-- **The Transcontinental Railroad** (5 stops) — Omaha → Promontory → Sacramento.
-- **Route 66** (7 stops) — Chicago → Santa Monica.
-- **The Thirteen Colonies** (13 stops) — New Hampshire → Georgia down the seaboard. The
-  first **tall (north–south) route**, which needed the height cap below.
-- **Paul's First Journey** (8 stops) — the first **contested** route done right: the
-  intro + the two archaeological stops (Lystra, Derbe) plainly say it's the
-  traditionally/popularly acknowledged path, and each stop carries a `certainty` of
-  `"documented"` or `"traditional"` (the pattern the ⚠ note below asked for).
+| route | stops | note |
+|---|---|---|
+| Lewis & Clark | 6 | the original |
+| The Oregon Trail | 9 | |
+| Darwin's *Beagle* | 9 | circumnavigation. The Galápagos card teaches that it was the **mockingbirds**, not the finches, Darwin noted island by island |
+| Magellan & Elcano | 8 | circumnavigation, ending on the lost day |
+| The Transcontinental Railroad | 5 | |
+| Route 66 | 7 | |
+| The Thirteen Colonies | 13 | the first tall north–south route |
+| Paul's First Journey | 8 | the first **contested** route, and the worked example for one |
+| The Pony Express | | added 2026-07-27 |
+| Shackleton's *Endurance* | | added 2026-07-27 |
+| The Exodus | | added 2026-07-27; contested, carries `certainty` |
 
-**A tall route needed a layout fix (2026-07-15, done):** the journey map was
-width-driven, so a north–south route (the 13 Colonies) ran off the bottom of the
-screen. Routes with aspect `< 1.6` are now driven by a **capped height** and centred, so
-the whole map — every stop — fits one screen; wide routes still fill the width and pan
-sideways. See the `JOURNEY_AR < 1.6` branch in `shutterbug-world.jsx`.
-
-**Circumnavigations needed real engine work** (all done, all tested):
-- `unrolledX(journey)` places each stop at whichever copy of its longitude (x, x±360…)
-  is *nearest the previous stop*, so a westward leg is drawn going **west** even across
-  the antimeridian. Without this, Magellan's Pacific crossing renders as a line running
-  back **east** across Africa — a plausible map that is exactly wrong (trap 1). The map
-  is **tiled sideways** to follow it, which is why Spain shows at both ends of the frame.
-- `journeyBox` now takes the route's own `aspect`/`pad` (a round-the-world route wants a
-  long letterbox; a wagon trail does not), and the **frame is shaped from the box**, not
-  the reverse.
-- Pins **shrink** so they can't overlap on a globe-wide map, edge labels turn inward,
-  chain labels alternate above/below, and on a phone the map **pans inside its frame and
-  auto-scrolls to the active stop** (a whole-world map squeezed to 375px gives a 6px pin).
-
-**Still on the wish list:** the Exodus route (⚠ contested — see below), National Parks,
-the Pony Express, Amundsen's/Shackleton's polar routes. Marco Polo stays **excluded**
-(serious historians dispute whether he reached China; it's a claim about a book, not a
-documented route). **Paul's First Journey (done) is the worked example** for a contested
-route — copy its `certainty` + "traditionally acknowledged" framing.
+**Wish list:** National Parks (the obvious next). **Amundsen is blocked** — the
+journey map is equirectangular, where the South Pole is the whole bottom edge, so a
+route ending at 90°S draws its last leg sideways along the foot of the world.
+Shackleton stays between 54°S and 69°S, which is why his was the polar route that
+could be built. **Marco Polo stays excluded.**
 
 **How to add one:**
-- Get each stop's coordinates from its Wikipedia article via the MediaWiki API — do
-  **not** eyeball them off a map:
+
+- Get each stop's coordinates from its Wikipedia article through the MediaWiki API.
+  Do **not** eyeball them off a map.
   `https://en.wikipedia.org/w/api.php?action=query&format=json&prop=coordinates|extracts&exintro=1&explaintext=1&titles=Fort+Mandan`
-- Record the article URL in the stop's `source`. Add an `outro` (shown on the win
-  screen) — it lives in the data now, not the component.
+- Record the article URL in the stop's `source`. Add an `outro` for the win screen.
 - Keep facts on the plainly documented spine of the story.
-- Measurements must be **imperial first, metric in brackets** — the units test covers
-  journey facts and prompts.
-- `npm test` enforces: ≥4 stops, coordinates in range, `x`/`y` derived from `lat`/`lon`,
-  a source per stop, **no leg drawn the long way round**, circumnavigations that really
-  span the globe, and **no two stops closer than 2.4% of the map width** — a fraction,
-  not a fixed 1.2°, because 1.2° is a comfortable gap on a map of Wyoming and four pixels
-  on a map of the world. (Port St Julian sits 5.7° from the Strait of Magellan and still
-  had to be folded into the Strait's card.)
+- Measurements imperial first, metric in brackets; the units test covers journeys.
+- `npm test` enforces: ≥4 stops, coordinates in range, `x`/`y` derived from
+  `lat`/`lon`, a source per stop, **no leg drawn the long way round**,
+  circumnavigations that really span the globe, and **no two stops closer than 2.4%
+  of the map width** — a fraction, because 1.2° is a comfortable gap on a map of
+  Wyoming and four pixels on a map of the world.
 
-> ⚠ **Contested routes need the `certainty` treatment — Paul's First Journey now shows
-> how.** The seven documented routes are safe (nobody disputes where Fort Mandan or
-> Promontory Summit was). Paul's route was the first contested one shipped: its intro
-> says it's the traditionally acknowledged path, and each stop carries a `certainty` of
-> `"documented"` or `"traditional"` (Lystra and Derbe are `"traditional"`, located only
-> by later inscriptions). The Exodus route and the site of Mount Sinai are the next
-> contested candidates — copy Paul's framing. Do not quietly present a traditional site
-> as a fact. This is a rule-2 issue, not polish.
+> ⚠ **A contested route needs the `certainty` treatment.** Its intro says it is the
+> traditionally acknowledged path, and each stop carries `"documented"` or
+> `"traditional"`. Do not quietly present a traditional site as a fact. This is a
+> rule-2 issue, not polish. Copy Paul's First Journey.
 
----
-
-## 6. Wire the award/progression graphics into the passport
-
-**BLOCKED on Joshua's art.** He has the spec (career-rank insignia ×6, 14 category
-badges, 3 kind mega-badges, special medals, record rosettes, continent roundels, extra
-stamp frames) and will drop the files into `public/assets/shutterbug-ui/`.
-
-When they land: wire each to its tracked value and auto-grey the unearned ones. What's
-already tracked is listed in `docs/design-notes.md` §7. The passport booklet lives in
-`shutterbug-world.jsx` (search `passportPage`); badges currently render as greyscale
-emoji, which is the pattern to replace.
+**What the engine already handles,** so a new route need not: a westward leg across
+the antimeridian is drawn going west (`unrolledX`, with the map tiled sideways —
+without it Magellan's Pacific crossing ran back east across Africa, trap 1 exactly);
+the frame is shaped from the route's own `aspect`/`pad`; a route with aspect under
+1.6 is height-capped so a tall route fits one screen; pins shrink and labels turn
+inward on a globe-wide map.
 
 ---
 
-## 7. Backend for cross-device profiles and friend leaderboards
+## 6. Award graphics
 
-**Needs Joshua's input before any code:** he must create the Supabase project, and
-decide the family-code scheme.
+**Done — 71 of 73 delivered and wired** (2026-07-16). `docs/art-assets-needed.md`
+tracks the set; the two outstanding are optional (`travel-wallet.png` is one). New
+art wires in by editing `src/data/art.js` alone — see that doc's "How to land the
+next batch", and run `node scripts/optimize-ui-art.mjs` afterwards.
 
-Everything currently lives in `localStorage` (`src/profiles.js`) — per-browser, never
-syncs. The plan: adopt Supabase (the free tier covers this comfortably), move
-`profiles.js` storage to the cloud **with an offline fallback**, and add a
-passcode/"family code" shared group so everyone with the code sees one leaderboard.
-Async — no live networking needed.
-
-**For kids: anonymous accounts + a shareable code. No passwords, no PII, no open chat.**
-
-This one decision unlocks both cross-device sync and friend competition.
-
-**Sequencing (updated 2026-07-18).** This used to say "do it after the Daily Expedition
-has proved out" — the Daily mode is gone, so that condition no longer exists and is not
-a reason to wait. Two things that DO matter:
-
-- **Build it local-first.** Keep `localStorage` as the read path and sync to Supabase in
-  the background, so `profiles.js` stays synchronous and no call site changes. That is
-  also simply correct for an offline-capable PWA. The alternative — `await`ing cloud
-  reads — turns all ~25 exported functions async and touches call sites throughout the
-  6.5k-line component, which WILL collide with any feature work happening in parallel.
-  Done local-first, this can proceed alongside everything else.
-- **Sync the profile as a JSON blob**, not a normalised schema. Profile fields are still
-  being added (`metNigel`, `metMrO`, `grandpaWant`…) and a blob makes that churn free.
-  Keep a few denormalised columns beside it (name, best score, difficulty, rank) purely
-  so the leaderboard query stays cheap.
-
-**Do the file export/import first** (see the box at the top). It ships the durability
-win on its own, needs no backend, and produces exactly the serialization this reuses.
+The passport has a Progress page (mastery by continent, a "keeps getting missed"
+list), a Trophy Shelf and the Journals; mastered countries wash gold on the world
+map. All four were on this file's to-do list long after they shipped.
 
 ---
 
-## 8. Optionally package a desktop app
+## 7. The Supabase backend
 
-**Needs Joshua's decision — and the standing recommendation (2026-07-18) is DON'T.**
-The game already installs as a PWA (Chrome/Edge/Safari → Install) with zero work, and
-the target device is a desktop where that install works fine. The only thing Tauri adds
-is a real double-click icon, and it costs $99/yr to sign; unsigned, it throws OS
-security warnings at whoever opens it. Revisit only if that icon is genuinely wanted.
+**Built, inert, and waiting on Joshua.** Everything lives in `localStorage` today
+(`src/profiles.js`) — per browser, never synced.
 
-For a real double-click `.app`/`.exe`, wrap it with Tauri.
+What exists:
 
-⚠ Unsigned apps trigger OS security warnings, and code signing costs money (Apple
-$99/yr). Don't start this without him agreeing to that.
+- **`supabase/migrations/20260719120000_passports.sql`** — the schema, with row-level
+  security on every table and no permissive "for testing" policy. Households are
+  sets of devices that share travelers; a device joins with a server-generated code.
+  The data is children's: a first name and geography scores, with nowhere in the
+  schema to put anything else.
+- **`src/sync.js`** — local-first. `localStorage` stays the only read path, so
+  `profiles.js` stays synchronous and no call site changes; sync is a background
+  reconciliation. Anonymous auth, no email, no password. **Inert until
+  `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` are set** (`.env.example`), and
+  the client library is a dynamic import, so an unconfigured build doesn't ship it.
+- **`src/passport-merge.js`** — the merge, tested in `test/passport-merge.test.js`.
+- **The passport file** — "Save a copy" / "Restore from a file" under the passport
+  (`exportPassport` / `importPassport`). This already ships and is the durability
+  win on its own; sync reuses its envelope.
 
-⚠ Also tied to this: the **final single-screen pixel fit** (map cap, header, phase
-tracker) should be tuned to the executable's *locked window size* once he picks it —
-doing it before that is guesswork. The desk already fits a normal browser window.
+What is not there: **nothing in the game imports `sync.js`** (verified 2026-10-03 —
+the only mention outside the file is a comment in `profiles.js`). There is no screen
+to create or join a household, so the module is unreachable whether or not it is
+configured. That UI is the remaining build.
 
----
+**Ask Joshua where the project stands before assuming it doesn't exist.** The deploy
+workflow already passes both variables from repository secrets, and `.env.local` on
+this machine has `VITE_SUPABASE_URL` set — so a project may well have been created.
+Whether the migration has been run against it is not something the repo can say.
+The anon key is public by design; the `service_role` key must never appear in the
+repo or a bundle.
 
-## 9. Travel modes — ✅ BUILT (2026-07-15); balance wants a playtest
-
-The higher Grand Tour tiers (**Adventurer/Expert only**) now travel for real. Clicking
-a continent opens a **"Getting there" chooser**: pick which real **regional hub
-airport** to fly into (sorted nearest-first, each with its flight cost), then pick the
-**last-leg transport** to your next target — a genuine **time ↔ money** tradeoff. Every
-price shows **dollars first, local currency in parentheses** (rule 3 style). A money
-**wallet** sits beside the day calendar; both resources are spent as you travel, and
-**leftover money pays 1 point per $500** at the win, alongside banked days.
-
-- **Data:** `src/data/travel.js` — `HUBS` (4–6 real IATA hubs per continent with real
-  coords), `TRANSPORT_MODES` (bus/train/taxi/domestic flight + ferry/riverboat/canoe,
-  cable car/cog railway, tuk-tuk, camel, and Venice's gondola), `transportOptionsFor()`
-  (offers only the 2–3 modes that genuinely fit the place — rule 2 — with concrete
-  day/dollar costs), `CURRENCIES` + `COUNTRY_CURRENCY` + `money()`. Prices are
-  deliberately **abstract** (a tradeoff, not a real fare we'd have to source and keep
-  current); exchange rates carry `CURRENCY_AS_OF`.
-- **Component:** `TravelChooser` in `shutterbug-world.jsx`; `confirmTravel()` deducts
-  money + days then runs the real flight; gate is `travelModes` (tour + medium/hard).
-  Antarctica has no hub, so it flies the old way. Money floors at $0 — **never disable
-  the Go button** or a broke player soft-locks.
-- **6 tests** guard it (hubs in range with derived map coords, ≥3 per continent, every
-  landmark reachable with a real cheap↔fast spread, currencies well-formed, `money()`
-  leads with dollars).
-
-**What's open:** the **balance** (see "the three things to do next"). Optional later:
-
-- **Currency coverage — 55/106 countries (281/437 locations).** 2026-07-16 added every
-  currency whose rate is a *structural fact*: the two CFA francs, the CFP franc, the
-  Danish krone, and the riyal/dinar/Belize/Namibian dollar pegs, plus the Belgium and
-  Finland Eurozone gaps and the two dollarized countries. Those are DERIVED from their
-  anchor in `PEGGED` (travel.js) so refreshing the euro carries them along, and
-  `test/data.test.js` pins each published parity.
-  **The remaining ~50 are floating rates and deliberately not guessed** (rule 2). Several
-  — Venezuela, Zimbabwe, Sudan, Iran, Cuba — have no single honest rate to quote
-  (hyperinflation, or official vs. street rates that differ by multiples), so they want a
-  sourced decision rather than a number from memory. The USD fallback is not wrong, just
-  silent.
-- **Flavour-transport tags — ✅ done 2026-07-16, and it was a correctness pass, not flavour.**
-  The category-derived rules were quietly false: `category === "desert"` offered a camel at
-  the Dune du Pilat near Bordeaux, at White Sands, on the Uyuni salt flats and in the McMurdo
-  Dry Valleys; `category === "mountain"` offered a cable car up Everest, Denali, Aconcagua and
-  Kilimanjaro (whose cable car was announced in 2019 and never built). Camels are now gated on
-  a verified country list, and cable cars / cog railways on explicit per-place lists — absence
-  means not offered, which is the safe default. Riverboat needs `waterway` + the `river` tag
-  (both halves: the category alone put a boat on the Dead Sea, the tag alone put one at Taroko
-  Gorge); the dugout is limited to the Okavango's mokoro, the Amazon and Caño Cristales.
-  Every waterway now carries `river`/`lake`/`canal`. `test/data.test.js` pins all of it.
-  **To add a mode somewhere new, verify it and add the id to the set in travel.js.**
-- ~~Real transport icons~~ — ✅ done 2026-07-16; 12 top-down icons at 46px in the chooser.
-- **A lighter hub-only version in Assignments** — deferred: choosing transport to a named
-  landmark would spoil that mode's deduction game.
+For kids: anonymous accounts and a shareable code. No passwords, no PII, no open chat.
 
 ---
 
-## 10. Rewards, progression, and the dog (brainstorm, 2026-07-19)
+## 8. A desktop app
 
-Joshua's report: *"I recently accomplished something (maybe visiting all 7 continents)
-and there was the option to go see Jonah — and he said congratulations and then that
-was it. If there was a stamp awarded or a game mode unlocked, it wasn't clear."*
+**Joshua's decision, and the standing recommendation (2026-07-18) is don't.** The
+game installs as a PWA from Chrome, Edge or Safari with no work, and the target
+device is a desktop where that install works. Tauri adds a real double-click icon
+and costs $99 a year to sign; unsigned, it throws OS security warnings at whoever
+opens it. Don't start without his agreeing to that.
 
-He is right, and the code confirms it. **Earning an achievement grants nothing.**
-`achievements()` in `profiles.js` derives 24 badges live from `profile.loc` on every
-call — nothing about them is persisted, nothing is awarded, and the only consequence
-is a chip plus a line from Jonah — which, since 2026-08-03, live in the end screen's
-**"What you earned"** popup rather than in a column beside him. That was a fit fix,
-not a payout: the beat is still a chip. Separately, `UNLOCK_REQ` has
-five real gates (Adventurer, Grand Tour, Expert, Expeditions) but they unlock quietly
-and are announced only in passing.
+Tied to it: the final single-screen pixel fit (map cap, header, phase tracker) is
+best tuned to a locked window size, which only an executable has.
 
-So there are two systems that both *look* like progression and neither of which pays
-out. Options, cheapest first:
+---
 
-**a. Make the existing gates land properly.** The unlock moment is the strongest beat
-the game already has and it's thrown away in a sentence. A full-screen "Uncle Jonah
-has something for you" — the badge drawn large, what it unlocked named explicitly,
-and the new mode's card visibly lighting up on the meet screen next time. No new
-systems, just staging what already happens.
+## 9. Travel modes
 
-**b. Give achievements a home worth filling.** They already appear in the passport as
-"keepsakes", but the passport is a list. A shelf/case where the 24 sit as visible
-empty silhouettes from the start would do what the map-tinting idea does: show the
-child the shape of what they haven't done yet. Pairs naturally with the Progress page.
+**Built (2026-07-15), Grand Tour on Adventurer and Expert only.** Clicking a
+continent opens the "Getting there" chooser: pick a real regional hub airport, then
+the last-leg transport — a genuine time ↔ money tradeoff. A wallet sits beside the
+day calendar; leftover money pays **1 point per $500** at the win.
 
-**c. Tie unlocks to Jonah's anecdotes.** `src/data/anecdotes.js` has 300 lines of his
-stories. Earning a continent badge could unlock the story of *his* trip there — a
-reward that is more of the thing the child already likes, costs no new art, and
-reinforces the frame (he went young, you go now).
+- **Data:** `src/data/travel.js` — `HUBS` (30 real IATA hubs: five per continent,
+  six in Asia, four in Oceania, none in Antarctica, which flies the old way),
+  `TRANSPORT_MODES`, `transportOptionsFor()`, `money()`. Transport prices are
+  deliberately **abstract** — a tradeoff, not a real fare that would need sourcing.
+- **One exchange table (since 2026-09-30).** `CURRENCIES` is built from the
+  generated `src/data/currency.js`. `travel.js` keeps only what a generator can't
+  know: the eight **pegged** currencies, derived from their anchor's rate so 655.957
+  CFA to the euro stays exact, and their child-readable names. See the loose end in
+  "Start here" about the five unstable currencies this brought in.
+- **Component:** `TravelChooser`; `confirmTravel()` deducts money and days, then runs
+  the flight.
+- **Which transport is offered where is a correctness matter, not flavour.** The
+  category-derived rules were quietly false: `desert` offered a camel at the Dune du
+  Pilat near Bordeaux and in the McMurdo Dry Valleys; `mountain` offered a cable car
+  up Everest and Kilimanjaro. Camels are gated on a verified country list, cable
+  cars and cog railways on explicit per-place lists, riverboats on `waterway` *and*
+  the `river` tag. Absence means not offered. **To add a mode somewhere, verify it
+  and add the id to the set in `travel.js`.**
 
-**d. Themed expeditions as the unlock currency.** Expeditions already exist and are
-already gated. Making specific ones unlock from specific achievements ("photograph
-all 7 summits → the Roof of the World expedition") gives badges a concrete payout
-without inventing a new reward type.
+**What is open is balance, and it is Joshua's.** He plays a Grand Tour on Adventurer
+and says "money too tight", "last legs cost too many days", "the bonus is weak". The
+dials: `transportOptionsFor` (the `usd`/`days` formulas), the starting wallet in
+`startTour` (**$3,500** Adventurer, **$2,500** Expert), and `legSlack` (one extra day
+per stop on those two tiers).
 
-**e. A "first time only" bonus** on each newly photographed place, so a child who
-ranges wide is scored differently from one who replays the same five. Cheap, and it
-pushes toward the breadth the content is there to teach.
+**His decision:** whether The Long Trip gets hubs too.
 
-Recommendation: **(a) then (c)**. Both are staging and content rather than new
-systems, and (a) fixes the specific thing that felt hollow.
+---
 
-### The dog
+## 10. Rewards, progression, and Pickles
 
-Art is in `public/assets/shutterbug-ui/dog/` — six poses (standing, sitting with paw
-up, play bow, walking, head-tilt sit, lying down). He already appears *in* Jonah's
-painted scenes, lying by the fire, so he is established as his dog and the player
-has met him without being told anything about him.
+Joshua's report, 2026-07-19: *"I recently accomplished something (maybe visiting all
+7 continents) and there was the option to go see Jonah — and he said congratulations
+and then that was it. If there was a stamp awarded or a game mode unlocked, it wasn't
+clear."*
 
-Ideas, best first:
+He was right when he said it. **Earning an achievement still grants nothing of its
+own.** `achievements()` in `profiles.js` derives 24 badges live from the profile on
+every call — nothing is persisted, nothing awarded. The consequence is a chip and a
+line from Jonah in the end screen's "What you earned" popup. Separately,
+`UNLOCK_REQ` holds the real gates (Adventurer, Grand Tour, Expert, Expeditions, The
+Long Trip).
 
-1. **He stays home with Jonah and reacts.** Cheapest and most in keeping with what's
-   already on screen: the pose changes with the result — play bow on a perfect shot,
-   head tilt on a miss, lying down when the days run out. A second emotional channel
-   on the screens Jonah already owns, no new mechanic, no new writing, and it uses
-   all six poses. A young child reads a dog's posture faster than a sentence.
-2. **He finds things.** A "sniff it out" tool alongside the Field Guide: once per
-   run he points to the right continent (not the country, not the pin) for a cost.
-   The play-bow and standing poses are exactly the vocabulary for that. Note this is
-   close to what the Field Guide already does — worth checking with Joshua whether a
-   second hint tool helps or muddies.
-3. **He travels with you as a streak keeper.** He rides along and appears on the
-   map after N correct shots in a row, and goes back to Jonah when the streak breaks.
-   Makes an invisible stat visible, but it does add a mechanic.
-4. **He is the Explore-mode companion.** Explore has no pressure and no Mr O; a dog
-   trotting along the bottom of the map would give that mode its own character.
+**Two things have landed since that report, and the options below should be read
+against them** — this section described neither until 2026-10-03:
 
-> **✅ SHIPPED 2026-07-19 — but NOT as option (1). Read this before acting on the
-> list above.**
->
-> Option (1) said to put him on Jonah's screens. That was written before I opened the
-> art files, and it is **wrong**: he is already *painted into* every one of Jonah's
-> scenes, lying by the fire. A cut-out sprite next to a painted dog reads as a bug,
-> not as a feature. The sprites have to go somewhere Jonah isn't.
->
-> What shipped instead: **he came along on the trip.** He sits on the travel desk
-> under the itinerary column and his pose tracks the run — play bow after a good
-> shot, head tilt after a miss, walking mid-flight, lying down when the days have
-> nearly run out, standing on Explore where there's no clock. `DeskDog` in
-> `shutterbug-world.jsx`.
->
-> One trap worth remembering if this is ever reworked: reacting to `pending` (the
-> result popup) is invisible, because `pending` is set for exactly as long as a
-> full-screen popup is covering him. His mood is its own state (`dogBeat`), set when
-> a shot resolves and cleared seven seconds later, so the reaction survives the popup.
->
-> **UPDATE — he now has a JOB (2026-07-19, Joshua's call).** Reacting to the run was
-> tone, not function. Three PERFECT shots in a row — right first time, no wrong guess
-> between them — and he digs one of Uncle Jonah's own stories out of the camera bag,
-> about a place you've just been. `src/data/anecdotes.js` was full of these and only
-> the homecoming quiz ever showed one, so most were never read at all.
->
-> Why a streak of PERFECT shots rather than plain correct ones: a correct shot already
-> pays points, and paying it twice teaches nothing. Getting it right first time is what
-> the game wants and had no growing reward for.
->
-> Why a story and not a bonus travel day (the other option on the table): a mechanical
-> reward would make a strong player's runs measurably easier and quietly reshape the
-> difficulty curve Joshua tunes by feel. A story costs nothing and is more of what the
-> child already likes. `DOG_FIND_EVERY` in shutterbug-world.jsx is the dial.
->
-> Options (2), (3) and (4) are all still open and none of them conflict with what
-> shipped. **His name is still unwritten** — that's Joshua's call, and naming him is
-> what would turn him from set-dressing into a character.
+- **Pickles's wardrobe is a real payout.** Her 18 outfits are *earned*
+  (`OUTFIT_UNLOCK` in `src/data/dog-outfits.js`): master three places in a region,
+  earn a stamp in one, photograph N places or N of a category — and photographing
+  on **all seven continents** unlocks the astronaut, which is the very thing Joshua
+  had just done when nothing happened. Newly earned outfits are announced with the
+  other unlock news. It is derived live from `profile.loc`, like the achievements.
+- **The gates are staged.** Unlock news is a popup over the meet screen
+  (`UnlockNewsModal`, 2026-07-30), The Long Trip has its own unlock line from Jonah,
+  and the meet and results screens read one list (`UNLOCK_BEAT_KEYS`) so an unlock
+  announces itself once rather than never or forever.
 
-## 11. The music, honestly (2026-07-19, recounted 2026-07-28)
+So the question for Joshua has narrowed from "nothing pays out" to "is the wardrobe
+enough, or should the 24 badges pay something too". The options as first written,
+cheapest first:
 
-> ### ⚠ 2026-07-28 — the numbers below are stale. These are the current ones.
->
-> The section as written counts how many countries have their OWN MELODY, and by
-> that measure nothing has changed: still six, still Germany, France, the USA, the
-> UK, Mexico and Australia, and everything under "cost of doing dozens properly" is
-> still true and still the reason. **Read it for that. Ignore its second number.**
->
-> What changed is the shape of the other 102. The complaint was never really "not
-> enough countries have their own tune" — it was Joshua saying *the Islamic
-> countries all sound the same*, which was a complaint about how much of the world
-> one bed was carrying. That is a different problem with a much cheaper fix, because
-> a regional bed is an ORIGINAL phrase and can be written freely, where a national
-> melody needs notation in hand (rule 2).
->
-> | | 2026-07-19 | now |
-> |---|---|---|
-> | Countries with their own real melody | 6 | 6 |
-> | Countries on a regional bed | 100 | 102 |
-> | **How many distinct beds those are spread across** | **11** | **43** |
-> | Biggest single bed | 19 countries | **6** |
-> | Countries on the flavourless `generic` bed | 18 | **0** |
->
-> Three passes got there, all the same shape: 2026-07-20 (Africa, the Middle East
-> and `generic` broken up), 2026-07-28 morning (the maqam split — four Arab beds
-> plus Turkey, after Joshua's report), 2026-07-28 evening (the four beds still at
-> 7–8, plus the Mediterranean). The median bed now carries **two** countries.
->
-> **What is left of this, in order:**
-> 1. ~~`caribbean` is the last bed at six.~~ **✅ DONE.** It was split into `mento`
->    (Jamaica, banjo), `haiti` (rara vaksin hocket, brass), `garifuna` (Belize,
->    paranda guitar) and `caribbean` (the steel pan, kept for Trinidad, where the
->    instrument was invented, plus Guyana). **Nothing now carries more than FIVE**
->    and `test/tunes.test.js` holds the ceiling there. The six beds at five
->    (`eastafrica`, `southasia`, `slavic`, `southernafrica`, `centralamerica`,
->    `nordic`) are each a real musical region whose members share instruments and
->    modes; tighten further only with a reason of that kind, not to make the number
->    smaller.
-> 2. **Nobody has heard these but a synthesizer — and now there is a way to.**
->    ✅ **`public/tune-lab.html`** (2026-07-30) lists all 55 beds with the countries
->    each carries and plays any of them on demand; `npm run dev`, then
->    <http://localhost:5173/tune-lab.html>. Tap **N** to walk down the list, which is
->    how you actually hear whether two beds are too alike.
->
->    It drives the game's own `MUSIC.countryTune()` rather than rendering audio
->    files offline. That was a deliberate reversal of what this section used to
->    advise: the question is "does it sound right", so the one unacceptable answer is
->    a sound the game does not make, and a second synth would have to reproduce Web
->    Audio's filters and envelopes exactly to be worth trusting.
->
->    **This is now blocked on Joshua's ear and nothing else.**
-> 3. **The six real melodies are still the ceiling on authenticity**, and the section
->    below is still the honest account of what more would cost.
+- **a. Make the gates land properly** — a full-screen "Uncle Jonah has something for
+  you", the badge drawn large, what it unlocked named, the new mode's card lighting
+  up. Partly done, as above.
+- **b. Give achievements a home worth filling** — the 24 as empty silhouettes from
+  the start. The passport's Trophy Shelf now exists; check what it shows before
+  building this.
+- **c. Tie unlocks to Jonah's anecdotes.** `src/data/anecdotes.js` holds his stories
+  and the homecoming quiz is the only thing that shows one. A continent badge could
+  unlock the story of *his* trip there — more of what the child already likes, no
+  new art.
+- **d. Themed expeditions as the unlock currency** — "photograph all seven summits →
+  the Roof of the World expedition".
+- **e. A first-time-only bonus** on each newly photographed place, rewarding breadth.
 
+**Recommendation: (a) then (c)** — staging and content rather than new systems. It
+needs his pick, then it is buildable.
 
-Joshua asked which countries have their own tune, and what it would cost to write
-"dozens" more. The numbers, counted by resolving every country in `locations.js`
-through `tuneKeyFor`:
+### Pickles
 
-| | count | share |
+The dog is **Pickles**, a West Highland terrier, and she came along on the trip. She
+reacts only to a **perfect** shot — right first time — and gets louder as the streak
+runs: a wag, a paw up, the full play-bow. She rides in on the result card
+(`PicklesCheer`), dressed for the country when that region's outfit is unlocked;
+"Pickles's wardrobe" (the gear menu and the meet screen) sets whether she dresses
+automatically, never, or always in one favourite. Her lines are descriptions of a
+dog, never speech — read the note on voice at the top of `src/data/pickles.js`
+before adding any. Beside Jonah on the menu and story screens she is the painted
+dog, not a sprite.
+
+The older account in this file — an unnamed dog who dug one of Jonah's stories out
+of the camera bag after three perfect shots — no longer describes the game. Comments
+in the code still say `DeskDog`, a component that no longer exists under that name.
+`pickles.js` and `dog-outfits.js` are the truth.
+
+**Ideas raised and never built,** none conflicting with what shipped: a "sniff it
+out" hint that points to the right continent (close to what the Field Guide already
+does — ask Joshua whether a second hint tool helps or muddies), and Pickles as
+Explore's companion, since that mode has no clock and no Mr O.
+
+---
+
+## 11. The music
+
+**Blocked on Joshua's ear and nothing else.** `npm run dev`, then
+<http://localhost:5173/tune-lab.html>: every bed with the countries it carries,
+played by the game's own `MUSIC.countryTune()`. Tap **N** to walk the list, which is
+how you hear whether two beds are too alike. The lab drives the real synth on
+purpose — the question is "does it sound right", so the one unacceptable answer is a
+sound the game does not make. Everything testable about these tunes passes; whether
+they sound good has been checked by no human.
+
+**Where it stands:**
+
+| | 2026-07-19 | now |
 |---|---|---|
-| Countries in the game | 106 | |
-| With their **own real melody** | **6** | 5.7% |
-| On a **regional style bed** | 100 | 94.3% |
+| Countries with their own real melody | 6 | 6 |
+| Biggest single regional bed | 19 countries | **5** |
+| Countries on the flavourless `generic` bed | 18 | **0** |
 
-The six: **Germany** (Ode to Joy), **France** (Frère Jacques), **United States**
-(The Star-Spangled Banner), **United Kingdom** (Rule, Britannia!), **Mexico**
-(La Cucaracha), **Australia** (Waltzing Matilda).
+The six: Germany (Ode to Joy), France (Frère Jacques), the United States (The
+Star-Spangled Banner), the United Kingdom (Rule, Britannia!), Mexico (La Cucaracha),
+Australia (Waltzing Matilda).
 
-The other 100 fall through `COUNTRY_MOTIF` (49 named) or `CONTINENT_MOTIF` (51) onto
-one of eleven original regional beds — koto pentatonic for East Asia, oud in hijaz
-for the Middle East, kalimba for sub-Saharan Africa, and so on. **18 countries** (in
-North America and Europe, not otherwise mapped) get the neutral music-box `generic`
-bed with no regional flavour at all — those are the weakest case and the ones worth
-fixing first.
+The complaint this answered was Joshua saying *the Islamic countries all sound the
+same* — about how much of the world one bed carried, not how many countries have a
+tune of their own. That has a cheap fix, because a regional bed is an *original*
+phrase and can be written freely. `test/tunes.test.js` holds the ceiling at five,
+and `test/audio.test.js` asserts no country can reach `generic`. The six beds at five
+(`eastafrica`, `southasia`, `slavic`, `southernafrica`, `centralamerica`, `nordic`)
+are each a real musical region; tighten further only with a reason of that kind.
+`MUSIC.timbres` exists so a test can catch a tune naming a timbre the synth lacks —
+the one failure here that neither throws nor falls silent.
 
-**Cost of doing dozens properly.** The engine is not the problem: it is a note-name
-sequencer (`["E4", 1]`), so adding a tune is adding ~20 lines of data — call it 15
-minutes each once you have the notes. The cost is entirely **sourcing and verifying
-the notes**, and that is bound by rule 2 and by copyright:
+**More real melodies is the expensive direction.** The engine is a note-name
+sequencer, so a tune is ~20 lines of data. The cost is sourcing, bound by rule 2 and
+copyright: the melody must be **public domain**, and the notes must come **off a
+score**, not from memory. A session that tried to lengthen La Cucaracha and Waltzing
+Matilda could not reach usable notation and left them alone, which is the correct
+outcome. The Star-Spangled Banner carries its source and a bar-by-bar note because an
+earlier pass shipped a wrong note in it. Estimate: 30–40 more countries is a day's
+work given a good source (IMSLP, the Wikimedia anthem collection, abcnotation.com),
+most of it verification. All 108 is not sensible — a well-chosen regional bed beats a
+badly-sourced "national tune".
 
-- The melody must be **public domain**. Most national anthems are; most 20th-century
-  folk arrangements are not, and many countries' best-known tunes are recent enough
-  to still be in copyright.
-- The notes must come **off a score**, not from memory. This session tried to lengthen
-  La Cucaracha and Waltzing Matilda, could not reach usable notation for either, and
-  so **left them alone** rather than guess — which is the correct outcome under rule 2
-  and also the reason this is slow. The Star-Spangled Banner in `tunes.js` carries its
-  source and a bar-by-bar note explaining the raised fourth, because a previous pass
-  shipped a wrong note in it.
+---
 
-Realistic estimate: **30–40 more countries is a day of focused work** given a good
-public-domain source (IMSLP, the Wikimedia national-anthem collection, abcnotation.com),
-with most of the time in verification rather than transcription. All 106 is not
-sensible — plenty of countries have no single melody that a child would recognise, and
-a well-chosen regional bed is honestly better than a badly-sourced "national tune".
+## 12. Currency price anchors
 
-Suggested order if Joshua wants it: **the 18 `generic` countries first** (they have no
-regional character at all), then the largest countries on regional beds, then anthem
-openings for countries whose anthem is genuinely famous.
-
-Note the tunes now play **once, not twice** — the eleven regional beds were rewritten
-as two-phrase call-and-response melodies (4.7–9.9s) so a single pass stands alone.
-
-## 12. Currency price anchors — built 2026-07-29, and it stops at 14 countries
-
-Joshua's spec: *"a loaf of bread costs about 45 córdobas"*. The culture card already
-says what money a country uses and roughly how many of it a dollar buys; that teaches
-the **rate**. The price anchor teaches what the money **buys**, which is the half a
-child can actually feel. Asked whether he wanted a handful first or all of them, he
-said all of them.
-
-**All of them is not available.** Not slow — unavailable. This is the finding, and it
-is worth reading before anyone tries again.
+Joshua's spec: *"a loaf of bread costs about 45 córdobas"*. The culture card says
+what money a country uses and roughly how many a dollar buys — the **rate**. The
+anchor teaches what the money **buys**, the half a child can feel. He asked for all
+countries. **All of them is not available** — not slow, unavailable — and this
+section is worth reading before anyone tries again.
 
 ### What was built
 
-- `scripts/gen-price-anchors.mjs` — pulls WFP's Global Food Prices from the
-  Humanitarian Data Exchange (CC BY-IGO, updated monthly), picks one staple per
-  country, converts to imperial, rounds to two significant figures, writes
-  `src/data/price-anchors.js`. The yearly CSVs are 20–55 MB and HDX drops the big
-  one part-way through often enough that it retries and also accepts local copies
-  (`--csv a.csv b.csv`).
-- `src/data/price-anchors.js` — generated; 10 countries on this date, **14 now**
-  (the two dated sections below add the four national-statistics-office entries).
-- `PriceAnchorLine` in `shutterbug-world.jsx`, under the money line on the culture
-  card: *"🛒 In Kathmandu, a pound (0.45 kg) of rice cost about 40 NPR — about 27¢.
-  (June 2026)"*
-- `test/price-anchors.test.js` — 7 tests. The one with teeth cross-checks each price
-  against the exchange rate beside it, because they come from different sources and
-  if they disagree about what a pound of food costs in dollars, one of them is wrong.
+- `scripts/gen-price-anchors.mjs` writes `src/data/price-anchors.js`: one staple per
+  country, converted to imperial, rounded to two significant figures, each carrying
+  the `source` that published it.
+- `PriceAnchorLine` under the money line on the culture card: *"🛒 In Kathmandu, a
+  pound (0.45 kg) of rice cost about 40 NPR — about 27¢. (June 2026)"*
+- `test/price-anchors.test.js`. The test with teeth cross-checks each price against
+  the exchange rate beside it: they come from different sources, and if they disagree
+  about what a pound of food costs in dollars, one is wrong.
 
-Cameroon, Ecuador, Egypt, Jordan, Madagascar, Namibia, Nepal, the Philippines,
-Sri Lanka, Turkey.
+**14 countries covering 95 of the 464 places:**
 
-### Why not more — the trap, in detail
+| source | countries |
+|---|---|
+| WFP Global Food Prices (HDX, CC BY-IGO) | Cameroon, Ecuador, Egypt, Jordan, Madagascar, Namibia, Nepal, the Philippines, Sri Lanka, Turkey |
+| BLS Average Price Data, series `APU0000702111` | United States — a pound of white bread, already per pound |
+| Statistics Canada, table 18-10-0245 | Canada — white bread, 675 g loaf, converted once |
+| Statistics Bureau of Japan, Retail Price Survey `00200571` | Japan — rice in Tokyo's wards |
+| INEGI *Precios promedio*, genérico 014 | Mexico — tortillas in Mexico City |
 
-**WFP monitors the markets WFP OPERATES IN.** It publishes retail prices for 72
-countries and that number is a trap, because those are food-security monitoring
-sites, not national price surveys:
+A national office beats WFP for the same country. Japan and Mexico name a **city**,
+because neither office publishes a national average and averaging their cities would
+be a number this project computed. Rice for Japan and tortillas for Mexico, not
+bread: the line is a shopping trip a child can picture, not a like-for-like row.
+
+### Why not more
+
+**WFP monitors the markets WFP operates in.** Its 72 countries are food-security
+monitoring sites, not national price surveys:
 
 | country | every monitored market is… |
 |---|---|
 | Kenya | Kakuma and Dadaab — refugee camps |
 | Uganda | refugee settlements |
-| Algeria | Tindouf, Smara, Dakhla, Laayoun — the Sahrawi camps and Western Sahara |
+| Algeria | the Sahrawi camps and Western Sahara |
 | Zimbabwe | includes Tongogara Refugee Camp |
 | Nigeria | the north-eastern conflict markets |
-| Guatemala | one market, and it sells nothing but **fuel** |
-| Ethiopia | one market, and it quotes nothing but an **unofficial exchange rate** |
+| Guatemala | one market, selling only **fuel** |
+| Ethiopia | one market, quoting only an **unofficial exchange rate** |
 
-Every one of those yields a well-formed, plausible number that would be flatly false
-on a card reading "in Kenya" — the same shape as the Nile that stopped in Sudan. So
-the generator does **not** take WFP's country list. It takes an explicit allowlist,
-and each entry names ONE market that is either the country's own published national
-average or a market in its capital, verified against the row's own admin1 region.
-That allowlist is 17 countries and seven of them then fall out:
+Each yields a well-formed, plausible number that would be flatly false on a card
+reading "in Kenya". So the generator takes an explicit allowlist, each entry naming
+one market that is the country's published national average or in its capital. Of
+17, seven fall out: **Nicaragua** (WFP quotes it in USD — Joshua's own example
+country), **Bolivia** (our rate and WFP's disagree by 60%, so the cross-check refuses
+both), **Ethiopia** and **Guatemala** (above), **Iran** and **Sudan** (no single
+honest exchange rate, so no honest price), **Zambia** (newest observation 13 months
+old).
 
-- **Nicaragua** — WFP quotes its national average in **USD**, not córdobas. Joshua's
-  own example country, and the data cannot serve it.
-- **Bolivia** — our exchange rate and WFP's disagree by 60%, so the cross-check
-  refuses both.
-- **Ethiopia, Guatemala** — no staple food in the one monitored market (above).
-- **Iran, Sudan** — no single honest exchange rate (hyperinflation, or official vs.
-  street differing by multiples), so no honest price either. `travel.js` already
-  refuses to publish a rate for these; a price is the same claim wearing a hat.
-- **Zambia** — newest observation is 13 months old.
+**The national offices, each a specific wall, checked rather than assumed:**
 
-### 2026-07-29: two more, and the wall is now precisely mapped
-
-Added the two biggest countries by places-in-game, both from their own national
-statistics office, both with no key and no scraping:
-
-| country | source | figure |
-|---|---|---|
-| **United States** (32 places) | BLS Average Price Data, series `APU0000702111` | a pound of white bread, US city average — **already per pound**, so rule 3 needs no conversion at all |
-| **Canada** (10 places) | Statistics Canada table 18-10-0245, geo 11 / product 56 | white bread, 675 g loaf, converted once to per pound |
-
-That is **12 countries**, and because the two added are the game's two largest,
-it covers 76 of the places against 34 before.
-
-A national office BEATS the WFP block for the same country. Nothing overlaps
-today — WFP is in neither — but the rule is in the generator before it is needed.
-Every anchor now also carries the `source` that published it, and a test requires
-one: three sources in one file and no way to re-check a figure is not rule 2.
-
-**Why not the others.** Each is a specific wall, checked rather than assumed:
-
-| country | wall |
+| country (places) | wall |
 |---|---|
-| **United Kingdom** (11) | ONS retired its timeseries API in Nov 2024. The raw price quotes it still publishes hold **394 items with no staple foods** — groceries moved to retailer scanner data, so the collector file is leggings, golf balls and blank CDs. |
-| **China** (21) | `data.stats.gov.cn` returns **403 to non-Chinese IPs**. |
-| **Japan** (10) | ~~e-Stat requires a registered application ID.~~ **Done 2026-07-30** — see below. |
-| **Mexico** (10) | ~~INEGI requires an API token.~~ **Done 2026-07-30** — see below. |
-| **Australia** (9) | The ABS Data API is live but its average-retail-price series was discontinued; what remains is CPI indices, not prices. |
-| **France, Italy, Greece, Spain** (10 each) | Eurostat's detailed average prices are gone (404 on every dataset), so each needs its own office. |
-| **Germany** (10) | **Dead end, and a key would not have helped.** Destatis publishes consumer price INDICES only — no average price in euros for bread, rice, milk or potatoes. Checked 2026-07-30. Do not spend time registering for GENESIS on this account. |
+| United Kingdom (11) | ONS retired its timeseries API in Nov 2024. The raw price quotes still published hold 394 items and no staple foods — groceries moved to retailer scanner data. |
+| China (21) | `data.stats.gov.cn` returns 403 to non-Chinese IPs. |
+| Australia (9) | The ABS average-retail-price series was discontinued; what remains is CPI indices. |
+| France, Italy, Greece, Spain (10 each) | Eurostat's detailed average prices are gone (404 on every dataset), so each needs its own office. |
+| Germany (10) | **Dead end.** Destatis publishes indices only. |
 
-### ⚠ 2026-07-30 — "requires a key" was wrong for two of the three, and both are now in
+There is **no authoritative global source of everyday retail prices.** Eurostat's
+`prc_dap15`/`prc_dap16` are discontinued. The World Bank ICP publishes PPP factors,
+and a price derived from one is a model, not a source. Numbeo is crowd-sourced and
+unverified. FAO is producer prices. That leaves national statistics offices one at a
+time — the four here took a session apiece and no two shared a line of code (a JSON
+API, a cube endpoint, a spreadsheet, a session-bound ASP.NET form). **The cheap wins
+are spent**; anything further is a content project, not a task. Adding a reachable
+country is one entry in `NATIONAL` in the generator plus its fetch.
 
-Joshua declined to register for keys and asked for estimates instead. Estimates are
-not available here: these strings are player-facing teaching content and **rule 2
-forbids inventing them**. But the premise turned out to be soft — the API needs a
-key, the public site does not. Both were then built the same day:
+**Two traps recorded because both cost real time:**
 
-| country | source | figure |
+1. **There is no Mexican `series` id.** For CSV/XLS the INEGI app posts `series=`
+   empty and takes the selection from ASP.NET session state. The working sequence:
+   GET the app for a cookie → POST `ObtieneCountReg` with the 3-digit genérico and
+   the city list (**this writes the session**) → POST `Exportacion.aspx`.
+2. **Japan publishes this as a spreadsheet and nothing else,** so the generator
+   carries ~60 lines of `node:zlib` that read an .xlsx directly. Furigana (`<rPh>`)
+   must be stripped from the shared strings or 札幌市 comes out as 札幌市サッポロシ.
+
+---
+
+## 13. Souvenir stalls
+
+Joshua's brief: *"buy something for Uncle Jonah in local money. The child has to
+judge whether 1,500 yen is a lot. Souvenirs collect into the passport. Money is never
+a fail state."* Built 2026-09-30.
+
+- **Two doors.** A stall opens 1.4 s after landing at a **hub** that has one (Grand
+  Tour on Adventurer/Expert, the tiers with a wallet), and also on **arriving in a
+  stall country on a Grand Tour's last leg**, waiting behind the country arrival
+  card because two popups at once is worse than none. Once per country per run,
+  shared between the doors — Haneda then Japan is one stall. Assignments has no
+  wallet and no stall: a shop on the way would tax a child still learning to answer
+  a clue.
+- **What it costs:** the leftover-cash bonus, nothing else. `test/souvenirs.test.js`
+  pins every stall's total under $100, so buying everything can never be a choice
+  about reaching the next target.
+- **What is a fact and what is not (rule 2).** The *objects* are real and each
+  carries its source. The *prices* are game prices in dollars, shown in local money
+  through the live rate. The stall never claims "a daruma costs ¥1,500 in Tokyo"; it
+  claims "this one does". The one verified number on the screen is the line under
+  each price — *"that's about 3.5 pounds of rice at a Tokyo market"* — from §12's
+  anchors, which is why every stall is in an anchor country and, for the seven that
+  aren't hub countries, in the city its anchor was measured in.
+- **Persistence:** written with the stamps at the end of the run. Shown on the
+  passport's profile page under "FOR UNCLE JONAH", newest first.
+- **Keyed by country.** The first two days' `HND/daruma`-style keys still resolve, so
+  nobody's daruma vanishes.
+
+**Twelve stalls, 38 objects:** Japan (4), Canada (3), Egypt (3), Mexico (4), Turkey
+(4), Nepal (3), the Philippines (3), Sri Lanka (3), Madagascar (3), Jordan (3),
+Namibia (3), **Cameroon (2)**.
+
+**Adding a stall or an object** is an entry in `SOUVENIR_STALLS` in
+`src/data/souvenirs.js`: `name`, `about` (written from the source, not from memory),
+`source`, `usd`, `emoji` (until art lands), and a thank-you in `SOUVENIR_THANKS`.
+
+**Sourcing, and the lesson Namibia taught.** Wikipedia's intro often does not state
+the country connection. The Herero dress verified from the *full* Herero people
+article where the intro had nothing. The makalani carving did not verify from
+Wikipedia at all — the palm's article puts it in Namibia and calls the nut vegetable
+ivory, the vegetable-ivory article says the material is carved, and neither says the
+nuts are carved in Namibia. The source that does is **The Namibian**, the national
+newspaper (Absalom Shigwedha, 23 Aug 2007). **When Wikipedia won't say it in one
+sentence, go to the country's own press.** If no source states it, the object is
+dropped — which is why Cameroon has two.
+
+**Open:**
+
+- **Cameroon's third object** — buildable; verify first.
+- **Jonah's 38 thank-yous are unreviewed drafts.** They are the only content on the
+  stall that is his voice rather than a sourced fact.
+- **The exchange-fee purse** — Joshua's decision, not started.
+
+---
+
+## 14. Maps
+
+- **The relief scripts cannot run on this machine.** `make-relief.mjs` and
+  `make-country-relief.mjs` want the Natural Earth source raster (`NE1_HR_LR.tif` /
+  `HYP_HR_SR_W.tif`), which is a ~200 MB download, deliberately not committed, and
+  not on disk. `test/relief-plates.test.js` asserts every country's plate covers the
+  ground its zoom box draws, so **making a country's box bigger breaks the test and
+  needs the raster; making one smaller is free.** Check this first before touching
+  `fitBox`. It is also why Joshua's "zoom out a little" on France was not available.
+- **Small islands get a lower zoom floor** (`boxFloorFor` in `src/map-geometry.js`,
+  Joshua's call 2026-07-29). A mainland country backed off to the floor fills its
+  frame with neighbouring ground; an island fills it with empty sea. Trinidad went
+  28% → 78% of its frame, Jamaica 33% → 92%, Fiji 46% → 93%; no mainland moved.
+- **Overseas-territory insets choose their own corner** (`OverseasInsets`,
+  2026-09-28). France's row of four had sat over five of its ten pins. The component
+  now splits territories by the side they lie towards (rule 5, literally), scores
+  four placements per group by how many pins each would cover, falls back to a
+  compact size only when every standard placement hits something, and works in
+  display space — the insets render inside the map's vertical-stretch group, so "5%
+  from the top" in plate coordinates was above the frame on France. Measured: France
+  0 pins covered and 0 boxes off-frame (was 5 and 1); the USA unchanged. **No test
+  covers it** — it lives in the component, which the suite deliberately does not
+  import. Chile is unseen (see the loose ends).
+- **French Polynesia has no vector outline in Natural Earth's set**, so it cannot get
+  a country map the way every other country does. Needs a decision.
+- The 2026-07-21 playtest's map items are in `docs/playtest-2026-07-21.md`.
+
+---
+
+## 15. Speech
+
+Joshua: *"The voice pronouncing some of the countries is the old school atrocious
+pre-Siri voice."* The cause was the code not choosing at all: `utterance.lang =
+"en-US"` hands the pick to the browser, which on macOS hands it to Samantha. Worse,
+macOS ships *Bad News, Bahh, Bells, Boing, Zarvox* and others as ordinary en-US
+voices, and for French, German, Japanese and Spanish the list is dominated by
+character voices.
+
+- **`rankVoices()` in `src/audio.js`** scores the list and sets `u.voice`
+  explicitly. Joke voices are never eligible, and a language whose only match is a
+  joke voice counts as having none, so the greeting falls back to reading the
+  romanization in English. It is the graceful fallback and can never be the plan.
+- **Country names are human recordings** — 106 of 108, from Lingua Libre, all CC0,
+  2.3 MB, 102 of them by one speaker (which mattered more than the coverage: 106
+  volunteers would have sounded like a ransom note). French Polynesia and New
+  Caledonia fall back to synthesis. `node scripts/gen-voices.mjs` rebuilds the set.
+- **Everything else is still the device synthesizer** — Mr O's facts, the Scout
+  read-aloud, hover labels, every greeting. Bundled audio is the only thing that
+  changes that for a player who configures nothing.
+
+**If greetings are ever wanted as recordings,** the route is Lingua Libre's own
+recording studio, which takes requests — a community ask, not a code change. Piper
+(MIT-licensed neural TTS, offline, output clean to redistribute) is the synthesized
+alternative and a build-step dependency.
+
+---
+
+## 16. Install size and updates
+
+- **A deploy no longer restarts a game in progress.** `main.jsx` used to reload the
+  page the instant a new service worker claimed it, and since a run is saved nowhere,
+  every `git push` cost whoever was mid-trip their trip. The reload goes through
+  `src/app-update.js`, which holds it until the player is on the splash, the traveler
+  picker or the meet screen. Anything not on that list counts as unsafe on purpose: a
+  screen added later has to be named before it can ever be interrupted.
+  `test/app-update.test.js` covers it.
+- **The precache is 59.9 MB** (it was once 326 MB, 305 of it the dog's wardrobe at
+  1254px for a sprite drawn at 390). `test/precache-size.test.js` walks what is
+  actually on disk — so a folder nobody thought about is checked anyway — with a
+  per-file cap of **1000 KB** and a total cap of **70 MB**.
+- **`scripts/optimize-ui-art.mjs` has three policies:** palette PNG for small
+  emblems, resize-to-webp for big character art, and for the loose files at the root
+  of `shutterbug-ui/` a measured one — quantize, compare against the original
+  flattened onto paper, keep only if the difference is invisible. The root can't go
+  on a list because it also holds the gradient-heavy textures quantizing would band.
+- **What is left above 500 KB** is four textures and two open-book plates, all
+  already palette PNGs. Going further means webp or jpeg, which changes the filenames
+  they are referenced by — a real change, not a re-encode.
+
+---
+
+## Log
+
+What shipped, newest first. One line each; the commit has the reasoning.
+
+| date | | commit |
 |---|---|---|
-| **Japan** (10 places) | Statistics Bureau, Retail Price Survey (小売物価統計調査 `00200571`), table 1, item 1001/1002 うるち米 in 東京都区部 | a pound of rice in Tokyo, **420 JPY** (June 2026) |
-| **Mexico** (10 places) | INEGI *Precios promedio* on the 2Q-Jul-2018 base, genérico 014 Tortilla de maíz, city 01 | a pound of tortillas in Mexico City, **10 MXN** (June 2026) |
-
-That is **14 countries covering 95 of the 464 places**, against 76 before.
-
-Both name a **city**, not a national average, because neither office publishes a
-national average retail price and averaging their 55 and 82 cities here would be a
-number this project computed rather than one anybody published. The card already had
-the shape for it — the WFP entries name a city too.
-
-**Rice, not bread, for Japan.** 食パン is in the same table at 534 yen a kilo. The
-line is meant to be a shopping trip a child can picture, not a like-for-like row in
-a spreadsheet, and Japanese kitchens run on rice. Same reasoning picks tortillas for
-Mexico over its bread or rice.
-
-**The two traps, written down because both cost real time:**
-
-1. **There is no Mexican `series` id, and the previous session's plan to read one off
-   the page could not have worked.** For CSV/XLS the app posts `series=` **empty** and
-   takes the selection from **ASP.NET session state** — the code comment in the page
-   even says so (*"los valores lo va a tomar de las variables de session"*). The
-   3-digit code `obtieneSerieExporta()` builds (`substring(12,15)` of the 15-digit
-   leaf, e.g. `014`) is only used for the IQY format. The working sequence is: GET the
-   app for a cookie → POST `ObtieneCountReg` with the 3-digit genérico and the city
-   list (**this is what writes the session**) → POST `Exportacion.aspx`. The earlier
-   note that `001011111004` "returns HTML, not a file" was right about the symptom and
-   wrong about the cause: that code is a *class* node, not a leaf genérico, and no
-   value of `series` would have worked over GET anyway.
-2. **Japan publishes this as a spreadsheet and nothing else.** The only CSVs on the
-   month's file list are the 銘柄設定一覧 reference tables, not prices. So the
-   generator now carries ~60 lines of `node:zlib` that read an .xlsx directly (a ZIP
-   of XML) rather than taking a parser dependency. Furigana (`<rPh>`) has to be
-   stripped from the shared strings or 札幌市 comes out as 札幌市サッポロシ.
-
-**What is still genuinely blocked:** China needs a mirror or a proxy. The UK needs a
-different ONS product than the obvious one. Australia, Germany and the rest of the
-eurozone need a source that may not exist publicly. Adding a reachable country is a
-single entry in `NATIONAL` in the generator plus its fetch.
-
-**The general lesson, now that it has happened twice:** before recording a country as
-blocked on a key, check what the office's own *website* serves. Both walls were only
-ever on the API.
-
-### What it would take to finish, honestly
-
-There is **no authoritative global source of everyday retail prices.** Checked:
-
-- **Eurostat's detailed average prices** (`prc_dap15`/`prc_dap16`) — the obvious way
-  to get ~15 European countries in one integration. **Discontinued**; the API returns
-  404 for all of them.
-- **World Bank ICP** — publishes PPP conversion factors, not item prices. A price
-  derived from a PPP factor is a model, not a source, and rule 2 forbids it.
-- **Numbeo** — crowd-sourced with no verification. Not a source for a teaching tool.
-- **FAO** — producer prices, not retail.
-
-That leaves **national statistics offices, one at a time**: BLS for the US, StatCan
-for Canada, e-Stat for Japan, INEGI for Mexico — the four now in — and so on for
-roughly 90 more, in as many formats and languages. Each is genuinely authoritative
-and each is a day's work; the four here took a session apiece and no two shared a
-line of code (a JSON API, a cube endpoint, a spreadsheet, and a session-bound
-ASP.NET form). That is the real price of "all of them", and it is a content project
-of the same shape as the culture-photo audit rather than a task.
-
-**A cheaper path that would double the coverage:** the ~15 biggest economies by
-themselves would cover most of the countries a child actually visits in a run. Four
-of them are now done — the USA (32 places), China's 21 still blocked, the UK's 11
-still blocked, and Japan, Mexico and Canada (10 each) in. What is left of that list
-is **China, the UK, Australia, and the eurozone five** (France, Germany, Italy,
-Greece, Spain), and unlike the four already taken, none of these is a session of
-work: each is either genuinely unreachable from here (China's 403, Germany's
-index-only publishing) or needs a source nobody has found yet. The cheap wins are
-spent. Anything further is a content project of the same shape as the culture-photo
-audit, not a task.
+| 2026-10-03 | This file consolidated, 1,665 lines to about 960, every count re-counted | — |
+| 2026-09-30 | Makalani carving sourced from The Namibian | `191c589` |
+| 2026-09-30 | Namibia's stall | `a9d1795` |
+| 2026-09-30 | Stalls keyed by country, the second door, six more stalls; one exchange table | `4f03c22` |
+| 2026-09-30 | Toronto, Cairo, Mexico City, Istanbul stalls | `41f30e0` |
+| 2026-09-30 | Wardrobe rebuilt at `--size 400`: 7 MB off the precache | `2bc8d95` |
+| 2026-09-30 | The first souvenir stall, at Haneda | `3b58703` |
+| 2026-09-28 | The September avatar batch: 28 outfits, 23 hairstyles, split boy/girl | `9ae49d8` |
+| 2026-09-28 | Overseas-territory insets choose their own corner | `fbb0fc7` |
+| 2026-09-24 | Two off-centre garments fixed; the Long Trip unlock fires once | `e1d255d` |
+| 2026-09-24 | `optimize-ui-art.mjs` third policy; four Mr O plates and `splash.jpg`: −4.4 MB | `52e17e3` |
+| 2026-09-24 | Guests get The Long Trip; dead quiz/daily mode art removed; splash tab order | `2dd44b9` |
+| 2026-09-24 | The outfit lab | `c9c3120` |
+| 2026-08-03 | Chicago photographs Buckingham Fountain | `a3a2f6e` |
+| 2026-08-03 | Hover speech on a resting cursor; hold-for-the-light timing; the arrival card in two columns; end-screen earnings in a popup | `4656a79` |
+| 2026-07-30 | `/tune-lab.html` | `ca74ebb` |
+| 2026-07-30 | Japan and Mexico price anchors | `ee9eb52`, `bfbbc98` |
+| 2026-07-30 | Unlock news becomes a popup | `68f3d08` |
+| 2026-07-30 | Deploys stop restarting a game; precache 326 MB → 59 MB | `f05ffc8` |
+| 2026-07-29 | The meet screen fits its board in all six modes | `4681eb7` |
+| 2026-07-29 | US and Canada price anchors | `b887067` |
+| 2026-07-29 | The Caribbean split; no bed carries more than five | `bc317d1` |
+| 2026-07-29 | The generated avatar colour range; a traveler picks a sex | `5e9f4be`, `8e39e3b` |
+| 2026-07-28 | The painted avatar ships; the maqam and Mediterranean bed splits; voice ranking and recorded country names | |
+| 2026-07-27 | Mystery Photos; Credits & Legal; three Journeys; seven Oceania places; the people-photo audit | |
+| 2026-07-25 | The Long Trip's last three slices | |
+| 2026-07-21 | Joshua's playtest pass (13 of 15 items) and the keyboard audit | |
+| 2026-07-19 | Passport export/import; the Supabase schema and merge; Pickles joins the trip | |
+| 2026-07-17/18 | Grandpa Nigel becomes Uncle Jonah; Quiz and Daily removed as modes; the passport becomes popup-only | |
+| 2026-07-15/16 | Travel modes; rotating people cards; the curiosity layer to 42 cards; the badge art; four Journeys | |
